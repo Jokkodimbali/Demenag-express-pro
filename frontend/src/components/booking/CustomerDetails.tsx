@@ -1,42 +1,42 @@
-import type { BookingFormState } from '../../application/useBookingForm';
+import type { BookingViewState } from '../../application/contracts/booking-view';
+import { messages } from '../../content/fr';
 
 export function CustomerDetails({
   user,
   draft,
   setDraft,
-}: Pick<BookingFormState, 'user' | 'draft' | 'setDraft'>) {
+}: Pick<BookingViewState, 'user' | 'draft' | 'setDraft'>) {
   return (
     <section className="panel">
       <div className="step-title">
-        <span>4 ·</span>
+        <span>{messages.text4}</span>
         <div>
-          <h3>VOS COORDONNÉES</h3>
+          <h3>{messages.vosCoordonnees}</h3>
         </div>
       </div>
       {user ? (
         <div className="field-pair">
           <div>
-            <label htmlFor="customer-name">Nom</label>
+            <label htmlFor="customer-name">{messages.nom}</label>
             <input id="customer-name" readOnly value={user.name} />
           </div>
           <div>
-            <label htmlFor="customer-phone">Téléphone</label>
+            <label htmlFor="customer-phone">{messages.telephone}</label>
             <input id="customer-phone" readOnly value={user.phone} />
           </div>
         </div>
       ) : (
-        <p className="muted">
-          Connectez-vous à l’envoi pour enregistrer vos coordonnées et suivre votre réservation.
-        </p>
+        <p className="muted">{messages.connectezVousALEnvoiPourEnregistrerVos}</p>
       )}
       <label htmlFor="booking-notes">
-        Précisions utiles <span className="muted">(facultatif)</span>
+        {messages.precisionsUtiles}
+        <span className="muted">{messages.facultatif}</span>
       </label>
       <textarea
         id="booking-notes"
         rows={3}
         maxLength={2000}
-        placeholder="Étage, ascenseur, accès au camion, objets fragiles…"
+        placeholder={messages.etageAscenseurAccesAuCamionObjetsFragiles}
         value={draft.notes}
         onChange={(e) => setDraft((d) => ({ ...d, notes: e.target.value }))}
       />

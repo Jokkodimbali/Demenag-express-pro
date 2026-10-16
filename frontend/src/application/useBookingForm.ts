@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { messages } from '../content/fr';
 import { tierLabels } from '../domain/format';
 import type { Booking, Options, Price } from '../domain/model';
 import { blankDraft, useApp } from './context';
+import { errorMessage } from './error-message';
+import { routes } from '../routing/routes';
 export function useBookingForm() {
   const { catalogue, loading, error, reload, api, user, draft, setDraft } = useApp();
   const navigate = useNavigate();
@@ -32,8 +35,8 @@ export function useBookingForm() {
     api
       .estimate(draft.vehicleId, draft.route.id, draft.options, controller.signal)
       .then(setPrice)
-      .catch((e) => {
-        if (!controller.signal.aborted) setEstimateError(e.message);
+      .catch((e: unknown) => {
+        if (!controller.signal.aborted) setEstimateError(errorMessage(e));
       })
       .finally(() => {
         if (!controller.signal.aborted) setEstimating(false);
@@ -50,7 +53,9 @@ export function useBookingForm() {
         : (catalogue.vehicles.find((v) => v.active !== false)?.id ?? current.vehicleId);
       const slots = catalogue.settings.enabledSlots;
       const timeSlot =
-        slots?.length && !slots.includes(current.timeSlot) ? slots[0] : current.timeSlot;
+        slots.length && !slots.some((slot) => slot.label === current.timeSlot)
+          ? slots[0].label
+          : current.timeSlot;
       return vehicleId === current.vehicleId && timeSlot === current.timeSlot
         ? current
         : { ...current, vehicleId, timeSlot };
@@ -61,11 +66,11 @@ export function useBookingForm() {
     if (submitLock.current) return;
     setSubmitError('');
     if (!draft.route || !price) {
-      setSubmitError('Calculez le trajet pour obtenir une estimation.');
+      setSubmitError(messages.calculezLeTrajetPourObtenirUneEstimation);
       return;
     }
     if (!user) {
-      navigate('/connexion?retour=reservation');
+      navigate(`${routes.login}?retour=reservation`);
       return;
     }
     submitLock.current = true;
@@ -86,7 +91,7 @@ export function useBookingForm() {
       setDraft(blankDraft());
       document.getElementById('reserver')?.scrollIntoView({ behavior: 'smooth' });
     } catch (e) {
-      setSubmitError((e as Error).message);
+      setSubmitError(errorMessage(e));
     } finally {
       setSubmitting(false);
       submitLock.current = false;
@@ -97,15 +102,15 @@ export function useBookingForm() {
       ...d,
       options: {
         ...d.options,
-        [key]: Math.max(0, Math.min(catalogue?.settings.maxOptions ?? 20, d.options[key] + delta)),
+        [key]: Math.max(0, Math.min(catalogue?.settings.maxOptions ?? 0, d.options[key] + delta)),
       },
     }));
   }
   const extras: [keyof Options, string, string][] = [
-    ['labour', 'Manœuvres', 'Chargement et déchargement'],
-    ['desk', 'Montage / démontage de bureau', 'Un menuisier pour vos meubles'],
-    ['wardrobe', 'Montage / démontage d’armoire', 'Démontage et remontage sur place'],
-    ['bed', 'Montage / démontage de lit', 'Lit deux places'],
+    ['labour', messages.manUvres, messages.chargementEtDechargement],
+    ['desk', messages.montageDemontageDeBureau, messages.unMenuisierPourVosMeubles],
+    ['wardrobe', messages.montageDemontageDArmoire, messages.demontageEtRemontageSurPlace],
+    ['bed', messages.montageDemontageDeLit, messages.litDeuxPlaces],
   ];
   return {
     catalogue,
@@ -129,4 +134,3 @@ export function useBookingForm() {
     extras,
   };
 }
-export type BookingFormState = ReturnType<typeof useBookingForm>;

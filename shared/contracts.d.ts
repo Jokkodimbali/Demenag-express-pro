@@ -15,18 +15,19 @@ export type Vehicle = {
   active?: boolean;
   prices: [number, number, number];
 };
+export type BookingSlot = { label: string; startHour: number };
 export type BookingRules = {
-  bookingsEnabled?: boolean;
-  maxAdvanceDays?: number;
-  minNoticeHours?: number;
-  maxOptions?: number;
-  maxTrips?: number;
-  clientCancellation?: boolean;
-  cancellationNoticeHours?: number;
-  enabledSlots?: string[];
+  bookingsEnabled: boolean;
+  maxAdvanceDays: number;
+  minNoticeHours: number;
+  maxOptions: number;
+  maxTrips: number;
+  clientCancellation: boolean;
+  cancellationNoticeHours: number;
+  enabledSlots: BookingSlot[];
 };
 export type Settings = BookingRules & {
-  distanceBounds?: [number, number, number];
+  distanceBounds: [number, number, number];
   labourPrice: number;
   assemblyPrice: number;
   businessPhone: string;

@@ -1,4 +1,6 @@
 import type { ApplicationApi } from '../application/ports';
+import { messages } from '../content/fr';
+import { httpRoutes } from './http-routes';
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -25,41 +27,59 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
       });
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') throw error;
-      throw new ApiError('Connexion au serveur impossible. Réessayez dans un instant.', 0);
+      throw new ApiError(messages.connexionAuServeurImpossibleReessayezDansUnInstant, 0);
     }
     if (response.status === 204) return undefined as T;
-    const data = await response.json().catch(() => ({ message: 'Réponse du serveur invalide.' }));
-    if (!response.ok)
-      throw new ApiError(
-        data.fields?.length
-          ? `${data.message} ${data.fields[0].message}`
-          : data.message || 'Une erreur est survenue.',
-        response.status,
-      );
+    const data: unknown = await response
+      .json()
+      .catch(() => ({ message: messages.reponseDuServeurInvalide }));
+    if (!response.ok) {
+      let message = messages.uneErreurEstSurvenue as string;
+      if (
+        typeof data === 'object' &&
+        data !== null &&
+        'message' in data &&
+        typeof data.message === 'string'
+      ) {
+        message = data.message;
+        if ('fields' in data && Array.isArray(data.fields)) {
+          const field: unknown = data.fields[0];
+          if (
+            typeof field === 'object' &&
+            field !== null &&
+            'message' in field &&
+            typeof field.message === 'string'
+          )
+            message += ' ' + field.message;
+        }
+      }
+      throw new ApiError(message, response.status);
+    }
     return data as T;
   }
   return {
     changePassword: (oldPassword, newPassword) =>
-      request('/auth/password', 'POST', { oldPassword, newPassword }),
-    users: () => request('/admin/users'),
-    updateUser: (user) => request(`/admin/users/${user.id}`, 'PUT', user),
-    createUser: (user) => request('/admin/users', 'POST', user),
-    catalogue: () => request('/catalogue'),
-    updateCatalogue: (value) => request('/catalogue', 'PUT', value),
-    me: () => request('/auth/me'),
-    login: (phone, password) => request('/auth/login', 'POST', { phone, password }),
+      request(httpRoutes.authentication.password, 'POST', { oldPassword, newPassword }),
+    users: () => request(httpRoutes.users),
+    updateUser: (user) => request(`${httpRoutes.users}/${user.id}`, 'PUT', user),
+    createUser: (user) => request(httpRoutes.users, 'POST', user),
+    catalogue: () => request(httpRoutes.catalogue),
+    updateCatalogue: (value) => request(httpRoutes.catalogue, 'PUT', value),
+    me: () => request(httpRoutes.authentication.current),
+    login: (phone, password) =>
+      request(httpRoutes.authentication.login, 'POST', { phone, password }),
     register: (name, phone, password) =>
-      request('/auth/register', 'POST', { name, phone, password }),
-    logout: () => request('/auth/logout', 'POST'),
-    bookings: () => request('/bookings'),
-    booking: (id) => request(`/bookings/${id}`),
-    createBooking: (input) => request('/bookings', 'POST', input),
+      request(httpRoutes.authentication.register, 'POST', { name, phone, password }),
+    logout: () => request(httpRoutes.authentication.logout, 'POST'),
+    bookings: () => request(httpRoutes.bookings),
+    booking: (id) => request(`${httpRoutes.bookings}/${id}`),
+    createBooking: (input) => request(httpRoutes.bookings, 'POST', input),
     status: (id, status, version) =>
-      request(`/bookings/${id}/status`, 'PATCH', { status, version }),
-    quote: (id, input) => request(`/bookings/${id}/quotes`, 'POST', input),
-    route: (from, to) => request('/maps/route', 'POST', { from, to }),
-    search: (query) => request(`/maps/search?q=${encodeURIComponent(query)}`),
+      request(`${httpRoutes.bookings}/${id}/status`, 'PATCH', { status, version }),
+    quote: (id, input) => request(`${httpRoutes.bookings}/${id}/quotes`, 'POST', input),
+    route: (from, to) => request(httpRoutes.maps.route, 'POST', { from, to }),
+    search: (query) => request(`${httpRoutes.maps.search}?q=${encodeURIComponent(query)}`),
     estimate: (vehicleId, routeId, options, signal) =>
-      request('/estimates', 'POST', { vehicleId, routeId, options }, signal),
+      request(httpRoutes.estimates, 'POST', { vehicleId, routeId, options }, signal),
   };
 }

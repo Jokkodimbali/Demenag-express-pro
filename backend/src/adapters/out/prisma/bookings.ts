@@ -1,5 +1,6 @@
 import type { BookingRepository } from '../../../application/ports/index.js';
 import { AppError } from '../../../domain/errors.js';
+import { messages } from '../../../domain/messages/fr.js';
 import type { Booking } from '../../../domain/model.js';
 import { type PrismaClient } from '../../../generated/prisma/client.js';
 import { conflict, json } from './helpers.js';
@@ -55,7 +56,7 @@ export class PrismaBookings implements BookingRepository {
           data: { donnees: json(next), statut: toStatus[next.status], version: { increment: 1 } },
         });
         if (!result.count)
-          throw new AppError(409, 'Cette réservation a changé. Actualisez la page.');
+          throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
         for (const quote of next.quotes)
           await tx.devis.upsert({
             where: { id: quote.id },

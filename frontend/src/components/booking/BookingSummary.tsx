@@ -1,5 +1,6 @@
 import { ArrowRight, ShieldCheck, Truck } from 'lucide-react';
-import type { BookingFormState } from '../../application/useBookingForm';
+import type { BookingViewState } from '../../application/contracts/booking-view';
+import { messages } from '../../content/fr';
 import { money } from '../../domain/format';
 import type { Catalogue, Vehicle } from '../../domain/model';
 
@@ -15,7 +16,7 @@ export function BookingSummary({
   submitting,
   user,
 }: Pick<
-  BookingFormState,
+  BookingViewState,
   | 'catalogue'
   | 'selected'
   | 'draft'
@@ -30,33 +31,38 @@ export function BookingSummary({
   return (
     <aside className="summary">
       <div className="summary-top">
-        <span className="eyebrow">PROVISOIRE</span>
+        <span className="eyebrow">{messages.provisoire2}</span>
         <span className="summary-icon">
           <Truck size={23} />
         </span>
       </div>
-      <h3>ESTIMATION</h3>
-      <p className="muted">Prix estimé pour votre déménagement.</p>
+      <h3>{messages.estimation}</h3>
+      <p className="muted">{messages.prixEstimePourVotreDemenagement}</p>
       <div className="summary-vehicle">
-        <img src={selected.image} alt="" />
+        <img src={selected.image} alt={messages.text} />
         <div>
           <strong>{selected.name}</strong>
-          <span>{selected.volume} · 1 aller-retour</span>
+          <span>
+            {selected.volume}
+            {messages.text1AllerRetour}
+          </span>
         </div>
       </div>
       <div className="summary-trip">
         <div>
-          <span className="point-badge from">A</span>
-          <span>{draft.fromAddress || 'Votre adresse de départ'}</span>
+          <span className="point-badge from">{messages.a}</span>
+          <span>{draft.fromAddress || messages.votreAdresseDeDepart}</span>
         </div>
         <div>
-          <span className="point-badge to">B</span>
-          <span>{draft.toAddress || 'Votre adresse d’arrivée'}</span>
+          <span className="point-badge to">{messages.b}</span>
+          <span>{draft.toAddress || messages.votreAdresseDArrivee}</span>
         </div>
       </div>
       {draft.route && (
         <p className="distance-label">
-          {draft.route.distanceKm} km · {price ? tiers[price.tier] : 'Distance routière'}
+          {draft.route.distanceKm}
+          {messages.km2}
+          {price ? tiers[price.tier] : messages.distanceRoutiere}
         </p>
       )}
       <div className="price-lines">
@@ -64,18 +70,18 @@ export function BookingSummary({
           <div key={i}>
             <span>
               {line.label}
-              {line.quantity > 1 ? ` × ${line.quantity}` : ''}
+              {line.quantity > 1 ? messages.quantityMultiplier(line.quantity) : ''}
             </span>
             <strong>{money(line.total)}</strong>
           </div>
         ))}
       </div>
       <div className="summary-total">
-        <span>ESTIMATION PROVISOIRE</span>
+        <span>{messages.estimationProvisoire}</span>
         <strong aria-live="polite">
-          {estimating ? 'Calcul…' : price ? money(price.total) : 'À calculer'}
+          {estimating ? messages.calcul : price ? money(price.total) : messages.aCalculer}
         </strong>
-        <p>Base d’un aller-retour. Le devis final dépend du nombre réel de trajets effectués.</p>
+        <p>{messages.baseDUnAllerRetourLeDevisFinal}</p>
       </div>
       {estimateError && (
         <p className="alert error" role="alert">
@@ -97,18 +103,20 @@ export function BookingSummary({
           catalogue.settings.bookingsEnabled === false
         }
       >
-        {submitting ? 'Enregistrement…' : user ? 'Envoyer ma demande' : 'Me connecter et réserver'}
+        {submitting
+          ? messages.enregistrement
+          : user
+            ? 'Envoyer ma demande'
+            : messages.meConnecterEtReserver}
         <ArrowRight size={18} />
       </button>
       <p className="summary-note">
         <ShieldCheck size={14} />{' '}
         {user
-          ? `Réservation au nom de ${user.name}`
-          : 'Votre sélection est conservée pendant la connexion.'}
+          ? messages.reservationOwner(user.name)
+          : messages.votreSelectionEstConserveePendantLaConnexion}
       </p>
-      <p className="caption">
-        La disponibilité est confirmée par notre équipe. Aucun paiement demandé à cette étape.
-      </p>
+      <p className="caption">{messages.laDisponibiliteEstConfirmeeParNotreEquipeAucun}</p>
     </aside>
   );
 }

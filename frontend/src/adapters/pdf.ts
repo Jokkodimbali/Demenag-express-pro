@@ -1,3 +1,4 @@
+import { messages } from '../content/fr';
 import { dateLabel, money } from '../domain/format';
 import type { Booking, Quote } from '../domain/model';
 export async function downloadQuote(booking: Booking, quote?: Quote) {
@@ -31,7 +32,7 @@ export async function downloadQuote(booking: Booking, quote?: Quote) {
   }
   doc.setTextColor(30, 32, 35);
   paragraph('DEMENAG EXPRESS PRO MTH', 20, true);
-  paragraph('Dakar, Sénégal', 10);
+  paragraph(messages.dakarSenegal, 10);
   doc.setFillColor(11, 107, 53);
   doc.rect(margin, y, width / 3, 2, 'F');
   doc.setFillColor(246, 215, 60);
@@ -39,36 +40,41 @@ export async function downloadQuote(booking: Booking, quote?: Quote) {
   doc.setFillColor(227, 38, 47);
   doc.rect(margin + (width * 2) / 3, y, width / 3, 2, 'F');
   y += 14;
-  paragraph(quote?.kind === 'final' ? 'DEVIS FINAL' : 'DEVIS PROVISOIRE', 16, true);
+  paragraph(
+    quote?.kind === 'final' ? messages.labelDEVISFINAL : messages.devisProvisoire,
+    16,
+    true,
+  );
   paragraph(
     `${quote?.reference || booking.reference} · ${dateLabel((quote?.createdAt || booking.createdAt).slice(0, 10))}`,
   );
-  paragraph(`CLIENT : ${booking.customerName} · ${booking.phone}`, 11, true);
-  paragraph(`Déménagement : ${dateLabel(booking.date)} · ${booking.timeSlot}`);
+  paragraph(messages.clientDetails(booking.customerName, booking.phone), 11, true);
+  paragraph(messages.movingSchedule(dateLabel(booking.date), booking.timeSlot));
   paragraph(
     `${booking.vehicle.name} · ${booking.distanceKm} km · ${price.trips} aller(s)-retour(s)`,
   );
-  paragraph(`Départ : ${booking.fromAddress}`);
-  paragraph(`Arrivée : ${booking.toAddress}`);
+  paragraph(messages.departure(booking.fromAddress));
+  paragraph(messages.arrival(booking.toAddress));
   for (const line of price.lines) {
     page(18);
     paragraph(
-      `${line.label} : ${line.quantity} × ${money(line.unitPrice)} = ${money(line.total)}`,
+      messages.priceLine(line.label, line.quantity, money(line.unitPrice), money(line.total)),
       10,
     );
   }
-  if (price.discount) paragraph(`Remise : -${money(price.discount)}`);
+  if (price.discount) paragraph(messages.discountAmount(money(price.discount)));
   page(26);
   doc.setFillColor(246, 215, 60);
   doc.roundedRect(margin, y - 4, width, 18, 2, 2, 'F');
   y += 7;
-  paragraph(`TOTAL : ${money(price.total)}`, 16, true);
+  paragraph(messages.totalAmount(money(price.total)), 16, true);
   y += 8;
-  if (quote?.notes || booking.notes) paragraph('Précisions : ' + (quote?.notes || booking.notes));
+  if (quote?.notes || booking.notes)
+    paragraph(messages.precisions + (quote?.notes || booking.notes));
   paragraph(
     quote?.kind === 'final'
-      ? 'Montant établi sur la base du nombre réel d’allers-retours effectués.'
-      : 'Estimation provisoire. La disponibilité et les conditions sont confirmées par notre équipe. Le montant final dépend des trajets réellement effectués.',
+      ? messages.montantEtabliSurLaBaseDuNombreReel
+      : messages.estimationProvisoireLaDisponibiliteEtLesConditionsSont,
   );
   const pages = doc.getNumberOfPages();
   for (let i = 1; i <= pages; i++) {

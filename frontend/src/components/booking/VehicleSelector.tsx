@@ -1,5 +1,6 @@
 import { Check } from 'lucide-react';
-import type { BookingFormState } from '../../application/useBookingForm';
+import type { BookingViewState } from '../../application/contracts/booking-view';
+import { messages } from '../../content/fr';
 import { money } from '../../domain/format';
 import type { Catalogue, Vehicle } from '../../domain/model';
 
@@ -9,17 +10,17 @@ export function VehicleSelector({
   draft,
   setDraft,
   tiers,
-}: Pick<BookingFormState, 'catalogue' | 'selected' | 'draft' | 'setDraft' | 'tiers'> & {
+}: Pick<BookingViewState, 'catalogue' | 'selected' | 'draft' | 'setDraft' | 'tiers'> & {
   catalogue: Catalogue;
   selected: Vehicle;
 }) {
   return (
     <section className="panel">
       <div className="step-title">
-        <span>1 ·</span>
+        <span>{messages.text1}</span>
         <div>
-          <h3>VÉHICULE</h3>
-          <p>De la petite charge au déménagement complet.</p>
+          <h3>{messages.vehicule}</h3>
+          <p>{messages.deLaPetiteChargeAuDemenagementComplet}</p>
         </div>
       </div>
       <div className="vehicle-grid">
@@ -38,7 +39,9 @@ export function VehicleSelector({
             <img src={v.image} alt={v.name} loading="lazy" />
             <strong>{v.name}</strong>
             <span>
-              {v.volume} <span className="dot">·</span> dès {money(v.prices[0])}
+              {v.volume} <span className="dot">·</span>
+              {messages.des}
+              {money(v.prices[0])}
             </span>
           </button>
         ))}
@@ -47,24 +50,40 @@ export function VehicleSelector({
         <img src={selected.image} alt={selected.name} loading="lazy" />
         <img
           src={selected.interior}
-          alt={'Dimensions intérieures du ' + selected.name}
+          alt={messages.dimensionsInterieuresDu + selected.name}
           loading="lazy"
         />
         <div className="vehicle-specifications">
-          <span className="eyebrow">DIMENSIONS UTILES</span>
+          <span className="eyebrow">{messages.dimensionsUtiles}</span>
           <h4>{selected.name}</h4>
           <div className="dimensions">
             <span className="volume">{selected.volume}</span>
-            <span>L {selected.length}</span>
-            <span>H {selected.height}</span>
-            <span>l {selected.width}</span>
-            <span>Passages de roue {selected.wheelWidth}</span>
+            <span>
+              {messages.l}
+              {selected.length}
+            </span>
+            <span>
+              {messages.h}
+              {selected.height}
+            </span>
+            <span>
+              {messages.l2}
+              {selected.width}
+            </span>
+            <span>
+              {messages.passagesDeRoue}
+              {selected.wheelWidth}
+            </span>
             {selected.prices.map((value, index) => (
               <span key={index}>
                 {tiers[index]} : {money(value)}
               </span>
             ))}
-            <span>Au-delà de {catalogue.settings.distanceBounds?.[2] ?? 35} km : sur devis</span>
+            <span>
+              {messages.auDelaDe}
+              {catalogue.settings.distanceBounds[2]}
+              {messages.kmSurDevis}
+            </span>
           </div>
         </div>
       </div>

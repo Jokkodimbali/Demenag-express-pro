@@ -6,6 +6,8 @@ import { BookingSummary } from '../components/booking/BookingSummary';
 import { CustomerDetails } from '../components/booking/CustomerDetails';
 import { ScheduleOptions } from '../components/booking/ScheduleOptions';
 import { VehicleSelector } from '../components/booking/VehicleSelector';
+import { messages } from '../content/fr';
+import { routes } from '../routing/routes';
 import { money } from '../domain/format';
 const RouteMap = lazy(() => import('../components/RouteMap'));
 export function Home() {
@@ -35,60 +37,59 @@ export function Home() {
     <>
       <section className="hero container">
         <div className="hero-copy">
-          <p className="eyebrow">PRO · MTH · DAKAR, SÉNÉGAL</p>
+          <p className="eyebrow">{messages.proMthDakarSenegal}</p>
           <h1>
-            DÉMÉNAGEMENT
+            {messages.demenagement}
             <br />
-            <span>RAPIDE</span>
+            <span>{messages.rapide}</span>
           </h1>
           <p className="hero-description">
-            Choisissez votre véhicule, indiquez le trajet et recevez une estimation immédiate.
-            Réservation en moins de deux minutes.
+            {messages.choisissezVotreVehiculeIndiquezLeTrajetEtRecevez}
           </p>
         </div>
-        <div className="hero-visual">
-          <img
-            src="/assets/sprinter-profil.png"
-            alt="Mercedes Sprinter Demenag Express avec ses dimensions"
-            fetchPriority="high"
-          />
-        </div>
+        {selected && (
+          <div className="hero-visual">
+            <img src={selected.image} alt={selected.name} fetchPriority="high" />
+          </div>
+        )}
       </section>
       <section id="reserver" className="booking-section">
         <div className="container">
           <div className="section-heading">
-            <h2>RÉSERVER</h2>
+            <h2>{messages.reserver2}</h2>
           </div>
           {catalogue?.settings.bookingsEnabled === false && (
             <p className="alert" role="status">
-              Les réservations sont temporairement fermées. Contactez-nous pour toute demande.
+              {messages.lesReservationsSontTemporairementFermeesContactezNousPour}
             </p>
           )}
           {loading ? (
             <div className="panel loading" role="status">
-              Chargement des véhicules et des tarifs…
+              {messages.chargementDesVehiculesEtDesTarifs}
             </div>
           ) : error ? (
             <div className="alert error" role="alert">
               <p>{error}</p>
               <button className="button secondary" onClick={reload}>
-                Réessayer
+                {messages.reessayer}
               </button>
             </div>
           ) : done ? (
             <div className="success-panel">
               <CheckCircle2 size={44} />
-              <p className="eyebrow">DEMANDE ENREGISTRÉE</p>
-              <h2>ON PRÉPARE LA SUITE.</h2>
+              <p className="eyebrow">{messages.demandeEnregistree}</p>
+              <h2>{messages.onPrepareLaSuite}</h2>
               <p>
-                Votre demande <strong>{done.reference}</strong> est enregistrée. L’équipe confirmera
-                la disponibilité du véhicule et du créneau.
+                {messages.votreDemande}
+                <strong>{done.reference}</strong>
+                {messages.estEnregistreeLEquipeConfirmeraLaDisponibiliteDu}
               </p>
-              <Link className="button primary" to="/mon-espace">
-                Suivre ma réservation <ArrowRight size={18} />
+              <Link className="button primary" to={routes.account}>
+                {messages.suivreMaReservation}
+                <ArrowRight size={18} />
               </Link>
               <button className="button secondary" onClick={() => setDone(null)}>
-                Nouvelle demande
+                {messages.nouvelleDemande}
               </button>
             </div>
           ) : catalogue && selected ? (
@@ -103,13 +104,15 @@ export function Home() {
                 />
                 <section className="panel">
                   <div className="step-title">
-                    <span>2 ·</span>
+                    <span>{messages.text2}</span>
                     <div>
-                      <h3>TRAJET</h3>
-                      <p>Recherchez vos adresses ou placez les repères sur la carte.</p>
+                      <h3>{messages.trajet}</h3>
+                      <p>{messages.recherchezVosAdressesOuPlacezLesReperesSur}</p>
                     </div>
                   </div>
-                  <Suspense fallback={<div className="map loading">Chargement de la carte…</div>}>
+                  <Suspense
+                    fallback={<div className="map loading">{messages.chargementDeLaCarte}</div>}
+                  >
                     <RouteMap />
                   </Suspense>
                 </section>
@@ -141,8 +144,8 @@ export function Home() {
       {!done && catalogue && (
         <div className="mobile-booking-bar">
           <div>
-            <small>ESTIMATION</small>
-            <strong>{price ? money(price.total) : 'À calculer'}</strong>
+            <small>{messages.estimation}</small>
+            <strong>{price ? money(price.total) : messages.aCalculer}</strong>
           </div>
           <button
             form="booking-form"
@@ -155,7 +158,7 @@ export function Home() {
               catalogue.settings.bookingsEnabled === false
             }
           >
-            {user ? 'Envoyer' : 'Réserver'}
+            {user ? 'Envoyer' : messages.reserver3}
           </button>
         </div>
       )}

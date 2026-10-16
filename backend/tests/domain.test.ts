@@ -4,7 +4,7 @@ import { calculatePrice, tierOf } from '../src/domain/pricing.js';
 import { validateDate, transition } from '../src/domain/booking.js';
 import { normalizePhone } from '../src/application/services/auth.js';
 import { ScryptPasswords } from '../src/adapters/out/security/crypto.js';
-import type { Vehicle } from '../src/domain/model.js';
+import type { Settings, Vehicle } from '../src/domain/model.js';
 const vehicle: Vehicle = {
   id: 'sprinter',
   name: 'Sprinter',
@@ -17,11 +17,28 @@ const vehicle: Vehicle = {
   interior: '',
   prices: [30000, 37000, 44000],
 };
-const settings = { labourPrice: 6000, assemblyPrice: 15000, businessPhone: '+221775105104' };
+const settings: Settings = {
+  labourPrice: 6000,
+  assemblyPrice: 15000,
+  businessPhone: '+221775105104',
+  bookingsEnabled: true,
+  maxAdvanceDays: 366,
+  minNoticeHours: 0,
+  maxOptions: 20,
+  maxTrips: 20,
+  clientCancellation: true,
+  cancellationNoticeHours: 0,
+  distanceBounds: [15, 25, 35],
+  enabledSlots: [
+    { label: 'Matin (8h – 12h)', startHour: 8 },
+    { label: 'Après-midi (13h – 17h)', startHour: 13 },
+    { label: 'Soir (17h – 20h)', startHour: 17 },
+  ],
+};
 const none = { labour: 0, desk: 0, wardrobe: 0, bed: 0 };
 test('Les limites tarifaires respectent les tranches annoncées', () => {
   assert.deepEqual(
-    [14.9, 15, 25, 25.1, 35, 35.1].map((distance) => tierOf(distance)),
+    [14.9, 15, 25, 25.1, 35, 35.1].map((distance) => tierOf(distance, settings.distanceBounds)),
     [0, 1, 1, 2, 2, 3],
   );
 });
@@ -46,14 +63,14 @@ test('Les montants et quantités invalides sont refusés', () => {
   assert.throws(() => calculatePrice(vehicle, settings, 10, none, 0));
   assert.throws(() => calculatePrice(vehicle, settings, 10, none, 1, null, 31000));
   assert.throws(() => calculatePrice(vehicle, settings, 10, { ...none, labour: -1 }));
-  assert.throws(() => tierOf(NaN));
+  assert.throws(() => tierOf(NaN, settings.distanceBounds));
 });
 test('La date et le créneau passé sont refusés en heure de Dakar', () => {
   const now = new Date('2026-10-15T10:00:00Z');
-  assert.throws(() => validateDate('2026-10-14', 'Matin (8h – 12h)', now));
-  assert.throws(() => validateDate('2026-10-15', 'Matin (8h – 12h)', now));
-  assert.throws(() => validateDate('2026-02-30', 'Matin (8h – 12h)', now));
-  assert.doesNotThrow(() => validateDate('2026-10-15', 'Après-midi (13h – 17h)', now));
+  assert.throws(() => validateDate('2026-10-14', 'Matin (8h – 12h)', now, settings));
+  assert.throws(() => validateDate('2026-10-15', 'Matin (8h – 12h)', now, settings));
+  assert.throws(() => validateDate('2026-02-30', 'Matin (8h – 12h)', now, settings));
+  assert.doesNotThrow(() => validateDate('2026-10-15', 'Après-midi (13h – 17h)', now, settings));
 });
 test('Les statuts respectent le rôle et la clôture', () => {
   assert.doesNotThrow(() => transition('pending', 'confirmed', true));
@@ -91,16 +108,24 @@ test('Les bornes et limites choisies par l’administration pilotent le calcul',
 });
 test('Le préavis, les créneaux ouverts et l’horizon configurés sont appliqués', () => {
   const now = new Date('2026-10-15T10:00:00Z');
-  assert.throws(() => validateDate('2026-10-16', 'Matin (8h – 12h)', now, { minNoticeHours: 24 }));
-  assert.throws(() => validateDate('2026-10-18', 'Matin (8h – 12h)', now, { maxAdvanceDays: 2 }));
   assert.throws(() =>
-    validateDate('2026-10-16', 'Matin (8h – 12h)', now, { enabledSlots: ['Soir (17h – 20h)'] }),
+    validateDate('2026-10-16', 'Matin (8h – 12h)', now, { ...settings, minNoticeHours: 24 }),
+  );
+  assert.throws(() =>
+    validateDate('2026-10-18', 'Matin (8h – 12h)', now, { ...settings, maxAdvanceDays: 2 }),
+  );
+  assert.throws(() =>
+    validateDate('2026-10-16', 'Matin (8h – 12h)', now, {
+      ...settings,
+      enabledSlots: [{ label: 'Soir (17h – 20h)', startHour: 17 }],
+    }),
   );
   assert.doesNotThrow(() =>
     validateDate('2026-10-16', 'Soir (17h – 20h)', now, {
+      ...settings,
       minNoticeHours: 24,
       maxAdvanceDays: 2,
-      enabledSlots: ['Soir (17h – 20h)'],
+      enabledSlots: [{ label: 'Soir (17h – 20h)', startHour: 17 }],
     }),
   );
 });

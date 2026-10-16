@@ -1,5 +1,6 @@
 import type { CatalogueRepository } from '../../../application/ports/index.js';
 import { AppError } from '../../../domain/errors.js';
+import { messages } from '../../../domain/messages/fr.js';
 import type { Catalogue, Settings, Vehicle } from '../../../domain/model.js';
 import { type PrismaClient } from '../../../generated/prisma/client.js';
 import { fromSettings, fromVehicle, toSettings, toVehicle } from './mapping.js';
@@ -7,13 +8,12 @@ export class PrismaCatalogue implements CatalogueRepository {
   constructor(private db: PrismaClient) {}
   async get(): Promise<Catalogue> {
     const [rows, settings] = await Promise.all([
-      this.db.vehicule.findMany(),
+      this.db.vehicule.findMany({ orderBy: { nom: 'asc' } }),
       this.db.parametreApplication.findUnique({ where: { id: 'main' } }),
     ]);
-    if (!settings) throw new AppError(503, 'Le catalogue doit être initialisé.');
-    const order = ['sprinter', 'trafic', 'master'];
+    if (!settings) throw new AppError(503, messages.leCatalogueDoitEtreInitialise);
     return {
-      vehicles: rows.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id)).map(fromVehicle),
+      vehicles: rows.map(fromVehicle),
       settings: fromSettings(settings),
     };
   }

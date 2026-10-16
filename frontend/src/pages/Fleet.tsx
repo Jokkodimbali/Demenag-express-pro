@@ -1,60 +1,17 @@
-import { useState } from 'react';
-import { useApp } from '../application/context';
+import { useFleet } from '../application/controllers/useFleet';
 import { Modal } from '../components/Modal';
-import type { Vehicle } from '../domain/model';
-const fields = [
-  ['name', 'Nom'],
-  ['volume', 'Volume utile'],
-  ['length', 'Longueur utile'],
-  ['height', 'Hauteur utile'],
-  ['width', 'Largeur utile'],
-  ['wheelWidth', 'Largeur entre passages de roue'],
-] as const;
+import { fields } from '../content/forms/fleet';
+import { messages } from '../content/fr';
+
 export function Fleet() {
-  const { api, catalogue, setCatalogue } = useApp();
-  const [editing, setEditing] = useState<Vehicle | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  async function save(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!catalogue || !editing || busy) return;
-    const data = new FormData(e.currentTarget);
-    const value: Vehicle = {
-      ...editing,
-      ...Object.fromEntries(fields.map(([key]) => [key, String(data.get(key))])),
-      active: data.get('active') === 'on',
-      image: `/assets/${data.get('illustration')}-profil.png`,
-      interior: `/assets/${data.get('illustration')}-interieur.png`,
-    };
-    setBusy(true);
-    setError('');
-    try {
-      const exists = catalogue.vehicles.some((v) => v.id === value.id);
-      setCatalogue(
-        await api.updateCatalogue({
-          ...catalogue,
-          vehicles: exists
-            ? catalogue.vehicles.map((v) => (v.id === value.id ? value : v))
-            : [...catalogue.vehicles, value],
-        }),
-      );
-      setEditing(null);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
+  const { catalogue, editing, setEditing, busy, error, setError, save } = useFleet();
   if (!catalogue) return null;
   return (
     <div className="panel">
       <div className="section-heading">
         <div>
-          <h2>VÉHICULES</h2>
-          <p>
-            Un véhicule correspond à une disponibilité par créneau. Désactivez-le pour le retirer
-            des nouvelles demandes.
-          </p>
+          <h2>{messages.vehicules2}</h2>
+          <p>{messages.unVehiculeCorrespondAUneDisponibiliteParCreneau}</p>
         </div>
         <button
           className="button primary"
@@ -68,7 +25,7 @@ export function Fleet() {
             });
           }}
         >
-          Ajouter un véhicule
+          {messages.ajouterUnVehicule}
         </button>
       </div>
       <div className="tariff-grid">
@@ -77,7 +34,7 @@ export function Fleet() {
             <img src={v.image} alt={v.name} />
             <h3>{v.name}</h3>
             <p>
-              {v.volume} · {v.active === false ? 'Indisponible' : 'Actif'}
+              {v.volume} · {v.active === false ? 'Indisponible' : messages.labelActif}
             </p>
             <button
               className="button secondary"
@@ -86,7 +43,8 @@ export function Fleet() {
                 setEditing(v);
               }}
             >
-              Modifier {v.name}
+              {messages.modifier}
+              {v.name}
             </button>
           </div>
         ))}
@@ -94,7 +52,7 @@ export function Fleet() {
       {editing && (
         <Modal titleId="vehicle-title" busy={busy} onClose={() => setEditing(null)}>
           <form onSubmit={save} key={editing.id}>
-            <h2 id="vehicle-title">FICHE VÉHICULE</h2>
+            <h2 id="vehicle-title">{messages.ficheVehicule}</h2>
             <div className="field-pair">
               {fields.map(([key, label]) => (
                 <div key={key}>
@@ -110,24 +68,11 @@ export function Fleet() {
                 </div>
               ))}
             </div>
-            <label htmlFor="vehicle-illustration">Illustrations disponibles</label>
-            <select
-              id="vehicle-illustration"
-              name="illustration"
-              defaultValue={editing.image.split('/').pop()?.split('-')[0]}
-            >
-              {['sprinter', 'trafic', 'master'].map((id) => (
-                <option key={id}>{id}</option>
-              ))}
-            </select>
             <label className="checkbox-label">
               <input type="checkbox" name="active" defaultChecked={editing.active !== false} />
-              Disponible à la réservation
+              {messages.disponibleALaReservation}
             </label>
-            <p className="caption">
-              Réglez les prix dans « Tarifs et paramètres ». Un nouveau véhicule reprend les tarifs
-              du premier véhicule ; laissez-le inactif jusqu’à validation.
-            </p>
+            <p className="caption">{messages.reglezLesPrixDansTarifsEtParametresUn}</p>
             {error && (
               <p role="alert" className="alert error">
                 {error}
@@ -140,10 +85,10 @@ export function Fleet() {
                 disabled={busy}
                 onClick={() => setEditing(null)}
               >
-                Fermer
+                {messages.fermer}
               </button>
               <button className="button primary" disabled={busy}>
-                {busy ? 'Enregistrement…' : 'Enregistrer'}
+                {busy ? messages.enregistrement : messages.labelEnregistrer}
               </button>
             </div>
           </form>

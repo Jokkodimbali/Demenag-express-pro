@@ -86,7 +86,7 @@ model ParametreApplication {
   annulationClientAutorisee Boolean  @default(true) @map("client_cancellation")
   preavisAnnulationHeures   Int      @default(0) @map("cancellation_notice_hours")
   bornesDistance            Int[]    @default([15, 25, 35]) @map("distance_bounds")
-  creneauxOuverts           String[] @default(["Matin (8h – 12h)", "Après-midi (13h – 17h)", "Soir (17h – 20h)"]) @map("enabled_slots")
+  creneauxOuverts           Json     @map("enabled_slots")
 
   @@map("settings")
   @@schema("demenag")

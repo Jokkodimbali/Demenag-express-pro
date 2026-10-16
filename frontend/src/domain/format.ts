@@ -1,26 +1,30 @@
+import { formatting } from '../config/formatting';
+import { messages } from '../content/fr';
 import type { BookingStatus } from './model';
 export const money = (value: number | null) =>
   value === null
-    ? 'Sur devis'
-    : new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(value) + ' FCFA';
+    ? messages.surDevis
+    : new Intl.NumberFormat(formatting.locale, { maximumFractionDigits: 0 }).format(value) +
+      ' ' +
+      formatting.currencyLabel;
 export const dateLabel = (value: string) =>
-  new Date(value + 'T12:00:00Z').toLocaleDateString('fr-FR', {
+  new Date(value + 'T12:00:00Z').toLocaleDateString(formatting.locale, {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
-    timeZone: 'Africa/Dakar',
+    timeZone: formatting.timeZone,
   });
 export const today = () => new Date().toISOString().slice(0, 10);
 export const statuses: Record<BookingStatus, string> = {
-  pending: 'Demande reçue',
-  confirmed: 'Confirmée',
-  in_progress: 'En cours',
-  completed: 'Terminée',
-  cancelled: 'Annulée',
+  pending: messages.demandeRecue,
+  confirmed: messages.confirmee,
+  in_progress: messages.enCours,
+  completed: messages.terminee,
+  cancelled: messages.annulee,
 };
 export const tierLabels = (bounds: [number, number, number] = [15, 25, 35]) => [
-  `Moins de ${bounds[0]} km`,
-  `${bounds[0]} à ${bounds[1]} km`,
-  `${bounds[1]} à ${bounds[2]} km`,
-  `Plus de ${bounds[2]} km`,
+  messages.distanceBelow(bounds[0]),
+  messages.distanceBetween(bounds[0], bounds[1]),
+  messages.distanceBetween(bounds[1], bounds[2]),
+  messages.distanceAbove(bounds[2]),
 ];

@@ -1,33 +1,34 @@
 import { type NextFunction, type Request, type Response } from 'express';
 import { rateLimit } from 'express-rate-limit';
-import { AppError } from '../../../domain/errors.js';
-import type { User } from '../../../domain/model.js';
-import type { Dependencies } from './dependencies.js';
-export function createAccess(deps: Pick<Dependencies, 'auth' | 'production'>) {
+import type { AuthUseCases } from '../../../application/ports/use-cases.js';
+import { security } from '../../../config/security.js';
+import { messages } from '../../../domain/messages/fr.js';
+import { requireActiveUser, requireAdministrator } from '../../../domain/policies/access.js';
+import { getActor } from './actor.js';
+import { readSessionCookie } from './session-cookie.js';
+export function createAccess(deps: { auth: Pick<AuthUseCases, 'current'>; production: boolean }) {
   const cookieOptions = {
     httpOnly: true,
     secure: deps.production,
     sameSite: 'lax' as const,
-    path: '/api',
-    maxAge: 7 * 86400000,
+    path: security.session.path,
+    maxAge: security.session.durationMs,
   };
   const authenticate = async (req: Request, res: Response, next: NextFunction) => {
-    const user = await deps.auth.current(req.cookies.dem_session);
-    if (!user) throw new AppError(401, 'Connectez-vous pour continuer.');
+    const user = await deps.auth.current(readSessionCookie(req));
+    requireActiveUser(user);
     res.locals.user = user;
     next();
   };
   const admin = (_req: Request, res: Response, next: NextFunction) => {
-    if ((res.locals.user as User).role !== 'admin')
-      throw new AppError(403, 'Action réservée à l’administration.');
+    requireAdministrator(getActor(res));
     next();
   };
   const authLimiter = rateLimit({
-    windowMs: 15 * 60000,
-    limit: 30,
+    ...security.limits.authentication,
     standardHeaders: 'draft-8',
     legacyHeaders: false,
-    message: { message: 'Trop de tentatives. Réessayez dans 15 minutes.' },
+    message: { message: messages.tropDeTentativesReessayezDans15Minutes },
   });
   return { authenticate, admin, authLimiter, cookieOptions };
 }

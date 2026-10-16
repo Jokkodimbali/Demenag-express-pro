@@ -1,57 +1,41 @@
 import { ArrowRight, RefreshCw, Truck } from 'lucide-react';
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useApp } from '../application/context';
+import { useAccount } from '../application/controllers/useAccount';
 import { BookingCard } from '../components/BookingCard';
 import { PasswordForm } from '../components/PasswordForm';
-import type { Booking } from '../domain/model';
+import { messages } from '../content/fr';
+import { routes } from '../routing/routes';
 export function Account() {
-  const { api, user } = useApp();
-  const [bookings, setBookings] = useState<Booking[]>([]),
-    [loading, setLoading] = useState(true),
-    [error, setError] = useState(''),
-    [retry, setRetry] = useState(0);
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setError('');
-    api
-      .bookings()
-      .then((data) => {
-        if (active) setBookings(data);
-      })
-      .catch((e) => {
-        if (active) setError(e.message);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [api, retry]);
+  const { user, bookings, setBookings, loading, error, setRetry } = useAccount();
+
   return (
     <section className="container workspace-page">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">MON ESPACE</p>
-          <h1>BONJOUR, {user?.name.split(' ')[0].toUpperCase()}.</h1>
-          <p>Vos déménagements, du premier clic au dernier carton.</p>
+          <p className="eyebrow">{messages.monEspace2}</p>
+          <h1>
+            {messages.bonjour}
+            {user?.name.split(' ')[0].toUpperCase()}.
+          </h1>
+          <p>{messages.vosDemenagementsDuPremierClicAuDernierCarton}</p>
         </div>
-        <Link className="button primary" to="/#reserver">
-          Nouvelle réservation <ArrowRight size={18} />
+        <Link className="button primary" to={routes.booking}>
+          {messages.nouvelleReservation}
+          <ArrowRight size={18} />
         </Link>
       </div>
       <div className="list-heading">
         <h2>
-          Mes réservations <span>{bookings.length}</span>
+          {messages.mesReservations}
+          <span>{bookings.length}</span>
         </h2>
         <button
           className="button secondary small"
           disabled={loading}
           onClick={() => setRetry((n) => n + 1)}
         >
-          <RefreshCw size={15} /> Actualiser
+          <RefreshCw size={15} />
+          {messages.actualiser2}
         </button>
       </div>
       {error && (
@@ -61,15 +45,15 @@ export function Account() {
       )}
       {loading ? (
         <p role="status" className="panel loading">
-          Chargement de vos réservations…
+          {messages.chargementDeVosReservations}
         </p>
       ) : bookings.length === 0 && !error ? (
         <div className="empty-state panel">
           <Truck size={40} />
-          <h3>Un nouveau départ vous attend.</h3>
-          <p>Vous n’avez pas encore de réservation.</p>
-          <Link className="button primary" to="/#reserver">
-            Préparer mon déménagement
+          <h3>{messages.unNouveauDepartVousAttend}</h3>
+          <p>{messages.vousNAvezPasEncoreDeReservation}</p>
+          <Link className="button primary" to={routes.booking}>
+            {messages.preparerMonDemenagement}
           </Link>
         </div>
       ) : (

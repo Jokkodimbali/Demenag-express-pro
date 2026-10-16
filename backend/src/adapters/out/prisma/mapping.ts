@@ -1,4 +1,4 @@
-import type { Settings, UserCredentials, Vehicle } from '../../../domain/model.js';
+import type { BookingSlot, Settings, UserCredentials, Vehicle } from '../../../domain/model.js';
 import type {
   ParametreApplication,
   Utilisateur,
@@ -58,7 +58,7 @@ export const fromSettings = (row: ParametreApplication): Settings => ({
   maxTrips: row.nombreMaximalTrajets,
   clientCancellation: row.annulationClientAutorisee,
   cancellationNoticeHours: row.preavisAnnulationHeures,
-  enabledSlots: row.creneauxOuverts,
+  enabledSlots: row.creneauxOuverts as BookingSlot[],
 });
 export const toSettings = (value: Settings) => ({
   bornesDistance: value.distanceBounds,

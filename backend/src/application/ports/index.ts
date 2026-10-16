@@ -53,5 +53,11 @@ export interface IdGenerator {
 }
 export interface AdministrationRepository {
   listUsers(): Promise<User[]>;
-  updateUser(actorId: string, user: User): Promise<User>;
+  transaction<T>(work: (repository: AdministrationTransaction) => Promise<T>): Promise<T>;
+}
+export interface AdministrationTransaction {
+  findUser(id: string): Promise<User | null>;
+  countActiveAdministrators(): Promise<number>;
+  saveUser(user: User): Promise<User>;
+  revokeSessions(userId: string): Promise<void>;
 }

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { messages } from '../../../domain/messages/fr.js';
 export const optionsSchema = z.object({
   labour: z.number().int().min(0).max(20),
   desk: z.number().int().min(0).max(20),
@@ -26,7 +27,7 @@ export const loginSchema = z.object({
 });
 export const registerSchema = loginSchema.extend({
   name: z.string().trim().min(2).max(100),
-  password: z.string().min(10, 'Utilisez au moins 10 caractères.').max(128),
+  password: z.string().min(10, messages.utilisezAuMoins10Caracteres).max(128),
 });
 export const statusSchema = z.object({
   status: z.enum(['confirmed', 'in_progress', 'cancelled']),
@@ -65,7 +66,7 @@ export const catalogueSchema = z.object({
     .max(100)
     .refine(
       (v) => new Set(v.map((x) => x.id)).size === v.length,
-      'Chaque véhicule doit être présent une fois.',
+      messages.chaqueVehiculeDoitEtrePresentUneFois,
     ),
   settings: z.object({
     distanceBounds: z
@@ -74,21 +75,24 @@ export const catalogueSchema = z.object({
         z.number().int().min(2).max(1000),
         z.number().int().min(3).max(1000),
       ])
-      .refine((v) => v[0] < v[1] && v[1] < v[2], 'Les bornes doivent être croissantes.')
-      .default([15, 25, 35]),
-    bookingsEnabled: z.boolean().default(true),
-    maxAdvanceDays: z.number().int().min(1).max(730).default(366),
-    minNoticeHours: z.number().int().min(0).max(720).default(0),
-    maxOptions: z.number().int().min(0).max(20).default(20),
-    maxTrips: z.number().int().min(1).max(20).default(20),
-    clientCancellation: z.boolean().default(true),
-    cancellationNoticeHours: z.number().int().min(0).max(720).default(0),
+      .refine((v) => v[0] < v[1] && v[1] < v[2], messages.lesBornesDoiventEtreCroissantes),
+    bookingsEnabled: z.boolean(),
+    maxAdvanceDays: z.number().int().min(1).max(730),
+    minNoticeHours: z.number().int().min(0).max(720),
+    maxOptions: z.number().int().min(0).max(20),
+    maxTrips: z.number().int().min(1).max(20),
+    clientCancellation: z.boolean(),
+    cancellationNoticeHours: z.number().int().min(0).max(720),
     enabledSlots: z
-      .array(z.enum(['Matin (8h – 12h)', 'Après-midi (13h – 17h)', 'Soir (17h – 20h)']))
+      .array(
+        z.object({
+          label: z.string().trim().min(2).max(50),
+          startHour: z.number().int().min(0).max(23),
+        }),
+      )
       .min(1)
       .max(3)
-      .refine((v) => new Set(v).size === v.length)
-      .default(['Matin (8h – 12h)', 'Après-midi (13h – 17h)', 'Soir (17h – 20h)']),
+      .refine((v) => new Set(v.map((slot) => slot.label)).size === v.length),
     labourPrice: z.number().int().min(0).max(1000000),
     assemblyPrice: z.number().int().min(0).max(1000000),
     businessPhone: z.string().regex(/^\+221[0-9]{9}$/),

@@ -6,11 +6,10 @@ import {
   MapPin,
   MessageCircle,
 } from 'lucide-react';
-import { useState } from 'react';
-import { downloadQuote } from '../adapters/pdf';
-import { useApp } from '../application/context';
+import { useBookingCard } from '../application/controllers/useBookingCard';
+import { messages } from '../content/fr';
 import { dateLabel, money, statuses } from '../domain/format';
-import type { Booking, BookingStatus, Quote } from '../domain/model';
+import type { Booking } from '../domain/model';
 export function BookingCard({
   booking: b,
   onChange,
@@ -20,67 +19,22 @@ export function BookingCard({
   onChange: (b: Booking) => void;
   admin?: boolean;
 }) {
-  const { api } = useApp();
-  const [open, setOpen] = useState(false),
-    [busy, setBusy] = useState(false),
-    [error, setError] = useState(''),
-    [editing, setEditing] = useState(false);
-  const last = b.quotes.at(-1);
-  const terminal = ['completed', 'cancelled'].includes(b.status);
-  async function change(status: BookingStatus) {
-    if (busy) return;
-    setBusy(true);
-    setError('');
-    try {
-      onChange(await api.status(b.id, status, b.version));
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function pdf(quote?: Quote) {
-    setError('');
-    setBusy(true);
-    try {
-      await downloadQuote(b, quote);
-    } catch {
-      setError('Le PDF n’a pas pu être généré. Réessayez.');
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function quote(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setError('');
-    setBusy(true);
-    const form = new FormData(e.currentTarget);
-    try {
-      onChange(
-        await api.quote(b.id, {
-          kind: String(form.get('kind')) as 'provisional' | 'final',
-          trips: Number(form.get('trips')),
-          customPrice: form.get('customPrice') ? Number(form.get('customPrice')) : null,
-          discount: Number(form.get('discount')),
-          notes: String(form.get('notes')),
-          version: b.version,
-        }),
-      );
-      setEditing(false);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  const wa = last
-    ? 'https://wa.me/' +
-      b.phone.replace(/\D/g, '') +
-      '?text=' +
-      encodeURIComponent(
-        `Bonjour ${b.customerName}, votre devis ${last.reference} pour la réservation ${b.reference} est disponible dans votre espace Demenag Express. Montant : ${money(last.price.total)}.`,
-      )
-    : '';
+  const {
+    refresh,
+    open,
+    setOpen,
+    busy,
+    error,
+    editing,
+    setEditing,
+    last,
+    terminal,
+    change,
+    pdf,
+    quote,
+    wa,
+  } = useBookingCard({ booking: b, onChange, admin });
+
   return (
     <article className="booking-card panel">
       <div className="booking-card-top">
@@ -88,7 +42,7 @@ export function BookingCard({
         <span className={'status ' + b.status}>{statuses[b.status]}</span>
       </div>
       <div className="booking-card-main">
-        <img src={b.vehicle.image} alt="" />
+        <img src={b.vehicle.image} alt={messages.text} />
         <div>
           <h3>{admin ? b.customerName : b.vehicle.name}</h3>
           {admin && (
@@ -118,21 +72,22 @@ export function BookingCard({
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
         >
-          {open ? 'Réduire' : 'Voir le détail'}
+          {open ? messages.reduire : messages.voirLeDetail}
           {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
         <button className="button secondary small" disabled={busy} onClick={() => pdf(last)}>
-          <Download size={16} /> Télécharger le PDF
+          <Download size={16} />
+          {messages.telechargerLePdf}
         </button>
         {!admin && ['pending', 'confirmed'].includes(b.status) && (
           <button
             className="button text danger small"
             disabled={busy}
             onClick={() => {
-              if (window.confirm('Annuler cette réservation ?')) void change('cancelled');
+              if (window.confirm(messages.annulerCetteReservation)) void change('cancelled');
             }}
           >
-            Annuler
+            {messages.annuler}
           </button>
         )}
       </div>
@@ -140,21 +95,27 @@ export function BookingCard({
         <div className="booking-detail">
           <dl>
             <div>
-              <dt>Distance routière</dt>
-              <dd>{b.distanceKm} km</dd>
+              <dt>{messages.distanceRoutiere}</dt>
+              <dd>
+                {b.distanceKm}
+                {messages.km}
+              </dd>
             </div>
             <div>
-              <dt>Manœuvres</dt>
+              <dt>{messages.manUvres}</dt>
               <dd>{b.options.labour}</dd>
             </div>
             <div>
-              <dt>Montage / démontage</dt>
-              <dd>{b.options.desk + b.options.wardrobe + b.options.bed} meuble(s)</dd>
+              <dt>{messages.montageDemontage}</dt>
+              <dd>
+                {b.options.desk + b.options.wardrobe + b.options.bed}
+                {messages.meubleS}
+              </dd>
             </div>
           </dl>
           {b.notes && (
             <p>
-              <strong>Précisions :</strong> {b.notes}
+              <strong>{messages.precisions2}</strong> {b.notes}
             </p>
           )}
           <a
@@ -162,17 +123,19 @@ export function BookingCard({
             target="_blank"
             rel="noreferrer"
           >
-            Ouvrir le trajet dans Google Maps ↗
+            {messages.ouvrirLeTrajetDansGoogleMaps}
           </a>
           {b.quotes.length > 0 && (
             <div className="quote-history">
-              <h4>Historique des devis</h4>
+              <h4>{messages.historiqueDesDevis}</h4>
               {b.quotes.map((q) => (
                 <div key={q.id}>
                   <span>
-                    <strong>{q.reference}</strong> · {q.kind === 'final' ? 'Final' : 'Provisoire'}
+                    <strong>{q.reference}</strong> ·{' '}
+                    {q.kind === 'final' ? 'Final' : messages.labelProvisoire}
                     <small>
-                      {dateLabel(q.createdAt.slice(0, 10))} · {q.price.trips} aller(s)-retour(s)
+                      {dateLabel(q.createdAt.slice(0, 10))} · {q.price.trips}
+                      {messages.allerSRetourS}
                     </small>
                   </span>
                   <strong>{money(q.price.total)}</strong>
@@ -180,7 +143,7 @@ export function BookingCard({
                     className="icon-button"
                     disabled={busy}
                     onClick={() => pdf(q)}
-                    aria-label={'Télécharger ' + q.reference}
+                    aria-label={messages.telecharger + q.reference}
                   >
                     <Download size={18} />
                   </button>
@@ -198,7 +161,7 @@ export function BookingCard({
               disabled={busy}
               onClick={() => change('confirmed')}
             >
-              Confirmer la réservation
+              {messages.confirmerLaReservation}
             </button>
           )}
           {b.status === 'confirmed' && (
@@ -207,7 +170,7 @@ export function BookingCard({
               disabled={busy}
               onClick={() => change('in_progress')}
             >
-              Démarrer le déménagement
+              {messages.demarrerLeDemenagement}
             </button>
           )}
           <button
@@ -215,47 +178,51 @@ export function BookingCard({
             disabled={busy}
             onClick={() => setEditing((v) => !v)}
           >
-            {editing ? 'Fermer le formulaire' : 'Créer un devis'}
+            {editing ? messages.fermerLeFormulaire : messages.creerUnDevis}
           </button>
           {b.status !== 'in_progress' && (
             <button
               className="button text danger small"
               disabled={busy}
               onClick={() => {
-                if (window.confirm('Annuler cette réservation ?')) void change('cancelled');
+                if (window.confirm(messages.annulerCetteReservation)) void change('cancelled');
               }}
             >
-              Annuler
+              {messages.annuler}
             </button>
           )}
         </div>
       )}
       {admin && last && (
         <a className="whatsapp-link" target="_blank" rel="noreferrer" href={wa}>
-          <MessageCircle size={17} /> Préparer le message WhatsApp
+          <MessageCircle size={17} />
+          {messages.preparerLeMessageWhatsapp}
         </a>
       )}
       {editing && (
         <form onSubmit={quote} className="quote-form">
-          <h4>Un nouveau devis pour {b.reference}</h4>
+          <h4>
+            {messages.unNouveauDevisPour}
+            {b.reference}
+          </h4>
           <div className="field-pair">
             <div>
-              <label htmlFor={'kind-' + b.id}>Type de devis</label>
+              <label htmlFor={'kind-' + b.id}>{messages.typeDeDevis}</label>
               <select name="kind" id={'kind-' + b.id}>
-                <option value="provisional">Provisoire</option>
+                <option value="provisional">{messages.provisoire}</option>
                 {b.status === 'in_progress' && (
-                  <option value="final">Final · clôture le déménagement</option>
+                  <option value="final">{messages.finalClotureLeDemenagement}</option>
                 )}
               </select>
             </div>
             <div>
-              <label htmlFor={'trips-' + b.id}>Allers-retours</label>
+              <label htmlFor={'trips-' + b.id}>{messages.allersRetours}</label>
               <input
                 name="trips"
                 id={'trips-' + b.id}
                 type="number"
                 min={1}
-                max={b.pricingSettings?.maxTrips ?? 20}
+                max={b.pricingSettings?.maxTrips}
                 step={1}
                 defaultValue={last?.price.trips || 1}
                 required
@@ -265,7 +232,7 @@ export function BookingCard({
           <div className="field-pair">
             {b.estimate.tier === 3 && (
               <div>
-                <label htmlFor={'custom-' + b.id}>Transport par aller-retour (FCFA)</label>
+                <label htmlFor={'custom-' + b.id}>{messages.transportParAllerRetourFcfa}</label>
                 <input
                   name="customPrice"
                   id={'custom-' + b.id}
@@ -273,12 +240,12 @@ export function BookingCard({
                   min={1}
                   max={10000000}
                   step={1}
-                  placeholder="Tarif à convenir"
+                  placeholder={messages.tarifAConvenir}
                 />
               </div>
             )}
             <div>
-              <label htmlFor={'discount-' + b.id}>Remise (FCFA)</label>
+              <label htmlFor={'discount-' + b.id}>{messages.remiseFcfa}</label>
               <input
                 name="discount"
                 id={'discount-' + b.id}
@@ -291,30 +258,19 @@ export function BookingCard({
               />
             </div>
           </div>
-          <label htmlFor={'notes-' + b.id}>Note du devis</label>
+          <label htmlFor={'notes-' + b.id}>{messages.noteDuDevis}</label>
           <textarea name="notes" id={'notes-' + b.id} rows={3} maxLength={2000} />
-          <p className="caption">
-            Un devis final est conservé sans modification et clôture la prestation. L’envoi WhatsApp
-            reste manuel.
-          </p>
+          <p className="caption">{messages.unDevisFinalEstConserveSansModificationEt}</p>
           <button className="button primary" disabled={busy}>
-            {busy ? 'Enregistrement…' : 'Enregistrer le devis'}
+            {busy ? messages.enregistrement : messages.enregistrerLeDevis}
           </button>
         </form>
       )}
       {error && (
         <p className="alert error" role="alert">
           {error}{' '}
-          <button
-            className="text-link"
-            onClick={() =>
-              api
-                .booking(b.id)
-                .then(onChange)
-                .catch((e) => setError(e.message))
-            }
-          >
-            Actualiser
+          <button className="text-link" onClick={() => void refresh()}>
+            {messages.actualiser}
           </button>
         </p>
       )}

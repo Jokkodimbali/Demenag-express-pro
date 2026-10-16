@@ -2,11 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import request from 'supertest';
+import { Prisma } from '../src/generated/prisma/client.js';
 import { createPrisma } from '../src/adapters/out/prisma/client.js';
 import { compose } from '../src/composition.js';
 import { createApp } from '../src/adapters/in/http/app.js';
 import type { RoutingProvider } from '../src/application/ports/index.js';
 const url = process.env.TEST_DATABASE_URL;
+function jsonInput(value: Prisma.JsonValue): Prisma.InputJsonValue | typeof Prisma.JsonNull {
+  return value === null ? Prisma.JsonNull : (value as Prisma.InputJsonValue);
+}
 test(
   'Parcours API → Prisma → PostgreSQL : comptes, droits, réservation, devis et sessions',
   { skip: !url, timeout: 120000 },
@@ -58,9 +62,21 @@ test(
           nombreMaximalTrajets: 20,
           preavisReservationHeures: 0,
           delaiMaximumJours: 366,
-          creneauxOuverts: ['Matin (8h – 12h)', 'Après-midi (13h – 17h)', 'Soir (17h – 20h)'],
+          creneauxOuverts: [
+            { label: 'Matin (8h – 12h)', startHour: 8 },
+            { label: 'Après-midi (13h – 17h)', startHour: 13 },
+            { label: 'Soir (17h – 20h)', startHour: 17 },
+          ],
         },
       });
+      assert.deepEqual(
+        (await db.vehicule.findUniqueOrThrow({ where: { id: 'sprinter' } })).tarifs,
+        [30000, 37000, 44000],
+      );
+      assert.equal(
+        (await db.parametreApplication.findUniqueOrThrow({ where: { id: 'main' } })).tarifManoeuvre,
+        6000,
+      );
       for (const [agent, n] of [
         [a, 0],
         [b, 1],
@@ -120,7 +136,11 @@ test(
       const created = await a.post('/api/bookings').set(header).send(input);
       assert.equal(created.status, 201, JSON.stringify(created.body));
       const id = created.body.id;
-      assert.equal(created.body.estimate.total, 58000);
+      assert.equal(
+        created.body.estimate.total,
+        58000,
+        JSON.stringify(created.body.pricingSettings),
+      );
       const duplicate = await a.post('/api/bookings').set(header).send(input);
       assert.equal(duplicate.body.id, id);
       assert.equal(await db.reservation.count({ where: { utilisateurId: userIds[0] } }), 1);
@@ -329,7 +349,7 @@ test(
       });
       await db.parametreApplication.update({
         where: { id: 'main' },
-        data: originalSettings,
+        data: { ...originalSettings, creneauxOuverts: jsonInput(originalSettings.creneauxOuverts) },
       });
       await db.reservation.deleteMany({ where: { utilisateurId: { in: userIds } } });
       await db.utilisateur.deleteMany({ where: { id: { in: userIds } } });

@@ -1,24 +1,26 @@
 import type { Express } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
+import { security } from '../../../config/security.js';
+import { messages } from '../../../domain/messages/fr.js';
 import type { Dependencies } from './dependencies.js';
 import { routeSchema } from './schemas.js';
+import { apiRoutes } from './routes.js';
 export function registerMapRoutes(app: Express, deps: Pick<Dependencies, 'moving'>) {
   app.use(
-    '/api/maps',
+    apiRoutes.maps.base,
     rateLimit({
-      windowMs: 60000,
-      limit: 30,
+      ...security.limits.maps,
       standardHeaders: 'draft-8',
       legacyHeaders: false,
-      message: { message: 'Trop de recherches. Patientez une minute.' },
+      message: { message: messages.tropDeRecherchesPatientezUneMinute },
     }),
   );
-  app.post('/api/maps/route', async (req, res) => {
+  app.post(apiRoutes.maps.route, async (req, res) => {
     const p = routeSchema.parse(req.body);
     res.json(await deps.moving.route(p.from, p.to));
   });
-  app.get('/api/maps/search', async (req, res) =>
+  app.get(apiRoutes.maps.search, async (req, res) =>
     res.json(await deps.moving.search(z.string().trim().min(3).max(200).parse(req.query.q))),
   );
 }

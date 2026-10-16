@@ -2,11 +2,21 @@ import type { Express } from 'express';
 import { type NextFunction, type Request, type Response } from 'express';
 import { ZodError } from 'zod';
 import { AppError } from '../../../domain/errors.js';
+import { messages } from '../../../domain/messages/fr.js';
 export function registerErrorHandler(app: Express) {
   app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'type' in error &&
+      error.type === 'entity.too.large'
+    ) {
+      res.status(413).json({ message: messages.requeteTropVolumineuse });
+      return;
+    }
     if (error instanceof ZodError) {
       res.status(400).json({
-        message: 'Vérifiez les champs du formulaire.',
+        message: messages.verifiezLesChampsDuFormulaire,
         fields: error.issues.map((i) => ({ field: i.path.join('.'), message: i.message })),
       });
       return;
@@ -16,10 +26,10 @@ export function registerErrorHandler(app: Express) {
       return;
     }
     if (error instanceof SyntaxError && 'body' in error) {
-      res.status(400).json({ message: 'Requête JSON invalide.' });
+      res.status(400).json({ message: messages.requeteJsonInvalide });
       return;
     }
     console.error('Erreur API :', error instanceof Error ? error.name : 'UnknownError');
-    res.status(500).json({ message: 'Une erreur est survenue. Réessayez dans un instant.' });
+    res.status(500).json({ message: messages.uneErreurEstSurvenueReessayezDansUnInstant });
   });
 }

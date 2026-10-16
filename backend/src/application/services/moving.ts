@@ -1,5 +1,6 @@
 import { transition, validateDate } from '../../domain/booking.js';
 import { AppError, requireValue } from '../../domain/errors.js';
+import { messages } from '../../domain/messages/fr.js';
 import type {
   BookingInput,
   BookingStatus,
@@ -8,6 +9,11 @@ import type {
   QuoteInput,
   User,
 } from '../../domain/model.js';
+import {
+  canReadBooking,
+  requireActiveUser,
+  requireAdministrator,
+} from '../../domain/policies/access.js';
 import { calculatePrice } from '../../domain/pricing.js';
 import type {
   BookingRepository,
@@ -17,7 +23,8 @@ import type {
   RouteRepository,
   RoutingProvider,
 } from '../ports/index.js';
-export class MovingService {
+import type { MovingUseCases } from '../ports/use-cases.js';
+export class MovingService implements MovingUseCases {
   constructor(
     private bookings: BookingRepository,
     private catalogue: CatalogueRepository,
@@ -42,9 +49,9 @@ export class MovingService {
   private async priceInput(vehicleId: string, routeId: string, options: Options) {
     const [catalogue, route] = await Promise.all([this.catalogue.get(), this.routes.find(routeId)]);
     if (!route || +new Date(route.expiresAt) <= +this.clock.now())
-      throw new AppError(400, 'Recalculez le trajet : son estimation a expiré.');
+      throw new AppError(400, messages.recalculezLeTrajetSonEstimationAExpire);
     const vehicle = catalogue.vehicles.find((v) => v.id === vehicleId);
-    if (!vehicle || vehicle.active === false) throw new AppError(400, 'Véhicule inconnu.');
+    if (!vehicle || vehicle.active === false) throw new AppError(400, messages.vehiculeInconnu);
     return {
       route,
       settings: catalogue.settings,
@@ -56,6 +63,7 @@ export class MovingService {
     return (await this.priceInput(vehicleId, routeId, options)).estimate;
   }
   async create(user: User, input: BookingInput) {
+    requireActiveUser(user);
     const { route, vehicle, estimate, settings } = await this.priceInput(
       input.vehicleId,
       input.routeId,
@@ -63,7 +71,7 @@ export class MovingService {
     );
     requireValue(
       settings.bookingsEnabled !== false,
-      'Les réservations sont temporairement fermées.',
+      messages.lesReservationsSontTemporairementFermees,
     );
     validateDate(input.date, input.timeSlot, this.clock.now(), settings);
     const id = this.ids.next();
@@ -95,53 +103,51 @@ export class MovingService {
     );
   }
   list(user: User) {
+    requireActiveUser(user);
     return this.bookings.list(user.role === 'admin' ? undefined : user.id);
   }
   async get(user: User, id: string) {
     const booking = await this.bookings.find(id);
-    if (!booking || (user.role !== 'admin' && booking.userId !== user.id))
-      throw new AppError(404, 'Réservation introuvable.');
+    if (!booking || !canReadBooking(user, booking.userId))
+      throw new AppError(404, messages.reservationIntrouvable);
     return booking;
   }
   async status(user: User, id: string, next: BookingStatus, version: number) {
     const booking = await this.get(user, id);
     if (booking.version !== version)
-      throw new AppError(409, 'Cette réservation a changé. Actualisez la page.');
+      throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
     transition(booking.status, next, user.role === 'admin');
     const { settings } = await this.catalogue.get();
     if (user.role !== 'admin' && next === 'cancelled') {
+      requireValue(settings.clientCancellation, messages.contactezLAdministrationPourAnnuler);
+      const configuredSlot = settings.enabledSlots.find((slot) => slot.label === booking.timeSlot);
+      requireValue(configuredSlot, messages.creneauInvalide);
+      const start = +new Date(booking.date + 'T00:00:00Z') + configuredSlot.startHour * 3600000;
       requireValue(
-        settings.clientCancellation !== false,
-        'Contactez l’administration pour annuler.',
-      );
-      const hour = booking.timeSlot.startsWith('Matin')
-        ? 8
-        : booking.timeSlot.startsWith('Après')
-          ? 13
-          : 17;
-      const start = +new Date(booking.date + 'T00:00:00Z') + hour * 3600000;
-      requireValue(
-        start - +this.clock.now() >= (settings.cancellationNoticeHours ?? 0) * 3600000,
-        'Le délai d’annulation est dépassé. Contactez l’administration.',
+        start - +this.clock.now() >= settings.cancellationNoticeHours * 3600000,
+        messages.leDelaiDAnnulationEstDepasseContactezL,
       );
     }
     if (next === 'confirmed')
-      validateDate(booking.date, booking.timeSlot, this.clock.now(), { maxAdvanceDays: 730 });
+      validateDate(booking.date, booking.timeSlot, this.clock.now(), {
+        ...settings,
+        maxAdvanceDays: 730,
+      });
     return this.bookings.update({ ...booking, status: next }, version);
   }
   async quote(user: User, id: string, input: QuoteInput) {
-    if (user.role !== 'admin') throw new AppError(403, 'Action réservée à l’administration.');
+    requireAdministrator(user);
     const booking = await this.get(user, id);
     if (booking.version !== input.version)
-      throw new AppError(409, 'Cette réservation a changé. Actualisez la page.');
+      throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
     requireValue(
       !['completed', 'cancelled'].includes(booking.status),
-      'Cette réservation est clôturée.',
+      messages.cetteReservationEstCloturee,
     );
     if (input.kind === 'final')
       requireValue(
         booking.status === 'in_progress',
-        'Démarrez le déménagement avant de finaliser son devis.',
+        messages.demarrezLeDemenagementAvantDeFinaliserSonDevis,
       );
     const { settings } = await this.catalogue.get();
     // Les prix du transport sont ceux du véhicule au moment de la réservation.
@@ -156,7 +162,7 @@ export class MovingService {
     );
     requireValue(
       input.kind !== 'final' || price.total !== null,
-      'Renseignez le tarif du transport avant de finaliser.',
+      messages.renseignezLeTarifDuTransportAvantDeFinaliser,
     );
     const quoteId = this.ids.next();
     const quote = {

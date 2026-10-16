@@ -1,16 +1,19 @@
+import { messages } from '../../content/fr';
 import { tierLabels } from '../../domain/format';
 import type { Catalogue } from '../../domain/model';
 export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
   return (
     <div className="panel">
-      <h2>TARIFS DE TRANSPORT</h2>
-      <p className="muted">
-        Prix en FCFA, par aller-retour. Les devis déjà enregistrés conservent leurs montants.
-      </p>
+      <h2>{messages.tarifsDeTransport}</h2>
+      <p className="muted">{messages.prixEnFcfaParAllerRetourLesDevis}</p>
       <div className="field-pair">
         {[0, 1, 2].map((i) => (
           <div key={i}>
-            <label htmlFor={'distance-' + i}>Borne de distance {i + 1} (km)</label>
+            <label htmlFor={'distance-' + i}>
+              {messages.borneDeDistance}
+              {i + 1}
+              {messages.km3}
+            </label>
             <input
               type="number"
               name={'distance-' + i}
@@ -19,7 +22,7 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
               min={1}
               max={1000}
               step={1}
-              defaultValue={(catalogue.settings.distanceBounds ?? [15, 25, 35])[i]}
+              defaultValue={catalogue.settings.distanceBounds[i]}
             />
           </div>
         ))}
@@ -27,8 +30,8 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
       <div className="tariff-grid">
         {catalogue.vehicles.map((v) => (
           <div className="tariff-card" key={v.id}>
-            <img src={v.image} alt="" />
-            <label htmlFor={v.id + '-name'}>Nom du véhicule</label>
+            <img src={v.image} alt={messages.text} />
+            <label htmlFor={v.id + '-name'}>{messages.nomDuVehicule}</label>
             <input
               id={v.id + '-name'}
               name={v.id + '-name'}
@@ -39,7 +42,7 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
             />
             <label className="checkbox-label">
               <input type="checkbox" name={v.id + '-active'} defaultChecked={v.active !== false} />
-              Disponible à la réservation
+              {messages.disponibleALaReservation}
             </label>
             {tierLabels(catalogue.settings.distanceBounds)
               .slice(0, 3)
@@ -59,8 +62,9 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
                 </div>
               ))}
             <p className="caption">
-              Au-delà de {catalogue.settings.distanceBounds?.[2] ?? 35} km : tarif personnalisé sur
-              devis.
+              {messages.auDelaDe}
+              {catalogue.settings.distanceBounds[2]}
+              {messages.kmTarifPersonnaliseSurDevis}
             </p>
           </div>
         ))}

@@ -1,11 +1,12 @@
+import { messages } from '../../content/fr';
 import type { Catalogue } from '../../domain/model';
 export function ContactSettings({ catalogue }: { catalogue: Catalogue }) {
   return (
     <div className="panel">
-      <h2>SERVICES ET CONTACT</h2>
+      <h2>{messages.servicesEtContact}</h2>
       <div className="field-pair">
         <div>
-          <label htmlFor="labour">Manœuvre / personne (FCFA)</label>
+          <label htmlFor="labour">{messages.manUvrePersonneFcfa}</label>
           <input
             id="labour"
             name="labour"
@@ -18,7 +19,7 @@ export function ContactSettings({ catalogue }: { catalogue: Catalogue }) {
           />
         </div>
         <div>
-          <label htmlFor="assembly">Menuisier / meuble (FCFA)</label>
+          <label htmlFor="assembly">{messages.menuisierMeubleFcfa}</label>
           <input
             id="assembly"
             name="assembly"
@@ -31,7 +32,7 @@ export function ContactSettings({ catalogue }: { catalogue: Catalogue }) {
           />
         </div>
       </div>
-      <label htmlFor="business-phone">Téléphone de l’entreprise (format +221…)</label>
+      <label htmlFor="business-phone">{messages.telephoneDeLEntrepriseFormat221}</label>
       <input
         id="business-phone"
         name="phone"

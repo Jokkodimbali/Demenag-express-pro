@@ -3,21 +3,20 @@ import { OpenStreetMaps } from './adapters/out/maps/osrm.js';
 import { createPrisma } from './adapters/out/prisma/client.js';
 import { compose } from './composition.js';
 import { readEnv } from './config/env.js';
+import { messages } from './domain/messages/fr.js';
 async function main() {
   const env = readEnv();
   const db = createPrisma(env.DATABASE_URL);
-  try {
-    await db.parametreApplication.findUniqueOrThrow({ where: { id: 'main' } });
-  } catch {
-    await db.$disconnect();
-    throw new Error(
-      'Connexion ou schéma PostgreSQL indisponible. Vérifiez backend/.env puis exécutez npm run db:migrate et npm run db:seed.',
-    );
-  }
   const services = compose(
     db,
     new OpenStreetMaps(env.OSRM_URL, env.NOMINATIM_URL, env.MAPS_USER_AGENT),
   );
+  try {
+    await services.ready();
+  } catch {
+    await db.$disconnect();
+    throw new Error(messages.connexionOuSchemaPostgresqlIndisponibleVerifiezBackendEnv);
+  }
   const server = createApp({
     ...services,
     origin: env.FRONTEND_ORIGIN,
@@ -35,7 +34,11 @@ async function main() {
   process.on('SIGINT', close);
   process.on('SIGTERM', close);
 }
-main().catch((error) => {
-  console.error(error.message);
+main().catch((error: unknown) => {
+  console.error(
+    error instanceof Error
+      ? error.message
+      : messages.connexionOuSchemaPostgresqlIndisponibleVerifiezBackendEnv,
+  );
   process.exitCode = 1;
 });

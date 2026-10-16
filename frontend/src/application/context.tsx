@@ -1,34 +1,13 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import type { Catalogue, Options, Point, RouteTicket, User } from '../domain/model';
-import type { ApplicationApi } from './ports';
-export type Draft = {
-  vehicleId: string;
-  fromAddress: string;
-  toAddress: string;
-  from: Point | null;
-  to: Point | null;
-  route: RouteTicket | null;
-  date: string;
-  timeSlot: string;
-  options: Options;
-  notes: string;
-  requestId: string;
-};
-export const blankDraft = (): Draft => ({
-  vehicleId: 'sprinter',
-  fromAddress: '',
-  toAddress: '',
-  from: null,
-  to: null,
-  route: null,
-  date: '',
-  timeSlot: 'Matin (8h – 12h)',
-  options: { labour: 0, desk: 0, wardrobe: 0, bed: 0 },
-  notes: '',
-  requestId: crypto.randomUUID(),
-});
+import type { Catalogue, User } from '../domain/model';
+import { blankDraft, type Draft } from './booking-draft';
+import { errorMessage } from './error-message';
+import type { ApplicationApi, QuoteExporter } from './ports';
+export { blankDraft } from './booking-draft';
+export type { Draft } from './booking-draft';
 type AppContextValue = {
   api: ApplicationApi;
+  exportQuote: QuoteExporter;
   user: User | null;
   setUser: (value: User | null) => void;
   authLoading: boolean;
@@ -41,7 +20,15 @@ type AppContextValue = {
   setDraft: React.Dispatch<React.SetStateAction<Draft>>;
 };
 const AppContext = createContext<AppContextValue | null>(null);
-export function AppProvider({ api, children }: { api: ApplicationApi; children: ReactNode }) {
+export function AppProvider({
+  api,
+  exportQuote,
+  children,
+}: {
+  api: ApplicationApi;
+  exportQuote: QuoteExporter;
+  children: ReactNode;
+}) {
   const [user, setUser] = useState<User | null>(null),
     [authLoading, setAuthLoading] = useState(true);
   const [catalogue, setCatalogue] = useState<Catalogue | null>(null),
@@ -58,10 +45,15 @@ export function AppProvider({ api, children }: { api: ApplicationApi; children: 
         if (active) {
           setCatalogue(c);
           setUser(u);
+          setDraft((draft) => ({
+            ...draft,
+            vehicleId: draft.vehicleId || blankDraft(c).vehicleId,
+            timeSlot: draft.timeSlot || blankDraft(c).timeSlot,
+          }));
         }
       })
-      .catch((e) => {
-        if (active) setError(e.message);
+      .catch((e: unknown) => {
+        if (active) setError(errorMessage(e));
       })
       .finally(() => {
         if (active) {
@@ -77,6 +69,7 @@ export function AppProvider({ api, children }: { api: ApplicationApi; children: 
     <AppContext.Provider
       value={{
         api,
+        exportQuote,
         user,
         setUser,
         authLoading,

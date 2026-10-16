@@ -1,3 +1,4 @@
+import { PrismaReadiness } from './adapters/out/prisma/readiness.js';
 import {
   PrismaAdministration,
   PrismaBookings,
@@ -10,6 +11,7 @@ import { ScryptPasswords, clock, ids, tokens } from './adapters/out/security/cry
 import type { RoutingProvider } from './application/ports/index.js';
 import { AdministrationService } from './application/services/administration.js';
 import { AuthService } from './application/services/auth.js';
+import { CatalogueService } from './application/services/catalogue.js';
 import { MovingService } from './application/services/moving.js';
 import type { PrismaClient } from './generated/prisma/client.js';
 export function compose(db: PrismaClient, routing: RoutingProvider) {
@@ -39,9 +41,7 @@ export function compose(db: PrismaClient, routing: RoutingProvider) {
     ),
     auth,
     moving,
-    catalogue,
-    ready: async () => {
-      await db.parametreApplication.findUniqueOrThrow({ where: { id: 'main' } });
-    },
+    catalogue: new CatalogueService(catalogue),
+    ready: () => new PrismaReadiness(db).check(),
   };
 }

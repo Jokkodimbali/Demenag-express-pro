@@ -1,67 +1,27 @@
-import { useEffect, useState } from 'react';
-import { useApp } from '../application/context';
+import { useUsers } from '../application/controllers/useUsers';
 import { Modal } from '../components/Modal';
-import type { User } from '../domain/model';
+import { messages } from '../content/fr';
 export function Users() {
-  const { api, user: actor } = useApp();
-  const [users, setUsers] = useState<User[]>([]);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [query, setQuery] = useState('');
-  const [editing, setEditing] = useState<User | 'new' | null>(null);
-  useEffect(() => {
-    let alive = true;
-    api
-      .users()
-      .then((rows) => {
-        if (alive) setUsers(rows);
-      })
-      .catch((e) => {
-        if (alive) setError(e.message);
-      })
-      .finally(() => {
-        if (alive) setLoading(false);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [api]);
-  async function save(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!editing || busy) return;
-    const data = new FormData(e.currentTarget);
-    setBusy(true);
-    setError('');
-    const value = {
-      name: String(data.get('name')),
-      phone: String(data.get('phone')),
-      role: data.get('role') as User['role'],
-      active: data.get('active') === 'on',
-    };
-    try {
-      const updated =
-        editing === 'new'
-          ? await api.createUser({ ...value, password: String(data.get('password')) })
-          : await api.updateUser({ ...value, id: editing.id });
-      setUsers((rows) =>
-        editing === 'new'
-          ? [updated, ...rows]
-          : rows.map((row) => (row.id === updated.id ? updated : row)),
-      );
-      setEditing(null);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
+  const {
+    actor,
+    users,
+    error,
+    setError,
+    loading,
+    busy,
+    query,
+    setQuery,
+    editing,
+    setEditing,
+    save,
+  } = useUsers();
+
   return (
     <div className="panel">
       <div className="section-heading">
         <div>
-          <h2>COMPTES ET ACCÈS</h2>
-          <p>Clients et administrateurs · les 500 comptes les plus récents.</p>
+          <h2>{messages.comptesEtAcces2}</h2>
+          <p>{messages.clientsEtAdministrateursLes500ComptesLesPlus}</p>
         </div>
         <button
           className="button primary"
@@ -70,7 +30,7 @@ export function Users() {
             setEditing('new');
           }}
         >
-          Créer un compte
+          {messages.creerUnCompte}
         </button>
       </div>
       {error && (
@@ -78,15 +38,15 @@ export function Users() {
           {error}
         </p>
       )}
-      <label htmlFor="user-search">Rechercher un compte</label>
+      <label htmlFor="user-search">{messages.rechercherUnCompte}</label>
       <input
         id="user-search"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Nom ou téléphone"
+        placeholder={messages.nomOuTelephone}
       />
       {loading ? (
-        <p role="status">Chargement…</p>
+        <p role="status">{messages.chargement}</p>
       ) : (
         <div className="user-list">
           {users
@@ -96,8 +56,9 @@ export function Users() {
                 <div>
                   <strong>{u.name}</strong>
                   <p>
-                    {u.phone} · {u.role === 'admin' ? 'Administrateur' : 'Client'} ·{' '}
-                    {u.active === false ? 'Suspendu' : 'Actif'}
+                    {u.phone} ·{' '}
+                    {u.role === 'admin' ? messages.labelAdministrateur : messages.labelClient} ·{' '}
+                    {u.active === false ? messages.labelSuspendu : messages.labelActif}
                   </p>
                 </div>
                 <button
@@ -106,9 +67,9 @@ export function Users() {
                     setError('');
                     setEditing(u);
                   }}
-                  aria-label={'Modifier ' + u.name}
+                  aria-label={messages.modifier + u.name}
                 >
-                  Modifier
+                  {messages.modifier2}
                 </button>
               </div>
             ))}
@@ -118,9 +79,9 @@ export function Users() {
         <Modal titleId="account-title" busy={busy} onClose={() => setEditing(null)}>
           <form onSubmit={save} key={editing === 'new' ? 'new' : editing.id}>
             <h2 id="account-title">
-              {editing === 'new' ? 'CRÉER UN COMPTE' : 'MODIFIER LE COMPTE'}
+              {editing === 'new' ? messages.creerUnCompte2 : messages.modifierLeCompte}
             </h2>
-            <label htmlFor="account-name">Nom</label>
+            <label htmlFor="account-name">{messages.nom}</label>
             <input
               id="account-name"
               name="name"
@@ -129,7 +90,7 @@ export function Users() {
               maxLength={100}
               defaultValue={editing === 'new' ? '' : editing.name}
             />
-            <label htmlFor="account-phone">Téléphone</label>
+            <label htmlFor="account-phone">{messages.telephone}</label>
             <input
               id="account-phone"
               name="phone"
@@ -137,7 +98,7 @@ export function Users() {
               required
               defaultValue={editing === 'new' ? '' : editing.phone}
             />
-            <label htmlFor="account-role">Rôle</label>
+            <label htmlFor="account-role">{messages.role}</label>
             <select
               id="account-role"
               name="role"
@@ -145,7 +106,7 @@ export function Users() {
             >
               {['client', 'admin'].map((role) => (
                 <option key={role} value={role}>
-                  {role === 'admin' ? 'Administrateur' : 'Client'}
+                  {role === 'admin' ? messages.labelAdministrateur : messages.labelClient}
                 </option>
               ))}
             </select>
@@ -155,15 +116,15 @@ export function Users() {
                 type="checkbox"
                 defaultChecked={editing === 'new' || editing.active !== false}
               />
-              Compte actif
+              {messages.compteActif}
             </label>
             {editing !== 'new' && editing.id === actor?.id && (
-              <p className="caption">Votre propre accès administrateur doit rester actif.</p>
+              <p className="caption">{messages.votrePropreAccesAdministrateurDoitResterActif}</p>
             )}
             {editing === 'new' && (
               <>
                 <label htmlFor="account-password">
-                  Mot de passe initial (10 caractères minimum)
+                  {messages.motDePasseInitial10CaracteresMinimum}
                 </label>
                 <input
                   id="account-password"
@@ -188,10 +149,10 @@ export function Users() {
                 disabled={busy}
                 onClick={() => setEditing(null)}
               >
-                Fermer
+                {messages.fermer}
               </button>
               <button className="button primary" disabled={busy}>
-                {busy ? 'Enregistrement…' : 'Enregistrer'}
+                {busy ? messages.enregistrement : messages.labelEnregistrer}
               </button>
             </div>
           </form>

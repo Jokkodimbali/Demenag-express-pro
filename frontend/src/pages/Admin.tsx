@@ -1,73 +1,44 @@
-import {
-  CalendarDays,
-  CheckCircle2,
-  ClipboardList,
-  RefreshCw,
-  Search,
-  Settings2,
-  Truck,
-} from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { useApp } from '../application/context';
+import { ClipboardList, RefreshCw, Search, Settings2 } from 'lucide-react';
+import { useAdministration } from '../application/controllers/useAdministration';
 import { BookingCard } from '../components/BookingCard';
+import { messages } from '../content/fr';
 import { statuses } from '../domain/format';
-import type { Booking, BookingStatus } from '../domain/model';
+import type { BookingStatus } from '../domain/model';
 import { Fleet } from './Fleet';
 import { Settings } from './Settings';
 import { Users } from './Users';
 export function Admin() {
-  const { api } = useApp();
-  const [bookings, setBookings] = useState<Booking[]>([]),
-    [loading, setLoading] = useState(true),
-    [error, setError] = useState(''),
-    [retry, setRetry] = useState(0),
-    [tab, setTab] = useState<'bookings' | 'settings' | 'users' | 'fleet'>('bookings'),
-    [filter, setFilter] = useState<BookingStatus | 'all'>('all'),
-    [query, setQuery] = useState('');
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setError('');
-    api
-      .bookings()
-      .then((data) => {
-        if (active) setBookings(data);
-      })
-      .catch((e) => {
-        if (active) setError(e.message);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [api, retry]);
-  const visible = bookings.filter(
-    (b) =>
-      (filter === 'all' || filter === b.status) &&
-      `${b.reference} ${b.customerName} ${b.phone}`.toLowerCase().includes(query.toLowerCase()),
-  );
-  const stats = [
-    { label: 'Demandes reçues', status: 'pending', Icon: ClipboardList },
-    { label: 'À préparer', status: 'confirmed', Icon: CalendarDays },
-    { label: 'En cours', status: 'in_progress', Icon: Truck },
-    { label: 'Terminées', status: 'completed', Icon: CheckCircle2 },
-  ];
+  const {
+    bookings,
+    setBookings,
+    loading,
+    error,
+    setRetry,
+    tab,
+    setTab,
+    filter,
+    setFilter,
+    query,
+    setQuery,
+    visible,
+    stats,
+  } = useAdministration();
+
   return (
     <section className="container workspace-page">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">ESPACE ADMINISTRATEUR</p>
-          <h1>ADMINISTRATION</h1>
-          <p>Gérez les réservations et accompagnez vos clients.</p>
+          <p className="eyebrow">{messages.espaceAdministrateur}</p>
+          <h1>{messages.administration}</h1>
+          <p>{messages.gerezLesReservationsEtAccompagnezVosClients}</p>
         </div>
         <button
           className="button secondary small"
           disabled={loading}
           onClick={() => setRetry((n) => n + 1)}
         >
-          <RefreshCw size={16} /> Actualiser
+          <RefreshCw size={16} />
+          {messages.actualiser2}
         </button>
       </div>
       <div className="stats-grid">
@@ -89,16 +60,18 @@ export function Admin() {
       </div>
       <div className="tabs admin-tabs">
         <button className={tab === 'bookings' ? 'active' : ''} onClick={() => setTab('bookings')}>
-          <ClipboardList size={17} /> Réservations
+          <ClipboardList size={17} />
+          {messages.reservations}
         </button>
         <button className={tab === 'settings' ? 'active' : ''} onClick={() => setTab('settings')}>
-          <Settings2 size={17} /> Tarifs et paramètres
+          <Settings2 size={17} />
+          {messages.tarifsEtParametres}
         </button>
         <button className={tab === 'fleet' ? 'active' : ''} onClick={() => setTab('fleet')}>
-          Véhicules
+          {messages.vehicules}
         </button>
         <button className={tab === 'users' ? 'active' : ''} onClick={() => setTab('users')}>
-          Comptes et accès
+          {messages.comptesEtAcces}
         </button>
       </div>
       {tab === 'fleet' ? (
@@ -126,10 +99,10 @@ export function Admin() {
             <div className="search-field">
               <Search size={17} />
               <input
-                aria-label="Rechercher une réservation"
+                aria-label={messages.rechercherUneReservation}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Nom, référence, téléphone…"
+                placeholder={messages.nomReferenceTelephone}
               />
             </div>
           </div>
@@ -140,13 +113,13 @@ export function Admin() {
           )}
           {loading ? (
             <p className="panel loading" role="status">
-              Chargement des réservations…
+              {messages.chargementDesReservations}
             </p>
           ) : visible.length === 0 ? (
             <div className="empty-state panel">
               <ClipboardList size={36} />
-              <h3>Aucune réservation à afficher.</h3>
-              <p>Les nouvelles demandes apparaîtront ici.</p>
+              <h3>{messages.aucuneReservationAAfficher}</h3>
+              <p>{messages.lesNouvellesDemandesApparaitrontIci}</p>
             </div>
           ) : (
             <div className="booking-list">

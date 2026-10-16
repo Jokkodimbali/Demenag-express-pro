@@ -1,5 +1,6 @@
 import type { RoutingProvider } from '../../../application/ports/index.js';
 import { AppError } from '../../../domain/errors.js';
+import { messages } from '../../../domain/messages/fr.js';
 import type { Point } from '../../../domain/model.js';
 export class OpenStreetMaps implements RoutingProvider {
   private searchQueue = Promise.resolve();
@@ -38,7 +39,7 @@ export class OpenStreetMaps implements RoutingProvider {
     } catch {
       throw new AppError(
         503,
-        'Le calcul du trajet est indisponible. Réessayez dans un instant.',
+        messages.leCalculDuTrajetEstIndisponibleReessayezDans,
         'ROUTING_UNAVAILABLE',
       );
     }
@@ -78,10 +79,7 @@ export class OpenStreetMaps implements RoutingProvider {
       this.cache.set(key, { at: Date.now(), items });
       return items;
     } catch {
-      throw new AppError(
-        503,
-        'La recherche d’adresse est indisponible. Vous pouvez placer les points sur la carte.',
-      );
+      throw new AppError(503, messages.laRechercheDAdresseEstIndisponibleVousPouvez);
     } finally {
       release();
     }

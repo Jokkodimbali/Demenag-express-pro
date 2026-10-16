@@ -266,5 +266,48 @@ Le contrôle d’architecture refuse les fichiers de code de plus de 1 000 ligne
 - Test API/Prisma/Neon réussi, avec paramètres de test déterministes puis restauration : droits, suspension de compte, règles configurables, devis structurés et sessions.
 - Parcours Chrome réussi après extraction : inscription, itinéraire routier réel, réservation, confirmation administrateur, devis final, PDF et reconnexion. Absence de débordement horizontal vérifiée à 1 440, 390 et 320 px. Cela ne constitue pas une comparaison pixel à pixel avec le prototype.
 - Le test navigateur accepte `BROWSER_BASE_URL` pour utiliser une instance locale distincte. Ses clics sur la carte sont relatifs à sa taille.
+
 # Demenag-express-pro
+
 # Demenag-express-pro
+
+## Textes, configuration et contrôles d’accès
+
+- `frontend/src/content/fr.ts` centralise les textes de l’interface, les libellés accessibles, les messages du client HTTP et les modèles de texte des PDF. Les messages dynamiques sont des fonctions typées.
+- `backend/src/domain/messages/fr.ts` centralise les messages métier et les erreurs renvoyées par l’API. Les noms de véhicules, tarifs et paramètres gérés en base restent des données métier, pas des traductions.
+- `frontend/src/config/` contient les paramètres de formatage et de cartographie. Les identifiants techniques, chemins d’import et classes CSS restent dans le code : ils ne sont pas des textes à traduire.
+- `frontend/src/routing/` sépare l’arbre de navigation de la garde d’accès. La garde améliore la navigation ; l’autorisation effective reste sur le serveur.
+- `backend/src/config/security.ts` regroupe cookie de session, taille des requêtes, en-tête CSRF et limites de fréquence. `security-middleware.ts` applique CORS, Helmet, absence de cache et protection des mutations.
+- `backend/src/domain/policies/access.ts` porte les règles de compte actif, d’administrateur et de lecture des réservations. Elles sont réutilisées dans les cas d’usage. La modification du catalogue passe également par un service avec autorisation.
+- `actor.ts` valide l’identité placée dans le contexte HTTP et `session-cookie.ts` contrôle le type du cookie avant utilisation. Les corps des requêtes passent par les schémas Zod.
+- `error-handler.ts` produit des erreurs contrôlées, y compris pour un corps trop volumineux. Les réponses ne contiennent pas de pile d’exécution.
+
+TypeScript fonctionne en mode strict. Le lint interdit `any` explicite et les contournements TypeScript non justifiés. Le contrôle d’architecture refuse également les `any`, les textes JSX directs et les attributs accessibles non centralisés. Les types internes des dépendances et le client Prisma généré ne sont pas réécrits. Les réponses JSON externes sont reçues comme `unknown` avant utilisation des messages d’erreur ; les contrats de succès HTTP restent des types partagés, pas une validation complète de chaque réponse côté navigateur.
+
+La vérification TypeScript couvre aussi les tests, les scripts et le seed du backend (`tsconfig.check.json`). Les tests HTTP de sécurité ouvrent uniquement un serveur local éphémère et ne nécessitent pas Neon. Ils vérifient notamment les rôles, comptes inactifs, origines refusées, l’en-tête CSRF, les en-têtes de sécurité et la limitation des requêtes.
+
+En production, `FRONTEND_ORIGIN` doit être une origine HTTPS sans chemin ni identifiants. La limitation des requêtes reste en mémoire pour une seule instance ; un déploiement distribué nécessite un stockage partagé. Le proxy de confiance n’est pas activé implicitement. Ces protections ne remplacent pas un audit de sécurité complet.
+
+### Vérification des textes et accès — 16 octobre 2026
+
+Le lint analyse désormais les types des sources : affectations, appels, retours, arguments et accès aux membres issus d’un `any` implicite sont refusés. `VITE_API_URL` possède une déclaration explicite dans `frontend/src/types/vite-env.d.ts`.
+
+Douze tests métier/HTTP de sécurité ont réussi, ainsi que le parcours d’intégration Neon séparé et le parcours navigateur avec les textes centralisés. Les scénarios vérifiés couvrent les accès client/administrateur, la suspension de compte, les règles de réservation, les devis, les sessions et les vues responsive.
+
+### Séparation des responsabilités
+
+Les routes HTTP dépendent des interfaces `application/ports/use-cases.ts`. Elles valident les entrées, identifient l’acteur et traduisent la réponse ; les services exécutent les cas d’usage et les règles du domaine. Les dépôts Prisma assurent les requêtes et les transactions. Les règles de modification des administrateurs sont évaluées par le service dans une transaction sérialisable, avec nouvelle vérification des droits et révocation des sessions si nécessaire.
+
+Dans le navigateur, les pages rendent les vues et les hooks de `application/controllers` gèrent les interactions, chargements et erreurs. Les composants de réservation utilisent un contrat de présentation explicite, indépendant du type de retour du hook. Les ports d’accès distant sont répartis par capacité (authentification, utilisateurs, catalogue, réservations, cartographie et estimation). Le navigateur communique avec l’API, jamais directement avec Neon. L’export PDF est injecté au démarrage et chargé à la demande. Les règles de tarification et d’autorisation restent vérifiées côté serveur.
+
+Les contrôles automatiques interdisent aussi les imports des services concrets dans les contrôleurs HTTP, les imports des adaptateurs dans l’application frontend, et les appels API dans les pages et composants. Les effets Leaflet restent dans le contrôleur de carte, car ils pilotent le widget ; ils ne constituent pas des règles métier. Les tests du service administrateur utilisent des dépôts en mémoire, sans Prisma ni connexion à une base.
+
+### Routes, validation et domaine
+
+Les chemins du navigateur sont réunis dans `frontend/src/routing/routes.ts`. Les chemins HTTP du serveur sont réunis dans `backend/src/adapters/in/http/routes.ts`, tandis que l’adaptateur HTTP du navigateur utilise son propre registre relatif dans `frontend/src/adapters/http-routes.ts`. Les routes ne portent aucune règle métier.
+
+Les validateurs de requêtes HTTP sont regroupés sous `backend/src/adapters/in/http/validation/` et les convertisseurs des formulaires frontend sous `frontend/src/application/validation/`. Les contraintes de réservation, de tarification, de transition et d’accès restent dans le domaine et les services : la validation de formulaire ne les remplace jamais.
+
+Le catalogue Neon est l’agrégat de configuration de l’application : véhicules, tarifs, créneaux avec heure de début, téléphone et limites de réservation sont chargés depuis la base. Les contrats exigent maintenant ces paramètres au lieu de leur attribuer des valeurs de secours dans les cas d’usage. Le script de seed ne crée que le catalogue initial, sans compte ni client fictif ; l’administrateur peut ensuite le modifier depuis son espace. La migration `202610160003_creneaux_configurables` convertit les créneaux existants vers ce modèle.
+
+Vérification du 16 octobre 2026 après séparation des couches : `npm run check` et `npm run build` réussis, 100 fichiers contrôlés et 15 tests locaux réussis. Le test d’intégration API/Prisma/Neon a été exécuté séparément avec succès. Le parcours Chrome a validé les largeurs 1 440/390/320 px, l’inscription, le brouillon, le trajet OSRM, la réservation persistée, l’accès administrateur, la confirmation, le devis final, le PDF et le suivi client. Les serveurs temporaires de vérification ont été arrêtés.

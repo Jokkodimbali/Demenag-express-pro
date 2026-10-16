@@ -1,4 +1,5 @@
 import { AppError } from '../../domain/errors.js';
+import { messages } from '../../domain/messages/fr.js';
 import type {
   Clock,
   IdGenerator,
@@ -7,14 +8,15 @@ import type {
   TokenProvider,
   UserRepository,
 } from '../ports/index.js';
+import type { AuthUseCases } from '../ports/use-cases.js';
 export function normalizePhone(phone: string) {
   const clean = phone.replace(/[\s().-]/g, '').replace(/^00/, '+');
   const local = clean.replace(/^\+?221/, '');
   if (!/^(70|71|75|76|77|78)\d{7}$/.test(local))
-    throw new AppError(400, 'Saisissez un numéro mobile sénégalais valide.');
+    throw new AppError(400, messages.saisissezUnNumeroMobileSenegalaisValide);
   return '+221' + local;
 }
-export class AuthService {
+export class AuthService implements AuthUseCases {
   constructor(
     private users: UserRepository,
     private sessions: SessionRepository,
@@ -26,13 +28,14 @@ export class AuthService {
   async register(name: string, phone: string, password: string) {
     const normalized = normalizePhone(phone);
     if (await this.users.findByPhone(normalized))
-      throw new AppError(409, 'Un compte utilise déjà ce numéro.');
+      throw new AppError(409, messages.unCompteUtiliseDejaCeNumero);
     const user = await this.users.create({
       id: this.ids.next(),
       name,
       phone: normalized,
       passwordHash: await this.passwords.hash(password),
       role: 'client',
+      active: false
     });
     return this.issue(user);
   }
@@ -40,7 +43,7 @@ export class AuthService {
     const user = await this.users.findByPhone(normalizePhone(phone));
     const valid = await this.passwords.verify(password, user?.passwordHash ?? '');
     if (!user || user.active === false || !valid)
-      throw new AppError(401, 'Téléphone ou mot de passe incorrect.');
+      throw new AppError(401, messages.telephoneOuMotDePasseIncorrect);
     return this.issue({ id: user.id, name: user.name, phone: user.phone, role: user.role });
   }
   async changePassword(
@@ -50,7 +53,7 @@ export class AuthService {
   ) {
     const account = await this.users.findByPhone(user.phone);
     if (!account || !(await this.passwords.verify(oldPassword, account.passwordHash)))
-      throw new AppError(400, 'Mot de passe actuel incorrect.');
+      throw new AppError(400, messages.motDePasseActuelIncorrect);
     await this.users.updatePassword(user.id, await this.passwords.hash(newPassword));
     await this.sessions.deleteForUser(user.id);
     return this.issue(user);

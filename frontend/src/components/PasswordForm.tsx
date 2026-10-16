@@ -1,28 +1,8 @@
-import { useState } from 'react';
-import { useApp } from '../application/context';
+import { usePasswordForm } from '../application/controllers/usePasswordForm';
+import { messages } from '../content/fr';
 export function PasswordForm() {
-  const { api, setUser } = useApp();
-  const [open, setOpen] = useState(false),
-    [busy, setBusy] = useState(false),
-    [error, setError] = useState(''),
-    [saved, setSaved] = useState(false);
-  async function submit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const form = e.currentTarget;
-    const data = new FormData(form);
-    setBusy(true);
-    setError('');
-    setSaved(false);
-    try {
-      setUser(await api.changePassword(String(data.get('current')), String(data.get('next'))));
-      form.reset();
-      setSaved(true);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
+  const { open, setOpen, busy, error, saved, submit } = usePasswordForm();
+
   return (
     <section className="panel password-panel">
       <button
@@ -30,13 +10,13 @@ export function PasswordForm() {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
       >
-        Modifier mon mot de passe
+        {messages.modifierMonMotDePasse}
       </button>
       {open && (
         <form onSubmit={submit}>
           <div className="field-pair">
             <div>
-              <label htmlFor="password-current">Mot de passe actuel</label>
+              <label htmlFor="password-current">{messages.motDePasseActuel}</label>
               <input
                 id="password-current"
                 name="current"
@@ -47,7 +27,7 @@ export function PasswordForm() {
               />
             </div>
             <div>
-              <label htmlFor="password-next">Nouveau mot de passe</label>
+              <label htmlFor="password-next">{messages.nouveauMotDePasse}</label>
               <input
                 id="password-next"
                 name="next"
@@ -59,9 +39,7 @@ export function PasswordForm() {
               />
             </div>
           </div>
-          <p className="caption">
-            Au moins 10 caractères. Les autres sessions seront déconnectées.
-          </p>
+          <p className="caption">{messages.auMoins10CaracteresLesAutresSessionsSeront}</p>
           {error && (
             <p role="alert" className="alert error">
               {error}
@@ -69,11 +47,11 @@ export function PasswordForm() {
           )}
           {saved && (
             <p role="status" className="alert success">
-              Mot de passe modifié.
+              {messages.motDePasseModifie}
             </p>
           )}
           <button className="button primary small" disabled={busy}>
-            {busy ? 'Enregistrement…' : 'Enregistrer le nouveau mot de passe'}
+            {busy ? messages.enregistrement : messages.enregistrerLeNouveauMotDePasse}
           </button>
         </form>
       )}

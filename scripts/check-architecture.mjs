@@ -18,6 +18,36 @@ async function visit(directory) {
     if (lines > 1000) errors.push(`${file}: ${lines} lignes (maximum 1000).`);
     if (!/\.(ts|tsx)$/.test(file)) continue;
     const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+    function inspect(node) {
+      if (node.kind === ts.SyntaxKind.AnyKeyword) errors.push(`${file}: type any interdit.`);
+      if (
+        file.startsWith('frontend/src/') &&
+        !file.includes('/content/') &&
+        ts.isJsxText(node) &&
+        /[\p{L}\p{N}]/u.test(node.text)
+      )
+        errors.push(`${file}: texte JSX hors du catalogue.`);
+      if (
+        file.startsWith('frontend/src/') &&
+        ts.isJsxAttribute(node) &&
+        ['alt', 'title', 'placeholder', 'aria-label'].includes(node.name.getText(source)) &&
+        node.initializer &&
+        ts.isStringLiteral(node.initializer) &&
+        node.initializer.text.trim()
+      )
+        errors.push(`${file}: attribut visible hors du catalogue.`);
+      if (/^frontend\/src\/(pages|components)\//.test(file) && ts.isCallExpression(node)) {
+        const expression = node.expression;
+        if (
+          (ts.isIdentifier(expression) && expression.text === 'fetch') ||
+          (ts.isPropertyAccessExpression(expression) &&
+            expression.expression.getText(source) === 'api')
+        )
+          errors.push(`${file}: accès distant dans une vue ; utiliser un contrôleur.`);
+      }
+      ts.forEachChild(node, inspect);
+    }
+    inspect(source);
     for (const node of source.statements) {
       if (!ts.isImportDeclaration(node) && !ts.isExportDeclaration(node)) continue;
       if (!node.moduleSpecifier || !ts.isStringLiteral(node.moduleSpecifier)) continue;
@@ -25,6 +55,21 @@ async function visit(directory) {
       const target = specifier.startsWith('.')
         ? path.normalize(path.join(path.dirname(file), specifier))
         : specifier;
+      if (
+        file.startsWith('backend/src/adapters/in/') &&
+        /backend\/src\/(application\/services|adapters\/out|generated)/.test(target)
+      )
+        errors.push(`${file}: le contrôleur doit dépendre des ports : ${specifier}.`);
+      if (
+        file.startsWith('frontend/src/application/') &&
+        target.startsWith('frontend/src/adapters/')
+      )
+        errors.push(`${file}: implémentation concrète dans l’application : ${specifier}.`);
+      if (
+        /^frontend\/src\/(pages|components)\//.test(file) &&
+        target.startsWith('frontend/src/adapters/')
+      )
+        errors.push(`${file}: adaptateur concret dans une vue : ${specifier}.`);
       const isDomain = file.startsWith('backend/src/domain/');
       const isApplication = file.startsWith('backend/src/application/');
       if (
