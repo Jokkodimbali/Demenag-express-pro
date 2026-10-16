@@ -1,0 +1,242 @@
+/* Composition du prototype : visuel simple, formulaire ouvert et pied de page vert. */
+.hero.container {
+  max-width: 1240px;
+  padding: clamp(24px, 6vw, 72px) 16px clamp(28px, 5vw, 48px);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr));
+  gap: clamp(40px, 6vw, 80px);
+}
+.hero h1 {
+  font-size: clamp(46px, 7.5vw, 96px);
+  line-height: 0.95;
+  letter-spacing: normal;
+}
+.hero .eyebrow {
+  font-size: 13px;
+}
+.hero-description {
+  font-size: clamp(15px, 1.8vw, 18px);
+  max-width: 520px;
+}
+.hero-visual {
+  background: none;
+  border: 0;
+  padding: 0;
+  box-shadow: none;
+  transform: none;
+}
+.hero-visual > img {
+  width: 100%;
+  border-radius: clamp(14px, 2vw, 20px);
+}
+.booking-section {
+  background: #272a2e;
+  border-block: 1px solid #3b4046;
+  padding: clamp(28px, 6vw, 64px) 0;
+}
+.booking-section > .container {
+  max-width: 1240px;
+}
+.booking-section > .container > .section-heading {
+  margin-bottom: 24px;
+}
+.booking-section h2 {
+  font-size: clamp(30px, 4vw, 52px);
+}
+.booking-layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 32px;
+}
+.booking-fields {
+  flex: 1.7 1 min(100%, 520px);
+  gap: clamp(18px, 2.5vw, 26px);
+}
+.booking-fields > .panel {
+  border: none;
+  padding: 0;
+  background: transparent;
+}
+.step-title {
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 12px;
+}
+.step-title > span {
+  background: none;
+  border: none;
+  width: auto;
+  height: auto;
+  color: #c1c7cd;
+  border-radius: 0;
+}
+.step-title h3 {
+  margin: 0;
+  font-size: 12px;
+  color: #c1c7cd;
+  letter-spacing: 0.08em;
+}
+.step-title p {
+  display: none;
+}
+.vehicle-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+}
+.vehicle-detail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  padding: 12px;
+  gap: 12px;
+  background: #1e2023;
+}
+.vehicle-detail > img {
+  width: 100%;
+  height: auto;
+  max-width: none;
+  border-radius: 10px;
+}
+.vehicle-specifications {
+  grid-column: 1 / -1;
+}
+.summary {
+  flex: 1 1 min(100%, 340px);
+  position: sticky;
+  top: 96px;
+  padding: clamp(14px, 2vw, 26px);
+  background: #1e2023;
+}
+.summary > h3 {
+  color: var(--yellow);
+}
+.footer {
+  background: #0b6b35;
+  color: white;
+  padding: clamp(24px, 4vw, 40px) 0;
+}
+.footer-inner {
+  max-width: 1240px;
+  flex-wrap: wrap;
+}
+.footer p {
+  color: white;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+}
+.footer a {
+  color: white;
+}
+.footer .footer-phone {
+  font-family: Anton, sans-serif;
+  font-size: clamp(30px, 4vw, 44px);
+}
+.footer-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.footer-actions a {
+  background: white;
+  color: #0b6b35;
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-size: 14px;
+}
+.mobile-booking-bar {
+  display: none;
+}
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0;
+}
+.checkbox-label input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+}
+.settings-form fieldset {
+  margin-top: 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+}
+.user-list {
+  margin-top: 20px;
+}
+.user-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  padding: 16px 0;
+  overflow-wrap: anywhere;
+}
+.user-row p {
+  color: var(--muted);
+  font-size: 13px;
+}
+.account-dialog {
+  position: fixed;
+  z-index: 1200;
+  inset: 0;
+  margin: auto;
+  width: min(94vw, 500px);
+  max-height: 90dvh;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 24px;
+  background: #202328;
+  color: white;
+  box-shadow: 0 0 0 100vmax #000b;
+}
+.dialog-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+@media (max-width: 850px) {
+  .summary {
+    position: static;
+  }
+}
+@media (max-width: 600px) {
+  body:has(.mobile-booking-bar) {
+    padding-bottom: 84px;
+  }
+  .mobile-booking-bar {
+    position: fixed;
+    z-index: 900;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    background: #1e2023;
+    border-top: 1px solid #3b4046;
+  }
+  .mobile-booking-bar > div {
+    display: grid;
+    gap: 3px;
+  }
+  .mobile-booking-bar small {
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .mobile-booking-bar strong {
+    font-size: 16px;
+    color: var(--yellow);
+  }
+  .admin-tabs {
+    flex-wrap: wrap;
+  }
+}
+
+.account-dialog::backdrop {
+  background: #000b;
+}

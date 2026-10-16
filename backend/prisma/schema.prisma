@@ -1,0 +1,162 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["demenag"]
+}
+
+enum RoleUtilisateur {
+  client
+  administrateur @map("admin")
+
+  @@map("Role")
+  @@schema("demenag")
+}
+
+enum StatutReservation {
+  en_attente @map("pending")
+  confirmee  @map("confirmed")
+  en_cours   @map("in_progress")
+  terminee   @map("completed")
+  annulee    @map("cancelled")
+
+  @@map("BookingStatus")
+  @@schema("demenag")
+}
+
+model Utilisateur {
+  id                  String             @id @default(uuid()) @db.Uuid
+  nom                 String             @map("name")
+  telephone           String             @unique @map("phone")
+  empreinteMotDePasse String             @map("password_hash")
+  role                RoleUtilisateur    @default(client)
+  creeLe              DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  actif               Boolean            @default(true) @map("active")
+  sessions            SessionConnexion[]
+  reservations        Reservation[]
+
+  @@map("users")
+  @@schema("demenag")
+}
+
+model SessionConnexion {
+  empreinteJeton String      @id @map("token_hash")
+  utilisateurId  String      @map("user_id") @db.Uuid
+  utilisateur    Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  expireLe       DateTime    @map("expires_at") @db.Timestamptz
+
+  @@index([expireLe])
+  @@map("sessions")
+  @@schema("demenag")
+}
+
+model Vehicule {
+  id                  String        @id
+  nom                 String        @map("name")
+  volume              String
+  longueur            String        @map("length")
+  hauteur             String        @map("height")
+  largeur             String        @map("width")
+  largeurPassageRoues String        @map("wheel_width")
+  image               String
+  interieur           String        @map("interior")
+  actif               Boolean       @default(true) @map("active")
+  tarifs              Int[]         @map("prices")
+  reservations        Reservation[]
+
+  @@map("vehicles")
+  @@schema("demenag")
+}
+
+model ParametreApplication {
+  id                  String @id @default("main")
+  tarifManoeuvre      Int    @map("labour_price")
+  tarifMontage        Int    @map("assembly_price")
+  telephoneEntreprise String @map("business_phone")
+
+  reservationsOuvertes      Boolean  @default(true) @map("bookings_enabled")
+  delaiMaximumJours         Int      @default(366) @map("max_advance_days")
+  preavisReservationHeures  Int      @default(0) @map("min_notice_hours")
+  quantiteMaximaleOptions   Int      @default(20) @map("max_options")
+  nombreMaximalTrajets      Int      @default(20) @map("max_trips")
+  annulationClientAutorisee Boolean  @default(true) @map("client_cancellation")
+  preavisAnnulationHeures   Int      @default(0) @map("cancellation_notice_hours")
+  bornesDistance            Int[]    @default([15, 25, 35]) @map("distance_bounds")
+  creneauxOuverts           String[] @default(["Matin (8h – 12h)", "Après-midi (13h – 17h)", "Soir (17h – 20h)"]) @map("enabled_slots")
+
+  @@map("settings")
+  @@schema("demenag")
+}
+
+model Itineraire {
+  id       String   @id @default(uuid()) @db.Uuid
+  donnees  Json     @map("data")
+  expireLe DateTime @map("expires_at") @db.Timestamptz
+
+  @@index([expireLe])
+  @@map("routes")
+  @@schema("demenag")
+}
+
+model Reservation {
+  id                 String            @id @default(uuid()) @db.Uuid
+  utilisateurId      String            @map("user_id") @db.Uuid
+  utilisateur        Utilisateur       @relation(fields: [utilisateurId], references: [id])
+  identifiantDemande String            @map("request_id") @db.Uuid
+  reference          String            @unique
+  vehiculeId         String            @map("vehicle_id")
+  vehicule           Vehicule          @relation(fields: [vehiculeId], references: [id])
+  date               DateTime          @db.Date
+  creneau            String            @map("time_slot")
+  statut             StatutReservation @default(en_attente) @map("status")
+  // Instantané métier : coordonnées, prix et historique des devis figés.
+  donnees            Json              @map("data")
+  devis              Devis[]
+  version            Int               @default(1)
+  creeLe             DateTime          @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([utilisateurId, identifiantDemande])
+  @@index([utilisateurId, creeLe])
+  @@index([statut, date])
+  @@map("bookings")
+  @@schema("demenag")
+}
+
+/// Historique immutable des devis émis. Les montants sont en francs CFA.
+model Devis {
+  id            String       @id @db.Uuid
+  reservationId String       @map("reservation_id") @db.Uuid
+  reservation   Reservation  @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  reference     String       @unique
+  nature        String
+  montantTotal  Int?         @map("montant_total")
+  remise        Int
+  nombreTrajets Int          @map("nombre_trajets")
+  tranche       Int
+  notes         String
+  creeLe        DateTime     @map("cree_le") @db.Timestamptz
+  lignes        LigneDevis[]
+
+  @@index([reservationId, creeLe])
+  @@map("devis")
+  @@schema("demenag")
+}
+
+model LigneDevis {
+  id           String @id @default(uuid()) @db.Uuid
+  devisId      String @map("devis_id") @db.Uuid
+  devis        Devis  @relation(fields: [devisId], references: [id], onDelete: Cascade)
+  libelle      String
+  quantite     Int
+  prixUnitaire Int    @map("prix_unitaire")
+  montant      Int
+  position     Int
+
+  @@unique([devisId, position])
+  @@map("lignes_devis")
+  @@schema("demenag")
+}

@@ -1,0 +1,43 @@
+{
+  "name": "@demenag/backend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --import tsx --watch src/main.ts",
+    "build": "prisma generate && tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/main.js",
+    "test": "node --import tsx --test --test-isolation=none tests/*.test.ts",
+    "db:migrate": "prisma migrate deploy",
+    "admin:create": "node --import tsx scripts/create-admin.ts",
+    "db:generate": "prisma generate",
+    "db:seed": "node --import tsx prisma/seed.ts",
+    "db:studio": "prisma studio",
+    "predev": "prisma generate",
+    "test:integration": "node --import tsx scripts/test-integration.ts"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "pg": "^8.16.3",
+    "zod": "^4.1.12",
+    "dotenv": "^17.2.3",
+    "helmet": "^8.1.0",
+    "cors": "^2.8.5",
+    "cookie-parser": "^1.4.7",
+    "express-rate-limit": "^8.2.1",
+    "@prisma/client": "^7.0.0",
+    "@prisma/adapter-pg": "^7.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.6",
+    "@types/node": "^24.10.0",
+    "@types/express": "^5.0.5",
+    "@types/pg": "^8.15.6",
+    "@types/cors": "^2.8.19",
+    "@types/cookie-parser": "^1.4.10",
+    "supertest": "^7.1.4",
+    "@types/supertest": "^6.0.3",
+    "prisma": "^7.0.0"
+  }
+}

@@ -1,0 +1,103 @@
+export type Role = 'client' | 'admin';
+export type User = { id: string; name: string; phone: string; role: Role; active?: boolean };
+export type UserCredentials = User & { passwordHash: string };
+export type Point = [number, number];
+export type Vehicle = {
+  id: string;
+  name: string;
+  volume: string;
+  length: string;
+  height: string;
+  width: string;
+  wheelWidth: string;
+  image: string;
+  interior: string;
+  active?: boolean;
+  prices: [number, number, number];
+};
+export type BookingRules = {
+  bookingsEnabled?: boolean;
+  maxAdvanceDays?: number;
+  minNoticeHours?: number;
+  maxOptions?: number;
+  maxTrips?: number;
+  clientCancellation?: boolean;
+  cancellationNoticeHours?: number;
+  enabledSlots?: string[];
+};
+export type Settings = BookingRules & {
+  distanceBounds?: [number, number, number];
+  labourPrice: number;
+  assemblyPrice: number;
+  businessPhone: string;
+};
+export type Catalogue = { vehicles: Vehicle[]; settings: Settings };
+export type Options = { labour: number; desk: number; wardrobe: number; bed: number };
+export type PriceLine = { label: string; quantity: number; unitPrice: number; total: number };
+export type Price = {
+  lines: PriceLine[];
+  total: number | null;
+  discount: number;
+  tier: number;
+  trips: number;
+  currency: 'XOF';
+};
+export type Route = {
+  from: Point;
+  to: Point;
+  distanceKm: number;
+  durationMinutes: number;
+  geometry: Point[];
+};
+export type RouteTicket = Route & { id: string; expiresAt: string };
+export type BookingStatus = 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
+export type Quote = {
+  id: string;
+  reference: string;
+  kind: 'provisional' | 'final';
+  createdAt: string;
+  price: Price;
+  notes: string;
+};
+export type Booking = {
+  id: string;
+  reference: string;
+  userId: string;
+  customerName: string;
+  phone: string;
+  vehicle: Vehicle;
+  fromAddress: string;
+  toAddress: string;
+  from: Point;
+  to: Point;
+  distanceKm: number;
+  date: string;
+  timeSlot: string;
+  options: Options;
+  notes: string;
+  status: BookingStatus;
+  pricingSettings?: Settings;
+  estimate: Price;
+  quotes: Quote[];
+  createdAt: string;
+  version: number;
+};
+export type BookingInput = {
+  vehicleId: string;
+  routeId: string;
+  fromAddress: string;
+  toAddress: string;
+  date: string;
+  timeSlot: string;
+  options: Options;
+  notes: string;
+  requestId: string;
+};
+export type QuoteInput = {
+  kind: 'provisional' | 'final';
+  trips: number;
+  customPrice: number | null;
+  discount: number;
+  notes: string;
+  version: number;
+};

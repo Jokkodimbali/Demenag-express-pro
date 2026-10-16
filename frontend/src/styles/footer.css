@@ -1,0 +1,70 @@
+.footer {
+  border-top: 1px solid var(--line);
+  background: #1a1c1f;
+  padding: 34px 0;
+  color: var(--muted);
+}
+.footer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 30px;
+  font-size: 11px;
+}
+.footer strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  font-size: 13px;
+}
+.footer p {
+  margin: 10px 0 5px;
+}
+.footer a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #d6dadd;
+}
+.alert {
+  padding: 14px 16px;
+  border: 1px solid;
+  border-radius: 9px;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.alert.error {
+  background: #e3262f12;
+  color: #ffb1b5;
+  border-color: #9a444c;
+}
+.alert.success {
+  background: #0b6b3522;
+  color: #9be3ae;
+  border-color: #367a4b;
+}
+.loading {
+  text-align: center;
+  padding: 70px 20px;
+  color: var(--muted);
+}
+.success-panel {
+  text-align: center;
+  max-width: 650px;
+  margin: 35px auto;
+  padding: 35px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.success-panel > svg {
+  color: var(--yellow);
+  margin-bottom: 22px;
+}
+.success-panel h2 {
+  font-size: 37px;
+}
+.success-panel .button {
+  margin: 6px;
+}

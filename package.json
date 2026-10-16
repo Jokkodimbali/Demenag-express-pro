@@ -1,0 +1,41 @@
+{
+  "name": "demenag-express",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n API,WEB -c cyan,yellow \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+    "build": "npm run build --workspaces",
+    "typecheck": "npm run typecheck --workspaces",
+    "test": "npm run test -w backend",
+    "db:migrate": "npm run db:migrate -w backend",
+    "admin:create": "npm run admin:create -w backend",
+    "db:generate": "npm run db:generate -w backend",
+    "db:seed": "npm run db:seed -w backend",
+    "format": "prettier --write .",
+    "lint": "eslint . --max-warnings 0",
+    "lint:fix": "eslint . --fix --max-warnings 0",
+    "format:check": "prettier --check .",
+    "check:architecture": "node scripts/check-architecture.mjs",
+    "check": "npm run format:check && npm run lint && npm run check:architecture && npm run typecheck && npm test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.58.0",
+    "concurrently": "^9.2.1",
+    "eslint": "^10.12.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.10",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.71.2"
+  }
+}
