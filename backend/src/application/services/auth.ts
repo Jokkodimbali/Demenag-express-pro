@@ -35,7 +35,7 @@ export class AuthService implements AuthUseCases {
       phone: normalized,
       passwordHash: await this.passwords.hash(password),
       role: 'client',
-      active: false
+      active: false,
     });
     return this.issue(user);
   }
@@ -47,7 +47,7 @@ export class AuthService implements AuthUseCases {
     return this.issue({ id: user.id, name: user.name, phone: user.phone, role: user.role });
   }
   async changePassword(
-    user: { id: string; phone: string; name: string; role: 'client' | 'admin' },
+    user: { id: string; phone: string; name: string; role: 'client' | 'admin' | 'driver' },
     oldPassword: string,
     newPassword: string,
   ) {
@@ -58,7 +58,12 @@ export class AuthService implements AuthUseCases {
     await this.sessions.deleteForUser(user.id);
     return this.issue(user);
   }
-  private async issue(user: { id: string; name: string; phone: string; role: 'client' | 'admin' }) {
+  private async issue(user: {
+    id: string;
+    name: string;
+    phone: string;
+    role: 'client' | 'admin' | 'driver';
+  }) {
     const token = this.tokens.create();
     await this.sessions.create(
       this.tokens.digest(token),

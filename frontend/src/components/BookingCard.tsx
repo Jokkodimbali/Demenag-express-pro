@@ -9,15 +9,17 @@ import {
 import { useBookingCard } from '../application/controllers/useBookingCard';
 import { messages } from '../content/fr';
 import { dateLabel, money, statuses } from '../domain/format';
-import type { Booking } from '../domain/model';
+import type { Booking, Driver } from '../domain/model';
 export function BookingCard({
   booking: b,
   onChange,
   admin = false,
+  drivers = [],
 }: {
   booking: Booking;
   onChange: (b: Booking) => void;
   admin?: boolean;
+  drivers?: Driver[];
 }) {
   const {
     refresh,
@@ -30,8 +32,11 @@ export function BookingCard({
     last,
     terminal,
     change,
+    assignDriver,
     pdf,
     quote,
+    extraLines,
+    setExtraLines,
     wa,
   } = useBookingCard({ booking: b, onChange, admin });
 
@@ -155,6 +160,24 @@ export function BookingCard({
       )}
       {admin && !terminal && (
         <div className="admin-actions">
+          <label className="driver-assignment" htmlFor={'driver-' + b.id}>
+            {messages.chauffeur}
+            <select
+              id={'driver-' + b.id}
+              value={b.driverId ?? ''}
+              disabled={busy}
+              onChange={(event) => void assignDriver(event.target.value || null)}
+            >
+              <option value="">{messages.nonAffecte}</option>
+              {drivers
+                .filter((driver) => driver.active)
+                .map((driver) => (
+                  <option key={driver.id} value={driver.id}>
+                    {driver.name}
+                  </option>
+                ))}
+            </select>
+          </label>
           {b.status === 'pending' && (
             <button
               className="button primary small"
@@ -230,20 +253,19 @@ export function BookingCard({
             </div>
           </div>
           <div className="field-pair">
-            {b.estimate.tier === 3 && (
-              <div>
-                <label htmlFor={'custom-' + b.id}>{messages.transportParAllerRetourFcfa}</label>
-                <input
-                  name="customPrice"
-                  id={'custom-' + b.id}
-                  type="number"
-                  min={1}
-                  max={10000000}
-                  step={1}
-                  placeholder={messages.tarifAConvenir}
-                />
-              </div>
-            )}
+            <div>
+              <label htmlFor={'custom-' + b.id}>{messages.transportParAllerRetourFcfa}</label>
+              <input
+                name="customPrice"
+                id={'custom-' + b.id}
+                type="number"
+                min={1}
+                max={10000000}
+                step={1}
+                defaultValue={last?.price.lines[0]?.unitPrice ?? ''}
+                placeholder={b.estimate.tier === 3 ? messages.tarifAConvenir : undefined}
+              />
+            </div>
             <div>
               <label htmlFor={'discount-' + b.id}>{messages.remiseFcfa}</label>
               <input
@@ -260,6 +282,80 @@ export function BookingCard({
           </div>
           <label htmlFor={'notes-' + b.id}>{messages.noteDuDevis}</label>
           <textarea name="notes" id={'notes-' + b.id} rows={3} maxLength={2000} />
+          <div className="quote-extra-lines">
+            <div className="section-heading">
+              <h4>{messages.chargesSupplementaires}</h4>
+              <button
+                type="button"
+                className="button secondary small"
+                onClick={() =>
+                  setExtraLines((lines) => [
+                    ...lines,
+                    { id: crypto.randomUUID(), label: '', quantity: 1, unitPrice: 0 },
+                  ])
+                }
+              >
+                {messages.ajouterUneLigne}
+              </button>
+            </div>
+            {extraLines.map((line) => (
+              <div className="field-pair" key={line.id}>
+                <input
+                  aria-label={messages.libelleDeLaCharge}
+                  value={line.label}
+                  onChange={(event) =>
+                    setExtraLines((lines) =>
+                      lines.map((item) =>
+                        item.id === line.id ? { ...item, label: event.target.value } : item,
+                      ),
+                    )
+                  }
+                  required
+                />
+                <input
+                  aria-label={messages.quantite}
+                  type="number"
+                  min={1}
+                  value={line.quantity}
+                  onChange={(event) =>
+                    setExtraLines((lines) =>
+                      lines.map((item) =>
+                        item.id === line.id
+                          ? { ...item, quantity: Number(event.target.value) }
+                          : item,
+                      ),
+                    )
+                  }
+                  required
+                />
+                <input
+                  aria-label={messages.montantFcfa}
+                  type="number"
+                  min={1}
+                  value={line.unitPrice || ''}
+                  onChange={(event) =>
+                    setExtraLines((lines) =>
+                      lines.map((item) =>
+                        item.id === line.id
+                          ? { ...item, unitPrice: Number(event.target.value) }
+                          : item,
+                      ),
+                    )
+                  }
+                  required
+                />
+                <button
+                  type="button"
+                  className="button text danger small"
+                  onClick={() =>
+                    setExtraLines((lines) => lines.filter((item) => item.id !== line.id))
+                  }
+                >
+                  {messages.retirer}
+                </button>
+              </div>
+            ))}
+          </div>
           <p className="caption">{messages.unDevisFinalEstConserveSansModificationEt}</p>
           <button className="button primary" disabled={busy}>
             {busy ? messages.enregistrement : messages.enregistrerLeDevis}

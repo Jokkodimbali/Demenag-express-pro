@@ -1,6 +1,8 @@
 import type { Catalogue, Options, Point, RouteTicket } from '../domain/model';
 export type Draft = {
   vehicleId: string;
+  customerName: string;
+  customerPhone: string;
   fromAddress: string;
   toAddress: string;
   from: Point | null;
@@ -14,6 +16,8 @@ export type Draft = {
 };
 export const blankDraft = (catalogue?: Catalogue): Draft => ({
   vehicleId: catalogue?.vehicles.find((vehicle) => vehicle.active !== false)?.id ?? '',
+  customerName: '',
+  customerPhone: '',
   fromAddress: '',
   toAddress: '',
   from: null,

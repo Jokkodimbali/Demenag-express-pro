@@ -7,3 +7,4 @@ export const accountSchema = z.object({
 });
 export const createAccountSchema = accountSchema.extend({ password: z.string().min(10).max(128) });
 export const userIdSchema = z.uuid();
+export const vehicleIdSchema = z.string().regex(/^[a-z0-9-]{1,30}$/);

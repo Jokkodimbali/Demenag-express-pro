@@ -1,11 +1,7 @@
 import type { BookingViewState } from '../../application/contracts/booking-view';
 import { messages } from '../../content/fr';
 
-export function CustomerDetails({
-  user,
-  draft,
-  setDraft,
-}: Pick<BookingViewState, 'user' | 'draft' | 'setDraft'>) {
+export function CustomerDetails({ draft, setDraft }: Pick<BookingViewState, 'draft' | 'setDraft'>) {
   return (
     <section className="panel">
       <div className="step-title">
@@ -14,18 +10,38 @@ export function CustomerDetails({
           <h3>{messages.vosCoordonnees}</h3>
         </div>
       </div>
-      {user ? (
-        <div className="field-pair">
-          <div>
-            <label htmlFor="customer-name">{messages.nom}</label>
-            <input id="customer-name" readOnly value={user.name} />
-          </div>
-          <div>
-            <label htmlFor="customer-phone">{messages.telephone}</label>
-            <input id="customer-phone" readOnly value={user.phone} />
-          </div>
+      <div className="field-pair">
+        <div>
+          <label htmlFor="customer-name">{messages.nom}</label>
+          <input
+            id="customer-name"
+            name="customer-name"
+            autoComplete="name"
+            maxLength={100}
+            required
+            value={draft.customerName}
+            onChange={(event) =>
+              setDraft((value) => ({ ...value, customerName: event.target.value }))
+            }
+          />
         </div>
-      ) : (
+        <div>
+          <label htmlFor="customer-phone">{messages.telephone}</label>
+          <input
+            id="customer-phone"
+            name="customer-phone"
+            type="tel"
+            autoComplete="tel"
+            maxLength={25}
+            required
+            value={draft.customerPhone}
+            onChange={(event) =>
+              setDraft((value) => ({ ...value, customerPhone: event.target.value }))
+            }
+          />
+        </div>
+      </div>
+      {!draft.customerName && !draft.customerPhone && (
         <p className="muted">{messages.connectezVousALEnvoiPourEnregistrerVos}</p>
       )}
       <label htmlFor="booking-notes">

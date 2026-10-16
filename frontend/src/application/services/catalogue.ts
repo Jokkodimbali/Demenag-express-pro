@@ -11,4 +11,7 @@ export class CatalogueService {
         : [...catalogue.vehicles, vehicle],
     });
   }
+  removeVehicle(id: string): Promise<Catalogue> {
+    return this.repository.removeVehicle(id);
+  }
 }

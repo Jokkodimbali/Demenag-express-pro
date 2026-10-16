@@ -43,7 +43,8 @@
   border-radius: 10px;
   margin: 24px 0;
 }
-.tabs button {
+.tabs button,
+.tabs a {
   flex: 1;
   border: 0;
   background: transparent;
@@ -52,8 +53,10 @@
   font-size: 12px;
   font-weight: 700;
   border-radius: 7px;
+  text-decoration: none;
 }
-.tabs button.active {
+.tabs button.active,
+.tabs a.active {
   background: var(--yellow);
   color: #1e2023;
 }

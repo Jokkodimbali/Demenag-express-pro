@@ -59,6 +59,7 @@ export const messages = {
   quantiteInvalide: 'Quantité invalide.',
   remiseInvalide: 'Remise invalide.',
   prixPersonnaliseInvalide: 'Prix personnalisé invalide.',
+  chargeSupplementaireInvalide: 'Charge supplémentaire invalide.',
   transportLine: (vehicleName: string | number) => `Transport ${vehicleName} · aller-retour`,
   manUvre: 'Manœuvre',
   menuisierBureau: 'Menuisier · bureau',
@@ -70,4 +71,7 @@ export const messages = {
   labelConsultezbackendenvexample: '. Consultez backend/.env.example.',
   requeteTropVolumineuse: 'La requête dépasse la taille autorisée.',
   compteIntrouvable: 'Compte introuvable.',
+  chauffeurIntrouvable: 'Chauffeur introuvable ou inactif.',
+  actionReserveeAuxChauffeurs: 'Action réservée aux chauffeurs.',
+  profilChauffeurIntrouvable: 'Profil chauffeur introuvable.',
 } as const;

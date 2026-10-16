@@ -7,6 +7,34 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
       <h2>{messages.tarifsDeTransport}</h2>
       <p className="muted">{messages.prixEnFcfaParAllerRetourLesDevis}</p>
       <div className="field-pair">
+        <div>
+          <label htmlFor="labour">{messages.manUvrePersonneFcfa}</label>
+          <input
+            id="labour"
+            name="labour"
+            type="number"
+            min={0}
+            max={1000000}
+            step={1}
+            required
+            defaultValue={catalogue.settings.labourPrice}
+          />
+        </div>
+        <div>
+          <label htmlFor="assembly">{messages.menuisierMeubleFcfa}</label>
+          <input
+            id="assembly"
+            name="assembly"
+            type="number"
+            min={0}
+            max={1000000}
+            step={1}
+            required
+            defaultValue={catalogue.settings.assemblyPrice}
+          />
+        </div>
+      </div>
+      <div className="field-pair">
         {[0, 1, 2].map((i) => (
           <div key={i}>
             <label htmlFor={'distance-' + i}>
@@ -31,19 +59,7 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
         {catalogue.vehicles.map((v) => (
           <div className="tariff-card" key={v.id}>
             <img src={v.image} alt={messages.text} />
-            <label htmlFor={v.id + '-name'}>{messages.nomDuVehicule}</label>
-            <input
-              id={v.id + '-name'}
-              name={v.id + '-name'}
-              required
-              minLength={2}
-              maxLength={100}
-              defaultValue={v.name}
-            />
-            <label className="checkbox-label">
-              <input type="checkbox" name={v.id + '-active'} defaultChecked={v.active !== false} />
-              {messages.disponibleALaReservation}
-            </label>
+            <h3>{v.name}</h3>
             {tierLabels(catalogue.settings.distanceBounds)
               .slice(0, 3)
               .map((label, i) => (

@@ -9,7 +9,9 @@ import type {
   Quote,
   QuoteInput,
   RouteTicket,
+  Settings,
   User,
+  Driver,
 } from '../domain/model';
 export interface UserRepository {
   users(): Promise<User[]>;
@@ -19,6 +21,7 @@ export interface UserRepository {
 export interface CatalogueRepository {
   catalogue(): Promise<Catalogue>;
   updateCatalogue(value: Catalogue): Promise<Catalogue>;
+  removeVehicle(id: string): Promise<Catalogue>;
 }
 export interface AuthRepository {
   me(): Promise<User | null>;
@@ -33,6 +36,16 @@ export interface BookingRepository {
   createBooking(input: BookingInput): Promise<Booking>;
   status(id: string, status: BookingStatus, version: number): Promise<Booking>;
   quote(id: string, input: QuoteInput): Promise<Booking>;
+  assignDriver(id: string, driverId: string | null, version: number): Promise<Booking>;
+}
+export type DriverCreation = Omit<Driver, 'id' | 'userId' | 'active'> & { password: string };
+export interface DriverRepository {
+  drivers(): Promise<Driver[]>;
+  createDriver(input: DriverCreation): Promise<Driver>;
+  updateDriver(driver: Omit<Driver, 'userId'>): Promise<Driver>;
+  driverProfile(): Promise<Driver>;
+  updateDriverProfile(input: Pick<Driver, 'name' | 'phone' | 'photo'>): Promise<Driver>;
+  driverBookings(): Promise<Booking[]>;
 }
 export interface MapsRepository {
   route(from: Point, to: Point): Promise<RouteTicket>;
@@ -53,6 +66,11 @@ export interface ApplicationApi
     CatalogueRepository,
     AuthRepository,
     BookingRepository,
+    DriverRepository,
     MapsRepository,
     PricingRepository {}
-export type QuoteExporter = (booking: Booking, quote?: Quote) => Promise<void>;
+export type QuoteExporter = (
+  booking: Booking,
+  quote: Quote | undefined,
+  settings: Settings,
+) => Promise<void>;

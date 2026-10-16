@@ -396,10 +396,44 @@
   .admin-tabs {
     display: flex;
   }
-  .admin-tabs button {
+  .admin-tabs a {
     font-size: 10px;
     padding: 11px 8px;
     gap: 6px;
+  }
+  .revenue-controls {
+    align-items: stretch;
+  }
+  .revenue-controls > div:first-child,
+  .revenue-date-filter {
+    width: 100%;
+  }
+  .revenue-date-filter input {
+    flex: 1;
+  }
+  .calendar-weekdays {
+    display: none;
+  }
+  .calendar-grid {
+    grid-template-columns: 1fr;
+  }
+  .calendar-day {
+    min-height: auto;
+    grid-template-columns: auto 1fr;
+    align-items: start;
+  }
+  .calendar-revenue {
+    grid-column: 2;
+    grid-template-columns: repeat(2, max-content);
+    gap: 12px;
+  }
+  .calendar-booking {
+    grid-column: 2;
+  }
+  .revenue-table > div {
+    grid-template-columns: 1.4fr 1fr 1fr 0.4fr;
+    gap: 8px;
+    font-size: 10px;
   }
   .admin-toolbar {
     align-items: stretch;

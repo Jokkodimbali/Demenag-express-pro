@@ -19,6 +19,7 @@ import type {
   BookingRepository,
   CatalogueRepository,
   Clock,
+  DriverRepository,
   IdGenerator,
   RouteRepository,
   RoutingProvider,
@@ -30,6 +31,7 @@ export class MovingService implements MovingUseCases {
     private catalogue: CatalogueRepository,
     private routes: RouteRepository,
     private routing: RoutingProvider,
+    private drivers: DriverRepository,
     private clock: Clock,
     private ids: IdGenerator,
   ) {}
@@ -80,8 +82,8 @@ export class MovingService implements MovingUseCases {
         id,
         reference: `DEM-${this.clock.now().getUTCFullYear()}-${id.slice(0, 8).toUpperCase()}`,
         userId: user.id,
-        customerName: user.name,
-        phone: user.phone,
+        customerName: input.customerName,
+        phone: input.customerPhone,
         vehicle,
         fromAddress: input.fromAddress,
         toAddress: input.toAddress,
@@ -135,6 +137,17 @@ export class MovingService implements MovingUseCases {
       });
     return this.bookings.update({ ...booking, status: next }, version);
   }
+  async assignDriver(user: User, id: string, driverId: string | null, version: number) {
+    requireAdministrator(user);
+    const booking = await this.get(user, id);
+    if (booking.version !== version)
+      throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
+    if (driverId) {
+      const driver = await this.drivers.find(driverId);
+      if (!driver || !driver.active) throw new AppError(400, messages.chauffeurIntrouvable);
+    }
+    return this.bookings.update({ ...booking, driverId }, version);
+  }
   async quote(user: User, id: string, input: QuoteInput) {
     requireAdministrator(user);
     const booking = await this.get(user, id);
@@ -159,6 +172,7 @@ export class MovingService implements MovingUseCases {
       input.trips,
       input.customPrice,
       input.discount,
+      input.extraLines,
     );
     requireValue(
       input.kind !== 'final' || price.total !== null,

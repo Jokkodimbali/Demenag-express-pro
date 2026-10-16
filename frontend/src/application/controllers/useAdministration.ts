@@ -10,7 +10,6 @@ export function useAdministration() {
     [loading, setLoading] = useState(true),
     [error, setError] = useState(''),
     [retry, setRetry] = useState(0),
-    [tab, setTab] = useState<'bookings' | 'settings' | 'users' | 'fleet'>('bookings'),
     [filter, setFilter] = useState<BookingStatus | 'all'>('all'),
     [query, setQuery] = useState('');
   useEffect(() => {
@@ -49,8 +48,6 @@ export function useAdministration() {
     loading,
     error,
     setRetry,
-    tab,
-    setTab,
     filter,
     setFilter,
     query,

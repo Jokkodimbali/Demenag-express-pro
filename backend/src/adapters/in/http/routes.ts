@@ -2,6 +2,7 @@ export const apiRoutes = {
   health: '/api/health',
   ready: '/api/ready',
   catalogue: '/api/catalogue',
+  vehicles: '/api/catalogue/vehicles',
   auth: {
     register: '/api/auth/register',
     login: '/api/auth/login',
@@ -18,5 +19,10 @@ export const apiRoutes = {
   },
   administration: {
     users: '/api/admin/users',
+    drivers: '/api/admin/drivers',
+  },
+  driver: {
+    profile: '/api/driver/profile',
+    bookings: '/api/driver/bookings',
   },
 } as const;

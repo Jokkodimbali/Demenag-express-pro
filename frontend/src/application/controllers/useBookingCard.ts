@@ -5,6 +5,7 @@ import type { Booking, BookingStatus, Quote } from '../../domain/model';
 import { useApp } from '../context';
 import { errorMessage } from '../error-message';
 import { quoteFromForm } from '../validation/forms';
+type ExtraLine = { id: string; label: string; quantity: number; unitPrice: number };
 export function useBookingCard({
   booking: b,
   onChange,
@@ -13,11 +14,12 @@ export function useBookingCard({
   onChange: (b: Booking) => void;
   admin?: boolean;
 }) {
-  const { api, exportQuote } = useApp();
+  const { api, catalogue, exportQuote } = useApp();
   const [open, setOpen] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
-    [editing, setEditing] = useState(false);
+    [editing, setEditing] = useState(false),
+    [extraLines, setExtraLines] = useState<ExtraLine[]>([]);
   const last = b.quotes.at(-1);
   const terminal = ['completed', 'cancelled'].includes(b.status);
   async function change(status: BookingStatus) {
@@ -32,11 +34,24 @@ export function useBookingCard({
       setBusy(false);
     }
   }
+  async function assignDriver(driverId: string | null) {
+    if (busy) return;
+    setBusy(true);
+    setError('');
+    try {
+      onChange(await api.assignDriver(b.id, driverId, b.version));
+    } catch (error) {
+      setError(errorMessage(error));
+    } finally {
+      setBusy(false);
+    }
+  }
   async function pdf(quote?: Quote) {
+    if (!catalogue) return;
     setError('');
     setBusy(true);
     try {
-      await exportQuote(b, quote);
+      await exportQuote(b, quote, catalogue.settings);
     } catch {
       setError(messages.lePdfNAPasPuEtreGenere);
     } finally {
@@ -49,7 +64,7 @@ export function useBookingCard({
     setBusy(true);
     const form = new FormData(e.currentTarget);
     try {
-      onChange(await api.quote(b.id, quoteFromForm(form, b.version)));
+      onChange(await api.quote(b.id, quoteFromForm(form, b.version, extraLines)));
       setEditing(false);
     } catch (e) {
       setError(errorMessage(e));
@@ -90,8 +105,11 @@ export function useBookingCard({
     last,
     terminal,
     change,
+    assignDriver,
     pdf,
     quote,
+    extraLines,
+    setExtraLines,
     wa,
   };
 }

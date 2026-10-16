@@ -1,6 +1,7 @@
 import type {
   Booking,
   Catalogue,
+  Driver,
   Route,
   RouteTicket,
   Settings,
@@ -12,6 +13,7 @@ export interface UserRepository {
   findByPhone(phone: string): Promise<UserCredentials | null>;
   create(user: UserCredentials): Promise<User>;
   updatePassword(userId: string, hash: string): Promise<void>;
+  updateProfile(userId: string, name: string, phone: string): Promise<void>;
 }
 export interface SessionRepository {
   create(hash: string, userId: string, expiresAt: Date): Promise<void>;
@@ -22,12 +24,21 @@ export interface SessionRepository {
 export interface CatalogueRepository {
   get(): Promise<Catalogue>;
   update(vehicles: Vehicle[], settings: Settings): Promise<void>;
+  removeVehicle(id: string): Promise<void>;
 }
 export interface BookingRepository {
   list(userId?: string): Promise<Booking[]>;
+  listForDriver(driverId: string): Promise<Booking[]>;
   find(id: string): Promise<Booking | null>;
   create(booking: Booking, requestId: string): Promise<Booking>;
   update(booking: Booking, expectedVersion: number): Promise<Booking>;
+}
+export interface DriverRepository {
+  list(): Promise<Driver[]>;
+  find(id: string): Promise<Driver | null>;
+  findByUserId(userId: string): Promise<Driver | null>;
+  create(driver: Driver): Promise<Driver>;
+  update(driver: Driver): Promise<Driver>;
 }
 export interface RouteRepository {
   save(route: RouteTicket): Promise<void>;

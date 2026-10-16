@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { messages } from '../../content/fr';
 import type { Vehicle } from '../../domain/model';
 import { useApp } from '../context';
 import { errorMessage } from '../error-message';
@@ -13,10 +14,10 @@ export function useFleet() {
     e.preventDefault();
     if (!catalogue || !editing || busy) return;
     const data = new FormData(e.currentTarget);
-    const value = vehicleFromForm(data, editing);
     setBusy(true);
     setError('');
     try {
+      const value = await vehicleFromForm(data, editing);
       setCatalogue(await new CatalogueService(api).saveVehicle(catalogue, value));
       setEditing(null);
     } catch (e) {
@@ -25,5 +26,17 @@ export function useFleet() {
       setBusy(false);
     }
   }
-  return { catalogue, editing, setEditing, busy, error, setError, save };
+  async function remove(vehicle: Vehicle) {
+    if (busy || !window.confirm(messages.retirerLeVehicule(vehicle.name))) return;
+    setBusy(true);
+    setError('');
+    try {
+      setCatalogue(await new CatalogueService(api).removeVehicle(vehicle.id));
+    } catch (reason) {
+      setError(errorMessage(reason));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return { catalogue, editing, setEditing, busy, error, setError, save, remove };
 }

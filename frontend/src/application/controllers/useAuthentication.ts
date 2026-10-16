@@ -28,7 +28,9 @@ export function useAuthentication() {
           ? routes.booking
           : user.role === 'admin'
             ? routes.administration
-            : routes.account,
+            : user.role === 'driver'
+              ? routes.driverWorkspace
+              : routes.account,
         { replace: true },
       );
     } catch (e) {

@@ -1,5 +1,9 @@
 import { z } from 'zod';
 import { messages } from '../../../domain/messages/fr.js';
+const imageSchema = z
+  .string()
+  .max(4_000_000)
+  .regex(/^(\/assets\/[a-z0-9-]+\.(png|jpg|jpeg|webp)|data:image\/(png|jpeg|webp);base64,)/i);
 export const optionsSchema = z.object({
   labour: z.number().int().min(0).max(20),
   desk: z.number().int().min(0).max(20),
@@ -14,6 +18,8 @@ export const estimateSchema = z.object({
   options: optionsSchema,
 });
 export const bookingSchema = estimateSchema.extend({
+  customerName: z.string().trim().min(2).max(100),
+  customerPhone: z.string().trim().min(9).max(25),
   fromAddress: z.string().trim().min(3).max(300),
   toAddress: z.string().trim().min(3).max(300),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -33,14 +39,40 @@ export const statusSchema = z.object({
   status: z.enum(['confirmed', 'in_progress', 'cancelled']),
   version: z.number().int().positive(),
 });
+export const driverAssignmentSchema = z.object({
+  driverId: z.uuid().nullable(),
+  version: z.number().int().positive(),
+});
 export const quoteSchema = z.object({
   kind: z.enum(['provisional', 'final']),
   trips: z.number().int().min(1).max(20),
   customPrice: z.number().int().positive().max(10000000).nullable(),
   discount: z.number().int().min(0).max(10000000),
   notes: z.string().trim().max(2000),
+  extraLines: z
+    .array(
+      z.object({
+        label: z.string().trim().min(2).max(100),
+        quantity: z.number().int().min(1).max(100),
+        unitPrice: z.number().int().positive().max(10000000),
+      }),
+    )
+    .max(20)
+    .default([]),
   version: z.number().int().positive(),
 });
+export const driverSchema = z.object({
+  name: z.string().trim().min(2).max(100),
+  phone: z.string().trim().min(9).max(25),
+  photo: imageSchema.nullable(),
+  active: z.boolean(),
+  vehicleId: z.string().min(1).max(30).nullable(),
+});
+export const createDriverSchema = driverSchema.extend({
+  photo: imageSchema,
+  password: z.string().min(10, messages.utilisezAuMoins10Caracteres).max(128),
+});
+export const driverProfileSchema = driverSchema.pick({ name: true, phone: true, photo: true });
 export const catalogueSchema = z.object({
   vehicles: z
     .array(
@@ -51,8 +83,8 @@ export const catalogueSchema = z.object({
         height: z.string().trim().min(1).max(30),
         width: z.string().trim().min(1).max(30),
         wheelWidth: z.string().trim().min(1).max(30),
-        image: z.string().regex(/^\/assets\/(sprinter|trafic|master)-profil\.png$/),
-        interior: z.string().regex(/^\/assets\/(sprinter|trafic|master)-interieur\.png$/),
+        image: imageSchema,
+        interior: imageSchema,
         active: z.boolean().default(true),
         name: z.string().trim().min(2).max(100),
         prices: z.tuple([
@@ -96,5 +128,9 @@ export const catalogueSchema = z.object({
     labourPrice: z.number().int().min(0).max(1000000),
     assemblyPrice: z.number().int().min(0).max(1000000),
     businessPhone: z.string().regex(/^\+221[0-9]{9}$/),
+    businessName: z.string().trim().min(2).max(100),
+    businessAddress: z.string().trim().min(2).max(300),
+    invoiceFooter: z.string().trim().min(2).max(500),
+    invoiceLogo: imageSchema.nullable(),
   }),
 });

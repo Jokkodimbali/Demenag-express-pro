@@ -36,7 +36,7 @@ export function VehicleSelector({
             <span className="vehicle-check">
               {v.id === draft.vehicleId ? <Check size={14} /> : null}
             </span>
-            <img src={v.image} alt={v.name} loading="lazy" />
+            <img src={v.image} alt={v.name} loading="eager" />
             <strong>{v.name}</strong>
             <span>
               {v.volume} <span className="dot">·</span>

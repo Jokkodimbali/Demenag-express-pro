@@ -1,12 +1,10 @@
-import { ClipboardList, RefreshCw, Search, Settings2 } from 'lucide-react';
+import { ClipboardList, RefreshCw, Search } from 'lucide-react';
 import { useAdministration } from '../application/controllers/useAdministration';
+import { useDrivers } from '../application/controllers/useDrivers';
 import { BookingCard } from '../components/BookingCard';
 import { messages } from '../content/fr';
 import { statuses } from '../domain/format';
 import type { BookingStatus } from '../domain/model';
-import { Fleet } from './Fleet';
-import { Settings } from './Settings';
-import { Users } from './Users';
 export function Admin() {
   const {
     bookings,
@@ -14,8 +12,6 @@ export function Admin() {
     loading,
     error,
     setRetry,
-    tab,
-    setTab,
     filter,
     setFilter,
     query,
@@ -23,14 +19,13 @@ export function Admin() {
     visible,
     stats,
   } = useAdministration();
-
+  const { drivers } = useDrivers();
   return (
-    <section className="container workspace-page">
+    <>
       <div className="section-heading">
         <div>
-          <p className="eyebrow">{messages.espaceAdministrateur}</p>
-          <h1>{messages.administration}</h1>
-          <p>{messages.gerezLesReservationsEtAccompagnezVosClients}</p>
+          <h2>{messages.reservations}</h2>
+          <p>{messages.suivezEtTraitezLesDemandes}</p>
         </div>
         <button
           className="button secondary small"
@@ -47,7 +42,6 @@ export function Admin() {
             key={status}
             onClick={() => {
               setFilter(status as BookingStatus);
-              setTab('bookings');
             }}
           >
             <span>
@@ -58,85 +52,62 @@ export function Admin() {
           </button>
         ))}
       </div>
-      <div className="tabs admin-tabs">
-        <button className={tab === 'bookings' ? 'active' : ''} onClick={() => setTab('bookings')}>
-          <ClipboardList size={17} />
-          {messages.reservations}
-        </button>
-        <button className={tab === 'settings' ? 'active' : ''} onClick={() => setTab('settings')}>
-          <Settings2 size={17} />
-          {messages.tarifsEtParametres}
-        </button>
-        <button className={tab === 'fleet' ? 'active' : ''} onClick={() => setTab('fleet')}>
-          {messages.vehicules}
-        </button>
-        <button className={tab === 'users' ? 'active' : ''} onClick={() => setTab('users')}>
-          {messages.comptesEtAcces}
-        </button>
-      </div>
-      {tab === 'fleet' ? (
-        <Fleet />
-      ) : tab === 'users' ? (
-        <Users />
-      ) : tab === 'settings' ? (
-        <Settings />
-      ) : (
-        <>
-          <div className="admin-toolbar">
-            <div className="filter-buttons">
-              {(
-                ['all', 'pending', 'confirmed', 'in_progress', 'completed', 'cancelled'] as const
-              ).map((status) => (
-                <button
-                  key={status}
-                  className={filter === status ? 'active' : ''}
-                  onClick={() => setFilter(status)}
-                >
-                  {status === 'all' ? 'Toutes' : statuses[status]}
-                </button>
-              ))}
-            </div>
-            <div className="search-field">
-              <Search size={17} />
-              <input
-                aria-label={messages.rechercherUneReservation}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={messages.nomReferenceTelephone}
-              />
-            </div>
+      <>
+        <div className="admin-toolbar">
+          <div className="filter-buttons">
+            {(
+              ['all', 'pending', 'confirmed', 'in_progress', 'completed', 'cancelled'] as const
+            ).map((status) => (
+              <button
+                key={status}
+                className={filter === status ? 'active' : ''}
+                onClick={() => setFilter(status)}
+              >
+                {status === 'all' ? 'Toutes' : statuses[status]}
+              </button>
+            ))}
           </div>
-          {error && (
-            <p role="alert" className="alert error">
-              {error}
-            </p>
-          )}
-          {loading ? (
-            <p className="panel loading" role="status">
-              {messages.chargementDesReservations}
-            </p>
-          ) : visible.length === 0 ? (
-            <div className="empty-state panel">
-              <ClipboardList size={36} />
-              <h3>{messages.aucuneReservationAAfficher}</h3>
-              <p>{messages.lesNouvellesDemandesApparaitrontIci}</p>
-            </div>
-          ) : (
-            <div className="booking-list">
-              {visible.map((b) => (
-                <BookingCard
-                  key={b.id}
-                  admin
-                  booking={b}
-                  onChange={(next) =>
-                    setBookings((rows) => rows.map((r) => (r.id === next.id ? next : r)))
-                  }
-                />
-              ))}
-            </div>
-          )}
-        </>
-      )}
-    </section>
+          <div className="search-field">
+            <Search size={17} />
+            <input
+              aria-label={messages.rechercherUneReservation}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={messages.nomReferenceTelephone}
+            />
+          </div>
+        </div>
+        {error && (
+          <p role="alert" className="alert error">
+            {error}
+          </p>
+        )}
+        {loading ? (
+          <p className="panel loading" role="status">
+            {messages.chargementDesReservations}
+          </p>
+        ) : visible.length === 0 ? (
+          <div className="empty-state panel">
+            <ClipboardList size={36} />
+            <h3>{messages.aucuneReservationAAfficher}</h3>
+            <p>{messages.lesNouvellesDemandesApparaitrontIci}</p>
+          </div>
+        ) : (
+          <div className="booking-list">
+            {visible.map((b) => (
+              <BookingCard
+                key={b.id}
+                admin
+                drivers={drivers}
+                booking={b}
+                onChange={(next) =>
+                  setBookings((rows) => rows.map((r) => (r.id === next.id ? next : r)))
+                }
+              />
+            ))}
+          </div>
+        )}
+      </>
+    </>
   );
 }

@@ -232,7 +232,7 @@
   margin: 28px 0 20px;
   max-width: 100%;
 }
-.admin-tabs button {
+.admin-tabs a {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -319,10 +319,229 @@
 .settings-form > .button {
   justify-self: start;
 }
+.settings-tabs {
+  margin-top: 0;
+}
 .text-link {
   color: var(--yellow);
   background: transparent;
   border: 0;
   text-decoration: underline;
   font-size: inherit;
+}
+.admin-dashboard {
+  display: grid;
+  gap: 18px;
+}
+.revenue-grid > div {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  text-align: left;
+}
+.revenue-grid strong {
+  font-size: 22px;
+  color: var(--yellow);
+}
+.revenue-controls {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.revenue-controls > div:first-child {
+  min-width: 220px;
+}
+.revenue-date-filter {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.revenue-date-filter label {
+  width: 100%;
+}
+.revenue-date-filter input {
+  width: auto;
+}
+.revenue-card.provisional strong,
+.provisional {
+  color: #ffb454;
+}
+.revenue-card.definitive strong,
+.definitive {
+  color: #91dfaa;
+}
+.revenue-card.total strong {
+  color: var(--yellow);
+}
+.revenue-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.revenue-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.revenue-legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.booking-calendar {
+  overflow-x: auto;
+}
+.calendar-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.calendar-heading h2 {
+  margin: 0;
+  text-transform: capitalize;
+}
+.calendar-weekdays,
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+.calendar-weekdays span {
+  padding: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+.calendar-day {
+  min-height: 126px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  display: grid;
+  align-content: start;
+  gap: 5px;
+}
+.calendar-day > span {
+  font-size: 12px;
+}
+.calendar-day.selected {
+  outline: 1px solid var(--yellow);
+  outline-offset: -1px;
+}
+.calendar-date {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-weight: 800;
+  padding: 0;
+  cursor: pointer;
+}
+.calendar-revenue {
+  display: grid;
+  gap: 2px;
+  margin: 5px 0;
+  font-size: 9px;
+  font-weight: 800;
+}
+.daily-revenue .section-heading {
+  margin-bottom: 16px;
+}
+.daily-revenue .section-heading h2 {
+  font-size: 17px;
+}
+.daily-revenue .section-heading p {
+  color: var(--muted);
+  font-size: 12px;
+}
+.revenue-table > div {
+  display: grid;
+  grid-template-columns: 2fr 1.25fr 1.25fr 0.6fr;
+  gap: 14px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+.revenue-table-header {
+  color: var(--muted);
+  font-size: 10px !important;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.calendar-booking {
+  border: 0;
+  border-radius: 4px;
+  background: #30343a;
+  color: white;
+  padding: 4px;
+  font-size: 10px;
+  text-align: left;
+}
+.calendar-booking.confirmed {
+  background: #2274a5;
+}
+.calendar-booking.in_progress {
+  background: #bf7d00;
+}
+.calendar-booking.completed {
+  background: #287b52;
+}
+.calendar-booking.cancelled {
+  background: #7c3030;
+}
+.finance-row {
+  width: 100%;
+  border: 1px solid var(--line);
+  color: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  text-align: left;
+}
+.driver-management {
+  margin-top: 18px;
+}
+.driver-list {
+  display: grid;
+  gap: 8px;
+}
+
+.driver-profile-photo {
+  width: 88px;
+  height: 88px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 3px solid var(--orange);
+}
+
+.driver-assignment {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 13rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.driver-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid var(--line);
+  background: #1e2023;
+  color: inherit;
+  padding: 12px;
+  text-align: left;
+}
+.driver-row span {
+  display: grid;
+  gap: 3px;
+}
+.driver-row small {
+  color: var(--muted);
 }

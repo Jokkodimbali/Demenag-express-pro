@@ -1,5 +1,5 @@
 export const security = {
-  jsonLimit: '32kb',
+  jsonLimit: '6mb',
   session: { cookieName: 'dem_session', durationMs: 7 * 86400000, path: '/api' },
   csrf: {
     header: 'X-Requested-With',

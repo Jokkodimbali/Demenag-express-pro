@@ -1,4 +1,4 @@
-export type Role = 'client' | 'admin';
+export type Role = 'client' | 'admin' | 'driver';
 export type User = { id: string; name: string; phone: string; role: Role; active?: boolean };
 export type UserCredentials = User & { passwordHash: string };
 export type Point = [number, number];
@@ -16,6 +16,15 @@ export type Vehicle = {
   prices: [number, number, number];
 };
 export type BookingSlot = { label: string; startHour: number };
+export type Driver = {
+  id: string;
+  userId: string | null;
+  name: string;
+  phone: string;
+  photo: string | null;
+  active: boolean;
+  vehicleId: string | null;
+};
 export type BookingRules = {
   bookingsEnabled: boolean;
   maxAdvanceDays: number;
@@ -31,6 +40,10 @@ export type Settings = BookingRules & {
   labourPrice: number;
   assemblyPrice: number;
   businessPhone: string;
+  businessName: string;
+  businessAddress: string;
+  invoiceFooter: string;
+  invoiceLogo: string | null;
 };
 export type Catalogue = { vehicles: Vehicle[]; settings: Settings };
 export type Options = { labour: number; desk: number; wardrobe: number; bed: number };
@@ -64,6 +77,7 @@ export type Booking = {
   id: string;
   reference: string;
   userId: string;
+  driverId?: string | null;
   customerName: string;
   phone: string;
   vehicle: Vehicle;
@@ -86,6 +100,8 @@ export type Booking = {
 export type BookingInput = {
   vehicleId: string;
   routeId: string;
+  customerName: string;
+  customerPhone: string;
   fromAddress: string;
   toAddress: string;
   date: string;
@@ -100,5 +116,6 @@ export type QuoteInput = {
   customPrice: number | null;
   discount: number;
   notes: string;
+  extraLines: Array<{ label: string; quantity: number; unitPrice: number }>;
   version: number;
 };

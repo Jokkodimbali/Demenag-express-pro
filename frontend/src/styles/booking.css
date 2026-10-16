@@ -216,8 +216,9 @@
 }
 .vehicle-card img {
   width: 100%;
-  aspect-ratio: 1.48;
-  object-fit: cover;
+  aspect-ratio: 1.6;
+  object-fit: contain;
+  background: #30343a;
   border-radius: 7px;
 }
 .vehicle-card strong {

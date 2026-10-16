@@ -13,6 +13,7 @@ export function calculatePrice(
   trips = 1,
   customPrice: number | null = null,
   discount = 0,
+  extraLines: Array<{ label: string; quantity: number; unitPrice: number }> = [],
 ): Price {
   requireValue(
     Number.isInteger(trips) && trips >= 1 && trips <= settings.maxTrips,
@@ -33,7 +34,7 @@ export function calculatePrice(
     messages.prixPersonnaliseInvalide,
   );
   const tier = tierOf(distance, settings.distanceBounds);
-  const transport = tier === 3 ? customPrice : vehicle.prices[tier];
+  const transport = customPrice ?? (tier === 3 ? null : vehicle.prices[tier]);
   const lines =
     transport === null
       ? []
@@ -52,6 +53,22 @@ export function calculatePrice(
     [messages.menuisierLit, options.bed, settings.assemblyPrice],
   ] as [string, number, number][])
     if (quantity) lines.push({ label, quantity, unitPrice, total: quantity * unitPrice });
+  for (const line of extraLines) {
+    requireValue(
+      line.label.trim().length >= 2 &&
+        Number.isInteger(line.quantity) &&
+        line.quantity >= 1 &&
+        Number.isInteger(line.unitPrice) &&
+        line.unitPrice > 0,
+      messages.chargeSupplementaireInvalide,
+    );
+    lines.push({
+      label: line.label.trim(),
+      quantity: line.quantity,
+      unitPrice: line.unitPrice,
+      total: line.quantity * line.unitPrice,
+    });
+  }
   const subtotal = lines.reduce((sum, line) => sum + line.total, 0);
   requireValue(
     transport === null ? discount === 0 : discount <= subtotal,

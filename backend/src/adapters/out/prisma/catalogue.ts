@@ -29,4 +29,12 @@ export class PrismaCatalogue implements CatalogueRepository {
       this.db.parametreApplication.update({ where: { id: 'main' }, data: toSettings(settings) }),
     ]);
   }
+  async removeVehicle(id: string) {
+    const reservations = await this.db.reservation.count({ where: { vehiculeId: id } });
+    if (reservations) {
+      await this.db.vehicule.update({ where: { id }, data: { actif: false } });
+      return;
+    }
+    await this.db.vehicule.delete({ where: { id } });
+  }
 }

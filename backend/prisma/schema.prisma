@@ -12,6 +12,7 @@ datasource db {
 enum RoleUtilisateur {
   client
   administrateur @map("admin")
+  chauffeur      @map("driver")
 
   @@map("Role")
   @@schema("demenag")
@@ -38,6 +39,7 @@ model Utilisateur {
   actif               Boolean            @default(true) @map("active")
   sessions            SessionConnexion[]
   reservations        Reservation[]
+  profilChauffeur     Chauffeur?
 
   @@map("users")
   @@schema("demenag")
@@ -67,8 +69,26 @@ model Vehicule {
   actif               Boolean       @default(true) @map("active")
   tarifs              Int[]         @map("prices")
   reservations        Reservation[]
+  chauffeurs          Chauffeur[]
 
   @@map("vehicles")
+  @@schema("demenag")
+}
+
+model Chauffeur {
+  id         String    @id @default(uuid()) @db.Uuid
+  utilisateurId String? @unique @map("user_id") @db.Uuid
+  utilisateur Utilisateur? @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  nom        String    @map("name")
+  telephone  String    @unique @map("phone")
+  photo      String?   @map("photo")
+  actif      Boolean   @default(true) @map("active")
+  vehiculeId String?   @map("vehicle_id")
+  vehicule   Vehicule? @relation(fields: [vehiculeId], references: [id], onDelete: SetNull)
+  reservations Reservation[]
+
+  @@index([vehiculeId])
+  @@map("drivers")
   @@schema("demenag")
 }
 
@@ -77,6 +97,10 @@ model ParametreApplication {
   tarifManoeuvre      Int    @map("labour_price")
   tarifMontage        Int    @map("assembly_price")
   telephoneEntreprise String @map("business_phone")
+  nomEntreprise       String @default("Demenag Express") @map("business_name")
+  adresseEntreprise   String @default("Dakar, Sénégal") @map("business_address")
+  piedFacture         String @default("Merci pour votre confiance.") @map("invoice_footer")
+  logoFacture         String? @map("invoice_logo")
 
   reservationsOuvertes      Boolean  @default(true) @map("bookings_enabled")
   delaiMaximumJours         Int      @default(366) @map("max_advance_days")
@@ -110,6 +134,8 @@ model Reservation {
   reference          String            @unique
   vehiculeId         String            @map("vehicle_id")
   vehicule           Vehicule          @relation(fields: [vehiculeId], references: [id])
+  chauffeurId        String?           @map("driver_id") @db.Uuid
+  chauffeur          Chauffeur?        @relation(fields: [chauffeurId], references: [id], onDelete: SetNull)
   date               DateTime          @db.Date
   creneau            String            @map("time_slot")
   statut             StatutReservation @default(en_attente) @map("status")
@@ -122,6 +148,7 @@ model Reservation {
   @@unique([utilisateurId, identifiantDemande])
   @@index([utilisateurId, creeLe])
   @@index([statut, date])
+  @@index([chauffeurId, date])
   @@map("bookings")
   @@schema("demenag")
 }

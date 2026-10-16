@@ -65,6 +65,8 @@ try {
   await page.getByLabel('Téléphone', { exact: true }).fill(phone);
   await page.getByLabel('Mot de passe', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Créer mon compte', exact: true }).click();
+  await page.getByLabel('Nom', { exact: true }).fill(name);
+  await page.getByLabel('Téléphone', { exact: true }).fill(phone);
   await expect(page.getByRole('button', { name: 'Envoyer ma demande' })).toBeEnabled({
     timeout: 15000,
   });

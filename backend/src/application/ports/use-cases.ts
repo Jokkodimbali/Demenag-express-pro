@@ -3,6 +3,7 @@ import type {
   BookingInput,
   BookingStatus,
   Catalogue,
+  Driver,
   Options,
   Point,
   Price,
@@ -28,6 +29,7 @@ export interface MovingUseCases {
   list(user: User): Promise<Booking[]>;
   get(user: User, id: string): Promise<Booking>;
   status(user: User, id: string, next: BookingStatus, version: number): Promise<Booking>;
+  assignDriver(user: User, id: string, driverId: string | null, version: number): Promise<Booking>;
   quote(user: User, id: string, input: QuoteInput): Promise<Booking>;
 }
 export interface AdministrationUseCases {
@@ -38,4 +40,21 @@ export interface AdministrationUseCases {
 export interface CatalogueUseCases {
   get(): Promise<Catalogue>;
   update(actor: User, vehicles: Vehicle[], settings: Settings): Promise<void>;
+  removeVehicle(actor: User, id: string): Promise<void>;
+}
+export type DriverCreation = {
+  name: string;
+  phone: string;
+  password: string;
+  photo: string | null;
+  vehicleId: string | null;
+};
+export type DriverUpdate = Omit<Driver, 'userId'>;
+export interface DriverUseCases {
+  list(actor: User): Promise<Driver[]>;
+  create(actor: User, input: DriverCreation): Promise<Driver>;
+  update(actor: User, driver: DriverUpdate): Promise<Driver>;
+  profile(actor: User): Promise<Driver>;
+  updateProfile(actor: User, input: Pick<Driver, 'name' | 'phone' | 'photo'>): Promise<Driver>;
+  bookings(actor: User): Promise<Booking[]>;
 }

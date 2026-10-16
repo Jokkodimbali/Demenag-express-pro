@@ -29,11 +29,21 @@ export function Layout() {
               <>
                 <NavLink
                   className="button secondary small"
-                  to={user.role === 'admin' ? routes.administration : routes.account}
+                  to={
+                    user.role === 'admin'
+                      ? routes.administration
+                      : user.role === 'driver'
+                        ? routes.driverWorkspace
+                        : routes.account
+                  }
                 >
                   <UserRound size={16} />
                   <span>
-                    {user.role === 'admin' ? messages.labelAdministration : messages.monEspace}
+                    {user.role === 'admin'
+                      ? messages.labelAdministration
+                      : user.role === 'driver'
+                        ? messages.mesMissions
+                        : messages.monEspace}
                   </span>
                 </NavLink>
                 <button

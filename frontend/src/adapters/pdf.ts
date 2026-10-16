@@ -1,7 +1,11 @@
 import { messages } from '../content/fr';
 import { dateLabel, money } from '../domain/format';
-import type { Booking, Quote } from '../domain/model';
-export async function downloadQuote(booking: Booking, quote?: Quote) {
+import type { Booking, Quote, Settings } from '../domain/model';
+export async function downloadQuote(
+  booking: Booking,
+  quote: Quote | undefined,
+  settings: Settings,
+) {
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF();
   const price = quote?.price || booking.estimate;
@@ -31,8 +35,9 @@ export async function downloadQuote(booking: Booking, quote?: Quote) {
     y += 3;
   }
   doc.setTextColor(30, 32, 35);
-  paragraph('DEMENAG EXPRESS PRO MTH', 20, true);
-  paragraph(messages.dakarSenegal, 10);
+  if (settings.invoiceLogo) doc.addImage(settings.invoiceLogo, 'PNG', margin, y, 26, 18);
+  paragraph(settings.businessName, 20, true);
+  paragraph(settings.businessAddress, 10);
   doc.setFillColor(11, 107, 53);
   doc.rect(margin, y, width / 3, 2, 'F');
   doc.setFillColor(246, 215, 60);
@@ -76,12 +81,13 @@ export async function downloadQuote(booking: Booking, quote?: Quote) {
       ? messages.montantEtabliSurLaBaseDuNombreReel
       : messages.estimationProvisoireLaDisponibiliteEtLesConditionsSont,
   );
+  paragraph(settings.invoiceFooter);
   const pages = doc.getNumberOfPages();
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i);
     doc.setFontSize(8);
     doc.setTextColor(110);
-    doc.text(`Demenag Express · ${booking.reference} · ${i}/${pages}`, margin, 287);
+    doc.text(`${settings.businessName} · ${booking.reference} · ${i}/${pages}`, margin, 287);
   }
   doc.save(`${quote?.reference || booking.reference}.pdf`);
 }

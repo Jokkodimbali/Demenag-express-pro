@@ -79,6 +79,8 @@ export function useBookingForm() {
       const booking = await api.createBooking({
         vehicleId: draft.vehicleId,
         routeId: draft.route.id,
+        customerName: draft.customerName,
+        customerPhone: draft.customerPhone,
         fromAddress: draft.fromAddress,
         toAddress: draft.toAddress,
         date: draft.date,

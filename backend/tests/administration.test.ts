@@ -37,6 +37,7 @@ function fixture(count: number, currentActor: User = actor) {
     findByPhone: async () => null,
     create: async (user) => user,
     updatePassword: async () => {},
+    updateProfile: async () => {},
   };
   const service = new AdministrationService(
     repository,

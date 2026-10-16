@@ -115,6 +115,8 @@ test(
       const input = {
         vehicleId: 'sprinter',
         routeId: routed.body.id,
+        customerName: prefix + ' Client',
+        customerPhone: phone(0),
         fromAddress: 'Ouakam Dakar',
         toAddress: 'Almadies Dakar',
         date: tomorrow,

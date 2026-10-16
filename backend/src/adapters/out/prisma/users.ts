@@ -11,6 +11,16 @@ export class PrismaUsers implements UserRepository {
       data: { empreinteMotDePasse: passwordHash },
     });
   }
+  async updateProfile(userId: string, name: string, phone: string) {
+    try {
+      await this.db.utilisateur.update({
+        where: { id: userId },
+        data: { nom: name, telephone: phone },
+      });
+    } catch (error) {
+      conflict(error);
+    }
+  }
   async findByPhone(phone: string) {
     const row = await this.db.utilisateur.findUnique({ where: { telephone: phone } });
     return row ? fromUser(row) : null;

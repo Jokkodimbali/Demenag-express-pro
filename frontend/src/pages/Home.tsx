@@ -123,7 +123,7 @@ export function Home() {
                   extras={extras}
                   option={option}
                 />
-                <CustomerDetails user={user} draft={draft} setDraft={setDraft} />
+                <CustomerDetails draft={draft} setDraft={setDraft} />
               </div>
               <BookingSummary
                 catalogue={catalogue}

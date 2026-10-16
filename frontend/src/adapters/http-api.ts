@@ -63,8 +63,15 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
     users: () => request(httpRoutes.users),
     updateUser: (user) => request(`${httpRoutes.users}/${user.id}`, 'PUT', user),
     createUser: (user) => request(httpRoutes.users, 'POST', user),
+    drivers: () => request(httpRoutes.drivers),
+    createDriver: (input) => request(httpRoutes.drivers, 'POST', input),
+    updateDriver: (driver) => request(`${httpRoutes.drivers}/${driver.id}`, 'PUT', driver),
+    driverProfile: () => request(httpRoutes.driver.profile),
+    updateDriverProfile: (input) => request(httpRoutes.driver.profile, 'PUT', input),
+    driverBookings: () => request(httpRoutes.driver.bookings),
     catalogue: () => request(httpRoutes.catalogue),
     updateCatalogue: (value) => request(httpRoutes.catalogue, 'PUT', value),
+    removeVehicle: (id) => request(`${httpRoutes.vehicles}/${id}`, 'DELETE'),
     me: () => request(httpRoutes.authentication.current),
     login: (phone, password) =>
       request(httpRoutes.authentication.login, 'POST', { phone, password }),
@@ -76,6 +83,8 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
     createBooking: (input) => request(httpRoutes.bookings, 'POST', input),
     status: (id, status, version) =>
       request(`${httpRoutes.bookings}/${id}/status`, 'PATCH', { status, version }),
+    assignDriver: (id, driverId, version) =>
+      request(`${httpRoutes.bookings}/${id}/driver`, 'PATCH', { driverId, version }),
     quote: (id, input) => request(`${httpRoutes.bookings}/${id}/quotes`, 'POST', input),
     route: (from, to) => request(httpRoutes.maps.route, 'POST', { from, to }),
     search: (query) => request(`${httpRoutes.maps.search}?q=${encodeURIComponent(query)}`),

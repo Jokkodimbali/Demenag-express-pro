@@ -1,8 +1,15 @@
-import type { BookingSlot, Settings, UserCredentials, Vehicle } from '../../../domain/model.js';
+import type {
+  BookingSlot,
+  Driver,
+  Settings,
+  UserCredentials,
+  Vehicle,
+} from '../../../domain/model.js';
 import type {
   ParametreApplication,
   Utilisateur,
   Vehicule,
+  Chauffeur,
 } from '../../../generated/prisma/client.js';
 export const fromUser = (row: Utilisateur): UserCredentials => ({
   id: row.id,
@@ -10,7 +17,7 @@ export const fromUser = (row: Utilisateur): UserCredentials => ({
   phone: row.telephone,
   passwordHash: row.empreinteMotDePasse,
   active: row.actif,
-  role: row.role === 'administrateur' ? 'admin' : 'client',
+  role: row.role === 'administrateur' ? 'admin' : row.role === 'chauffeur' ? 'driver' : 'client',
 });
 export const toUser = (value: UserCredentials) => ({
   id: value.id,
@@ -18,7 +25,12 @@ export const toUser = (value: UserCredentials) => ({
   telephone: value.phone,
   empreinteMotDePasse: value.passwordHash,
   actif: value.active,
-  role: value.role === 'admin' ? ('administrateur' as const) : ('client' as const),
+  role:
+    value.role === 'admin'
+      ? ('administrateur' as const)
+      : value.role === 'driver'
+        ? ('chauffeur' as const)
+        : ('client' as const),
 });
 export const fromVehicle = (row: Vehicule): Vehicle => ({
   id: row.id,
@@ -46,11 +58,33 @@ export const toVehicle = (value: Vehicle) => ({
   volume: value.volume,
   image: value.image,
 });
+export const fromDriver = (row: Chauffeur): Driver => ({
+  id: row.id,
+  userId: row.utilisateurId,
+  name: row.nom,
+  phone: row.telephone,
+  photo: row.photo,
+  active: row.actif,
+  vehicleId: row.vehiculeId,
+});
+export const toDriver = (value: Driver) => ({
+  id: value.id,
+  utilisateurId: value.userId,
+  nom: value.name,
+  telephone: value.phone,
+  photo: value.photo,
+  actif: value.active,
+  vehiculeId: value.vehicleId,
+});
 export const fromSettings = (row: ParametreApplication): Settings => ({
   distanceBounds: row.bornesDistance as [number, number, number],
   labourPrice: row.tarifManoeuvre,
   assemblyPrice: row.tarifMontage,
   businessPhone: row.telephoneEntreprise,
+  businessName: row.nomEntreprise,
+  businessAddress: row.adresseEntreprise,
+  invoiceFooter: row.piedFacture,
+  invoiceLogo: row.logoFacture,
   bookingsEnabled: row.reservationsOuvertes,
   maxAdvanceDays: row.delaiMaximumJours,
   minNoticeHours: row.preavisReservationHeures,
@@ -65,6 +99,10 @@ export const toSettings = (value: Settings) => ({
   tarifManoeuvre: value.labourPrice,
   tarifMontage: value.assemblyPrice,
   telephoneEntreprise: value.businessPhone,
+  nomEntreprise: value.businessName,
+  adresseEntreprise: value.businessAddress,
+  piedFacture: value.invoiceFooter,
+  logoFacture: value.invoiceLogo,
   reservationsOuvertes: value.bookingsEnabled,
   delaiMaximumJours: value.maxAdvanceDays,
   preavisReservationHeures: value.minNoticeHours,

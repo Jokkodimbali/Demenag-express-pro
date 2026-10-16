@@ -3,7 +3,13 @@ import { z } from 'zod';
 import type { Access } from './access.js';
 import { getActor } from './actor.js';
 import type { Dependencies } from './dependencies.js';
-import { bookingSchema, estimateSchema, quoteSchema, statusSchema } from './schemas.js';
+import {
+  bookingSchema,
+  driverAssignmentSchema,
+  estimateSchema,
+  quoteSchema,
+  statusSchema,
+} from './schemas.js';
 import { apiRoutes } from './routes.js';
 export function registerBookingRoutes(
   app: Express,
@@ -28,6 +34,17 @@ export function registerBookingRoutes(
     const p = statusSchema.parse(req.body);
     res.json(
       await deps.moving.status(getActor(res), z.uuid().parse(req.params.id), p.status, p.version),
+    );
+  });
+  app.patch(`${apiRoutes.bookings}/:id/driver`, authenticate, admin, async (req, res) => {
+    const p = driverAssignmentSchema.parse(req.body);
+    res.json(
+      await deps.moving.assignDriver(
+        getActor(res),
+        z.uuid().parse(req.params.id),
+        p.driverId,
+        p.version,
+      ),
     );
   });
   app.post(`${apiRoutes.bookings}/:id/quotes`, authenticate, admin, async (req, res) =>

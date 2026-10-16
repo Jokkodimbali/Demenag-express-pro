@@ -3,6 +3,7 @@ import {
   PrismaAdministration,
   PrismaBookings,
   PrismaCatalogue,
+  PrismaDrivers,
   PrismaRoutes,
   PrismaSessions,
   PrismaUsers,
@@ -12,10 +13,13 @@ import type { RoutingProvider } from './application/ports/index.js';
 import { AdministrationService } from './application/services/administration.js';
 import { AuthService } from './application/services/auth.js';
 import { CatalogueService } from './application/services/catalogue.js';
+import { DriverService } from './application/services/drivers.js';
 import { MovingService } from './application/services/moving.js';
 import type { PrismaClient } from './generated/prisma/client.js';
 export function compose(db: PrismaClient, routing: RoutingProvider) {
   const catalogue = new PrismaCatalogue(db);
+  const bookings = new PrismaBookings(db);
+  const drivers = new PrismaDrivers(db);
   const auth = new AuthService(
     new PrismaUsers(db),
     new PrismaSessions(db),
@@ -25,14 +29,16 @@ export function compose(db: PrismaClient, routing: RoutingProvider) {
     ids,
   );
   const moving = new MovingService(
-    new PrismaBookings(db),
+    bookings,
     catalogue,
     new PrismaRoutes(db),
     routing,
+    drivers,
     clock,
     ids,
   );
   return {
+    drivers: new DriverService(drivers, new PrismaUsers(db), bookings, new ScryptPasswords(), ids),
     administration: new AdministrationService(
       new PrismaAdministration(db),
       new PrismaUsers(db),

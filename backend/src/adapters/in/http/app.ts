@@ -4,6 +4,7 @@ import { createAccess } from './access.js';
 import { registerAdminRoutes } from './admin-routes.js';
 import { registerAuthRoutes } from './auth-routes.js';
 import { registerBookingRoutes } from './booking-routes.js';
+import { registerDriverRoutes } from './driver-routes.js';
 import type { Dependencies } from './dependencies.js';
 import { registerErrorHandler } from './error-handler.js';
 import { registerMapRoutes } from './map-routes.js';
@@ -27,6 +28,7 @@ export function createApp(deps: Dependencies) {
   registerMapRoutes(app, deps);
   registerBookingRoutes(app, deps, access);
   registerAdminRoutes(app, deps, access);
+  registerDriverRoutes(app, deps, access);
   app.use((_req, res) => res.status(404).json({ message: 'Route introuvable.' }));
   registerErrorHandler(app);
   return app;

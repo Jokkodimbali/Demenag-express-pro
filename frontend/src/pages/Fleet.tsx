@@ -4,7 +4,7 @@ import { fields } from '../content/forms/fleet';
 import { messages } from '../content/fr';
 
 export function Fleet() {
-  const { catalogue, editing, setEditing, busy, error, setError, save } = useFleet();
+  const { catalogue, editing, setEditing, busy, error, setError, save, remove } = useFleet();
   if (!catalogue) return null;
   return (
     <div className="panel">
@@ -46,6 +46,13 @@ export function Fleet() {
               {messages.modifier}
               {v.name}
             </button>
+            <button
+              className="button text danger small"
+              disabled={busy}
+              onClick={() => void remove(v)}
+            >
+              {messages.retirer}
+            </button>
           </div>
         ))}
       </div>
@@ -67,6 +74,26 @@ export function Fleet() {
                   />
                 </div>
               ))}
+            </div>
+            <div className="field-pair">
+              <div>
+                <label htmlFor="vehicle-image">{messages.imageExterieure}</label>
+                <input
+                  id="vehicle-image"
+                  name="image"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                />
+              </div>
+              <div>
+                <label htmlFor="vehicle-interior">{messages.imageInterieure}</label>
+                <input
+                  id="vehicle-interior"
+                  name="interior"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                />
+              </div>
             </div>
             <label className="checkbox-label">
               <input type="checkbox" name="active" defaultChecked={editing.active !== false} />

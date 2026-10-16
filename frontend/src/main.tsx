@@ -7,9 +7,9 @@ import type { QuoteExporter } from './application/ports';
 import { AppRoutes } from './routing/AppRoutes';
 import './styles.css';
 const api = createHttpApi();
-const exportQuote: QuoteExporter = async (booking, quote) => {
+const exportQuote: QuoteExporter = async (booking, quote, settings) => {
   const { downloadQuote } = await import('./adapters/pdf');
-  await downloadQuote(booking, quote);
+  await downloadQuote(booking, quote, settings);
 };
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

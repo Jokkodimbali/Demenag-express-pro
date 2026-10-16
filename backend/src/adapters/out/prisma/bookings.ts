@@ -11,10 +11,19 @@ export class PrismaBookings implements BookingRepository {
     const rows = await this.db.reservation.findMany({
       where: userId ? { utilisateurId: userId } : undefined,
       orderBy: { creeLe: 'desc' },
-      take: 200,
+      take: userId ? 200 : undefined,
       select: { donnees: true },
     });
     return rows.map((r) => r.donnees as unknown as Booking);
+  }
+  async listForDriver(driverId: string) {
+    const rows = await this.db.reservation.findMany({
+      where: { chauffeurId: driverId },
+      orderBy: { creeLe: 'desc' },
+      take: 200,
+      select: { donnees: true },
+    });
+    return rows.map((row) => row.donnees as unknown as Booking);
   }
   async find(id: string) {
     const row = await this.db.reservation.findUnique({ where: { id }, select: { donnees: true } });
@@ -53,7 +62,12 @@ export class PrismaBookings implements BookingRepository {
       return await this.db.$transaction(async (tx) => {
         const result = await tx.reservation.updateMany({
           where: { id: booking.id, version: expectedVersion },
-          data: { donnees: json(next), statut: toStatus[next.status], version: { increment: 1 } },
+          data: {
+            donnees: json(next),
+            statut: toStatus[next.status],
+            chauffeurId: next.driverId ?? null,
+            version: { increment: 1 },
+          },
         });
         if (!result.count)
           throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
