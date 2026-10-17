@@ -22,7 +22,9 @@ export function readEnv() {
             !url.hash
           );
         })
-        .default('http://localhost:5173'),
+        .default(
+          process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:5173',
+        ),
       OSRM_URL: z.url().default('https://router.project-osrm.org'),
       NOMINATIM_URL: z.url().default('https://nominatim.openstreetmap.org'),
       MAPS_USER_AGENT: z.string().default('DemenagExpress/1.0'),

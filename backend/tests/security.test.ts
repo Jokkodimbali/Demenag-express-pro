@@ -108,3 +108,29 @@ test('HTTP : authentification, rôle, CSRF, en-têtes et limitation de fréquenc
   for (let i = 0; i < 30; i++) assert.equal((await request(app).get('/api/limited')).status, 200);
   assert.equal((await request(app).get('/api/limited')).status, 429);
 });
+
+test('HTTP : le domaine Vercel du déploiement est autorisé en production', async () => {
+  const previous = process.env.VERCEL_URL;
+  process.env.VERCEL_URL = 'demenag-preview.vercel.app';
+  try {
+    const app = express();
+    registerSecurityMiddleware(app, { origin: 'https://demenag.example', production: true });
+    app.post('/api/check', (_req, res) => res.json({ ok: true }));
+    const response = await request(app)
+      .post('/api/check')
+      .set('Origin', 'https://demenag-preview.vercel.app')
+      .set('X-Requested-With', 'DemenagExpress');
+    assert.equal(response.status, 200);
+    assert.equal(
+      response.headers['access-control-allow-origin'],
+      'https://demenag-preview.vercel.app',
+    );
+    assert.equal(
+      (await request(app).post('/api/check').set('Origin', 'https://foreign.example')).status,
+      403,
+    );
+  } finally {
+    if (previous === undefined) delete process.env.VERCEL_URL;
+    else process.env.VERCEL_URL = previous;
+  }
+});

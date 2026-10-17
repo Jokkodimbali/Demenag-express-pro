@@ -14,6 +14,8 @@ export function registerSecurityMiddleware(
   if (deps.production) app.set('trust proxy', 1);
   app.use(helmet());
   const origins = [deps.origin];
+  if (deps.production && /^[a-z0-9.-]+\.vercel\.app$/.test(process.env.VERCEL_URL ?? ''))
+    origins.push(`https://${process.env.VERCEL_URL}`);
   if (!deps.production && new URL(deps.origin).hostname === 'localhost')
     origins.push(deps.origin.replace('localhost', '127.0.0.1'));
   app.use(cors({ origin: origins, credentials: true }));
