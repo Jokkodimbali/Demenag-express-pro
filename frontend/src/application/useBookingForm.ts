@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { messages } from '../content/fr';
 import { tierLabels } from '../domain/format';
 import type { Booking, Options, Price } from '../domain/model';
@@ -10,6 +10,7 @@ export function useBookingForm() {
   const { catalogue, loading, error, reload, api, user, draft, setDraft } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
+  const [params] = useSearchParams();
   const [price, setPrice] = useState<Price | null>(null),
     [estimating, setEstimating] = useState(false),
     [estimateError, setEstimateError] = useState(''),
@@ -19,6 +20,10 @@ export function useBookingForm() {
   const submitLock = useRef(false);
   const tiers = tierLabels(catalogue?.settings.distanceBounds);
   const selected = catalogue?.vehicles.find((v) => v.id === draft.vehicleId);
+  const administrativeQuote = user?.role === 'admin' && params.get('newQuote') === '1';
+  useEffect(() => {
+    if (administrativeQuote) setDraft(blankDraft(catalogue ?? undefined));
+  }, [administrativeQuote, catalogue, setDraft]);
   useEffect(() => {
     if (location.hash === '#reserver' && !loading)
       document.getElementById('reserver')?.scrollIntoView({ behavior: 'smooth' });
@@ -89,8 +94,14 @@ export function useBookingForm() {
         notes: draft.notes,
         requestId: draft.requestId,
       });
-      setDone(booking);
       setDraft(blankDraft());
+      if (administrativeQuote) {
+        navigate(
+          `${routes.administrationBookings}?q=${booking.reference}&detail=${booking.id}&edit=quote`,
+        );
+        return;
+      }
+      setDone(booking);
       document.getElementById('reserver')?.scrollIntoView({ behavior: 'smooth' });
     } catch (e) {
       setSubmitError(errorMessage(e));
@@ -134,5 +145,6 @@ export function useBookingForm() {
     submit,
     option,
     extras,
+    administrativeQuote,
   };
 }

@@ -1,5 +1,26 @@
 // Catalogue des textes français : interface et messages, sans logique métier.
+import type { BookingStatus } from '../model.js';
+
+const reservationStatusLabel: Record<BookingStatus, string> = {
+  pending: 'en attente de confirmation',
+  confirmed: 'confirmée',
+  in_progress: 'en cours de déménagement',
+  completed: 'terminée',
+  cancelled: 'annulée',
+};
+
 export const messages = {
+  notificationNouvelleReservation: (
+    reference: string,
+    customer: string,
+    date: string,
+    slot: string,
+  ) =>
+    `La réservation ${reference} de ${customer}, prévue le ${date} (${slot}), attend votre confirmation.`,
+  notificationStatutReservation: (reference: string, status: BookingStatus) =>
+    `La réservation ${reference} est maintenant ${reservationStatusLabel[status]}.`,
+  notificationDevisDisponible: (reference: string) =>
+    `Votre devis pour la réservation ${reference} est disponible dans votre espace.`,
   tropDeTentativesReessayezDans15Minutes: 'Trop de tentatives. Réessayez dans 15 minutes.',
   connectezVousPourContinuer: 'Connectez-vous pour continuer.',
   baseDeDonneesIndisponible: 'Base de données indisponible.',

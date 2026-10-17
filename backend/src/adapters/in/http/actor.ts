@@ -7,7 +7,7 @@ const actorSchema = z.object({
   id: z.uuid(),
   name: z.string(),
   phone: z.string(),
-  role: z.enum(['client', 'admin']),
+  role: z.enum(['client', 'admin', 'driver']),
   active: z.boolean().optional(),
 });
 export function getActor(response: Response): User {

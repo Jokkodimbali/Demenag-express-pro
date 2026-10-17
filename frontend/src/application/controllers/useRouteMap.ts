@@ -1,6 +1,6 @@
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { mapConfiguration } from '../../config/maps';
 import { messages } from '../../content/fr';
 import type { Point } from '../../domain/model';
@@ -33,6 +33,7 @@ export function useRouteMap() {
   activeRef.current = active;
   const routeRequest = useRef(0),
     searchRequest = useRef(0);
+  const { from, to } = draft;
   const setPointRef = useRef<(side: Side, point: Point, label?: string) => void>(() => {});
   setPointRef.current = (side, point, label) => {
     routeRequest.current++;
@@ -49,6 +50,23 @@ export function useRouteMap() {
     }));
     if (side === 'from') setActive('to');
   };
+  const calculateRoute = useCallback(
+    async (from: Point, to: Point) => {
+      const id = ++routeRequest.current;
+      setBusy(true);
+      setError('');
+      setDraft((d) => ({ ...d, route: null }));
+      try {
+        const result = await api.route(from, to);
+        if (id === routeRequest.current) setDraft((d) => ({ ...d, route: result }));
+      } catch (e) {
+        if (id === routeRequest.current) setError(errorMessage(e));
+      } finally {
+        if (id === routeRequest.current) setBusy(false);
+      }
+    },
+    [api, setDraft],
+  );
   useEffect(() => {
     if (!host.current) return;
     const routeCounter = routeRequest;
@@ -79,7 +97,6 @@ export function useRouteMap() {
       searchCounter.current++;
     };
   }, []);
-  const { from, to } = draft;
   useEffect(() => {
     if (!map.current) return;
     for (const side of ['from', 'to'] as const) {
@@ -117,6 +134,9 @@ export function useRouteMap() {
       map.current.fitBounds(line.current.getBounds(), { padding: [35, 35] });
     }
   }, [draft.route]);
+  useEffect(() => {
+    if (from && to) void calculateRoute(from, to);
+  }, [calculateRoute, from, to]);
   useEffect(() => {
     if (!full) return;
     const onKey = (e: KeyboardEvent) => {
@@ -159,20 +179,8 @@ export function useRouteMap() {
       if (id === searchRequest.current) setSearching(null);
     }
   }
-  async function route() {
-    if (!draft.from || !draft.to) return;
-    const id = ++routeRequest.current;
-    setBusy(true);
-    setError('');
-    setDraft((d) => ({ ...d, route: null }));
-    try {
-      const result = await api.route(draft.from, draft.to);
-      if (id === routeRequest.current) setDraft((d) => ({ ...d, route: result }));
-    } catch (e) {
-      if (id === routeRequest.current) setError(errorMessage(e));
-    } finally {
-      if (id === routeRequest.current) setBusy(false);
-    }
+  function route() {
+    if (draft.from && draft.to) void calculateRoute(draft.from, draft.to);
   }
   function locate() {
     if (!navigator.geolocation) {

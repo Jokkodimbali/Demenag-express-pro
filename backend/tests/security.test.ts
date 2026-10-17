@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import express from 'express';
 import request from 'supertest';
 import { createAccess } from '../src/adapters/in/http/access.js';
+import { getActor } from '../src/adapters/in/http/actor.js';
 import { registerSecurityMiddleware } from '../src/adapters/in/http/security-middleware.js';
 import { registerErrorHandler } from '../src/adapters/in/http/error-handler.js';
 import {
@@ -23,6 +24,7 @@ const administrator: User = {
   id: '8f434967-4011-4a6d-a5a8-2ba225b4682c',
   role: 'admin',
 };
+const driver: User = { ...client, role: 'driver' };
 test('Les policies refusent les comptes inactifs et les accès aux réservations d’autrui', () => {
   assert.throws(() => requireActiveUser(null));
   assert.throws(() => requireAdministrator(client));
@@ -44,13 +46,18 @@ test('HTTP : authentification, rôle, CSRF, en-têtes et limitation de fréquenc
           ? administrator
           : token === 'client'
             ? client
-            : token === 'inactive'
-              ? { ...administrator, active: false }
-              : null,
+            : token === 'driver'
+              ? driver
+              : token === 'inactive'
+                ? { ...administrator, active: false }
+                : null,
     },
   });
   app.post('/api/admin/test', access.authenticate, access.admin, (_req, res) =>
     res.json({ ok: true }),
+  );
+  app.get('/api/driver/test', access.authenticate, (_req, res) =>
+    res.json({ role: getActor(res).role }),
   );
   app.get('/api/limited', access.authLimiter, (_req, res) => res.json({ ok: true }));
   registerErrorHandler(app);
@@ -90,6 +97,11 @@ test('HTTP : authentification, rôle, CSRF, en-têtes et limitation de fréquenc
     .set(headers)
     .set('Cookie', 'dem_session=admin');
   assert.equal(allowed.status, 200);
+  const driverResponse = await request(app)
+    .get('/api/driver/test')
+    .set('Cookie', 'dem_session=driver');
+  assert.equal(driverResponse.status, 200);
+  assert.equal(driverResponse.body.role, 'driver');
   assert.equal(allowed.headers['x-powered-by'], undefined);
   assert.equal(allowed.headers['cache-control'], 'no-store');
   assert.ok(allowed.headers['content-security-policy']);

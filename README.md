@@ -286,7 +286,7 @@ TypeScript fonctionne en mode strict. Le lint interdit `any` explicite et les co
 
 La vérification TypeScript couvre aussi les tests, les scripts et le seed du backend (`tsconfig.check.json`). Les tests HTTP de sécurité ouvrent uniquement un serveur local éphémère et ne nécessitent pas Neon. Ils vérifient notamment les rôles, comptes inactifs, origines refusées, l’en-tête CSRF, les en-têtes de sécurité et la limitation des requêtes.
 
-En production, `FRONTEND_ORIGIN` doit être une origine HTTPS sans chemin ni identifiants. La limitation des requêtes reste en mémoire pour une seule instance ; un déploiement distribué nécessite un stockage partagé. Le proxy de confiance n’est pas activé implicitement. Ces protections ne remplacent pas un audit de sécurité complet.
+En production, `FRONTEND_ORIGIN` doit être une origine HTTPS sans chemin ni identifiants. La limitation des requêtes reste en mémoire pour une seule instance ; un déploiement distribué nécessite un stockage partagé. En production, Express fait confiance à un seul proxy en amont pour lire l’adresse client transmise par Render. Ces protections ne remplacent pas un audit de sécurité complet.
 
 ### Vérification des textes et accès — 16 octobre 2026
 
@@ -315,3 +315,43 @@ L’administration comprend un planning mensuel interactif alimenté par les ré
 Les migrations `202610160004_chauffeurs` et `202610160005_facture_personnalisee` ajoutent les chauffeurs affectables aux véhicules et les paramètres de facture. Les images de véhicules et le logo de facture peuvent être téléversés depuis l’administration ; ils sont conservés dans les données applicatives après validation de type et de taille. Retirer un véhicule sans historique le supprime ; s’il possède des réservations, il est désactivé afin de préserver les devis et réservations passés.
 
 Vérification du 16 octobre 2026 après séparation des couches : `npm run check` et `npm run build` réussis, 100 fichiers contrôlés et 15 tests locaux réussis. Le test d’intégration API/Prisma/Neon a été exécuté séparément avec succès. Le parcours Chrome a validé les largeurs 1 440/390/320 px, l’inscription, le brouillon, le trajet OSRM, la réservation persistée, l’accès administrateur, la confirmation, le devis final, le PDF et le suivi client. Les serveurs temporaires de vérification ont été arrêtés.
+
+## Conteneurs Docker et déploiement Render / Vercel
+
+Le dépôt est un monorepo npm. Les deux Dockerfiles se construisent **depuis la racine du dépôt** afin de disposer de `package-lock.json` et des workspaces :
+
+```bash
+docker build -f backend/Dockerfile -t demenag-backend .
+docker build -f frontend/Dockerfile -t demenag-frontend .
+```
+
+L’image backend compile TypeScript et génère le client Prisma. L’image frontend compile Vite puis sert `dist/` avec Nginx ; elle relaie `/api/` vers le service Docker nommé `backend`. Le rechargement direct d’une page React Router est servi par `index.html`. Les fichiers `.env`, les dépendances locales et les fichiers de test ne sont pas envoyés dans le contexte Docker. Les images n’intègrent aucun mot de passe ni URL de base de données.
+
+Pour exécuter les deux conteneurs localement, conserver un `backend/.env` renseigné, puis appliquer les migrations et le seed **sur la base choisie** avant le lancement :
+
+```bash
+npm run db:migrate
+npm run db:seed
+docker compose up --build
+```
+
+Ouvrir `http://localhost:8080`. Le backend est aussi accessible sur `http://localhost:4000`. Compose force `FRONTEND_ORIGIN=http://localhost:8080`, car Nginx et l’API sont publiés sous cette origine. `docker compose config` permet de contrôler la configuration ; sa sortie peut contenir les valeurs de `backend/.env` et ne doit pas être partagée.
+
+### Backend sur Render
+
+Le fichier `render.yaml` crée un service web Docker depuis `backend/Dockerfile`, avec un contrôle de santé sur `/api/ready`. Render utilisera le `PORT` qu’il fournit ; le backend le lit déjà à l’exécution. Avant chaque mise en ligne, `preDeployCommand` exécute les migrations Prisma avec la connexion directe. Le démarrage échoue si la base ou son catalogue initial est indisponible.
+
+1. Créer une branche/base PostgreSQL dédiée à la production. Récupérer son URL **pooled** pour `DATABASE_URL` et son URL **directe** pour `DATABASE_URL_UNPOOLED` ; les deux doivent désigner la même base et garder `sslmode=verify-full`.
+2. Créer un Blueprint Render à partir de `render.yaml`. Renseigner dans Render les valeurs demandées pour `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `FRONTEND_ORIGIN` et `MAPS_USER_AGENT`. `FRONTEND_ORIGIN` doit être exactement l’origine HTTPS finale du frontend, par exemple `https://mon-site.vercel.app`, sans chemin ni slash final. Ne pas mettre ces secrets dans Git.
+3. Après la première migration, initialiser le catalogue sur cette base avec `npm run db:seed -w backend` depuis un environnement d’administration configuré avec les mêmes URL. Le seed est prévu pour être relancé, mais ne le faire qu’après avoir vérifié sa cible. Créer ensuite le premier administrateur avec `npm run admin:create -w backend` et les variables `ADMIN_NAME`, `ADMIN_PHONE`, `ADMIN_PASSWORD` définies temporairement dans cet environnement. Retirer le mot de passe de la configuration après création. Ne pas lancer ces opérations de données automatiquement à chaque déploiement.
+4. Vérifier `https://<service>.onrender.com/api/ready` (HTTP 200) et `/api/catalogue`. Le premier déploiement peut ne pas atteindre l’état prêt avant l’initialisation du catalogue ; dans ce cas, réaliser l’étape 3 puis redéployer.
+
+### Frontend sur Vercel
+
+Créer un projet Vercel depuis le même dépôt avec **Root Directory = `frontend`**, framework Vite. Le fichier `frontend/vercel.mjs` configure le build `npm run build`, la sortie `dist`, la réécriture `/api/*` vers Render et le rechargement des routes React Router. Définir la variable Vercel `RENDER_API_ORIGIN` avec l’origine HTTPS de Render, par exemple `https://demenag-api.onrender.com`, sans chemin ni slash final. Le build échoue volontairement si cette variable manque ou n’est pas une origine HTTPS valide. Laisser `VITE_API_URL` absent ou égal à `/api` ; il ne doit pas contenir une URL de base de données ni pointer directement vers Render.
+
+La réécriture fait passer API, cookies de session HTTP-only et flux de notifications par le domaine Vercel. Elle évite une session dépendante des cookies tiers du navigateur. Pour les déploiements Preview, utiliser une origine frontend autorisée par le backend ; `FRONTEND_ORIGIN` n’accepte aujourd’hui qu’une seule origine principale, donc les previews Vercel ne pourront pas effectuer les mutations authentifiées si leur domaine change. Mettre à jour `FRONTEND_ORIGIN` si le domaine de production Vercel change, puis redéployer Render. Une modification de `RENDER_API_ORIGIN` nécessite un nouveau déploiement Vercel.
+
+Après les deux déploiements, vérifier depuis le **domaine Vercel** : `/api/ready`, `/api/catalogue`, la connexion, `/api/auth/me`, l’espace chauffeur ou administrateur, puis le flux `/api/notifications/stream`. L’ouverture directe de `/connexion` doit afficher l’application. Le proxy SSE peut être soumis aux limites de durée de connexion de la plateforme ; contrôler sa reconnexion après fermeture.
+
+Les services publics OSRM et Nominatim ont des limites d’utilisation : configurer `OSRM_URL`, `NOMINATIM_URL` et `MAPS_USER_AGENT` dans Render si le trafic devient soutenu. Les notifications sont actuellement diffusées en mémoire du processus : avec plusieurs instances Render, les événements ne seront pas partagés entre instances sans transport commun.

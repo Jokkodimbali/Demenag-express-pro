@@ -1,3 +1,4 @@
+import { FilePlus2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAdministration } from '../application/controllers/useAdministration';
 import { DefinitiveQuotes } from '../components/AdministrationDashboard';
@@ -14,6 +15,15 @@ export function AdminFinance() {
           <h2>{messages.devisEtFactures}</h2>
           <p>{messages.financeDescription}</p>
         </div>
+        <button
+          className="button primary"
+          onClick={() =>
+            navigate({ pathname: routes.home, search: '?newQuote=1', hash: '#reserver' })
+          }
+        >
+          <FilePlus2 size={17} />
+          {messages.nouveauDevisClient}
+        </button>
       </div>
       {error ? (
         <p className="alert error" role="alert">
@@ -26,7 +36,12 @@ export function AdminFinance() {
         <DefinitiveQuotes
           bookings={bookings}
           onSelect={(booking) =>
-            navigate(`${routes.administrationBookings}?q=${booking.reference}`)
+            navigate(`${routes.administrationBookings}?q=${booking.reference}&detail=${booking.id}`)
+          }
+          onEdit={(booking) =>
+            navigate(
+              `${routes.administrationBookings}?q=${booking.reference}&detail=${booking.id}&edit=quote`,
+            )
           }
         />
       )}

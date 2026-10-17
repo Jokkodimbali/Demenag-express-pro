@@ -71,10 +71,11 @@ export class MovingService implements MovingUseCases {
       input.routeId,
       input.options,
     );
-    requireValue(
-      settings.bookingsEnabled !== false,
-      messages.lesReservationsSontTemporairementFermees,
-    );
+    if (user.role !== 'admin')
+      requireValue(
+        settings.bookingsEnabled !== false,
+        messages.lesReservationsSontTemporairementFermees,
+      );
     validateDate(input.date, input.timeSlot, this.clock.now(), settings);
     const id = this.ids.next();
     return this.bookings.create(
@@ -115,10 +116,18 @@ export class MovingService implements MovingUseCases {
     return booking;
   }
   async status(user: User, id: string, next: BookingStatus, version: number) {
-    const booking = await this.get(user, id);
+    requireActiveUser(user);
+    const booking = await this.bookings.find(id);
+    if (!booking) throw new AppError(404, messages.reservationIntrouvable);
+    if (user.role === 'driver') {
+      const driver = await this.drivers.findByUserId(user.id);
+      if (!driver || booking.vehicle.id !== driver.vehicleId)
+        throw new AppError(404, messages.reservationIntrouvable);
+    } else if (!canReadBooking(user, booking.userId))
+      throw new AppError(404, messages.reservationIntrouvable);
     if (booking.version !== version)
       throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
-    transition(booking.status, next, user.role === 'admin');
+    transition(booking.status, next, user.role);
     const { settings } = await this.catalogue.get();
     if (user.role !== 'admin' && next === 'cancelled') {
       requireValue(settings.clientCancellation, messages.contactezLAdministrationPourAnnuler);

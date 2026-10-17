@@ -88,6 +88,10 @@
   .tariff-card {
     padding: 12px;
   }
+  .fleet-availability {
+    align-items: flex-start;
+    flex-direction: column;
+  }
   .footer-inner {
     flex-wrap: wrap;
   }
@@ -373,6 +377,10 @@
   .booking-card-top {
     gap: 8px;
   }
+  .pagination {
+    align-items: flex-start;
+    flex-direction: column;
+  }
   .reference {
     font-size: 10px;
   }
@@ -450,6 +458,13 @@
   .tariff-card img {
     max-width: 240px;
     display: block;
+  }
+  .finance-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .finance-row-actions .button {
+    flex: 1;
   }
   .quote-form {
     padding: 14px;

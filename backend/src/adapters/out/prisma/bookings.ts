@@ -16,15 +16,6 @@ export class PrismaBookings implements BookingRepository {
     });
     return rows.map((r) => r.donnees as unknown as Booking);
   }
-  async listForDriver(driverId: string) {
-    const rows = await this.db.reservation.findMany({
-      where: { chauffeurId: driverId },
-      orderBy: { creeLe: 'desc' },
-      take: 200,
-      select: { donnees: true },
-    });
-    return rows.map((row) => row.donnees as unknown as Booking);
-  }
   async find(id: string) {
     const row = await this.db.reservation.findUnique({ where: { id }, select: { donnees: true } });
     return row ? (row.donnees as unknown as Booking) : null;

@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../context';
 import { errorMessage } from '../error-message';
 import { routes } from '../../routing/routes';
+import { messages } from '../../content/fr';
 export function useAuthentication() {
   const { api, setUser } = useApp();
   const navigate = useNavigate();
@@ -19,16 +20,18 @@ export function useAuthentication() {
     try {
       const phone = String(f.get('phone')),
         password = String(f.get('password'));
-      const user = register
+      const connectedUser = register
         ? await api.register(String(f.get('name')), phone, password)
         : await api.login(phone, password);
+      const user = await api.me();
+      if (!user) throw new Error(messages.sessionImpossibleAVerifierReconnectezVous);
       setUser(user);
       navigate(
         params.get('retour') === 'reservation'
           ? routes.booking
-          : user.role === 'admin'
+          : connectedUser.role === 'admin'
             ? routes.administration
-            : user.role === 'driver'
+            : connectedUser.role === 'driver'
               ? routes.driverWorkspace
               : routes.account,
         { replace: true },

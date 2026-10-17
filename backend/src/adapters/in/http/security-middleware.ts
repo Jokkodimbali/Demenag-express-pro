@@ -11,6 +11,7 @@ export function registerSecurityMiddleware(
   deps: Pick<Dependencies, 'origin' | 'production'>,
 ) {
   app.disable('x-powered-by');
+  if (deps.production) app.set('trust proxy', 1);
   app.use(helmet());
   const origins = [deps.origin];
   if (!deps.production && new URL(deps.origin).hostname === 'localhost')

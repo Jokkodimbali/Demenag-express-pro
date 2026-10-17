@@ -40,7 +40,6 @@ export interface AdministrationUseCases {
 export interface CatalogueUseCases {
   get(): Promise<Catalogue>;
   update(actor: User, vehicles: Vehicle[], settings: Settings): Promise<void>;
-  removeVehicle(actor: User, id: string): Promise<void>;
 }
 export type DriverCreation = {
   name: string;

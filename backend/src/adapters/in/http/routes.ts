@@ -2,7 +2,6 @@ export const apiRoutes = {
   health: '/api/health',
   ready: '/api/ready',
   catalogue: '/api/catalogue',
-  vehicles: '/api/catalogue/vehicles',
   auth: {
     register: '/api/auth/register',
     login: '/api/auth/login',

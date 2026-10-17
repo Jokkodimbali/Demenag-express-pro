@@ -36,6 +36,7 @@ export function AppProvider({
     [error, setError] = useState(''),
     [retry, setRetry] = useState(0);
   const [draft, setDraft] = useState(blankDraft);
+  useEffect(() => api.onSessionExpired?.(() => setUser(null)), [api]);
   useEffect(() => {
     let active = true;
     setLoading(true);

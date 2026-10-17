@@ -1,10 +1,14 @@
 import { RefreshCw, Truck } from 'lucide-react';
 import { useDriverWorkspace } from '../application/controllers/useDriverWorkspace';
+import { usePagination } from '../application/usePagination';
 import { BookingCard } from '../components/BookingCard';
+import { Pagination } from '../components/Pagination';
+import { pageSizes } from '../config/pagination';
 import { messages } from '../content/fr';
 
 export function DriverWorkspace() {
   const { profile, bookings, loading, error, saving, setRetry, save } = useDriverWorkspace();
+  const pagination = usePagination(bookings, pageSizes.bookings);
   return (
     <section className="container workspace-page">
       <div className="section-heading">
@@ -78,10 +82,11 @@ export function DriverWorkspace() {
         <p className="panel loading">{messages.chargementDesReservations}</p>
       ) : bookings.length ? (
         <div className="booking-list">
-          {bookings.map((booking) => (
+          {pagination.rows.map((booking) => (
             <BookingCard
               key={booking.id}
               booking={booking}
+              driverMode
               onChange={() => setRetry((value) => value + 1)}
             />
           ))}
@@ -92,6 +97,12 @@ export function DriverWorkspace() {
           <h3>{messages.aucuneMission}</h3>
         </div>
       )}
+      <Pagination
+        page={pagination.page}
+        pageCount={pagination.pageCount}
+        total={pagination.total}
+        onPageChange={pagination.setPage}
+      />
     </section>
   );
 }

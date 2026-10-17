@@ -1,17 +1,20 @@
 import { CalendarDays, CheckCircle2, ClipboardList, Truck } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { messages } from '../../content/fr';
 import type { Booking, BookingStatus } from '../../domain/model';
 import { useApp } from '../context';
 import { errorMessage } from '../error-message';
 export function useAdministration() {
   const { api } = useApp();
+  const [params] = useSearchParams();
   const [bookings, setBookings] = useState<Booking[]>([]),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(''),
     [retry, setRetry] = useState(0),
     [filter, setFilter] = useState<BookingStatus | 'all'>('all'),
-    [query, setQuery] = useState('');
+    [query, setQuery] = useState(() => params.get('q') ?? '');
+  useEffect(() => setQuery(params.get('q') ?? ''), [params]);
   useEffect(() => {
     let active = true;
     setLoading(true);

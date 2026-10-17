@@ -1,4 +1,5 @@
 import { PrismaReadiness } from './adapters/out/prisma/readiness.js';
+import { RealtimeNotifications } from './adapters/out/notifications/realtime.js';
 import {
   PrismaAdministration,
   PrismaBookings,
@@ -17,6 +18,7 @@ import { DriverService } from './application/services/drivers.js';
 import { MovingService } from './application/services/moving.js';
 import type { PrismaClient } from './generated/prisma/client.js';
 export function compose(db: PrismaClient, routing: RoutingProvider) {
+  const notifications = new RealtimeNotifications();
   const catalogue = new PrismaCatalogue(db);
   const bookings = new PrismaBookings(db);
   const drivers = new PrismaDrivers(db);
@@ -48,6 +50,7 @@ export function compose(db: PrismaClient, routing: RoutingProvider) {
     auth,
     moving,
     catalogue: new CatalogueService(catalogue),
+    notifications,
     ready: () => new PrismaReadiness(db).check(),
   };
 }

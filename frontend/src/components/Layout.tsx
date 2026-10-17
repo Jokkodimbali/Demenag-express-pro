@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useLayout } from '../application/controllers/useLayout';
 import { messages } from '../content/fr';
 import { routes } from '../routing/routes';
+import { NotificationCenter } from './NotificationCenter';
 export function Layout() {
   const { user, catalogue, error, logout } = useLayout();
 
@@ -27,6 +28,7 @@ export function Layout() {
             </NavLink>
             {user ? (
               <>
+                <NotificationCenter user={user} />
                 <NavLink
                   className="button secondary small"
                   to={

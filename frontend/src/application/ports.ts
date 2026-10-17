@@ -21,9 +21,9 @@ export interface UserRepository {
 export interface CatalogueRepository {
   catalogue(): Promise<Catalogue>;
   updateCatalogue(value: Catalogue): Promise<Catalogue>;
-  removeVehicle(id: string): Promise<Catalogue>;
 }
 export interface AuthRepository {
+  onSessionExpired?(listener: () => void): () => void;
   me(): Promise<User | null>;
   login(phone: string, password: string): Promise<User>;
   register(name: string, phone: string, password: string): Promise<User>;

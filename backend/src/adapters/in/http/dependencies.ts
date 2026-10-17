@@ -5,6 +5,7 @@ import type {
   DriverUseCases,
   MovingUseCases,
 } from '../../../application/ports/use-cases.js';
+import type { NotificationPublisher } from '../../../application/ports/index.js';
 export type Dependencies = {
   administration: AdministrationUseCases;
   auth: AuthUseCases;
@@ -14,4 +15,5 @@ export type Dependencies = {
   ready: () => Promise<void>;
   origin: string;
   production: boolean;
+  notifications?: NotificationPublisher;
 };

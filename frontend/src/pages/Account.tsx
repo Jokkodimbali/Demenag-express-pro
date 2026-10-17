@@ -1,12 +1,16 @@
 import { ArrowRight, RefreshCw, Truck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAccount } from '../application/controllers/useAccount';
+import { usePagination } from '../application/usePagination';
 import { BookingCard } from '../components/BookingCard';
+import { Pagination } from '../components/Pagination';
 import { PasswordForm } from '../components/PasswordForm';
+import { pageSizes } from '../config/pagination';
 import { messages } from '../content/fr';
 import { routes } from '../routing/routes';
 export function Account() {
   const { user, bookings, setBookings, loading, error, setRetry } = useAccount();
+  const pagination = usePagination(bookings, pageSizes.bookings);
 
   return (
     <section className="container workspace-page">
@@ -58,7 +62,7 @@ export function Account() {
         </div>
       ) : (
         <div className="booking-list">
-          {bookings.map((b) => (
+          {pagination.rows.map((b) => (
             <BookingCard
               key={b.id}
               booking={b}
@@ -69,6 +73,12 @@ export function Account() {
           ))}
         </div>
       )}
+      <Pagination
+        page={pagination.page}
+        pageCount={pagination.pageCount}
+        total={pagination.total}
+        onPageChange={pagination.setPage}
+      />
       <PasswordForm />
     </section>
   );

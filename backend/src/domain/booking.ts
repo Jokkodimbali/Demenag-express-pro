@@ -1,6 +1,6 @@
 import { AppError, requireValue } from './errors.js';
 import { messages } from './messages/fr.js';
-import type { BookingRules, BookingStatus } from './model.js';
+import type { BookingRules, BookingStatus, Role } from './model.js';
 export function validateDate(date: string, slot: string, now: Date, rules: BookingRules) {
   const parsed = new Date(`${date}T00:00:00Z`);
   requireValue(
@@ -24,15 +24,20 @@ export function validateDate(date: string, slot: string, now: Date, rules: Booki
   if (date === today)
     requireValue(now.getUTCHours() < configuredSlot.startHour, messages.ceCreneauADejaCommence);
 }
-export function transition(current: BookingStatus, next: BookingStatus, admin: boolean) {
+export function transition(current: BookingStatus, next: BookingStatus, role: Role) {
   const allowed: Record<BookingStatus, BookingStatus[]> = {
     pending: ['confirmed', 'cancelled'],
     confirmed: ['in_progress', 'cancelled'],
-    in_progress: [],
+    in_progress: ['completed'],
     completed: [],
     cancelled: [],
   };
-  if (!admin && next !== 'cancelled')
+  const driverTransition =
+    (current === 'confirmed' && next === 'in_progress') ||
+    (current === 'in_progress' && next === 'completed');
+  if (role === 'driver' && !driverTransition)
+    throw new AppError(403, messages.actionReserveeALAdministration);
+  if (role === 'client' && next !== 'cancelled')
     throw new AppError(403, messages.actionReserveeALAdministration);
   if (!allowed[current].includes(next))
     throw new AppError(409, messages.ceChangementDeStatutNEstPlusPossible);

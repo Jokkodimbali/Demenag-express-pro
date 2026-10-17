@@ -2,7 +2,6 @@ export const httpRoutes = {
   users: '/admin/users',
   drivers: '/admin/drivers',
   catalogue: '/catalogue',
-  vehicles: '/catalogue/vehicles',
   authentication: {
     current: '/auth/me',
     login: '/auth/login',

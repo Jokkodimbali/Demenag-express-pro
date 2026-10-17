@@ -3,6 +3,8 @@ import { z } from 'zod';
 import type { Access } from './access.js';
 import { getActor } from './actor.js';
 import type { Dependencies } from './dependencies.js';
+import type { NotificationPublisher } from '../../../application/ports/index.js';
+import { messages } from '../../../domain/messages/fr.js';
 import {
   bookingSchema,
   driverAssignmentSchema,
@@ -15,8 +17,19 @@ export function registerBookingRoutes(
   app: Express,
   deps: Pick<Dependencies, 'moving'>,
   access: Pick<Access, 'authenticate' | 'admin'>,
+  notifications?: NotificationPublisher,
 ) {
   const { authenticate, admin } = access;
+  const notify = (
+    title: string,
+    message: string,
+    recipients: { userIds?: string[]; roles?: ('client' | 'admin' | 'driver')[] },
+    bookingId?: string,
+  ) =>
+    notifications?.publish(
+      { id: crypto.randomUUID(), title, message, createdAt: new Date().toISOString(), bookingId },
+      recipients,
+    );
   app.post(apiRoutes.estimates, async (req, res) => {
     const p = estimateSchema.parse(req.body);
     res.json(await deps.moving.estimate(p.vehicleId, p.routeId, p.options));
@@ -24,17 +37,39 @@ export function registerBookingRoutes(
   app.get(apiRoutes.bookings, authenticate, async (_req, res) =>
     res.json(await deps.moving.list(getActor(res))),
   );
-  app.post(apiRoutes.bookings, authenticate, async (req, res) =>
-    res.status(201).json(await deps.moving.create(getActor(res), bookingSchema.parse(req.body))),
-  );
+  app.post(apiRoutes.bookings, authenticate, async (req, res) => {
+    const booking = await deps.moving.create(getActor(res), bookingSchema.parse(req.body));
+    notify(
+      'Nouvelle réservation à confirmer',
+      messages.notificationNouvelleReservation(
+        booking.reference,
+        booking.customerName,
+        booking.date,
+        booking.timeSlot,
+      ),
+      { roles: ['admin'] },
+      booking.id,
+    );
+    res.status(201).json(booking);
+  });
   app.get(`${apiRoutes.bookings}/:id`, authenticate, async (req, res) =>
     res.json(await deps.moving.get(getActor(res), z.uuid().parse(req.params.id))),
   );
   app.patch(`${apiRoutes.bookings}/:id/status`, authenticate, async (req, res) => {
     const p = statusSchema.parse(req.body);
-    res.json(
-      await deps.moving.status(getActor(res), z.uuid().parse(req.params.id), p.status, p.version),
+    const booking = await deps.moving.status(
+      getActor(res),
+      z.uuid().parse(req.params.id),
+      p.status,
+      p.version,
     );
+    notify(
+      'Statut de réservation mis à jour',
+      messages.notificationStatutReservation(booking.reference, booking.status),
+      { userIds: [booking.userId], roles: ['admin'] },
+      booking.id,
+    );
+    res.json(booking);
   });
   app.patch(`${apiRoutes.bookings}/:id/driver`, authenticate, admin, async (req, res) => {
     const p = driverAssignmentSchema.parse(req.body);
@@ -47,15 +82,18 @@ export function registerBookingRoutes(
       ),
     );
   });
-  app.post(`${apiRoutes.bookings}/:id/quotes`, authenticate, admin, async (req, res) =>
-    res
-      .status(201)
-      .json(
-        await deps.moving.quote(
-          getActor(res),
-          z.uuid().parse(req.params.id),
-          quoteSchema.parse(req.body),
-        ),
-      ),
-  );
+  app.post(`${apiRoutes.bookings}/:id/quotes`, authenticate, admin, async (req, res) => {
+    const booking = await deps.moving.quote(
+      getActor(res),
+      z.uuid().parse(req.params.id),
+      quoteSchema.parse(req.body),
+    );
+    notify(
+      'Nouveau devis disponible',
+      messages.notificationDevisDisponible(booking.reference),
+      { userIds: [booking.userId] },
+      booking.id,
+    );
+    res.status(201).json(booking);
+  });
 }

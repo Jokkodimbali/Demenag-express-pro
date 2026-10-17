@@ -4,12 +4,7 @@ import { getActor } from './actor.js';
 import type { Dependencies } from './dependencies.js';
 import { catalogueSchema, createDriverSchema, driverSchema } from './schemas.js';
 import { apiRoutes } from './routes.js';
-import {
-  accountSchema,
-  createAccountSchema,
-  userIdSchema,
-  vehicleIdSchema,
-} from './validation/administration.js';
+import { accountSchema, createAccountSchema, userIdSchema } from './validation/administration.js';
 export function registerAdminRoutes(
   app: Express,
   deps: Pick<Dependencies, 'administration' | 'catalogue' | 'drivers'>,
@@ -55,8 +50,4 @@ export function registerAdminRoutes(
       }),
     ),
   );
-  app.delete(`${apiRoutes.vehicles}/:id`, authenticate, admin, async (req, res) => {
-    await deps.catalogue.removeVehicle(getActor(res), vehicleIdSchema.parse(req.params.id));
-    res.json(await deps.catalogue.get());
-  });
 }

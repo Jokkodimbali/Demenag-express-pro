@@ -4,11 +4,23 @@ import type {
   Driver,
   Route,
   RouteTicket,
+  Role,
   Settings,
   User,
   UserCredentials,
   Vehicle,
 } from '../../domain/model.js';
+export type Notification = {
+  id: string;
+  title: string;
+  message: string;
+  createdAt: string;
+  bookingId?: string;
+};
+export interface NotificationPublisher {
+  subscribe(user: User, send: (notification: Notification) => void): () => void;
+  publish(notification: Notification, recipients: { userIds?: string[]; roles?: Role[] }): void;
+}
 export interface UserRepository {
   findByPhone(phone: string): Promise<UserCredentials | null>;
   create(user: UserCredentials): Promise<User>;
@@ -24,11 +36,9 @@ export interface SessionRepository {
 export interface CatalogueRepository {
   get(): Promise<Catalogue>;
   update(vehicles: Vehicle[], settings: Settings): Promise<void>;
-  removeVehicle(id: string): Promise<void>;
 }
 export interface BookingRepository {
   list(userId?: string): Promise<Booking[]>;
-  listForDriver(driverId: string): Promise<Booking[]>;
   find(id: string): Promise<Booking | null>;
   create(booking: Booking, requestId: string): Promise<Booking>;
   update(booking: Booking, expectedVersion: number): Promise<Booking>;

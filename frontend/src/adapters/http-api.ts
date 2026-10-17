@@ -10,6 +10,7 @@ export class ApiError extends Error {
   }
 }
 export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): ApplicationApi {
+  const sessionExpiredListeners = new Set<() => void>();
   async function request<T>(
     path: string,
     method = 'GET',
@@ -28,6 +29,14 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') throw error;
       throw new ApiError(messages.connexionAuServeurImpossibleReessayezDansUnInstant, 0);
+    }
+    if (
+      response.status === 401 &&
+      path !== httpRoutes.authentication.login &&
+      path !== httpRoutes.authentication.register &&
+      path !== httpRoutes.authentication.password
+    ) {
+      sessionExpiredListeners.forEach((listener) => listener());
     }
     if (response.status === 204) return undefined as T;
     const data: unknown = await response
@@ -58,6 +67,12 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
     return data as T;
   }
   return {
+    onSessionExpired: (listener) => {
+      sessionExpiredListeners.add(listener);
+      return () => {
+        sessionExpiredListeners.delete(listener);
+      };
+    },
     changePassword: (oldPassword, newPassword) =>
       request(httpRoutes.authentication.password, 'POST', { oldPassword, newPassword }),
     users: () => request(httpRoutes.users),
@@ -71,7 +86,6 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
     driverBookings: () => request(httpRoutes.driver.bookings),
     catalogue: () => request(httpRoutes.catalogue),
     updateCatalogue: (value) => request(httpRoutes.catalogue, 'PUT', value),
-    removeVehicle: (id) => request(`${httpRoutes.vehicles}/${id}`, 'DELETE'),
     me: () => request(httpRoutes.authentication.current),
     login: (phone, password) =>
       request(httpRoutes.authentication.login, 'POST', { phone, password }),

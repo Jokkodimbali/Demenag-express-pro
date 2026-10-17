@@ -37,7 +37,7 @@ export class DriverService implements DriverUseCases {
       role: 'driver',
       active: true,
     });
-    return this.drivers.create({
+    const driver = {
       id: this.ids.next(),
       userId: user.id,
       name: input.name,
@@ -45,13 +45,16 @@ export class DriverService implements DriverUseCases {
       photo: input.photo,
       active: true,
       vehicleId: input.vehicleId,
-    });
+    };
+    await this.releaseVehicle(driver.vehicleId, driver.id);
+    return this.drivers.create(driver);
   }
   async update(actor: User, input: DriverUpdate) {
     requireAdministrator(actor);
     const current = await this.drivers.find(input.id);
     if (!current) throw new AppError(404, messages.chauffeurIntrouvable);
     const phone = await this.availablePhone(input.phone, current.userId);
+    await this.releaseVehicle(input.vehicleId, current.id);
     const updated = await this.drivers.update({ ...input, userId: current.userId, phone });
     if (current.userId) await this.users.updateProfile(current.userId, updated.name, updated.phone);
     return updated;
@@ -68,7 +71,10 @@ export class DriverService implements DriverUseCases {
   }
   async bookings(actor: User) {
     const profile = await this.requireProfile(actor);
-    return this.bookingsRepository.listForDriver(profile.id);
+    if (!profile.vehicleId) return [];
+    return (await this.bookingsRepository.list()).filter(
+      (booking) => booking.vehicle.id === profile.vehicleId,
+    );
   }
   private async requireProfile(actor: User) {
     requireActiveUser(actor);
@@ -83,5 +89,12 @@ export class DriverService implements DriverUseCases {
     if (existing && existing.id !== userId)
       throw new AppError(409, messages.unCompteUtiliseDejaCeNumero);
     return phone;
+  }
+  private async releaseVehicle(vehicleId: string | null, driverId: string | null) {
+    if (!vehicleId) return;
+    const assigned = (await this.drivers.list()).find(
+      (driver) => driver.vehicleId === vehicleId && driver.id !== driverId,
+    );
+    if (assigned) await this.drivers.update({ ...assigned, vehicleId: null });
   }
 }

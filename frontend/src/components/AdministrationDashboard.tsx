@@ -1,12 +1,25 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FilePenLine, MessageCircle } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { filterByVehicle, revenueFor, sameWeek } from '../application/services/revenue';
+import { quoteNotificationUrl } from '../application/services/quote-notification';
 import { messages } from '../content/fr';
 import { dateLabel, money } from '../domain/format';
-import type { Booking } from '../domain/model';
+import type { Booking, Vehicle } from '../domain/model';
 
-type DashboardProps = { bookings: Booking[]; onSelect: (booking: Booking) => void };
+type DashboardProps = {
+  bookings: Booking[];
+  vehicles?: Vehicle[];
+  onSelect: (booking: Booking) => void;
+};
 type Period = 'week' | 'month' | 'all';
+
+const dateFromKey = (value: string) => new Date(value + 'T12:00:00Z');
+const dateKey = (value: Date) => value.toISOString().slice(0, 10);
+const weekStart = (value: string) => {
+  const start = dateFromKey(value);
+  start.setUTCDate(start.getUTCDate() - ((start.getUTCDay() + 6) % 7));
+  return start;
+};
 
 function RevenueLegend({ provisional, definitive }: { provisional: number; definitive: number }) {
   return (
@@ -23,14 +36,14 @@ function RevenueLegend({ provisional, definitive }: { provisional: number; defin
   );
 }
 
-export function RevenueDashboard({ bookings, onSelect }: DashboardProps) {
+export function RevenueDashboard({ bookings, vehicles = [], onSelect }: DashboardProps) {
   const [vehicleId, setVehicleId] = useState('');
   const [period, setPeriod] = useState<Period>('month');
   const [selectedDay, setSelectedDay] = useState(() => new Date().toISOString().slice(0, 10));
   const [month, setMonth] = useState(
     () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   );
-  const vehicles = useMemo(
+  const bookedVehicles = useMemo(
     () =>
       Array.from(
         new Map(bookings.map((booking) => [booking.vehicle.id, booking.vehicle])).values(),
@@ -70,6 +83,15 @@ export function RevenueDashboard({ bookings, onSelect }: DashboardProps) {
       return next;
     });
   };
+  const changePeriod = (offset: number) => {
+    if (period !== 'week') {
+      changeMonth(offset);
+      return;
+    }
+    const next = weekStart(selectedDay);
+    next.setUTCDate(next.getUTCDate() + offset * 7);
+    selectDay(dateKey(next));
+  };
 
   return (
     <div className="admin-dashboard">
@@ -82,7 +104,7 @@ export function RevenueDashboard({ bookings, onSelect }: DashboardProps) {
             onChange={(event) => setVehicleId(event.target.value)}
           >
             <option value="">{messages.tousLesVehicules}</option>
-            {vehicles.map((vehicle) => (
+            {(vehicles.length ? vehicles : bookedVehicles).map((vehicle) => (
               <option key={vehicle.id} value={vehicle.id}>
                 {vehicle.name}
               </option>
@@ -143,8 +165,9 @@ export function RevenueDashboard({ bookings, onSelect }: DashboardProps) {
       <BookingCalendar
         bookings={scoped}
         onSelect={onSelect}
+        period={period}
         month={month}
-        changeMonth={changeMonth}
+        changePeriod={changePeriod}
         selectedDay={selectedDay}
         onSelectDay={selectDay}
       />
@@ -203,27 +226,37 @@ function DailyVehicleRevenue({
 }
 
 type CalendarProps = DashboardProps & {
+  period: Period;
   month: Date;
-  changeMonth: (offset: number) => void;
+  changePeriod: (offset: number) => void;
   selectedDay: string;
   onSelectDay: (value: string) => void;
 };
 function BookingCalendar({
   bookings,
   onSelect,
+  period,
   month,
-  changeMonth,
+  changePeriod,
   selectedDay,
   onSelectDay,
 }: CalendarProps) {
   const days = useMemo(() => {
+    if (period === 'week') {
+      const start = weekStart(selectedDay);
+      return Array.from({ length: 7 }, (_, index) => {
+        const day = new Date(start);
+        day.setUTCDate(start.getUTCDate() + index);
+        return day;
+      });
+    }
     const first = new Date(month.getFullYear(), month.getMonth(), 1);
     const offset = (first.getDay() + 6) % 7;
     return Array.from(
       { length: 42 },
       (_, index) => new Date(month.getFullYear(), month.getMonth(), index - offset + 1),
     );
-  }, [month]);
+  }, [month, period, selectedDay]);
   const byDay = useMemo(() => {
     const grouped = new Map<string, Booking[]>();
     for (const booking of bookings)
@@ -235,16 +268,20 @@ function BookingCalendar({
       <div className="calendar-heading">
         <button
           className="icon-button"
-          aria-label={messages.moisPrecedent}
-          onClick={() => changeMonth(-1)}
+          aria-label={period === 'week' ? messages.semainePrecedente : messages.moisPrecedent}
+          onClick={() => changePeriod(-1)}
         >
           <ChevronLeft size={18} />
         </button>
-        <h2>{month.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}</h2>
+        <h2>
+          {period === 'week'
+            ? messages.semaineDu(dateLabel(dateKey(days[0])), dateLabel(dateKey(days[6])))
+            : month.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+        </h2>
         <button
           className="icon-button"
-          aria-label={messages.moisSuivant}
-          onClick={() => changeMonth(1)}
+          aria-label={period === 'week' ? messages.semaineSuivante : messages.moisSuivant}
+          onClick={() => changePeriod(1)}
         >
           <ChevronRight size={18} />
         </button>
@@ -262,8 +299,9 @@ function BookingCalendar({
           return (
             <div
               className={
-                (day.getMonth() === month.getMonth() ? 'calendar-day' : 'calendar-day muted') +
-                (selectedDay === key ? ' selected' : '')
+                (period === 'week' || day.getMonth() === month.getMonth()
+                  ? 'calendar-day'
+                  : 'calendar-day muted') + (selectedDay === key ? ' selected' : '')
               }
               key={key}
             >
@@ -302,7 +340,11 @@ function BookingCalendar({
   );
 }
 
-export function DefinitiveQuotes({ bookings, onSelect }: DashboardProps) {
+export function DefinitiveQuotes({
+  bookings,
+  onSelect,
+  onEdit,
+}: DashboardProps & { onEdit: (booking: Booking) => void }) {
   const rows = bookings.filter(
     (booking) =>
       booking.status === 'in_progress' || booking.quotes.some((quote) => quote.kind === 'final'),
@@ -310,19 +352,44 @@ export function DefinitiveQuotes({ bookings, onSelect }: DashboardProps) {
   return (
     <div className="booking-list">
       {rows.length ? (
-        rows.map((booking) => (
-          <button className="finance-row panel" key={booking.id} onClick={() => onSelect(booking)}>
-            <span>
-              {booking.reference} · {booking.customerName}
-            </span>
-            <strong>
-              {money(
-                booking.quotes.filter((quote) => quote.kind === 'final').at(-1)?.price.total ??
-                  booking.estimate.total,
-              )}
-            </strong>
-          </button>
-        ))
+        rows.map((booking) => {
+          const finalQuote = booking.quotes.filter((quote) => quote.kind === 'final').at(-1);
+          const lastQuote = booking.quotes.at(-1);
+          return (
+            <article className="finance-row panel" key={booking.id}>
+              <button className="finance-row-summary" onClick={() => onSelect(booking)}>
+                <span>
+                  <strong>{booking.reference}</strong> · {booking.customerName}
+                </span>
+                <small>{booking.vehicle.name}</small>
+                <strong>
+                  {money(
+                    finalQuote?.price.total ?? lastQuote?.price.total ?? booking.estimate.total,
+                  )}
+                </strong>
+              </button>
+              <div className="finance-row-actions">
+                {booking.status === 'in_progress' && (
+                  <button className="button secondary small" onClick={() => onEdit(booking)}>
+                    <FilePenLine size={16} />
+                    {lastQuote ? messages.modifierLeDevis : messages.creerUnDevis}
+                  </button>
+                )}
+                {finalQuote && (
+                  <a
+                    className="button primary small"
+                    target="_blank"
+                    rel="noreferrer"
+                    href={quoteNotificationUrl(booking, finalQuote)}
+                  >
+                    <MessageCircle size={16} />
+                    {messages.envoyerLeDevisDefinitif}
+                  </a>
+                )}
+              </div>
+            </article>
+          );
+        })
       ) : (
         <p className="empty-state panel">{messages.aucunDevisDefinitifAProduire}</p>
       )}

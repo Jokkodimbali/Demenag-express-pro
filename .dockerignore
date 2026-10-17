@@ -1,0 +1,17 @@
+.git
+.gitignore
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+!**/.env.example
+**/coverage
+**/test-results
+**/playwright-report
+**/*.log
+backend/src/generated
+uploads
+assets
+backend/tests
+frontend/tests
+backend/scripts/test-integration.ts

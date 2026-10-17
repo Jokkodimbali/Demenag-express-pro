@@ -1,7 +1,10 @@
 import { ClipboardList, RefreshCw, Search } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { useAdministration } from '../application/controllers/useAdministration';
-import { useDrivers } from '../application/controllers/useDrivers';
+import { usePagination } from '../application/usePagination';
 import { BookingCard } from '../components/BookingCard';
+import { Pagination } from '../components/Pagination';
+import { pageSizes } from '../config/pagination';
 import { messages } from '../content/fr';
 import { statuses } from '../domain/format';
 import type { BookingStatus } from '../domain/model';
@@ -19,7 +22,8 @@ export function Admin() {
     visible,
     stats,
   } = useAdministration();
-  const { drivers } = useDrivers();
+  const [params] = useSearchParams();
+  const pagination = usePagination(visible, pageSizes.bookings, `${filter}:${query}`);
   return (
     <>
       <div className="section-heading">
@@ -94,11 +98,11 @@ export function Admin() {
           </div>
         ) : (
           <div className="booking-list">
-            {visible.map((b) => (
+            {pagination.rows.map((b) => (
               <BookingCard
                 key={b.id}
                 admin
-                drivers={drivers}
+                editInitially={params.get('detail') === b.id && params.get('edit') === 'quote'}
                 booking={b}
                 onChange={(next) =>
                   setBookings((rows) => rows.map((r) => (r.id === next.id ? next : r)))
@@ -107,6 +111,12 @@ export function Admin() {
             ))}
           </div>
         )}
+        <Pagination
+          page={pagination.page}
+          pageCount={pagination.pageCount}
+          total={pagination.total}
+          onPageChange={pagination.setPage}
+        />
       </>
     </>
   );

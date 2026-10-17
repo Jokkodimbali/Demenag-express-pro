@@ -77,11 +77,13 @@ test('La date et le créneau passé sont refusés en heure de Dakar', () => {
   assert.doesNotThrow(() => validateDate('2026-10-15', 'Après-midi (13h – 17h)', now, settings));
 });
 test('Les statuts respectent le rôle et la clôture', () => {
-  assert.doesNotThrow(() => transition('pending', 'confirmed', true));
-  assert.throws(() => transition('pending', 'confirmed', false));
-  assert.throws(() => transition('completed', 'confirmed', true));
-  assert.throws(() => transition('in_progress', 'cancelled', false));
-  assert.doesNotThrow(() => transition('pending', 'cancelled', false));
+  assert.doesNotThrow(() => transition('pending', 'confirmed', 'admin'));
+  assert.doesNotThrow(() => transition('confirmed', 'in_progress', 'driver'));
+  assert.doesNotThrow(() => transition('in_progress', 'completed', 'driver'));
+  assert.throws(() => transition('pending', 'confirmed', 'driver'));
+  assert.throws(() => transition('completed', 'confirmed', 'admin'));
+  assert.throws(() => transition('in_progress', 'cancelled', 'driver'));
+  assert.doesNotThrow(() => transition('pending', 'cancelled', 'client'));
 });
 test('Le téléphone est normalisé sans tronquer les numéros invalides', () => {
   assert.equal(normalizePhone('77 123 45 67'), '+221771234567');

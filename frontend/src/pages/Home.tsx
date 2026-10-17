@@ -32,7 +32,9 @@ export function Home() {
     submit,
     option,
     extras,
+    administrativeQuote,
   } = state;
+  const bookingsClosed = catalogue?.settings.bookingsEnabled === false && !administrativeQuote;
   return (
     <>
       <section className="hero container">
@@ -58,11 +60,6 @@ export function Home() {
           <div className="section-heading">
             <h2>{messages.reserver2}</h2>
           </div>
-          {catalogue?.settings.bookingsEnabled === false && (
-            <p className="alert" role="status">
-              {messages.lesReservationsSontTemporairementFermeesContactezNousPour}
-            </p>
-          )}
           {loading ? (
             <div className="panel loading" role="status">
               {messages.chargementDesVehiculesEtDesTarifs}
@@ -74,6 +71,12 @@ export function Home() {
                 {messages.reessayer}
               </button>
             </div>
+          ) : bookingsClosed ? (
+            <section className="booking-closed" role="status" aria-live="polite">
+              <p className="eyebrow">{messages.formulaireDeReservation}</p>
+              <h3>{messages.reservationsTemporairementFermees}</h3>
+              <p>{messages.lesReservationsSontTemporairementFermeesContactezNousPour}</p>
+            </section>
           ) : done ? (
             <div className="success-panel">
               <CheckCircle2 size={44} />
@@ -136,12 +139,13 @@ export function Home() {
                 submitError={submitError}
                 submitting={submitting}
                 user={user}
+                allowWhenBookingsClosed={administrativeQuote}
               />
             </form>
           ) : null}
         </div>
       </section>
-      {!done && catalogue && (
+      {!done && catalogue && !bookingsClosed && (
         <div className="mobile-booking-bar">
           <div>
             <small>{messages.estimation}</small>

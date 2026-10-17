@@ -1,10 +1,14 @@
 import { UserRoundPlus } from 'lucide-react';
 import { useDrivers } from '../application/controllers/useDrivers';
+import { usePagination } from '../application/usePagination';
 import { messages } from '../content/fr';
+import { pageSizes } from '../config/pagination';
 import { Modal } from './Modal';
+import { Pagination } from './Pagination';
 
 export function DriverManagement() {
   const { catalogue, drivers, editing, setEditing, busy, error, create, save } = useDrivers();
+  const pagination = usePagination(drivers, pageSizes.drivers);
   if (!catalogue) return null;
   return (
     <section className="panel driver-management">
@@ -19,7 +23,7 @@ export function DriverManagement() {
         </button>
       </div>
       <div className="driver-list">
-        {drivers.map((driver) => (
+        {pagination.rows.map((driver) => (
           <button className="driver-row" key={driver.id} onClick={() => setEditing(driver)}>
             <span>
               <strong>{driver.name}</strong>
@@ -32,6 +36,12 @@ export function DriverManagement() {
           </button>
         ))}
       </div>
+      <Pagination
+        page={pagination.page}
+        pageCount={pagination.pageCount}
+        total={pagination.total}
+        onPageChange={pagination.setPage}
+      />
       {editing && (
         <Modal titleId="driver-title" busy={busy} onClose={() => setEditing(null)}>
           <form onSubmit={save}>

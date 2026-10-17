@@ -15,6 +15,7 @@ export function BookingSummary({
   submitError,
   submitting,
   user,
+  allowWhenBookingsClosed = false,
 }: Pick<
   BookingViewState,
   | 'catalogue'
@@ -27,7 +28,7 @@ export function BookingSummary({
   | 'submitError'
   | 'submitting'
   | 'user'
-> & { catalogue: Catalogue; selected: Vehicle }) {
+> & { catalogue: Catalogue; selected: Vehicle; allowWhenBookingsClosed?: boolean }) {
   return (
     <aside className="summary">
       <div className="summary-top">
@@ -100,7 +101,7 @@ export function BookingSummary({
           estimating ||
           !price ||
           selected.active === false ||
-          catalogue.settings.bookingsEnabled === false
+          (catalogue.settings.bookingsEnabled === false && !allowWhenBookingsClosed)
         }
       >
         {submitting

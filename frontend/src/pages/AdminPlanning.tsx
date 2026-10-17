@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { useApp } from '../application/context';
 import { useAdministration } from '../application/controllers/useAdministration';
 import { RevenueDashboard } from '../components/AdministrationDashboard';
 import { messages } from '../content/fr';
@@ -6,8 +7,10 @@ import { routes } from '../routing/routes';
 
 export function AdminPlanning() {
   const { bookings, loading, error } = useAdministration();
+  const { catalogue } = useApp();
   const navigate = useNavigate();
-  const select = (reference: string) => navigate(`${routes.administrationBookings}?q=${reference}`);
+  const select = (booking: (typeof bookings)[number]) =>
+    navigate(`${routes.administrationBookings}?q=${booking.reference}&detail=${booking.id}`);
   return (
     <div>
       <div className="section-heading">
@@ -24,7 +27,7 @@ export function AdminPlanning() {
       {loading ? (
         <p className="panel loading">{messages.chargementDesReservations}</p>
       ) : (
-        <RevenueDashboard bookings={bookings} onSelect={(booking) => select(booking.reference)} />
+        <RevenueDashboard bookings={bookings} vehicles={catalogue?.vehicles} onSelect={select} />
       )}
     </div>
   );

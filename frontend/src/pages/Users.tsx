@@ -1,5 +1,8 @@
 import { useUsers } from '../application/controllers/useUsers';
+import { usePagination } from '../application/usePagination';
 import { Modal } from '../components/Modal';
+import { Pagination } from '../components/Pagination';
+import { pageSizes } from '../config/pagination';
 import { messages } from '../content/fr';
 export function Users() {
   const {
@@ -15,6 +18,10 @@ export function Users() {
     setEditing,
     save,
   } = useUsers();
+  const filteredUsers = users.filter((user) =>
+    `${user.name} ${user.phone}`.toLowerCase().includes(query.toLowerCase()),
+  );
+  const pagination = usePagination(filteredUsers, pageSizes.users, query);
 
   return (
     <div className="panel">
@@ -49,32 +56,36 @@ export function Users() {
         <p role="status">{messages.chargement}</p>
       ) : (
         <div className="user-list">
-          {users
-            .filter((u) => `${u.name} ${u.phone}`.toLowerCase().includes(query.toLowerCase()))
-            .map((u) => (
-              <div className="user-row" key={u.id}>
-                <div>
-                  <strong>{u.name}</strong>
-                  <p>
-                    {u.phone} ·{' '}
-                    {u.role === 'admin' ? messages.labelAdministrateur : messages.labelClient} ·{' '}
-                    {u.active === false ? messages.labelSuspendu : messages.labelActif}
-                  </p>
-                </div>
-                <button
-                  className="button secondary small"
-                  onClick={() => {
-                    setError('');
-                    setEditing(u);
-                  }}
-                  aria-label={messages.modifier + u.name}
-                >
-                  {messages.modifier2}
-                </button>
+          {pagination.rows.map((u) => (
+            <div className="user-row" key={u.id}>
+              <div>
+                <strong>{u.name}</strong>
+                <p>
+                  {u.phone} ·{' '}
+                  {u.role === 'admin' ? messages.labelAdministrateur : messages.labelClient} ·{' '}
+                  {u.active === false ? messages.labelSuspendu : messages.labelActif}
+                </p>
               </div>
-            ))}
+              <button
+                className="button secondary small"
+                onClick={() => {
+                  setError('');
+                  setEditing(u);
+                }}
+                aria-label={messages.modifier + u.name}
+              >
+                {messages.modifier2}
+              </button>
+            </div>
+          ))}
         </div>
       )}
+      <Pagination
+        page={pagination.page}
+        pageCount={pagination.pageCount}
+        total={pagination.total}
+        onPageChange={pagination.setPage}
+      />
       {editing && (
         <Modal titleId="account-title" busy={busy} onClose={() => setEditing(null)}>
           <form onSubmit={save} key={editing === 'new' ? 'new' : editing.id}>

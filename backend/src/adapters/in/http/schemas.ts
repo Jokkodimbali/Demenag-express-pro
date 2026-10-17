@@ -36,7 +36,7 @@ export const registerSchema = loginSchema.extend({
   password: z.string().min(10, messages.utilisezAuMoins10Caracteres).max(128),
 });
 export const statusSchema = z.object({
-  status: z.enum(['confirmed', 'in_progress', 'cancelled']),
+  status: z.enum(['confirmed', 'in_progress', 'completed', 'cancelled']),
   version: z.number().int().positive(),
 });
 export const driverAssignmentSchema = z.object({
