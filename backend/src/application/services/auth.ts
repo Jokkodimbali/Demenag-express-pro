@@ -40,7 +40,11 @@ export class AuthService implements AuthUseCases {
     return this.issue(user);
   }
   async login(phone: string, password: string) {
-    const user = await this.users.findByPhone(normalizePhone(phone));
+    const normalizedPhone = normalizePhone(phone);
+    // Compatibilité avec les comptes historiques enregistrés sans l’indicatif +221.
+    const user =
+      (await this.users.findByPhone(normalizedPhone)) ??
+      (await this.users.findByPhone(normalizedPhone.slice('+221'.length)));
     const valid = await this.passwords.verify(password, user?.passwordHash ?? '');
     if (!user || user.active === false || !valid)
       throw new AppError(401, messages.telephoneOuMotDePasseIncorrect);

@@ -63,6 +63,36 @@
 .auth-card form > input {
   margin-bottom: 18px;
 }
+.auth-password-field {
+  position: relative;
+  margin-bottom: 18px;
+}
+.auth-password-field input {
+  padding-right: 52px;
+}
+.auth-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+}
+.auth-password-toggle:hover {
+  background: #363b42;
+  color: var(--yellow);
+}
+.auth-password-toggle:focus-visible {
+  outline: 2px solid var(--yellow);
+  outline-offset: 1px;
+}
 .auth-card form > .button {
   margin-top: 8px;
 }

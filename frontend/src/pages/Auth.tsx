@@ -1,9 +1,11 @@
-import { ArrowLeft, ArrowRight, LockKeyhole } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowLeft, ArrowRight, Eye, EyeOff, LockKeyhole } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuthentication } from '../application/controllers/useAuthentication';
 import { messages } from '../content/fr';
 import { routes } from '../routing/routes';
 export function Auth() {
+  const [showPassword, setShowPassword] = useState(false);
   const { register, setRegister, busy, error, setError, submit } = useAuthentication();
 
   return (
@@ -60,21 +62,33 @@ export function Auth() {
             name="phone"
             type="tel"
             autoComplete="tel"
+            inputMode="tel"
             required
             maxLength={25}
-            placeholder={messages.text771234567}
+            placeholder="+221 77 123 45 67"
           />
           <label htmlFor="auth-password">{messages.motDePasse}</label>
-          <input
-            id="auth-password"
-            name="password"
-            type="password"
-            autoComplete={register ? 'new-password' : 'current-password'}
-            minLength={register ? 10 : 1}
-            maxLength={128}
-            required
-            placeholder={register ? messages.auMoins10Caracteres : messages.votreMotDePasse}
-          />
+          <div className="auth-password-field">
+            <input
+              id="auth-password"
+              name="password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete={register ? 'new-password' : 'current-password'}
+              minLength={register ? 10 : 1}
+              maxLength={128}
+              required
+              placeholder={register ? messages.auMoins10Caracteres : messages.votreMotDePasse}
+            />
+            <button
+              className="auth-password-toggle"
+              type="button"
+              aria-label={showPassword ? messages.masquerMotDePasse : messages.afficherMotDePasse}
+              aria-pressed={showPassword}
+              onClick={() => setShowPassword((visible) => !visible)}
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
           {error && (
             <p className="alert error" role="alert">
               {error}

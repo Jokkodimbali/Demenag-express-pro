@@ -110,6 +110,8 @@ export const messages = {
   whatsapp: ' WhatsApp',
   modifierMonMotDePasse: 'Modifier mon mot de passe',
   motDePasseActuel: 'Mot de passe actuel',
+  afficherMotDePasse: 'Afficher le mot de passe',
+  masquerMotDePasse: 'Masquer le mot de passe',
   nouveauMotDePasse: 'Nouveau mot de passe',
   auMoins10CaracteresLesAutresSessionsSeront:
     'Au moins 10 caractères. Les autres sessions seront déconnectées.',

@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { calculatePrice, tierOf } from '../src/domain/pricing.js';
 import { validateDate, transition } from '../src/domain/booking.js';
-import { normalizePhone } from '../src/application/services/auth.js';
+import { AuthService, normalizePhone } from '../src/application/services/auth.js';
 import { ScryptPasswords } from '../src/adapters/out/security/crypto.js';
-import type { Settings, Vehicle } from '../src/domain/model.js';
+import type { Settings, UserCredentials, Vehicle } from '../src/domain/model.js';
 const vehicle: Vehicle = {
   id: 'sprinter',
   name: 'Sprinter',
@@ -87,8 +87,40 @@ test('Les statuts respectent le rôle et la clôture', () => {
 });
 test('Le téléphone est normalisé sans tronquer les numéros invalides', () => {
   assert.equal(normalizePhone('77 123 45 67'), '+221771234567');
+  assert.equal(normalizePhone('+221 77 123 45 67'), '+221771234567');
   assert.equal(normalizePhone('00221 77 123 45 67'), '+221771234567');
   assert.throws(() => normalizePhone('1234567771234567'));
+});
+test('La connexion accepte les comptes historiques enregistrés sans +221', async () => {
+  const user: UserCredentials = {
+    id: 'user-1',
+    name: 'Compte test',
+    phone: '771411251',
+    role: 'client',
+    active: true,
+    passwordHash: 'valid-hash',
+  };
+  const auth = new AuthService(
+    {
+      findByPhone: async (phone) => (phone === user.phone ? user : null),
+      create: async () => user,
+      updatePassword: async () => {},
+      updateProfile: async () => {},
+    },
+    {
+      create: async () => {},
+      findUser: async () => null,
+      delete: async () => {},
+      deleteForUser: async () => {},
+    },
+    { hash: async () => 'new-hash', verify: async (password) => password === 'correct-password' },
+    { create: () => 'test-token', digest: (token) => token },
+    { now: () => new Date('2026-10-17T00:00:00Z') },
+    { next: () => 'session-1' },
+  );
+
+  const session = await auth.login('+221 77 141 12 51', 'correct-password');
+  assert.equal(session.user.id, user.id);
 });
 test('Les mots de passe sont salés et vérifiés sans stockage en clair', async () => {
   const h = new ScryptPasswords();
