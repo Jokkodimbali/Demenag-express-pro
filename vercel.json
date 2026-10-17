@@ -9,6 +9,7 @@
     "frontend": {
       "root": "frontend",
       "framework": "vite",
+      "installCommand": "npm ci --include=dev --prefix ..",
       "buildCommand": "npm run build",
       "outputDirectory": "dist",
       "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
