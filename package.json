@@ -11,6 +11,8 @@
   },
   "scripts": {
     "dev": "concurrently -k -n API,WEB -c cyan,yellow \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+    "start": "npm run start -w backend",
+    "build:backend": "npm run build -w backend",
     "build": "npm run build --workspaces",
     "typecheck": "npm run typecheck --workspaces",
     "test": "npm run test -w backend",

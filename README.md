@@ -316,6 +316,17 @@ Les migrations `202610160004_chauffeurs` et `202610160005_facture_personnalisee`
 
 Vérification du 16 octobre 2026 après séparation des couches : `npm run check` et `npm run build` réussis, 100 fichiers contrôlés et 15 tests locaux réussis. Le test d’intégration API/Prisma/Neon a été exécuté séparément avec succès. Le parcours Chrome a validé les largeurs 1 440/390/320 px, l’inscription, le brouillon, le trajet OSRM, la réservation persistée, l’accès administrateur, la confirmation, le devis final, le PDF et le suivi client. Les serveurs temporaires de vérification ont été arrêtés.
 
+## Erreur Render : `npm run dev` et mémoire 512 Mio
+
+Si les journaux Render indiquent `Running 'npm run dev'`, le service est configuré en **runtime Node avec une commande de démarrage de développement**. Cette commande démarre simultanément Vite, le serveur backend en mode watch et `prisma generate` ; elle ne doit pas servir l’application en production. Le fichier `render.yaml` ne modifie un service existant que si ce service est géré et synchronisé par un Blueprint Render. Un build réussi du frontend dans ces journaux ne signifie donc pas que Render utilise le Dockerfile backend.
+
+Pour corriger **le service existant** dans Render, choisir l’une de ces configurations :
+
+- **Docker recommandé** : dans les paramètres du service, passer le runtime à Docker, garder le répertoire racine du dépôt, sélectionner `backend/Dockerfile` et le contexte Docker `.`. Ne pas définir `npm run dev` comme Docker Command ; l’image lance `node dist/main.js`. Si le service est déjà géré par un Blueprint, synchroniser `render.yaml`, qui fixe explicitement cette commande.
+- **Runtime Node** : garder le répertoire racine du dépôt ; Build Command : `npm ci && npm run build:backend` ; Start Command : `npm start` ; Pre-Deploy Command : `npm run db:migrate -w backend`. Cette option compile Prisma avant le démarrage et ne lance que l’API.
+
+Dans les deux cas, configurer `NODE_ENV=production`, `DATABASE_URL`, `DATABASE_URL_UNPOOLED` et `FRONTEND_ORIGIN` dans les variables Render. Vérifier que `PORT` n’est pas forcé à `5173` et que le Health Check Path vaut `/api/ready`. Après modification, redéployer et chercher `API Demenag Express` dans les journaux ; Vite ne doit plus y apparaître. Le backend exige aussi un catalogue initialisé dans la base ciblée. Si Render affiche encore une erreur de mémoire après ce démarrage seul, mesurer la consommation de l’API avant de choisir une instance plus grande.
+
 ## Conteneurs Docker et déploiement Render / Vercel
 
 Le dépôt est un monorepo npm. Les deux Dockerfiles se construisent **depuis la racine du dépôt** afin de disposer de `package-lock.json` et des workspaces :
