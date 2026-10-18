@@ -37,8 +37,10 @@ export interface AuthRepository {
 export interface BookingRepository {
   bookings(): Promise<Booking[]>;
   booking(id: string): Promise<Booking>;
+  deleteBooking(id: string): Promise<void>;
   createBooking(input: BookingInput): Promise<Booking>;
   status(id: string, status: BookingStatus, version: number): Promise<Booking>;
+  schedule(id: string, date: string | null, timeSlot: string, version: number): Promise<Booking>;
   quote(id: string, input: QuoteInput): Promise<Booking>;
   assignDriver(id: string, driverId: string | null, version: number): Promise<Booking>;
 }
@@ -95,4 +97,4 @@ export type QuoteExporter = (
   booking: Booking,
   quote: Quote | undefined,
   settings: Settings,
-) => Promise<void>;
+) => Promise<Blob>;

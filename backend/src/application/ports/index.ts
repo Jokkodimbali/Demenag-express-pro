@@ -50,6 +50,7 @@ export interface BookingRepository {
   find(id: string): Promise<Booking | null>;
   create(booking: Booking, requestId: string): Promise<Booking>;
   update(booking: Booking, expectedVersion: number): Promise<Booking>;
+  delete?(id: string): Promise<void>;
 }
 export interface DriverRepository {
   list(): Promise<Driver[]>;

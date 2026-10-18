@@ -27,7 +27,8 @@ export function filterByVehicle(bookings: Booking[], vehicleId: string) {
   return vehicleId ? bookings.filter((booking) => booking.vehicle.id === vehicleId) : bookings;
 }
 
-export function sameWeek(date: string, reference: string) {
+export function sameWeek(date: string | null, reference: string) {
+  if (!date) return false;
   const start = new Date(reference + 'T12:00:00Z');
   const day = (start.getUTCDay() + 6) % 7;
   start.setUTCDate(start.getUTCDate() - day);

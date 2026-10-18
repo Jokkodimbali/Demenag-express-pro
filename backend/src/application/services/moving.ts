@@ -80,7 +80,7 @@ export class MovingService implements MovingUseCases {
         settings.bookingsEnabled !== false,
         messages.lesReservationsSontTemporairementFermees,
       );
-    validateDate(input.date, input.timeSlot, this.clock.now(), settings);
+    if (input.date) validateDate(input.date, input.timeSlot, this.clock.now(), settings);
     const id = this.ids.next();
     return this.bookings.create(
       {
@@ -140,6 +140,7 @@ export class MovingService implements MovingUseCases {
     transition(booking.status, next, user.role);
     const { settings } = await this.catalogue.get();
     if (user.role !== 'admin' && next === 'cancelled') {
+      requireValue(booking.date, messages.dateInvalide);
       requireValue(settings.clientCancellation, messages.contactezLAdministrationPourAnnuler);
       const configuredSlot = settings.enabledSlots.find((slot) => slot.label === booking.timeSlot);
       requireValue(configuredSlot, messages.creneauInvalide);
@@ -149,12 +150,23 @@ export class MovingService implements MovingUseCases {
         messages.leDelaiDAnnulationEstDepasseContactezL,
       );
     }
-    if (next === 'confirmed')
+    if (next === 'confirmed') {
+      requireValue(booking.date, 'Ajoutez une date de rendez-vous avant de confirmer la réservation.');
       validateDate(booking.date, booking.timeSlot, this.clock.now(), {
         ...settings,
         maxAdvanceDays: 730,
       });
+    }
     return this.bookings.update({ ...booking, status: next }, version);
+  }
+  async schedule(user: User, id: string, date: string | null, timeSlot: string, version: number) {
+    requireAdministrator(user);
+    const booking = await this.get(user, id);
+    if (booking.version !== version) throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
+    requireValue(booking.status === 'pending', 'Le rendez-vous peut être modifié jusqu’à la confirmation finale de la réservation.');
+    const { settings } = await this.catalogue.get();
+    if (date) validateDate(date, timeSlot, this.clock.now(), { ...settings, maxAdvanceDays: 730 });
+    return this.bookings.update({ ...booking, date, timeSlot: date ? timeSlot : '' }, version);
   }
   async assignDriver(user: User, id: string, driverId: string | null, version: number) {
     requireAdministrator(user);
@@ -187,12 +199,13 @@ export class MovingService implements MovingUseCases {
         messages.demarrezLeDemenagementAvantDeFinaliserSonDevis,
       );
     const { settings } = await this.catalogue.get();
+    const options = input.options ?? booking.options;
     // Les prix du transport sont ceux du véhicule au moment de la réservation.
     const price = calculatePrice(
       booking.vehicle,
       booking.pricingSettings ?? settings,
       booking.distanceKm,
-      booking.options,
+      options,
       input.trips,
       input.customPrice,
       input.discount,
@@ -210,6 +223,7 @@ export class MovingService implements MovingUseCases {
       createdAt: this.clock.now().toISOString(),
       price,
       notes: input.notes,
+      options,
     };
     return this.bookings.update(
       {
@@ -219,5 +233,12 @@ export class MovingService implements MovingUseCases {
       },
       input.version,
     );
+  }
+  async delete(user: User, id: string) {
+    requireAdministrator(user);
+    const booking = await this.bookings.find(id);
+    if (!booking) throw new AppError(404, messages.reservationIntrouvable);
+    if (!this.bookings.delete) throw new AppError(501, 'La suppression des réservations est indisponible.');
+    await this.bookings.delete(id);
   }
 }

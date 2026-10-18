@@ -180,7 +180,7 @@ model Reservation {
   vehicule           Vehicule          @relation(fields: [vehiculeId], references: [id])
   chauffeurId        String?           @map("driver_id") @db.Uuid
   chauffeur          Chauffeur?        @relation(fields: [chauffeurId], references: [id], onDelete: SetNull)
-  date               DateTime          @db.Date
+  date               DateTime?         @db.Date
   creneau            String            @map("time_slot")
   statut             StatutReservation @default(en_attente) @map("status")
   // Instantané métier : coordonnées, prix et historique des devis figés.

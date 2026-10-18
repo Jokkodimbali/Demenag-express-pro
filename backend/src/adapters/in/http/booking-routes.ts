@@ -55,6 +55,10 @@ export function registerBookingRoutes(
   app.get(`${apiRoutes.bookings}/:id`, authenticate, async (req, res) =>
     res.json(await deps.moving.get(getActor(res), z.uuid().parse(req.params.id))),
   );
+  app.delete(`${apiRoutes.bookings}/:id`, authenticate, admin, async (req, res) => {
+    await deps.moving.delete(getActor(res), z.uuid().parse(req.params.id));
+    res.status(204).end();
+  });
   app.patch(`${apiRoutes.bookings}/:id/status`, authenticate, async (req, res) => {
     const p = statusSchema.parse(req.body);
     const booking = await deps.moving.status(
@@ -70,6 +74,10 @@ export function registerBookingRoutes(
       booking.id,
     );
     res.json(booking);
+  });
+  app.patch(`${apiRoutes.bookings}/:id/schedule`, authenticate, admin, async (req, res) => {
+    const p = z.object({ date: z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal(''), z.null()]), timeSlot: z.string().max(50), version: z.number().int().positive() }).parse(req.body);
+    res.json(await deps.moving.schedule(getActor(res), z.uuid().parse(req.params.id), p.date || null, p.timeSlot, p.version));
   });
   app.patch(`${apiRoutes.bookings}/:id/driver`, authenticate, admin, async (req, res) => {
     const p = driverAssignmentSchema.parse(req.body);

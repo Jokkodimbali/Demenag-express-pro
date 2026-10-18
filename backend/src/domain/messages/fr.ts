@@ -13,10 +13,10 @@ export const messages = {
   notificationNouvelleReservation: (
     reference: string,
     customer: string,
-    date: string,
+    date: string | null,
     slot: string,
   ) =>
-    `La réservation ${reference} de ${customer}, prévue le ${date} (${slot}), attend votre confirmation.`,
+    `La réservation ${reference} de ${customer}, ${date ? `prévue le ${date} (${slot})` : 'sans date de rendez-vous'}, attend votre confirmation.`,
   notificationStatutReservation: (reference: string, status: BookingStatus) =>
     `La réservation ${reference} est maintenant ${reservationStatusLabel[status]}.`,
   notificationDevisDisponible: (reference: string) =>

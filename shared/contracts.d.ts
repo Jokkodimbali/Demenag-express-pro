@@ -79,6 +79,7 @@ export type Quote = {
   createdAt: string;
   price: Price;
   notes: string;
+  options?: Options;
 };
 export type Booking = {
   id: string;
@@ -93,7 +94,7 @@ export type Booking = {
   from: Point;
   to: Point;
   distanceKm: number;
-  date: string;
+  date: string | null;
   timeSlot: string;
   options: Options;
   notes: string;
@@ -111,7 +112,7 @@ export type BookingInput = {
   customerPhone: string;
   fromAddress: string;
   toAddress: string;
-  date: string;
+  date: string | null;
   timeSlot: string;
   options: Options;
   notes: string;
@@ -124,5 +125,6 @@ export type QuoteInput = {
   discount: number;
   notes: string;
   extraLines: Array<{ label: string; quantity: number; unitPrice: number }>;
+  options?: Options;
   version: number;
 };

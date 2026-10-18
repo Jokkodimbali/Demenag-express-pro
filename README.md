@@ -137,7 +137,7 @@ La première version considère **un véhicule par modèle et par créneau**. Un
 
 Les prix du transport du véhicule sont copiés dans la réservation. Chaque devis conserve ses lignes, prix unitaires, remises et total lors de son enregistrement. Son affichage et le PDF utilisent cet instantané, sans recalcul avec les nouveaux tarifs. Les nouvelles réservations figent également les tarifs des services et les bornes de distance ; leurs devis réutilisent cet instantané. Les anciennes réservations sans instantané des paramètres utilisent les paramètres disponibles lors de la création du devis.
 
-Le bouton WhatsApp **ouvre un message à envoyer manuellement**. Il ne prouve pas la livraison et ne joint pas automatiquement le PDF. Aucun SMS, email ni paiement n’est envoyé automatiquement.
+Le partage d’un devis génère son PDF puis propose le partage du fichier et du message avec les outils disponibles sur l’appareil. Si le navigateur ne permet pas le partage de fichier, le PDF est téléchargé et WhatsApp s’ouvre avec un message indiquant de joindre le fichier. L’envoi reste à valider par l’administrateur ; il ne prouve pas la livraison. Aucun SMS, email ni paiement n’est envoyé automatiquement.
 
 ## Endpoints
 

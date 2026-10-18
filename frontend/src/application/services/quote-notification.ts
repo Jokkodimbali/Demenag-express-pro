@@ -8,12 +8,12 @@ export function quoteNotificationUrl(booking: Booking, quote: Quote) {
     booking.phone.replace(/\D/g, '') +
     '?text=' +
     encodeURIComponent(
-      messages.quoteNotification(
+      `${messages.quoteNotification(
         booking.customerName,
         quote.reference,
         booking.reference,
         money(quote.price.total),
-      ),
+      )}\n\nLe PDF du devis a été téléchargé. Joignez le fichier à ce message avant de l’envoyer.`,
     )
   );
 }

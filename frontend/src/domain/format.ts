@@ -7,13 +7,13 @@ export const money = (value: number | null) =>
     : new Intl.NumberFormat(formatting.locale, { maximumFractionDigits: 0 }).format(value) +
       ' ' +
       formatting.currencyLabel;
-export const dateLabel = (value: string) =>
+export const dateLabel = (value: string | null) => value ?
   new Date(value + 'T12:00:00Z').toLocaleDateString(formatting.locale, {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
     timeZone: formatting.timeZone,
-  });
+  }) : 'Sans date de rendez-vous';
 export const today = () => new Date().toISOString().slice(0, 10);
 export const statuses: Record<BookingStatus, string> = {
   pending: messages.demandeRecue,

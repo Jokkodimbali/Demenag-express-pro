@@ -20,6 +20,7 @@ export function quoteFromForm(
   data: FormData,
   version: number,
   extraLines: QuoteInput['extraLines'],
+  options: NonNullable<QuoteInput['options']>,
 ): QuoteInput {
   return {
     kind: data.get('kind') === 'final' ? 'final' : 'provisional',
@@ -28,6 +29,7 @@ export function quoteFromForm(
     discount: integer(data.get('discount')),
     notes: String(data.get('notes')),
     extraLines,
+    options,
     version,
   };
 }

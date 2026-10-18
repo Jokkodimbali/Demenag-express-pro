@@ -107,6 +107,7 @@ export function Admin() {
                 onChange={(next) =>
                   setBookings((rows) => rows.map((r) => (r.id === next.id ? next : r)))
                 }
+                onDeleted={() => setBookings((rows) => rows.filter((row) => row.id !== b.id))}
               />
             ))}
           </div>

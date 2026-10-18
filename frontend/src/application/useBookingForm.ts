@@ -89,7 +89,7 @@ export function useBookingForm() {
         fromAddress: draft.fromAddress,
         toAddress: draft.toAddress,
         date: draft.date,
-        timeSlot: draft.timeSlot,
+        timeSlot: draft.date ? draft.timeSlot : '',
         options: draft.options,
         notes: draft.notes,
         requestId: draft.requestId,

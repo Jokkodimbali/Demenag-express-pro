@@ -20,6 +20,12 @@ export class PrismaBookings implements BookingRepository {
     const row = await this.db.reservation.findUnique({ where: { id }, select: { donnees: true } });
     return row ? (row.donnees as unknown as Booking) : null;
   }
+  async delete(id: string) {
+    await this.db.$transaction(async (tx) => {
+      await tx.notification.deleteMany({ where: { reservationId: id } });
+      await tx.reservation.delete({ where: { id } });
+    });
+  }
   async create(booking: Booking, requestId: string) {
     try {
       const row = await this.db.reservation.upsert({
@@ -36,7 +42,7 @@ export class PrismaBookings implements BookingRepository {
           identifiantDemande: requestId,
           reference: booking.reference,
           vehiculeId: booking.vehicle.id,
-          date: new Date(booking.date + 'T00:00:00Z'),
+          date: booking.date ? new Date(booking.date + 'T00:00:00Z') : null,
           creneau: booking.timeSlot,
           statut: toStatus[booking.status],
           donnees: json(booking),

@@ -22,7 +22,7 @@ export const bookingSchema = estimateSchema.extend({
   customerPhone: z.string().trim().min(9).max(25),
   fromAddress: z.string().trim().min(3).max(300),
   toAddress: z.string().trim().min(3).max(300),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  date: z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal(''), z.null()]).transform((v) => v || null),
   timeSlot: z.string().max(50),
   notes: z.string().trim().max(2000).default(''),
   requestId: z.uuid(),
@@ -59,6 +59,7 @@ export const quoteSchema = z.object({
     )
     .max(20)
     .default([]),
+  options: optionsSchema.optional(),
   version: z.number().int().positive(),
 });
 export const driverSchema = z.object({

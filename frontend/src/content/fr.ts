@@ -16,8 +16,8 @@ export const messages = {
   dakarSenegal: 'Dakar, Sénégal',
   devisProvisoire: 'DEVIS PROVISOIRE',
   clientDetails: (name: string | number, phone: string | number) => `CLIENT : ${name} · ${phone}`,
-  movingSchedule: (date: string | number, slot: string | number) =>
-    `Déménagement : ${date} · ${slot}`,
+  movingSchedule: (date: string | number | null, slot: string | number) =>
+    `Déménagement : ${date || 'Sans date de rendez-vous'}${date && slot ? ` · ${slot}` : ''}`,
   departure: (address: string | number) => `Départ : ${address}`,
   arrival: (address: string | number) => `Arrivée : ${address}`,
   priceLine: (
@@ -56,6 +56,11 @@ export const messages = {
   voirLeDetail: 'Voir le détail',
   telechargerLePdf: ' Télécharger le PDF',
   annulerCetteReservation: 'Annuler cette réservation ?',
+  supprimerReservationDefinitivement: 'Supprimer définitivement cette réservation ?',
+  confirmationSuppressionReservation: (reference: string) =>
+    `La réservation ${reference}, son historique et tous ses devis seront supprimés définitivement. Cette action est irréversible.`,
+  suppressionDefinitive: 'Suppression définitive',
+  supprimerDefinitivement: 'Supprimer définitivement',
   annuler: 'Annuler',
   distanceRoutiere: 'Distance routière',
   km: ' km',
@@ -77,7 +82,9 @@ export const messages = {
   reservationsTemporairementFermees: 'Les réservations sont temporairement fermées',
   creerUnDevis: 'Créer un devis',
   preparerLeMessageWhatsapp: ' Préparer le message WhatsApp',
-  envoyerLeDevisDefinitif: 'Envoyer le devis définitif',
+  envoyerLeDevisDefinitif: 'Partager le devis définitif sur WhatsApp',
+  partagerLeDevisWhatsApp: 'Partager le devis sur WhatsApp',
+  partagePdfWhatsAppIndisponible: 'Le partage direct du PDF n’est pas disponible ici. Le fichier a été téléchargé : ajoutez-le manuellement dans WhatsApp.',
   modifierLeDevis: 'Modifier le devis',
   nouveauDevisClient: 'Nouveau devis client',
   unNouveauDevisPour: 'Un nouveau devis pour ',
@@ -90,7 +97,7 @@ export const messages = {
   remiseFcfa: 'Remise (FCFA)',
   noteDuDevis: 'Note du devis',
   unDevisFinalEstConserveSansModificationEt:
-    'Un devis final est conservé sans modification et clôture la prestation. L’envoi WhatsApp reste manuel.',
+    'Un devis final est conservé sans modification et clôture la prestation. Le partage WhatsApp prépare le PDF et le message ; vérifiez puis validez l’envoi.',
   enregistrement: 'Enregistrement…',
   enregistrerLeDevis: 'Enregistrer le devis',
   actualiser: 'Actualiser',
@@ -417,6 +424,7 @@ export const messages = {
   imageInterieure: 'Image intérieure',
   imageTropVolumineuse: 'Chaque image doit peser au maximum 2,5 Mo.',
   chargesSupplementaires: 'Charges supplémentaires',
+  montantCalculeDuDevis: 'Montant actuel du devis',
   ajouterUneLigne: 'Ajouter une ligne',
   libelleDeLaCharge: 'Libellé de la charge',
   quantite: 'Quantité',

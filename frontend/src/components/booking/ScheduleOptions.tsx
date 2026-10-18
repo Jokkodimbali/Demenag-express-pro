@@ -32,7 +32,6 @@ export function ScheduleOptions({
             max={new Date(Date.now() + catalogue.settings.maxAdvanceDays * 86400000)
               .toISOString()
               .slice(0, 10)}
-            required
             value={draft.date}
             onChange={(e) => setDraft((d) => ({ ...d, date: e.target.value }))}
           />

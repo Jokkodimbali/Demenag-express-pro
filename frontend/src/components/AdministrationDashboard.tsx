@@ -57,8 +57,9 @@ export function RevenueDashboard({ bookings, vehicles = [], onSelect }: Dashboar
   const scoped = useMemo(() => {
     if (period === 'all') return vehicleBookings;
     if (period === 'week')
-      return vehicleBookings.filter((booking) => sameWeek(booking.date, selectedDay));
+      return vehicleBookings.filter((booking) => !booking.date || sameWeek(booking.date, selectedDay));
     return vehicleBookings.filter((booking) => {
+      if (!booking.date) return true;
       const date = new Date(booking.date + 'T12:00:00Z');
       return (
         date.getUTCFullYear() === month.getFullYear() && date.getUTCMonth() === month.getMonth()
@@ -260,7 +261,7 @@ function BookingCalendar({
   const byDay = useMemo(() => {
     const grouped = new Map<string, Booking[]>();
     for (const booking of bookings)
-      grouped.set(booking.date, [...(grouped.get(booking.date) ?? []), booking]);
+      if (booking.date) grouped.set(booking.date, [...(grouped.get(booking.date) ?? []), booking]);
     return grouped;
   }, [bookings]);
   return (
@@ -336,6 +337,16 @@ function BookingCalendar({
           );
         })}
       </div>
+      {(byDay.get('')?.length || bookings.some((booking) => !booking.date)) ? (
+        <section className="calendar-undated" aria-label="Réservations sans date de rendez-vous">
+          <h3>Sans date de rendez-vous <span>{bookings.filter((booking) => !booking.date).length}</span></h3>
+          <div>{bookings.filter((booking) => !booking.date).map((booking) => (
+            <button key={booking.id} className={'calendar-booking ' + booking.status} onClick={() => onSelect(booking)}>
+              {booking.reference} · {booking.customerName}
+            </button>
+          ))}</div>
+        </section>
+      ) : null}
     </section>
   );
 }
