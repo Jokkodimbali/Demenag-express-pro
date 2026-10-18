@@ -4,8 +4,8 @@ import { useApp } from '../context';
 import { errorMessage } from '../error-message';
 import { dataUrl } from '../validation/forms';
 
-export function useDriverWorkspace() {
-  const { api } = useApp();
+export function useDriverWorkspace(loadBookings = true) {
+  const { api, user, setUser } = useApp();
   const [profile, setProfile] = useState<Driver | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -16,7 +16,7 @@ export function useDriverWorkspace() {
     let active = true;
     setLoading(true);
     setError('');
-    Promise.all([api.driverProfile(), api.driverBookings()])
+    Promise.all([api.driverProfile(), loadBookings ? api.driverBookings() : Promise.resolve([])])
       .then(([nextProfile, nextBookings]) => {
         if (active) {
           setProfile(nextProfile);
@@ -28,7 +28,7 @@ export function useDriverWorkspace() {
     return () => {
       active = false;
     };
-  }, [api, retry]);
+  }, [api, loadBookings, retry]);
   async function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!profile || saving) return;
@@ -37,13 +37,13 @@ export function useDriverWorkspace() {
     const form = new FormData(event.currentTarget);
     try {
       const photo = await dataUrl(form.get('photo'), profile.photo ?? '');
-      setProfile(
-        await api.updateDriverProfile({
-          name: String(form.get('name')),
-          phone: String(form.get('phone')),
-          photo: photo || null,
-        }),
-      );
+      const updated = await api.updateDriverProfile({
+        name: String(form.get('name')),
+        phone: String(form.get('phone')),
+        photo: photo || null,
+      });
+      setProfile(updated);
+      if (user) setUser({ ...user, name: updated.name, phone: updated.phone });
     } catch (reason) {
       setError(errorMessage(reason));
     } finally {

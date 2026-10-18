@@ -176,6 +176,15 @@
   color: var(--muted);
   font-size: 13px;
 }
+.user-row > div {
+  min-width: 0;
+}
+.user-account-action {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+}
 .account-dialog {
   position: fixed;
   z-index: 1200;
@@ -203,6 +212,11 @@
   }
 }
 @media (max-width: 600px) {
+  .hero h1 {
+    font-size: clamp(30px, 10vw, 46px);
+    line-height: 1;
+    overflow-wrap: anywhere;
+  }
   body:has(.mobile-booking-bar) {
     padding-bottom: 84px;
   }

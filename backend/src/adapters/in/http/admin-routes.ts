@@ -2,7 +2,12 @@ import type { Express } from 'express';
 import type { Access } from './access.js';
 import { getActor } from './actor.js';
 import type { Dependencies } from './dependencies.js';
-import { catalogueSchema, createDriverSchema, driverSchema } from './schemas.js';
+import {
+  adminProfileSchema,
+  catalogueSchema,
+  createDriverSchema,
+  driverSchema,
+} from './schemas.js';
 import { apiRoutes } from './routes.js';
 import { accountSchema, createAccountSchema, userIdSchema } from './validation/administration.js';
 export function registerAdminRoutes(
@@ -11,6 +16,14 @@ export function registerAdminRoutes(
   access: Pick<Access, 'authenticate' | 'admin'>,
 ) {
   const { authenticate, admin } = access;
+  app.get(apiRoutes.administration.profile, authenticate, admin, async (_req, res) =>
+    res.json(getActor(res)),
+  );
+  app.put(apiRoutes.administration.profile, authenticate, admin, async (req, res) =>
+    res.json(
+      await deps.administration.updateProfile(getActor(res), adminProfileSchema.parse(req.body)),
+    ),
+  );
   app.get(apiRoutes.administration.users, authenticate, admin, async (_req, res) =>
     res.json(await deps.administration.listUsers(getActor(res))),
   );

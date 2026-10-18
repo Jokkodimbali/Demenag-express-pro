@@ -48,7 +48,8 @@ export async function driverFromForm(
   data: FormData,
   existing: Driver,
 ): Promise<Omit<Driver, 'userId'>> {
-  const photo = await dataUrl(data.get('photo'), existing.photo ?? '');
+  const photo =
+    data.get('removePhoto') === 'on' ? '' : await dataUrl(data.get('photo'), existing.photo ?? '');
   return {
     ...existing,
     name: String(data.get('name')),

@@ -3,8 +3,7 @@ import { useApp } from '../context';
 import { errorMessage } from '../error-message';
 export function usePasswordForm() {
   const { api, setUser } = useApp();
-  const [open, setOpen] = useState(false),
-    [busy, setBusy] = useState(false),
+  const [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [saved, setSaved] = useState(false);
   async function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -24,5 +23,5 @@ export function usePasswordForm() {
       setBusy(false);
     }
   }
-  return { open, setOpen, busy, error, saved, submit };
+  return { busy, error, saved, submit };
 }

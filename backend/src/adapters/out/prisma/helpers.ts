@@ -9,6 +9,7 @@ export const safeUser = (user: User): User => ({
   phone: user.phone,
   role: user.role,
   active: user.active,
+  photo: user.photo ?? null,
 });
 export function conflict(error: unknown): never {
   if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002')

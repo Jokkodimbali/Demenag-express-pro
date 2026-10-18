@@ -1,9 +1,12 @@
+import { Pencil, Truck, UserRoundPlus } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useUsers } from '../application/controllers/useUsers';
 import { usePagination } from '../application/usePagination';
 import { Modal } from '../components/Modal';
 import { Pagination } from '../components/Pagination';
 import { pageSizes } from '../config/pagination';
 import { messages } from '../content/fr';
+import { routes } from '../routing/routes';
 export function Users() {
   const {
     actor,
@@ -28,7 +31,7 @@ export function Users() {
       <div className="section-heading">
         <div>
           <h2>{messages.comptesEtAcces2}</h2>
-          <p>{messages.clientsEtAdministrateursLes500ComptesLesPlus}</p>
+          <p>{messages.comptesClientsAdministrateursChauffeurs}</p>
         </div>
         <button
           className="button primary"
@@ -37,6 +40,7 @@ export function Users() {
             setEditing('new');
           }}
         >
+          <UserRoundPlus size={17} />
           {messages.creerUnCompte}
         </button>
       </div>
@@ -62,20 +66,36 @@ export function Users() {
                 <strong>{u.name}</strong>
                 <p>
                   {u.phone} ·{' '}
-                  {u.role === 'admin' ? messages.labelAdministrateur : messages.labelClient} ·{' '}
-                  {u.active === false ? messages.labelSuspendu : messages.labelActif}
+                  {u.role === 'admin'
+                    ? messages.labelAdministrateur
+                    : u.role === 'driver'
+                      ? messages.chauffeur
+                      : messages.labelClient}{' '}
+                  · {u.active === false ? messages.labelSuspendu : messages.labelActif}
                 </p>
               </div>
-              <button
-                className="button secondary small"
-                onClick={() => {
-                  setError('');
-                  setEditing(u);
-                }}
-                aria-label={messages.modifier + u.name}
-              >
-                {messages.modifier2}
-              </button>
+              {u.role === 'driver' ? (
+                <Link
+                  className="button secondary small user-account-action"
+                  to={routes.administrationFleet}
+                  aria-label={`${messages.gererLeChauffeur} ${u.name}`}
+                >
+                  <Truck size={15} />
+                  {messages.gererLeChauffeur}
+                </Link>
+              ) : (
+                <button
+                  className="button secondary small user-account-action"
+                  onClick={() => {
+                    setError('');
+                    setEditing(u);
+                  }}
+                  aria-label={messages.modifier + u.name}
+                >
+                  <Pencil size={15} />
+                  {messages.modifier2}
+                </button>
+              )}
             </div>
           ))}
         </div>

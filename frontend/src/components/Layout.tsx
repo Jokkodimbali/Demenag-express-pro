@@ -1,4 +1,15 @@
-import { ArrowUpRight, LogOut, MessageCircle, Phone, UserRound } from 'lucide-react';
+import {
+  ArrowUpRight,
+  ChevronDown,
+  ClipboardList,
+  ClipboardCheck,
+  CheckCircle2,
+  LogOut,
+  MessageCircle,
+  Phone,
+  UserRound,
+} from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useLayout } from '../application/controllers/useLayout';
 import { messages } from '../content/fr';
@@ -6,6 +17,40 @@ import { routes } from '../routing/routes';
 import { NotificationCenter } from './NotificationCenter';
 export function Layout() {
   const { user, catalogue, error, logout } = useLayout();
+  const [headerSuccess, setHeaderSuccess] = useState('');
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const accountMenuRef = useRef<HTMLDetailsElement>(null);
+  const closeAccountMenu = useCallback(() => {
+    if (accountMenuRef.current) accountMenuRef.current.open = false;
+  }, []);
+  useEffect(() => {
+    function closeOnOutsideClick(event: PointerEvent) {
+      if (event.target instanceof Node && !accountMenuRef.current?.contains(event.target))
+        closeAccountMenu();
+    }
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') closeAccountMenu();
+    }
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideClick);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [closeAccountMenu]);
+  useEffect(() => {
+    function receiveSuccess(event: Event) {
+      if (!(event instanceof CustomEvent) || typeof event.detail !== 'string') return;
+      setHeaderSuccess(event.detail);
+      if (noticeTimer.current) clearTimeout(noticeTimer.current);
+      noticeTimer.current = setTimeout(() => setHeaderSuccess(''), 7000);
+    }
+    window.addEventListener('demenag:header-success', receiveSuccess);
+    return () => {
+      window.removeEventListener('demenag:header-success', receiveSuccess);
+      if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    };
+  }, []);
 
   return (
     <>
@@ -22,40 +67,71 @@ export function Layout() {
             </span>
           </Link>
           <nav aria-label={messages.navigationPrincipale}>
-            <NavLink to={routes.booking} className="nav-book">
-              {messages.reserver}
-              <ArrowUpRight size={15} />
-            </NavLink>
+            {user?.role !== 'driver' ? (
+              <NavLink to={routes.booking} className="nav-book">
+                {messages.reserver}
+                <ArrowUpRight size={15} />
+              </NavLink>
+            ) : null}
             {user ? (
               <>
+                {headerSuccess && <span className="header-success" role="status"><CheckCircle2 size={16}/>{headerSuccess}</span>}
                 <NotificationCenter user={user} />
-                <NavLink
-                  className="button secondary small"
-                  to={
-                    user.role === 'admin'
-                      ? routes.administration
-                      : user.role === 'driver'
-                        ? routes.driverWorkspace
-                        : routes.account
-                  }
-                >
-                  <UserRound size={16} />
-                  <span>
-                    {user.role === 'admin'
-                      ? messages.labelAdministration
-                      : user.role === 'driver'
-                        ? messages.mesMissions
-                        : messages.monEspace}
-                  </span>
-                </NavLink>
-                <button
-                  className="icon-button"
-                  onClick={logout}
-                  aria-label={messages.seDeconnecter}
-                  title={messages.seDeconnecter}
-                >
-                  <LogOut size={18} />
-                </button>
+                <details className="account-menu" ref={accountMenuRef}>
+                  <summary aria-label={`${messages.menuDuCompte} ${user.name}`}>
+                    {user.photo ? (
+                      <img className="account-avatar" src={user.photo} alt="" />
+                    ) : (
+                      <UserRound size={17} />
+                    )}
+                    <span>{user.name}</span>
+                    <ChevronDown size={15} />
+                  </summary>
+                  <div className="account-dropdown">
+                    {user.role === 'driver' ? (
+                      <>
+                        <NavLink to={routes.driverWorkspace} onClick={closeAccountMenu}>
+                          <ClipboardList size={16} />
+                          {messages.mesMissions}
+                        </NavLink>
+                        <NavLink to={routes.driverVehicleCheck} onClick={closeAccountMenu}>
+                          <ClipboardCheck size={16} />
+                          Contrôle du véhicule
+                        </NavLink>
+                        <NavLink to={routes.driverProfile} onClick={closeAccountMenu}>
+                          <UserRound size={16} />
+                          {messages.monProfil}
+                        </NavLink>
+                      </>
+                    ) : user.role === 'admin' ? (
+                      <>
+                        <NavLink to={routes.administration} onClick={closeAccountMenu}>
+                          <ClipboardList size={16} />
+                          {messages.labelAdministration}
+                        </NavLink>
+                        <NavLink to={routes.account} onClick={closeAccountMenu}>
+                          <UserRound size={16} />
+                          {messages.monProfil}
+                        </NavLink>
+                      </>
+                    ) : (
+                      <NavLink to={routes.account} onClick={closeAccountMenu}>
+                        <UserRound size={16} />
+                        {messages.monEspace}
+                      </NavLink>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        closeAccountMenu();
+                        void logout();
+                      }}
+                    >
+                      <LogOut size={16} />
+                      {messages.seDeconnecter}
+                    </button>
+                  </div>
+                </details>
               </>
             ) : (
               <Link className="button primary small" to={routes.login}>

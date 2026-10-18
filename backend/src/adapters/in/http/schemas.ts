@@ -73,6 +73,25 @@ export const createDriverSchema = driverSchema.extend({
   password: z.string().min(10, messages.utilisezAuMoins10Caracteres).max(128),
 });
 export const driverProfileSchema = driverSchema.pick({ name: true, phone: true, photo: true });
+const reportPhotosSchema = z.array(imageSchema).min(1).max(5);
+export const vehicleInspectionSchema = z.object({
+  levels: z.record(z.string().min(1).max(50), z.enum(['good', 'low', 'empty'])).refine((v) => Object.keys(v).length === 5),
+  condition: z.enum(['good', 'attention', 'unsafe']),
+  notes: z.string().trim().max(1500).default(''),
+  photos: reportPhotosSchema,
+});
+export const breakdownSchema = z.object({
+  description: z.string().trim().min(5).max(1500),
+  latitude: z.number().min(12).max(17),
+  longitude: z.number().min(-18.5).max(-11),
+  accuracy: z.number().nonnegative().max(100000).nullable(),
+  photos: z.array(imageSchema).max(5).default([]),
+});
+export const adminProfileSchema = z.object({
+  name: z.string().trim().min(2).max(100),
+  phone: z.string().trim().min(9).max(25),
+  photo: imageSchema.nullable(),
+});
 export const catalogueSchema = z.object({
   vehicles: z
     .array(

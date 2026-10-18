@@ -13,6 +13,7 @@ import type {
   User,
   Vehicle,
 } from '../../domain/model.js';
+import type { BreakdownInput, VehicleInspectionInput, VehicleReportRecord } from './index.js';
 export type AuthSession = { user: User; token: string };
 export interface AuthUseCases {
   register(name: string, phone: string, password: string): Promise<AuthSession>;
@@ -36,6 +37,7 @@ export interface AdministrationUseCases {
   listUsers(actor: User): Promise<User[]>;
   updateUser(actor: User, user: User): Promise<User>;
   createUser(actor: User, input: Omit<User, 'id'> & { password: string }): Promise<User>;
+  updateProfile(actor: User, input: Pick<User, 'name' | 'phone' | 'photo'>): Promise<User>;
 }
 export interface CatalogueUseCases {
   get(): Promise<Catalogue>;
@@ -56,4 +58,16 @@ export interface DriverUseCases {
   profile(actor: User): Promise<Driver>;
   updateProfile(actor: User, input: Pick<Driver, 'name' | 'phone' | 'photo'>): Promise<Driver>;
   bookings(actor: User): Promise<Booking[]>;
+}
+export interface VehicleReportUseCases {
+  submitInspection(actor: User, input: VehicleInspectionInput): Promise<VehicleReportRecord>;
+  reportBreakdown(actor: User, input: BreakdownInput): Promise<VehicleReportRecord>;
+  driverReports(actor: User): Promise<{ inspections: VehicleReportRecord[]; breakdowns: VehicleReportRecord[] }>;
+  adminReports(actor: User): Promise<{ inspections: VehicleReportRecord[]; breakdowns: VehicleReportRecord[] }>;
+}
+export interface NotificationUseCases {
+  list(actor: User): Promise<{ items: import('./index.js').Notification[]; unreadCount: number }>;
+  markRead(actor: User, id: string): Promise<void>;
+  markAllRead(actor: User): Promise<void>;
+  announce(actor: User, title: string, message: string): Promise<void>;
 }

@@ -3,6 +3,7 @@ import { type NextFunction, type Request, type Response } from 'express';
 import { ZodError } from 'zod';
 import { AppError } from '../../../domain/errors.js';
 import { messages } from '../../../domain/messages/fr.js';
+import { Prisma } from '../../../generated/prisma/client.js';
 export function registerErrorHandler(app: Express) {
   app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
     if (
@@ -29,7 +30,15 @@ export function registerErrorHandler(app: Express) {
       res.status(400).json({ message: messages.requeteJsonInvalide });
       return;
     }
-    console.error('Erreur API :', error instanceof Error ? error.name : 'UnknownError');
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      console.error('Erreur Prisma API :', {
+        code: error.code,
+        model: error.meta?.modelName,
+        meta: error.meta,
+      });
+    } else {
+      console.error('Erreur API :', error instanceof Error ? error.name : 'UnknownError');
+    }
     res.status(500).json({ message: messages.uneErreurEstSurvenueReessayezDansUnInstant });
   });
 }

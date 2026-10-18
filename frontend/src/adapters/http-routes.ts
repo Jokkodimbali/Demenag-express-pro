@@ -1,5 +1,6 @@
 export const httpRoutes = {
   users: '/admin/users',
+  adminProfile: '/admin/profile',
   drivers: '/admin/drivers',
   catalogue: '/catalogue',
   authentication: {
@@ -13,7 +14,12 @@ export const httpRoutes = {
   driver: {
     profile: '/driver/profile',
     bookings: '/driver/bookings',
+    inspections: '/driver/vehicle-inspections',
+    breakdowns: '/driver/breakdowns',
   },
+  vehicleReports: '/admin/vehicle-reports',
+  notifications: '/notifications',
+  announce: '/admin/notifications/announce',
   estimates: '/estimates',
   maps: {
     route: '/maps/route',

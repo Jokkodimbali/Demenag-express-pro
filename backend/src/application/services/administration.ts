@@ -53,4 +53,13 @@ export class AdministrationService implements AdministrationUseCases {
       passwordHash: await this.passwords.hash(input.password),
     });
   }
+  async updateProfile(actor: User, input: Pick<User, 'name' | 'phone' | 'photo'>) {
+    requireAdministrator(actor);
+    return this.users.updateProfile(
+      actor.id,
+      input.name.trim(),
+      normalizePhone(input.phone),
+      input.photo ?? null,
+    );
+  }
 }

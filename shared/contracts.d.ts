@@ -1,5 +1,12 @@
 export type Role = 'client' | 'admin' | 'driver';
-export type User = { id: string; name: string; phone: string; role: Role; active?: boolean };
+export type User = {
+  id: string;
+  name: string;
+  phone: string;
+  role: Role;
+  active?: boolean;
+  photo?: string | null;
+};
 export type UserCredentials = User & { passwordHash: string };
 export type Point = [number, number];
 export type Vehicle = {

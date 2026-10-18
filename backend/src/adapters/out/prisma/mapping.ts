@@ -18,6 +18,7 @@ export const fromUser = (row: Utilisateur): UserCredentials => ({
   passwordHash: row.empreinteMotDePasse,
   active: row.actif,
   role: row.role === 'administrateur' ? 'admin' : row.role === 'chauffeur' ? 'driver' : 'client',
+  photo: row.photo,
 });
 export const toUser = (value: UserCredentials) => ({
   id: value.id,
@@ -25,6 +26,7 @@ export const toUser = (value: UserCredentials) => ({
   telephone: value.phone,
   empreinteMotDePasse: value.passwordHash,
   actif: value.active,
+  photo: value.photo ?? null,
   role:
     value.role === 'admin'
       ? ('administrateur' as const)

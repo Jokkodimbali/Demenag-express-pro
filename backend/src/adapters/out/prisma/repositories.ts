@@ -5,3 +5,5 @@ export { PrismaDrivers } from './drivers.js';
 export { PrismaRoutes } from './routes.js';
 export { PrismaSessions } from './sessions.js';
 export { PrismaUsers } from './users.js';
+export { PrismaVehicleReports } from './vehicle-reports.js';
+export { PrismaNotifications } from './notifications.js';

@@ -21,8 +21,10 @@ import type {
   Clock,
   DriverRepository,
   IdGenerator,
+  NotificationPublisher,
   RouteRepository,
   RoutingProvider,
+  VehicleReportRepository,
 } from '../ports/index.js';
 import type { MovingUseCases } from '../ports/use-cases.js';
 export class MovingService implements MovingUseCases {
@@ -34,6 +36,8 @@ export class MovingService implements MovingUseCases {
     private drivers: DriverRepository,
     private clock: Clock,
     private ids: IdGenerator,
+    private vehicleReports?: VehicleReportRepository,
+    private notifications?: NotificationPublisher,
   ) {}
   async route(from: Point, to: Point) {
     const route = await this.routing.route(from, to);
@@ -123,6 +127,12 @@ export class MovingService implements MovingUseCases {
       const driver = await this.drivers.findByUserId(user.id);
       if (!driver || booking.vehicle.id !== driver.vehicleId)
         throw new AppError(404, messages.reservationIntrouvable);
+      if (next === 'in_progress') {
+        const date = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Dakar', year: 'numeric', month: '2-digit', day: '2-digit' }).format(this.clock.now());
+        const inspection = await this.vehicleReports?.findInspection(driver.id, date);
+        requireValue(inspection, 'Effectuez le contrôle du véhicule avant de démarrer une mission.');
+        requireValue(inspection.condition !== 'unsafe', 'Le véhicule a été déclaré dangereux. Contactez l’administration avant de démarrer une mission.');
+      }
     } else if (!canReadBooking(user, booking.userId))
       throw new AppError(404, messages.reservationIntrouvable);
     if (booking.version !== version)
@@ -155,7 +165,12 @@ export class MovingService implements MovingUseCases {
       const driver = await this.drivers.find(driverId);
       if (!driver || !driver.active) throw new AppError(400, messages.chauffeurIntrouvable);
     }
-    return this.bookings.update({ ...booking, driverId }, version);
+    const updated = await this.bookings.update({ ...booking, driverId }, version);
+    if (driverId) {
+      const driver = await this.drivers.find(driverId);
+      if (driver?.userId) this.notifications?.publish({ id: this.ids.next(), title: 'Mission attribuée', message: `Une réservation ${updated.reference} vous a été attribuée.`, createdAt: this.clock.now().toISOString(), bookingId: updated.id }, { userIds: [driver.userId] });
+    }
+    return updated;
   }
   async quote(user: User, id: string, input: QuoteInput) {
     requireAdministrator(user);

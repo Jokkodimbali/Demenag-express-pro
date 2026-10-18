@@ -1,5 +1,5 @@
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useBookingForm } from '../application/useBookingForm';
 import { BookingSummary } from '../components/booking/BookingSummary';
@@ -9,8 +9,117 @@ import { VehicleSelector } from '../components/booking/VehicleSelector';
 import { messages } from '../content/fr';
 import { routes } from '../routing/routes';
 import { money } from '../domain/format';
+import type { Vehicle } from '../domain/model';
+import type { VehicleTransition } from '../domain/vehicle-transition';
 const RouteMap = lazy(() => import('../components/RouteMap'));
+
+const simulatedVehicleViews: Record<string, string[]> = {
+  'sprinter-profil.png': ['/assets/sprinter-3d-angle.png', '/assets/sprinter-3d-rear.png'],
+  'trafic-profil.png': ['/assets/trafic-3d-angle.png', '/assets/trafic-3d-rear.png'],
+  'master-profil.png': ['/assets/master-3d-angle.png', '/assets/master-3d-rear.png'],
+};
+const vehicleAnnouncementImages: Record<string, string> = {
+  trafic: '/assets/annonce-trafic.png',
+  master: '/assets/annonce-master.png',
+  sprinter: '/assets/annonce-sprinter.png',
+};
+
+function VehicleShowcase({
+  vehicle,
+  outgoingVehicle,
+  transitionSequence,
+  announcementImage,
+}: {
+  vehicle: Vehicle;
+  outgoingVehicle: Vehicle | undefined;
+  transitionSequence: number | null;
+  announcementImage: string | undefined;
+}) {
+  const [rotation, setRotation] = useState({ vehicleId: vehicle.id, index: 0 });
+  const filename = vehicle.image.split('/').pop()?.split('?')[0] ?? '';
+  const views = [vehicle.image, ...(simulatedVehicleViews[filename] ?? [])];
+  const activeView = rotation.vehicleId === vehicle.id ? rotation.index : 0;
+
+  useEffect(() => {
+    setRotation({ vehicleId: vehicle.id, index: 0 });
+    if (views.length < 2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return;
+    }
+
+    const timer = window.setInterval(
+      () => setRotation((current) => ({
+        vehicleId: vehicle.id,
+        index: ((current.vehicleId === vehicle.id ? current.index : 0) + 1) % views.length,
+      })),
+      2300,
+    );
+    return () => window.clearInterval(timer);
+  }, [vehicle.id, vehicle.image, views.length]);
+
+  return (
+    <div className="hero-visual">
+      <div className="hero-vehicle-display">
+        {outgoingVehicle && transitionSequence !== null && (
+          <img
+            key={transitionSequence}
+            className="hero-vehicle-leaving"
+            src={outgoingVehicle.image}
+            alt=""
+            aria-hidden="true"
+          />
+        )}
+        <div
+          className={`hero-vehicle-stage${transitionSequence !== null ? ' rolling-in' : ''}`}
+          role="img"
+          aria-label={vehicle.name}
+        >
+          {views.map((src, index) => (
+            <img
+              key={src}
+              className={index === activeView ? 'active' : ''}
+              data-view={index}
+              src={src}
+              alt={index === 0 ? vehicle.name : ''}
+              aria-hidden={index !== 0}
+              loading={index === 0 ? 'eager' : 'lazy'}
+              fetchPriority={index === 0 ? 'high' : 'auto'}
+            />
+          ))}
+        </div>
+      </div>
+      {announcementImage && (
+        <a
+          className="hero-announcement-preview"
+          href={announcementImage}
+          target="_blank"
+          rel="noreferrer"
+          aria-label={`Ouvrir l'annonce complète du ${vehicle.name}`}
+        >
+          <img src={announcementImage} alt={`Annonce du ${vehicle.name}`} loading="lazy" />
+        </a>
+      )}
+    </div>
+  );
+}
+
 export function Home() {
+  const [vehicleTransition, setVehicleTransition] = useState<VehicleTransition | null>(null);
+  const transitionTimer = useRef<number | null>(null);
+  const transitionSequence = useRef(0);
+  useEffect(() => () => {
+    if (transitionTimer.current !== null) window.clearTimeout(transitionTimer.current);
+  }, []);
+
+  const startVehicleTransition = (fromVehicleId: string, toVehicleId: string) => {
+    if (transitionTimer.current !== null) window.clearTimeout(transitionTimer.current);
+    const sequence = ++transitionSequence.current;
+    setVehicleTransition({ fromVehicleId, toVehicleId, sequence });
+    transitionTimer.current = window.setTimeout(() => {
+      setVehicleTransition(null);
+      transitionTimer.current = null;
+    }, 720);
+  };
+
   const state = useBookingForm();
   const {
     catalogue,
@@ -50,9 +159,18 @@ export function Home() {
           </p>
         </div>
         {selected && (
-          <div className="hero-visual">
-            <img src={selected.image} alt={selected.name} fetchPriority="high" />
-          </div>
+          <VehicleShowcase
+            vehicle={selected}
+            outgoingVehicle={
+              vehicleTransition?.toVehicleId === selected.id
+                ? catalogue?.vehicles.find((vehicle) => vehicle.id === vehicleTransition.fromVehicleId)
+                : undefined
+            }
+            transitionSequence={
+              vehicleTransition?.toVehicleId === selected.id ? vehicleTransition.sequence : null
+            }
+            announcementImage={vehicleAnnouncementImages[selected.id]}
+          />
         )}
       </section>
       <section id="reserver" className="booking-section">
@@ -104,6 +222,8 @@ export function Home() {
                   draft={draft}
                   setDraft={setDraft}
                   tiers={tiers}
+                  transition={vehicleTransition}
+                  onVehicleTransition={startVehicleTransition}
                 />
                 <section className="panel">
                   <div className="step-title">

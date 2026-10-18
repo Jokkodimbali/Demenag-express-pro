@@ -18,6 +18,10 @@ export interface UserRepository {
   updateUser(user: User): Promise<User>;
   createUser(user: Omit<User, 'id'> & { password: string }): Promise<User>;
 }
+export interface AdminProfileRepository {
+  adminProfile(): Promise<User>;
+  updateAdminProfile(input: Pick<User, 'name' | 'phone' | 'photo'>): Promise<User>;
+}
 export interface CatalogueRepository {
   catalogue(): Promise<Catalogue>;
   updateCatalogue(value: Catalogue): Promise<Catalogue>;
@@ -39,6 +43,12 @@ export interface BookingRepository {
   assignDriver(id: string, driverId: string | null, version: number): Promise<Booking>;
 }
 export type DriverCreation = Omit<Driver, 'id' | 'userId' | 'active'> & { password: string };
+export type InspectionLevels = Record<string, 'good' | 'low' | 'empty'>;
+export type VehicleInspection = { id: string; driverName: string; driverPhone: string; vehicleName: string; date: string; levels: InspectionLevels; condition: 'good' | 'attention' | 'unsafe'; notes: string; photos: string[]; createdAt: string };
+export type BreakdownReport = { id: string; driverName: string; driverPhone: string; vehicleName: string; description: string; latitude: number; longitude: number; accuracy: number | null; photos: string[]; status: string; createdAt: string };
+export type VehicleReports = { inspections: VehicleInspection[]; breakdowns: BreakdownReport[] };
+export type AppNotification = { id: string; title: string; message: string; createdAt: string; bookingId?: string; readAt?: string | null };
+export type NotificationInbox = { items: AppNotification[]; unreadCount: number };
 export interface DriverRepository {
   drivers(): Promise<Driver[]>;
   createDriver(input: DriverCreation): Promise<Driver>;
@@ -46,6 +56,10 @@ export interface DriverRepository {
   driverProfile(): Promise<Driver>;
   updateDriverProfile(input: Pick<Driver, 'name' | 'phone' | 'photo'>): Promise<Driver>;
   driverBookings(): Promise<Booking[]>;
+  driverReports(): Promise<VehicleReports>;
+  submitVehicleInspection(input: Omit<VehicleInspection, 'id' | 'driverName' | 'driverPhone' | 'vehicleName' | 'date' | 'createdAt'>): Promise<VehicleInspection>;
+  reportBreakdown(input: Pick<BreakdownReport, 'description' | 'latitude' | 'longitude' | 'accuracy' | 'photos'>): Promise<BreakdownReport>;
+  adminVehicleReports(): Promise<VehicleReports>;
 }
 export interface MapsRepository {
   route(from: Point, to: Point): Promise<RouteTicket>;
@@ -59,16 +73,24 @@ export interface PricingRepository {
     signal?: AbortSignal,
   ): Promise<Price>;
 }
+export interface NotificationRepository {
+  notifications(): Promise<NotificationInbox>;
+  markNotificationRead(id: string): Promise<void>;
+  markAllNotificationsRead(): Promise<void>;
+  announceDrivers(title: string, message: string): Promise<void>;
+}
 
 export interface ApplicationApi
   extends
     UserRepository,
+    AdminProfileRepository,
     CatalogueRepository,
     AuthRepository,
     BookingRepository,
     DriverRepository,
     MapsRepository,
-    PricingRepository {}
+    PricingRepository,
+    NotificationRepository {}
 export type QuoteExporter = (
   booking: Booking,
   quote: Quote | undefined,

@@ -11,12 +11,13 @@ export class PrismaUsers implements UserRepository {
       data: { empreinteMotDePasse: passwordHash },
     });
   }
-  async updateProfile(userId: string, name: string, phone: string) {
+  async updateProfile(userId: string, name: string, phone: string, photo?: string | null) {
     try {
-      await this.db.utilisateur.update({
+      const row = await this.db.utilisateur.update({
         where: { id: userId },
-        data: { nom: name, telephone: phone },
+        data: { nom: name, telephone: phone, ...(photo === undefined ? {} : { photo }) },
       });
+      return safeUser(fromUser(row));
     } catch (error) {
       conflict(error);
     }

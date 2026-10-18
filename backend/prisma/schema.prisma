@@ -35,11 +35,13 @@ model Utilisateur {
   telephone           String             @unique @map("phone")
   empreinteMotDePasse String             @map("password_hash")
   role                RoleUtilisateur    @default(client)
+  photo               String?            @map("photo")
   creeLe              DateTime           @default(now()) @map("created_at") @db.Timestamptz
   actif               Boolean            @default(true) @map("active")
   sessions            SessionConnexion[]
   reservations        Reservation[]
   profilChauffeur     Chauffeur?
+  notifications       Notification[]
 
   @@map("users")
   @@schema("demenag")
@@ -70,6 +72,8 @@ model Vehicule {
   tarifs              Int[]         @map("prices")
   reservations        Reservation[]
   chauffeurs          Chauffeur[]
+  controlesVehicule   ControleVehicule[]
+  signalementsPanne   SignalementPanne[]
 
   @@map("vehicles")
   @@schema("demenag")
@@ -86,9 +90,49 @@ model Chauffeur {
   vehiculeId String?   @map("vehicle_id")
   vehicule   Vehicule? @relation(fields: [vehiculeId], references: [id], onDelete: SetNull)
   reservations Reservation[]
+  controlesVehicule ControleVehicule[]
+  signalementsPanne SignalementPanne[]
 
   @@index([vehiculeId])
   @@map("drivers")
+  @@schema("demenag")
+}
+
+model ControleVehicule {
+  id           String   @id @default(uuid()) @db.Uuid
+  chauffeurId  String   @map("driver_id") @db.Uuid
+  chauffeur    Chauffeur @relation(fields: [chauffeurId], references: [id], onDelete: Cascade)
+  vehiculeId   String   @map("vehicle_id")
+  vehicule     Vehicule @relation(fields: [vehiculeId], references: [id], onDelete: Restrict)
+  dateControle DateTime @map("inspection_date") @db.Date
+  niveaux      Json     @map("levels")
+  etatVehicule String   @map("vehicle_condition")
+  observations String
+  photos       Json
+  creeLe       DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([chauffeurId, dateControle])
+  @@index([dateControle, creeLe])
+  @@map("vehicle_inspections")
+  @@schema("demenag")
+}
+
+model SignalementPanne {
+  id          String   @id @default(uuid()) @db.Uuid
+  chauffeurId String   @map("driver_id") @db.Uuid
+  chauffeur   Chauffeur @relation(fields: [chauffeurId], references: [id], onDelete: Cascade)
+  vehiculeId  String   @map("vehicle_id")
+  vehicule    Vehicule @relation(fields: [vehiculeId], references: [id], onDelete: Restrict)
+  description String
+  latitude    Float
+  longitude   Float
+  precision   Float?   @map("accuracy_meters")
+  photos      Json
+  statut      String   @default("nouveau") @map("status")
+  creeLe      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([statut, creeLe])
+  @@map("breakdown_reports")
   @@schema("demenag")
 }
 
@@ -185,5 +229,20 @@ model LigneDevis {
 
   @@unique([devisId, position])
   @@map("lignes_devis")
+  @@schema("demenag")
+}
+
+model Notification {
+  id            String      @id @default(uuid()) @db.Uuid
+  utilisateurId String      @map("user_id") @db.Uuid
+  utilisateur   Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  titre         String      @map("title")
+  message       String
+  reservationId String?     @map("booking_id") @db.Uuid
+  lueLe         DateTime?   @map("read_at") @db.Timestamptz
+  creeLe        DateTime    @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([utilisateurId, lueLe, creeLe])
+  @@map("notifications")
   @@schema("demenag")
 }

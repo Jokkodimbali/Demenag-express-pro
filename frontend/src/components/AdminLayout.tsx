@@ -5,6 +5,8 @@ import {
   Settings2,
   Truck,
   UsersRound,
+  ClipboardCheck,
+  Megaphone,
 } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { messages } from '../content/fr';
@@ -18,11 +20,13 @@ const sections = [
   { to: routes.administrationFleet, label: messages.flotteEtChauffeurs, Icon: Truck },
   { to: routes.administrationSettings, label: messages.tarifsEtParametres, Icon: Settings2 },
   { to: routes.administrationUsers, label: messages.comptesEtAcces, Icon: UsersRound },
+  { to: routes.administrationVehicleReports, label: 'Contrôles véhicules', Icon: ClipboardCheck },
+  { to: routes.administrationAnnouncements, label: 'Annonces chauffeurs', Icon: Megaphone },
 ];
 
 export function AdminLayout() {
   return (
-    <section className="container workspace-page">
+    <section className="container workspace-page admin-workspace">
       <div className="section-heading">
         <div>
           <p className="eyebrow">{messages.espaceAdministrateur}</p>

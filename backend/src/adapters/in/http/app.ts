@@ -6,6 +6,7 @@ import { registerAdminRoutes } from './admin-routes.js';
 import { registerAuthRoutes } from './auth-routes.js';
 import { registerBookingRoutes } from './booking-routes.js';
 import { registerDriverRoutes } from './driver-routes.js';
+import { registerVehicleReportRoutes } from './vehicle-report-routes.js';
 import type { Dependencies } from './dependencies.js';
 import { registerErrorHandler } from './error-handler.js';
 import { registerMapRoutes } from './map-routes.js';
@@ -40,9 +41,30 @@ export function createApp(deps: Dependencies) {
     );
     if (unsubscribe) req.on('close', unsubscribe);
   });
-  registerBookingRoutes(app, deps, access, deps.notifications);
+  app.get('/api/notifications', access.authenticate, async (_req, res) =>
+    res.json(await deps.notificationService.list(getActor(res))),
+  );
+  app.patch('/api/notifications/read-all', access.authenticate, async (_req, res) => {
+    await deps.notificationService.markAllRead(getActor(res));
+    res.status(204).end();
+  });
+  app.patch('/api/notifications/:id/read', access.authenticate, async (req, res) => {
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    if (!id || !/^[0-9a-f-]{36}$/i.test(id)) return res.status(400).json({ message: 'Notification invalide.' });
+    await deps.notificationService.markRead(getActor(res), id);
+    res.status(204).end();
+  });
+  app.post('/api/admin/notifications/announce', access.authenticate, access.admin, async (req, res) => {
+    const body = req.body as { title?: unknown; message?: unknown };
+    if (typeof body.title !== 'string' || !body.title.trim() || body.title.length > 100 || typeof body.message !== 'string' || !body.message.trim() || body.message.length > 1000)
+      return res.status(400).json({ message: 'Le titre et le message sont requis (100 et 1 000 caractères maximum).' });
+    await deps.notificationService.announce(getActor(res), body.title.trim(), body.message.trim());
+    res.status(201).json({ sent: true });
+  });
+  registerBookingRoutes(app, { ...deps, drivers: deps.drivers }, access, deps.notifications);
   registerAdminRoutes(app, deps, access);
   registerDriverRoutes(app, deps, access);
+  registerVehicleReportRoutes(app, deps, access);
   app.use((_req, res) => res.status(404).json({ message: 'Route introuvable.' }));
   registerErrorHandler(app);
   return app;

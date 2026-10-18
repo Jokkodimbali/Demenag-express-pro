@@ -3,8 +3,47 @@
   padding-bottom: 70px;
   min-height: 75vh;
 }
+.admin-workspace {
+  width: 100%;
+  max-width: none;
+  padding-left: clamp(16px, 3vw, 48px);
+  padding-right: clamp(16px, 3vw, 48px);
+}
 .workspace-page .section-heading {
   margin-bottom: 32px;
+}
+.account-profile-panel {
+  padding: 24px;
+}
+.account-profile-panel h2 {
+  margin: 0 0 18px;
+  font-family: Montserrat, Arial, sans-serif;
+  font-size: 17px;
+  font-weight: 800;
+}
+.account-profile-details {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0;
+}
+.account-profile-details > div {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.account-profile-details dt {
+  margin-bottom: 7px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.account-profile-details dd {
+  overflow-wrap: anywhere;
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
 }
 .list-heading {
   display: flex;
@@ -134,6 +173,15 @@
 .notification-item:hover strong {
   color: var(--yellow);
 }
+.notification-panel-actions { display: flex; align-items: center; gap: 6px; }
+.notification-read-all { border: 0; background: transparent; color: var(--yellow); font: inherit; font-size: 11px; cursor: pointer; }
+.notification-item.notification-unread { padding-left: 9px; border-left: 3px solid var(--yellow); }
+.admin-announcements { display: grid; grid-template-columns: minmax(220px, 0.7fr) minmax(280px, 1fr); gap: 28px; }
+.admin-announcements h2 { margin-top: 4px; }
+.admin-announcements form { display: grid; gap: 14px; }
+.admin-announcements label { display: grid; gap: 6px; }
+.admin-announcements input, .admin-announcements textarea { width: 100%; }
+@media (max-width: 680px) { .admin-announcements { grid-template-columns: 1fr; gap: 18px; } }
 .notification-panel p {
   margin: 5px 0 0;
   color: var(--muted);
@@ -730,11 +778,13 @@
   gap: 8px;
 }
 .driver-management {
-  margin-top: 18px;
+  margin-top: 28px;
+  padding: 28px;
 }
 .driver-list {
   display: grid;
-  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 390px), 1fr));
+  gap: 14px;
 }
 
 .driver-profile-photo {
@@ -743,6 +793,131 @@
   object-fit: cover;
   border-radius: 50%;
   border: 3px solid var(--orange);
+}
+.driver-profile-photo-placeholder {
+  width: 72px;
+  height: 72px;
+  flex: 0 0 72px;
+  color: var(--muted);
+}
+.vehicle-report-section { display: grid; gap: 18px; margin: 30px 0; }
+.vehicle-report-section > .section-heading { margin: 0; }
+.vehicle-report-section > .section-heading h2, .vehicle-admin-reports h2 { margin: 4px 0; }
+.vehicle-report-form { display: grid; gap: 16px; padding: 22px; }
+.vehicle-report-form h3, .vehicle-admin-reports section > h3 { display: flex; align-items: center; gap: 9px; margin: 0; font-size: 17px; }
+.vehicle-report-form > label, .fluid-level-grid label { display: grid; gap: 7px; color: var(--muted); font-size: 13px; }
+.vehicle-report-form input:not([type=file]), .vehicle-report-form select, .vehicle-report-form textarea { width: 100%; }
+.fluid-level-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 12px; }
+.report-photo-picker { display: grid; gap: 11px; padding: 14px; border: 1px dashed var(--line); border-radius: 9px; }
+.field-error { display: block; margin-top: 5px; color: #ff969c; font-size: 11px; line-height: 1.45; }
+.location-field { display: grid; justify-items: start; gap: 4px; }
+.vehicle-report-form [aria-invalid="true"] { border-color: #e66b73; }
+.report-photo-picker-label { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--muted); font-size: 13px; }
+.report-photo-picker-label span { margin-left: auto; color: var(--text); font-weight: 700; }
+.report-photo-picker-actions { display: flex; flex-wrap: wrap; gap: 9px; }
+.report-file-input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); clip-path: inset(50%); white-space: nowrap; }
+.report-photo-previews { display: grid; grid-template-columns: repeat(auto-fill, minmax(105px, 1fr)); gap: 10px; }
+.report-photo-previews figure { position: relative; min-width: 0; margin: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: #101214; }
+.report-photo-previews img { display: block; width: 100%; height: 105px; object-fit: cover; }
+.report-photo-previews figcaption { overflow: hidden; padding: 6px 30px 6px 8px; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.report-photo-previews button { position: absolute; right: 5px; bottom: 4px; display: grid; place-items: center; width: 24px; height: 24px; border: 0; border-radius: 50%; background: #121416dd; color: white; cursor: pointer; }
+.camera-dialog-backdrop { position: fixed; z-index: 1500; inset: 0; display: grid; place-items: center; padding: 18px; background: #000b; }
+.camera-dialog { display: grid; gap: 14px; width: min(100%, 680px); padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface, #202326); box-shadow: 0 20px 70px #0008; }
+.camera-dialog video { width: 100%; max-height: 68vh; border-radius: 9px; background: #090a0b; object-fit: contain; }
+.camera-dialog p { margin: 0; color: var(--muted); font-size: 13px; }
+.camera-dialog > div { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 9px; }
+.breakdown-form { border-color: #ed784966; }
+.vehicle-admin-reports { display: grid; gap: 26px; }
+.vehicle-admin-reports section { display: grid; gap: 14px; }
+.report-admin-heading { align-items: center; }
+.report-count { padding: 3px 8px; border-radius: 99px; background: #f6d73c15; color: var(--yellow); font-size: 12px; }
+.report-card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 390px), 1fr)); gap: 15px; }
+.admin-report-card { display: grid; align-content: start; gap: 13px; padding: 20px; min-width: 0; }
+.admin-report-card p { margin: 0; overflow-wrap: anywhere; }
+.report-card-heading { display: flex; justify-content: space-between; gap: 12px; }
+.report-card-heading h4 { margin: 4px 0; }
+.report-card-heading a, .report-card-heading time, .admin-report-card small { color: var(--muted); font-size: 12px; }
+.report-location { display: inline-flex; align-items: center; gap: 7px; width: fit-content; color: var(--yellow); font-weight: 700; }
+.report-photo-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.report-photo-grid img { display: block; width: 100%; height: 130px; object-fit: cover; border-radius: 8px; background: #202326; }
+.fluid-level-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin: 0; }
+.fluid-level-list > div { padding: 10px; border: 1px solid var(--line); border-radius: 8px; }
+.fluid-level-list dt { color: var(--muted); font-size: 11px; }
+.fluid-level-list dd { margin: 4px 0 0; font-size: 13px; font-weight: 700; }
+.condition-pill { width: fit-content; padding: 7px 10px; border-radius: 99px; font-size: 12px; font-weight: 700; }
+.condition-good { color: #42c995; background: #42c99518; }
+.condition-attention { color: #f2bc47; background: #f2bc4718; }
+.condition-unsafe { color: #ff756b; background: #ff756b18; }
+.report-empty { padding: 22px; color: var(--muted); }
+.driver-vehicle-card {
+  display: grid;
+  grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.driver-vehicle-card > img {
+  width: 100%;
+  max-height: 180px;
+  object-fit: contain;
+  border-radius: 10px;
+  background: #1e2023;
+}
+.driver-vehicle-card h2 {
+  margin: 7px 0;
+}
+.driver-vehicle-card p {
+  margin: 5px 0;
+}
+.driver-profile-page .section-heading {
+  align-items: center;
+}
+.driver-profile-form {
+  display: grid;
+  gap: 16px;
+  max-width: 760px;
+  margin: 0 auto;
+}
+.profile-settings-panel {
+  display: grid;
+  gap: 20px;
+  max-width: 760px;
+  margin: 0 auto;
+}
+.profile-fields-form {
+  display: grid;
+  gap: 16px;
+}
+.profile-settings-panel > .password-panel {
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.profile-settings-panel > .password-panel form {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+}
+.account-personal-panel h2 {
+  margin: 0;
+  font-family: Montserrat, Arial, sans-serif;
+  font-size: 17px;
+}
+.driver-profile-heading {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 6px;
+}
+.driver-profile-heading h2,
+.driver-profile-heading p {
+  margin: 5px 0;
+}
+.driver-profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 4px;
 }
 
 .driver-assignment {
@@ -754,19 +929,110 @@
   font-weight: 700;
 }
 .driver-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  min-height: 112px;
   border: 1px solid var(--line);
+  border-radius: 10px;
   background: #1e2023;
   color: inherit;
-  padding: 12px;
+  padding: 16px;
   text-align: left;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease;
 }
-.driver-row span {
+.driver-row:hover {
+  border-color: var(--yellow);
+  background: #25282d;
+}
+.driver-row-photo,
+.driver-row-photo-placeholder {
   display: grid;
-  gap: 3px;
-}
-.driver-row small {
+  width: 58px;
+  height: 58px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: #292d32;
   color: var(--muted);
+}
+.driver-row-photo {
+  object-fit: cover;
+}
+.driver-row-information {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+.driver-row-information > strong {
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.driver-row-details {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.driver-row-details > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.driver-row-details .driver-status {
+  color: #87d8a2;
+}
+.driver-row-details .driver-status.inactive {
+  color: #ff9b9b;
+}
+.driver-row-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--yellow);
+  font-size: 11px;
+  font-weight: 700;
+}
+.driver-dialog {
+  width: min(96vw, 760px);
+}
+.driver-dialog > form {
+  display: grid;
+  gap: 18px;
+}
+.driver-dialog-heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.driver-dialog-heading > img,
+.driver-dialog-heading > svg {
+  width: 58px;
+  height: 58px;
+  flex: 0 0 58px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: #292d32;
+  color: var(--muted);
+  object-fit: cover;
+}
+.driver-dialog-heading h2,
+.driver-dialog-heading p {
+  margin: 4px 0;
+}
+.driver-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.driver-edit-grid > div {
+  min-width: 0;
 }

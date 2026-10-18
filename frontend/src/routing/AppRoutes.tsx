@@ -33,8 +33,20 @@ const AdminInvoicing = lazy(() =>
 const AdminUsers = lazy(() =>
   import('../pages/AdminUsers').then((m) => ({ default: m.AdminUsers })),
 );
+const AdminVehicleReports = lazy(() =>
+  import('../pages/AdminVehicleReports').then((m) => ({ default: m.AdminVehicleReports })),
+);
+const AdminAnnouncements = lazy(() =>
+  import('../pages/AdminAnnouncements').then((m) => ({ default: m.AdminAnnouncements })),
+);
 const DriverWorkspace = lazy(() =>
   import('../pages/DriverWorkspace').then((m) => ({ default: m.DriverWorkspace })),
+);
+const DriverVehicleCheck = lazy(() =>
+  import('../pages/DriverVehicleCheck').then((m) => ({ default: m.DriverVehicleCheck })),
+);
+const DriverProfile = lazy(() =>
+  import('../pages/DriverProfile').then((m) => ({ default: m.DriverProfile })),
 );
 export function AppRoutes() {
   return (
@@ -66,6 +78,22 @@ export function AppRoutes() {
             }
           />
           <Route
+            path={routes.driverProfile.slice(1)}
+            element={
+              <Guard roles={['driver']}>
+                <DriverProfile />
+              </Guard>
+            }
+          />
+          <Route
+            path={routes.driverVehicleCheck.slice(1)}
+            element={
+              <Guard roles={['driver']}>
+                <DriverVehicleCheck />
+              </Guard>
+            }
+          />
+          <Route
             path={routes.administration.slice(1)}
             element={
               <Guard admin>
@@ -85,6 +113,8 @@ export function AppRoutes() {
               <Route path="facturation" element={<AdminInvoicing />} />
             </Route>
             <Route path="comptes" element={<AdminUsers />} />
+            <Route path="vehicules/rapports" element={<AdminVehicleReports />} />
+            <Route path="annonces" element={<AdminAnnouncements />} />
           </Route>
           <Route
             path="*"

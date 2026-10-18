@@ -19,9 +19,18 @@ export const apiRoutes = {
   administration: {
     users: '/api/admin/users',
     drivers: '/api/admin/drivers',
+    profile: '/api/admin/profile',
   },
   driver: {
     profile: '/api/driver/profile',
     bookings: '/api/driver/bookings',
+    inspections: '/api/driver/vehicle-inspections',
+    breakdowns: '/api/driver/breakdowns',
+  },
+  vehicleReports: '/api/admin/vehicle-reports',
+  notifications: {
+    base: '/api/notifications',
+    readAll: '/api/notifications/read-all',
+    announce: '/api/admin/notifications/announce',
   },
 } as const;

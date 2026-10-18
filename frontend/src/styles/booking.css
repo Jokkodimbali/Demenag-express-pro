@@ -54,12 +54,23 @@
   color: var(--yellow);
 }
 .hero-visual {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(180px, .9fr);
+  align-items: center;
+  gap: 12px;
+  position: relative;
   background: #272a2e;
   border: 1px solid var(--line);
   border-radius: 18px;
   padding: 16px;
+  overflow: hidden;
+  perspective: 1100px;
   transform: rotate(-1deg);
   box-shadow: 0 24px 50px #0002;
+}
+.hero-vehicle-display {
+  position: relative;
+  min-width: 0;
 }
 .hero-stamp {
   display: flex;
@@ -71,10 +82,87 @@
   color: var(--yellow);
   padding: 1px 0 14px;
 }
-.hero-visual > img {
-  display: block;
-  border-radius: 10px;
+.hero-vehicle-stage {
+  position: relative;
+  z-index: 2;
   width: 100%;
+  aspect-ratio: 2.7;
+  transform-style: preserve-3d;
+}
+.hero-vehicle-stage.rolling-in img.active[data-view='0'] {
+  animation: vehicle-drive-in 680ms cubic-bezier(.2, .7, .25, 1) both;
+}
+.hero-vehicle-leaving {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 10px;
+  animation: vehicle-drive-out 680ms cubic-bezier(.45, 0, .8, .4) both;
+}
+.hero-announcement-preview {
+  display: block;
+  width: min(100%, 220px);
+  justify-self: center;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #1e2023;
+  box-shadow: 0 12px 26px #0004;
+  transition: transform 180ms ease, border-color 180ms ease;
+}
+.hero-announcement-preview:hover,
+.hero-announcement-preview:focus-visible {
+  transform: translateY(-2px);
+  border-color: var(--yellow);
+}
+.hero-announcement-preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.hero-vehicle-stage img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 10px;
+  opacity: 0;
+  backface-visibility: hidden;
+  transform: rotateY(-55deg) scale(.92);
+  transition: opacity 420ms ease, transform 760ms cubic-bezier(.2, .7, .25, 1);
+}
+.hero-vehicle-stage img[data-view='1'] {
+  transform: rotateY(55deg) scale(1.27);
+}
+.hero-vehicle-stage img[data-view='2'] {
+  transform: rotateY(-55deg) scale(1.27);
+}
+.hero-vehicle-stage img.active {
+  opacity: 1;
+  transform: rotateY(0) scale(1);
+}
+.hero-vehicle-stage img.active[data-view='1'],
+.hero-vehicle-stage img.active[data-view='2'] {
+  transform: rotateY(0) scale(1.27);
+}
+.hero-vehicle-view {
+  display: block;
+  width: max-content;
+  margin: 8px auto 0;
+  padding: 4px 9px;
+  border: 1px solid #ffffff1a;
+  border-radius: 999px;
+  color: #d6d9dd;
+  background: #1e2023;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .04em;
 }
 .hero-caption {
   display: flex;
@@ -214,12 +302,46 @@
   border-color: var(--yellow);
   background: #f6d73c08;
 }
-.vehicle-card img {
+.vehicle-image-stage {
+  display: block;
   width: 100%;
   aspect-ratio: 1.6;
-  object-fit: contain;
+  overflow: hidden;
   background: #30343a;
   border-radius: 7px;
+}
+.vehicle-card img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform-origin: center;
+}
+.vehicle-card.rolling-out .vehicle-image-stage {
+  animation: vehicle-drive-out 680ms cubic-bezier(.45, 0, .8, .4) both;
+}
+.vehicle-card.rolling-in .vehicle-image-stage {
+  animation: vehicle-drive-in 680ms cubic-bezier(.2, .7, .25, 1) both;
+}
+@keyframes vehicle-drive-out {
+  0% { opacity: 1; transform: translateX(0) rotate(0); }
+  35% { opacity: 1; transform: translateX(9%) rotate(2deg); }
+  100% { opacity: 0; transform: translateX(115%) rotate(5deg); }
+}
+@keyframes vehicle-drive-in {
+  0% { opacity: 0; transform: translateX(-115%) rotate(-5deg); }
+  65% { opacity: 1; transform: translateX(-7%) rotate(-1deg); }
+  100% { opacity: 1; transform: translateX(0) rotate(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-vehicle-stage.rolling-in img.active[data-view='0'],
+  .hero-vehicle-leaving,
+  .hero-vehicle-stage img,
+  .vehicle-card.rolling-out .vehicle-image-stage,
+  .vehicle-card.rolling-in .vehicle-image-stage {
+    animation: none;
+    transition: none;
+  }
 }
 .vehicle-card strong {
   font-size: 11px;

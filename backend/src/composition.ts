@@ -8,6 +8,8 @@ import {
   PrismaRoutes,
   PrismaSessions,
   PrismaUsers,
+  PrismaVehicleReports,
+  PrismaNotifications,
 } from './adapters/out/prisma/repositories.js';
 import { ScryptPasswords, clock, ids, tokens } from './adapters/out/security/crypto.js';
 import type { RoutingProvider } from './application/ports/index.js';
@@ -16,12 +18,16 @@ import { AuthService } from './application/services/auth.js';
 import { CatalogueService } from './application/services/catalogue.js';
 import { DriverService } from './application/services/drivers.js';
 import { MovingService } from './application/services/moving.js';
+import { VehicleReportService } from './application/services/vehicle-reports.js';
+import { NotificationService } from './application/services/notifications.js';
 import type { PrismaClient } from './generated/prisma/client.js';
 export function compose(db: PrismaClient, routing: RoutingProvider) {
-  const notifications = new RealtimeNotifications();
+  const notificationRepository = new PrismaNotifications(db);
+  const notifications = new RealtimeNotifications(notificationRepository);
   const catalogue = new PrismaCatalogue(db);
   const bookings = new PrismaBookings(db);
   const drivers = new PrismaDrivers(db);
+  const vehicleReports = new PrismaVehicleReports(db);
   const auth = new AuthService(
     new PrismaUsers(db),
     new PrismaSessions(db),
@@ -38,6 +44,8 @@ export function compose(db: PrismaClient, routing: RoutingProvider) {
     drivers,
     clock,
     ids,
+    vehicleReports,
+    notifications,
   );
   return {
     drivers: new DriverService(drivers, new PrismaUsers(db), bookings, new ScryptPasswords(), ids),
@@ -50,7 +58,9 @@ export function compose(db: PrismaClient, routing: RoutingProvider) {
     auth,
     moving,
     catalogue: new CatalogueService(catalogue),
+    vehicleReports: new VehicleReportService(vehicleReports, drivers, notifications),
     notifications,
+    notificationService: new NotificationService(notificationRepository, notifications),
     ready: () => new PrismaReadiness(db).check(),
   };
 }

@@ -3,6 +3,7 @@ import type { BookingViewState } from '../../application/contracts/booking-view'
 import { messages } from '../../content/fr';
 import { money } from '../../domain/format';
 import type { Catalogue, Vehicle } from '../../domain/model';
+import type { VehicleTransition } from '../../domain/vehicle-transition';
 
 export function VehicleSelector({
   catalogue,
@@ -10,10 +11,20 @@ export function VehicleSelector({
   draft,
   setDraft,
   tiers,
+  transition,
+  onVehicleTransition,
 }: Pick<BookingViewState, 'catalogue' | 'selected' | 'draft' | 'setDraft' | 'tiers'> & {
   catalogue: Catalogue;
   selected: Vehicle;
+  transition: VehicleTransition | null;
+  onVehicleTransition: (fromVehicleId: string, toVehicleId: string) => void;
 }) {
+  const chooseVehicle = (vehicleId: string) => {
+    if (vehicleId === draft.vehicleId) return;
+    onVehicleTransition(draft.vehicleId, vehicleId);
+    setDraft((current) => ({ ...current, vehicleId }));
+  };
+
   return (
     <section className="panel">
       <div className="step-title">
@@ -30,13 +41,20 @@ export function VehicleSelector({
             key={v.id}
             aria-pressed={v.id === draft.vehicleId}
             disabled={v.active === false}
-            className={'vehicle-card ' + (v.id === draft.vehicleId ? 'selected' : '')}
-            onClick={() => setDraft((d) => ({ ...d, vehicleId: v.id }))}
+            className={[
+              'vehicle-card',
+              v.id === draft.vehicleId ? 'selected' : '',
+              transition?.fromVehicleId === v.id ? 'rolling-out' : '',
+              transition?.toVehicleId === v.id ? 'rolling-in' : '',
+            ].filter(Boolean).join(' ')}
+            onClick={() => chooseVehicle(v.id)}
           >
             <span className="vehicle-check">
               {v.id === draft.vehicleId ? <Check size={14} /> : null}
             </span>
-            <img src={v.image} alt={v.name} loading="eager" />
+            <span className="vehicle-image-stage">
+              <img src={v.image} alt={v.name} loading="eager" />
+            </span>
             <strong>{v.name}</strong>
             <span>
               {v.volume} <span className="dot">·</span>

@@ -13,5 +13,9 @@ export const routes = {
   administrationBookingRules: '/admin/parametres/reservations',
   administrationInvoicing: '/admin/parametres/facturation',
   administrationUsers: '/admin/comptes',
+  administrationVehicleReports: '/admin/vehicules/rapports',
+  administrationAnnouncements: '/admin/annonces',
   driverWorkspace: '/chauffeur',
+  driverVehicleCheck: '/chauffeur/vehicule',
+  driverProfile: '/chauffeur/profil',
 } as const;

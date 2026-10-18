@@ -1,4 +1,5 @@
 import { RefreshCw, Truck } from 'lucide-react';
+import { useApp } from '../application/context';
 import { useDriverWorkspace } from '../application/controllers/useDriverWorkspace';
 import { usePagination } from '../application/usePagination';
 import { BookingCard } from '../components/BookingCard';
@@ -7,15 +8,21 @@ import { pageSizes } from '../config/pagination';
 import { messages } from '../content/fr';
 
 export function DriverWorkspace() {
-  const { profile, bookings, loading, error, saving, setRetry, save } = useDriverWorkspace();
+  const { profile, bookings, loading, error, setRetry } = useDriverWorkspace();
+  const { catalogue } = useApp();
   const pagination = usePagination(bookings, pageSizes.bookings);
+  const vehicle = profile?.vehicleId
+    ? (catalogue?.vehicles.find((item) => item.id === profile.vehicleId) ??
+      bookings.find((booking) => booking.vehicle.id === profile.vehicleId)?.vehicle ??
+      null)
+    : null;
   return (
     <section className="container workspace-page">
       <div className="section-heading">
         <div>
           <p className="eyebrow">{messages.espaceChauffeur}</p>
           <h1>{messages.mesMissions}</h1>
-          <p>{messages.mesInformations}</p>
+          <p>{messages.missionsDuVehiculeAffecte}</p>
         </div>
         <button
           className="button secondary small"
@@ -31,46 +38,18 @@ export function DriverWorkspace() {
           {error}
         </p>
       ) : null}
-      {profile ? (
-        <form className="panel" onSubmit={save}>
-          {profile.photo ? (
-            <img className="driver-profile-photo" src={profile.photo} alt={profile.name} />
-          ) : null}
-          <div className="field-pair">
-            <div>
-              <label htmlFor="driver-profile-name">{messages.nom}</label>
-              <input
-                id="driver-profile-name"
-                name="name"
-                defaultValue={profile.name}
-                required
-                minLength={2}
-                maxLength={100}
-              />
-            </div>
-            <div>
-              <label htmlFor="driver-profile-phone">{messages.telephone}</label>
-              <input
-                id="driver-profile-phone"
-                name="phone"
-                defaultValue={profile.phone}
-                required
-                minLength={9}
-                maxLength={25}
-              />
-            </div>
+      {!loading && vehicle ? (
+        <article className="driver-vehicle-card panel">
+          <img src={vehicle.image} alt={vehicle.name} />
+          <div>
+            <p className="eyebrow">{messages.vehiculeAffecte}</p>
+            <h2>{vehicle.name}</h2>
+            <p>{vehicle.volume}</p>
+            <p className="muted">
+              {vehicle.length} · {vehicle.width} · {vehicle.height}
+            </p>
           </div>
-          <label htmlFor="driver-profile-photo">{messages.photoDeProfil}</label>
-          <input
-            id="driver-profile-photo"
-            name="photo"
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-          />
-          <button className="button secondary small" disabled={saving}>
-            {saving ? messages.enregistrement : messages.labelEnregistrer}
-          </button>
-        </form>
+        </article>
       ) : null}
       <div className="list-heading">
         <h2>
@@ -91,12 +70,12 @@ export function DriverWorkspace() {
             />
           ))}
         </div>
-      ) : (
+      ) : !error ? (
         <div className="empty-state panel">
           <Truck size={40} />
-          <h3>{messages.aucuneMission}</h3>
+          <h3>{profile?.vehicleId ? messages.aucuneMission : messages.aucunVehiculeAffecte}</h3>
         </div>
-      )}
+      ) : null}
       <Pagination
         page={pagination.page}
         pageCount={pagination.pageCount}

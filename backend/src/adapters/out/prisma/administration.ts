@@ -35,7 +35,7 @@ function transactionRepository(tx: Prisma.TransactionClient): AdministrationTran
 export class PrismaAdministration implements AdministrationRepository {
   constructor(private db: PrismaClient) {}
   async listUsers() {
-    const rows = await this.db.utilisateur.findMany({ orderBy: { creeLe: 'desc' }, take: 500 });
+    const rows = await this.db.utilisateur.findMany({ orderBy: { creeLe: 'desc' } });
     return rows.map((row) => safeUser(fromUser(row)));
   }
   async transaction<T>(work: (repository: AdministrationTransaction) => Promise<T>): Promise<T> {

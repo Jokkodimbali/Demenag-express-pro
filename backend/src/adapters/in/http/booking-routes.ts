@@ -15,7 +15,7 @@ import {
 import { apiRoutes } from './routes.js';
 export function registerBookingRoutes(
   app: Express,
-  deps: Pick<Dependencies, 'moving'>,
+  deps: Pick<Dependencies, 'moving' | 'drivers'>,
   access: Pick<Access, 'authenticate' | 'admin'>,
   notifications?: NotificationPublisher,
 ) {
@@ -26,7 +26,7 @@ export function registerBookingRoutes(
     recipients: { userIds?: string[]; roles?: ('client' | 'admin' | 'driver')[] },
     bookingId?: string,
   ) =>
-    notifications?.publish(
+    void notifications?.publish(
       { id: crypto.randomUUID(), title, message, createdAt: new Date().toISOString(), bookingId },
       recipients,
     );
@@ -73,14 +73,15 @@ export function registerBookingRoutes(
   });
   app.patch(`${apiRoutes.bookings}/:id/driver`, authenticate, admin, async (req, res) => {
     const p = driverAssignmentSchema.parse(req.body);
-    res.json(
-      await deps.moving.assignDriver(
+    const booking = await deps.moving.assignDriver(
         getActor(res),
         z.uuid().parse(req.params.id),
         p.driverId,
         p.version,
-      ),
-    );
+      );
+    const driver = p.driverId ? (await deps.drivers.list(getActor(res))).find((item) => item.id === p.driverId) : null;
+    notify('Mission attribuée', `Une mission ${booking.reference} vous a été attribuée.`, { userIds: driver?.userId ? [driver.userId] : [] }, booking.id);
+    res.json(booking);
   });
   app.post(`${apiRoutes.bookings}/:id/quotes`, authenticate, admin, async (req, res) => {
     const booking = await deps.moving.quote(
