@@ -89,7 +89,7 @@ export type VehicleInspectionPhotos = {
   brakeFluid: string;
   powerSteering: string;
   washerFluid: string;
-  condition: string;
+  condition: string[];
 };
 export type Quote = {
   id: string;
@@ -122,6 +122,7 @@ export type Booking = {
   estimate: Price;
   quotes: Quote[];
   trips?: BookingTrip[];
+  driverFinishedAt?: string | null;
   createdAt: string;
   version: number;
 };

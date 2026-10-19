@@ -16,6 +16,11 @@ export function useAdministration() {
     [query, setQuery] = useState(() => params.get('q') ?? '');
   useEffect(() => setQuery(params.get('q') ?? ''), [params]);
   useEffect(() => {
+    const refreshOnNotification = () => setRetry((value) => value + 1);
+    window.addEventListener('demenag:notification', refreshOnNotification);
+    return () => window.removeEventListener('demenag:notification', refreshOnNotification);
+  }, []);
+  useEffect(() => {
     let active = true;
     setLoading(true);
     setError('');

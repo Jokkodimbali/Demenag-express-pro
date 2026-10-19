@@ -51,11 +51,14 @@ export function useRouteMap() {
       route: null,
     }));
     if (!label) {
-      void api.reverse(point).then(({ label: address }) => {
-        if (requestId === addressRequest.current) {
-          setDraft((d) => ({ ...d, [side + 'Address']: address }));
-        }
-      }).catch(() => undefined);
+      void api
+        .reverse(point)
+        .then(({ label: address }) => {
+          if (requestId === addressRequest.current) {
+            setDraft((d) => ({ ...d, [side + 'Address']: address }));
+          }
+        })
+        .catch(() => undefined);
     }
     if (side === 'from') setActive('to');
   };

@@ -33,6 +33,7 @@ export interface MovingUseCases {
   status(user: User, id: string, next: BookingStatus, version: number): Promise<Booking>;
   startTrip(user: User, id: string, photos: string[]): Promise<Booking>;
   finishTrip(user: User, id: string, photos: string[]): Promise<Booking>;
+  finishDriverWork(user: User, id: string): Promise<Booking>;
   schedule(
     user: User,
     id: string,
@@ -41,6 +42,7 @@ export interface MovingUseCases {
     version: number,
   ): Promise<Booking>;
   updateNotes(user: User, id: string, notes: string, version: number): Promise<Booking>;
+  updateRoute(user: User, id: string, from: Point, to: Point, version: number): Promise<Booking>;
   assignDriver(user: User, id: string, driverId: string | null, version: number): Promise<Booking>;
   quote(user: User, id: string, input: QuoteInput): Promise<Booking>;
   delete(user: User, id: string): Promise<void>;

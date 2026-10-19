@@ -7,6 +7,7 @@ import type { NotificationPublisher } from '../../../application/ports/index.js'
 import { messages } from '../../../domain/messages/fr.js';
 import {
   bookingSchema,
+  bookingRouteUpdateSchema,
   driverAssignmentSchema,
   estimateSchema,
   quoteSchema,
@@ -21,13 +22,13 @@ export function registerBookingRoutes(
   notifications?: NotificationPublisher,
 ) {
   const { authenticate, admin } = access;
-  const notify = (
+  const notify = async (
     title: string,
     message: string,
     recipients: { userIds?: string[]; roles?: ('client' | 'admin' | 'driver')[] },
     bookingId?: string,
   ) =>
-    void notifications?.publish(
+    await notifications?.publish(
       { id: crypto.randomUUID(), title, message, createdAt: new Date().toISOString(), bookingId },
       recipients,
     );
@@ -40,7 +41,7 @@ export function registerBookingRoutes(
   );
   app.post(apiRoutes.bookings, authenticate, async (req, res) => {
     const booking = await deps.moving.create(getActor(res), bookingSchema.parse(req.body));
-    notify(
+    await notify(
       'Nouvelle réservation à confirmer',
       messages.notificationNouvelleReservation(
         booking.reference,
@@ -68,7 +69,7 @@ export function registerBookingRoutes(
       p.status,
       p.version,
     );
-    notify(
+    await notify(
       'Statut de réservation mis à jour',
       messages.notificationStatutReservation(booking.reference, booking.status),
       { userIds: [booking.userId], roles: ['admin'] },
@@ -83,10 +84,10 @@ export function registerBookingRoutes(
       z.uuid().parse(req.params.id),
       p.photos,
     );
-    notify(
+    await notify(
       'Course démarrée',
       `${booking.reference} : le chauffeur a envoyé les photos du chargement de la course ${booking.trips?.length ?? 1}.`,
-      { roles: ['admin'], userIds: [booking.userId] },
+      { roles: ['admin'] },
       booking.id,
     );
     res.status(201).json(booking);
@@ -98,13 +99,16 @@ export function registerBookingRoutes(
       z.uuid().parse(req.params.id),
       p.photos,
     );
-    notify(
-      'Course terminée',
-      `${booking.reference} : les photos du déchargement de la course ${booking.trips?.length ?? 1} ont été reçues.`,
-      { roles: ['admin'], userIds: [booking.userId] },
+    await notify(
+      'Course terminée · preuves reçues',
+      `${booking.reference} : course ${booking.trips?.length ?? 1} terminée. ${booking.trips?.length ?? 1} aller(s)-retour(s) enregistré(s) avec les preuves de chargement et de déchargement.`,
+      { roles: ['admin'] },
       booking.id,
     );
     res.json(booking);
+  });
+  app.post(`${apiRoutes.bookings}/:id/driver-finished`, authenticate, async (req, res) => {
+    res.json(await deps.moving.finishDriverWork(getActor(res), z.uuid().parse(req.params.id)));
   });
   app.patch(`${apiRoutes.bookings}/:id/schedule`, authenticate, admin, async (req, res) => {
     const p = z
@@ -137,6 +141,18 @@ export function registerBookingRoutes(
       ),
     );
   });
+  app.patch(`${apiRoutes.bookings}/:id/route`, authenticate, admin, async (req, res) => {
+    const p = bookingRouteUpdateSchema.parse(req.body);
+    res.json(
+      await deps.moving.updateRoute(
+        getActor(res),
+        z.uuid().parse(req.params.id),
+        p.from,
+        p.to,
+        p.version,
+      ),
+    );
+  });
   app.patch(`${apiRoutes.bookings}/:id/driver`, authenticate, admin, async (req, res) => {
     const p = driverAssignmentSchema.parse(req.body);
     const booking = await deps.moving.assignDriver(
@@ -153,7 +169,7 @@ export function registerBookingRoutes(
       z.uuid().parse(req.params.id),
       quoteSchema.parse(req.body),
     );
-    notify(
+    await notify(
       'Nouveau devis disponible',
       messages.notificationDevisDisponible(booking.reference),
       { userIds: [booking.userId] },

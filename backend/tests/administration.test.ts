@@ -37,7 +37,14 @@ function fixture(count: number, currentActor: User = actor) {
     findByPhone: async () => null,
     create: async (user) => user,
     updatePassword: async () => {},
-    updateProfile: async () => {},
+    updateProfile: async (id, name, phone, photo) => ({
+      id,
+      name,
+      phone,
+      role: 'admin',
+      active: true,
+      photo: photo ?? null,
+    }),
   };
   const service = new AdministrationService(
     repository,

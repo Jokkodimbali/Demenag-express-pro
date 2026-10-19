@@ -5,12 +5,19 @@ export type QuoteExtraLine = { label: string; quantity: number; unitPrice: numbe
 export function quoteTotal(
   booking: Booking,
   settings: Settings,
-  draft: { trips: number; customPrice: number | null; discount: number; options: Options },
+  draft: {
+    trips: number;
+    customPrice: number | null;
+    discount: number;
+    options: Options;
+    kind?: 'provisional' | 'final';
+  },
   extras: QuoteExtraLine[],
 ) {
   const { tier } = booking.estimate;
   const transportUnit = draft.customPrice ?? (tier === 3 ? null : booking.vehicle.prices[tier]);
-  if (!Number.isInteger(draft.trips) || draft.trips < 1 || draft.trips > settings.maxTrips) return null;
+  const maxTrips = draft.kind === 'final' ? 10000 : settings.maxTrips;
+  if (!Number.isInteger(draft.trips) || draft.trips < 1 || draft.trips > maxTrips) return null;
   if (!Number.isInteger(draft.discount) || draft.discount < 0) return null;
   const optionTotal =
     draft.options.labour * settings.labourPrice +

@@ -23,8 +23,10 @@ export async function downloadQuote(
   settings: Settings,
 ): Promise<Blob> {
   const { jsPDF } = await import('jspdf');
+  const finalQuote = booking.quotes.filter((item) => item.kind === 'final').at(-1);
+  const documentQuote = quote?.kind === 'final' ? quote : (finalQuote ?? quote);
   const doc = new jsPDF({ format: 'a4', unit: 'mm' });
-  const price = quote?.price || booking.estimate;
+  const price = documentQuote?.price || booking.estimate;
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 16;
   const contentWidth = pageWidth - margin * 2;
@@ -82,14 +84,14 @@ export async function downloadQuote(
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
   doc.setTextColor(35, 37, 40);
-  doc.text(quote?.kind === 'final' ? 'DEVIS FINAL' : 'DEVIS PROVISOIRE', right, y + 2, {
+  doc.text(documentQuote?.kind === 'final' ? 'DEVIS FINAL' : 'DEVIS PROVISOIRE', right, y + 2, {
     align: 'right',
   });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
   doc.setTextColor(94, 101, 108);
   doc.text(
-    `Réf. ${quote?.reference || booking.reference}  ·  ${dateLabel((quote?.createdAt || booking.createdAt).slice(0, 10))}`,
+    `Réf. ${documentQuote?.reference || booking.reference}  ·  ${dateLabel((documentQuote?.createdAt || booking.createdAt).slice(0, 10))}`,
     right,
     y + 9,
     { align: 'right' },
@@ -178,7 +180,7 @@ export async function downloadQuote(
   doc.setTextColor(35, 37, 40);
   doc.setFontSize(11);
   doc.text(
-    quote?.kind === 'final' ? 'MONTANT DÉFINITIF' : 'ESTIMATION PROVISOIRE',
+    documentQuote?.kind === 'final' ? 'MONTANT DÉFINITIF' : 'ESTIMATION PROVISOIRE',
     margin + 5,
     y + 10,
   );
@@ -187,8 +189,8 @@ export async function downloadQuote(
   y += 25;
 
   const explanation =
-    quote?.notes ||
-    (quote?.kind === 'final'
+    documentQuote?.notes ||
+    (documentQuote?.kind === 'final'
       ? messages.montantEtabliSurLaBaseDuNombreReel
       : `Devis temporaire, calculé sur ${price.trips} aller(s)-retour(s) estimé(s). Le transport est facturé par aller-retour effectué ; le devis final, basé sur le nombre réel d'allers-retours, sera envoyé par Demenag Express à la fin du déménagement.`);
   y = paragraph(explanation, margin, y, contentWidth, 8.5, false, [92, 99, 106]);
@@ -226,6 +228,6 @@ export async function downloadQuote(
   addContainedImage(signature, right - 58, signatureY + 23, 31, 18);
 
   const blob = doc.output('blob');
-  doc.save(`${quote?.reference || booking.reference}.pdf`);
+  doc.save(`${documentQuote?.reference || booking.reference}.pdf`);
   return blob;
 }

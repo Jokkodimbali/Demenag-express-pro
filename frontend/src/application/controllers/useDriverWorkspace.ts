@@ -13,6 +13,11 @@ export function useDriverWorkspace(loadBookings = true) {
   const [saving, setSaving] = useState(false);
   const [retry, setRetry] = useState(0);
   useEffect(() => {
+    const refreshOnNotification = () => setRetry((value) => value + 1);
+    window.addEventListener('demenag:notification', refreshOnNotification);
+    return () => window.removeEventListener('demenag:notification', refreshOnNotification);
+  }, []);
+  useEffect(() => {
     let active = true;
     setLoading(true);
     setError('');

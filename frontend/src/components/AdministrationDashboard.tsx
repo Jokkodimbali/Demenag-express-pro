@@ -1,6 +1,11 @@
 import { ChevronLeft, ChevronRight, FilePenLine, MessageCircle } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { bookingRevenueAmount, filterByVehicle, revenueFor, sameWeek } from '../application/services/revenue';
+import {
+  bookingRevenueAmount,
+  filterByVehicle,
+  revenueFor,
+  sameWeek,
+} from '../application/services/revenue';
 import { quoteNotificationUrl } from '../application/services/quote-notification';
 import { messages } from '../content/fr';
 import { dateLabel, money } from '../domain/format';
@@ -57,7 +62,9 @@ export function RevenueDashboard({ bookings, vehicles = [], onSelect }: Dashboar
   const scoped = useMemo(() => {
     if (period === 'all') return vehicleBookings;
     if (period === 'week')
-      return vehicleBookings.filter((booking) => !booking.date || sameWeek(booking.date, selectedDay));
+      return vehicleBookings.filter(
+        (booking) => !booking.date || sameWeek(booking.date, selectedDay),
+      );
     return vehicleBookings.filter((booking) => {
       if (!booking.date) return true;
       const date = new Date(booking.date + 'T12:00:00Z');
@@ -163,7 +170,12 @@ export function RevenueDashboard({ bookings, vehicles = [], onSelect }: Dashboar
         </div>
       </div>
       <RevenueLegend provisional={scopeRevenue.provisional} definitive={scopeRevenue.definitive} />
-      <p className="muted revenue-definition">Les demandes en attente sont provisoires. Les réservations confirmées, en cours ou terminées sont comptées en définitif ; le montant retenu est le devis final, sinon le devis provisoire, sinon l’estimation. Le global additionne chaque réservation active une seule fois et exclut les annulations.</p>
+      <p className="muted revenue-definition">
+        Les demandes en attente sont provisoires. Les réservations confirmées, en cours ou terminées
+        sont comptées en définitif ; le montant retenu est le devis final, sinon le devis
+        provisoire, sinon l’estimation. Le global additionne chaque réservation active une seule
+        fois et exclut les annulations.
+      </p>
       <BookingCalendar
         bookings={scoped}
         onSelect={onSelect}
@@ -338,24 +350,43 @@ function BookingCalendar({
           );
         })}
       </div>
-      {bookings.some((booking) => !booking.date) ? (() => {
-        const undatedBookings = bookings.filter((booking) => !booking.date);
-        const undatedRevenue = revenueFor(undatedBookings);
-        return <section className="calendar-undated" aria-label="Réservations sans date de rendez-vous">
-          <h3>Sans date de rendez-vous <span>{undatedBookings.length}</span></h3>
-          <div className="calendar-undated-totals">
-            <span className="provisional">Provisoire : {money(undatedRevenue.provisional)}</span>
-            <span className="definitive">Définitif : {money(undatedRevenue.definitive)}</span>
-            <strong>Total : {money(undatedRevenue.total)}</strong>
-          </div>
-          <div>{undatedBookings.map((booking) => (
-            <button key={booking.id} className={'calendar-booking ' + booking.status} onClick={() => onSelect(booking)}>
-              <span>{booking.reference} · {booking.customerName}</span>
-              <strong>{money(bookingRevenueAmount(booking))}</strong>
-            </button>
-          ))}</div>
-        </section>;
-      })() : null}
+      {bookings.some((booking) => !booking.date)
+        ? (() => {
+            const undatedBookings = bookings.filter((booking) => !booking.date);
+            const undatedRevenue = revenueFor(undatedBookings);
+            return (
+              <section
+                className="calendar-undated"
+                aria-label="Réservations sans date de rendez-vous"
+              >
+                <h3>
+                  Sans date de rendez-vous <span>{undatedBookings.length}</span>
+                </h3>
+                <div className="calendar-undated-totals">
+                  <span className="provisional">
+                    Provisoire : {money(undatedRevenue.provisional)}
+                  </span>
+                  <span className="definitive">Définitif : {money(undatedRevenue.definitive)}</span>
+                  <strong>Total : {money(undatedRevenue.total)}</strong>
+                </div>
+                <div>
+                  {undatedBookings.map((booking) => (
+                    <button
+                      key={booking.id}
+                      className={'calendar-booking ' + booking.status}
+                      onClick={() => onSelect(booking)}
+                    >
+                      <span>
+                        {booking.reference} · {booking.customerName}
+                      </span>
+                      <strong>{money(bookingRevenueAmount(booking))}</strong>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            );
+          })()
+        : null}
     </section>
   );
 }

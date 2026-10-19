@@ -46,9 +46,12 @@ export const driverAssignmentSchema = z.object({
   driverId: z.uuid().nullable(),
   version: z.number().int().positive(),
 });
+export const bookingRouteUpdateSchema = routeSchema.extend({
+  version: z.number().int().positive(),
+});
 export const quoteSchema = z.object({
   kind: z.enum(['provisional', 'final']),
-  trips: z.number().int().min(1).max(20),
+  trips: z.number().int().min(1).max(10000),
   customPrice: z.number().int().positive().max(10000000).nullable(),
   discount: z.number().int().min(0).max(10000000),
   notes: z.string().trim().max(2000),
@@ -94,7 +97,7 @@ export const vehicleInspectionSchema = z.object({
       brakeFluid: imageSchema,
       powerSteering: imageSchema,
       washerFluid: imageSchema,
-      condition: imageSchema,
+      condition: z.array(imageSchema).min(1).max(5),
     })
     .transform((photos) => [
       photos.engineOil,
@@ -102,7 +105,7 @@ export const vehicleInspectionSchema = z.object({
       photos.brakeFluid,
       photos.powerSteering,
       photos.washerFluid,
-      photos.condition,
+      ...photos.condition,
     ]),
 });
 export const breakdownSchema = z.object({

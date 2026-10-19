@@ -46,7 +46,9 @@ export function VehicleSelector({
               v.id === draft.vehicleId ? 'selected' : '',
               transition?.fromVehicleId === v.id ? 'rolling-out' : '',
               transition?.toVehicleId === v.id ? 'rolling-in' : '',
-            ].filter(Boolean).join(' ')}
+            ]
+              .filter(Boolean)
+              .join(' ')}
             onClick={() => chooseVehicle(v.id)}
           >
             <span className="vehicle-check">

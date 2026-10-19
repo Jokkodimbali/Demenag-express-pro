@@ -1,4 +1,4 @@
-import { ArrowLeft, ClipboardCheck, Truck } from 'lucide-react';
+import { ArrowLeft, Truck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useDriverWorkspace } from '../application/controllers/useDriverWorkspace';
 import { DriverVehicleReports } from '../components/DriverVehicleReports';
@@ -20,8 +20,16 @@ export function DriverVehicleCheck() {
           {messages.retourAuxMissions}
         </Link>
       </div>
-      {error && <p className="alert error" role="alert">{error}</p>}
-      {loading ? <p className="panel loading">Chargement de votre véhicule…</p> : profile?.vehicleId ? <DriverVehicleReports /> : !error ? (
+      {error && (
+        <p className="alert error" role="alert">
+          {error}
+        </p>
+      )}
+      {loading ? (
+        <p className="panel loading">Chargement de votre véhicule…</p>
+      ) : profile?.vehicleId ? (
+        <DriverVehicleReports />
+      ) : !error ? (
         <div className="empty-state panel">
           <Truck size={40} />
           <h2>{messages.aucunVehiculeAffecte}</h2>

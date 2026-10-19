@@ -29,17 +29,17 @@ export class VehicleReportService implements VehicleReportUseCases {
   async submitInspection(actor: User, input: VehicleInspectionInput) {
     const driver = await this.driver(actor);
     if (!driver.vehicleId) throw new AppError(400, 'Aucun véhicule ne vous est affecté.');
-    if (input.photos.length !== 6)
+    if (input.photos.length < 6 || input.photos.length > 10)
       throw new AppError(
         400,
-        'Ajoutez une photo de preuve pour chacun des cinq niveaux et pour l’état général du véhicule.',
+        'Ajoutez une photo par niveau et de une à cinq photos pour l’état général du véhicule.',
       );
     const date = dakarDate();
     const previousInspection = await this.reports.findInspection(driver.id, date);
-    if (Array.isArray(previousInspection?.photos) && previousInspection.photos.length === 6)
+    if (Array.isArray(previousInspection?.photos) && previousInspection.photos.length >= 6)
       throw new AppError(409, 'Le contrôle du véhicule a déjà été envoyé pour aujourd’hui.');
     const report = await this.reports.createInspection(driver.id, driver.vehicleId, date, input);
-    this.notify(
+    await this.notify(
       'Contrôle véhicule reçu',
       `${driver.name} a envoyé le contrôle quotidien du véhicule.`,
       `inspection-${driver.id}-${date}`,
@@ -50,7 +50,7 @@ export class VehicleReportService implements VehicleReportUseCases {
     const driver = await this.driver(actor);
     if (!driver.vehicleId) throw new AppError(400, 'Aucun véhicule ne vous est affecté.');
     const report = await this.reports.createBreakdown(driver.id, driver.vehicleId, input);
-    this.notify(
+    await this.notify(
       'Panne signalée',
       `${driver.name} a signalé une panne.`,
       `breakdown-${String(report.id)}`,
@@ -80,8 +80,8 @@ export class VehicleReportService implements VehicleReportUseCases {
     if (!driver) throw new AppError(404, messages.profilChauffeurIntrouvable);
     return driver;
   }
-  private notify(title: string, message: string, id: string) {
-    void this.notifications?.publish(
+  private async notify(title: string, message: string, id: string) {
+    await this.notifications?.publish(
       { id, title, message, createdAt: new Date().toISOString() },
       { roles: ['admin'] },
     );

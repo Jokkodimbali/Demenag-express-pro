@@ -15,14 +15,15 @@ export class RealtimeNotifications implements NotificationPublisher {
     return () => this.subscribers.delete(subscriber);
   }
 
-  async publish(notification: Notification, recipients: { userIds?: string[]; roles?: User['role'][] }) {
-    await this.repository.publish(notification, recipients);
-    for (const subscriber of this.subscribers) {
-      if (
-        recipients.userIds?.includes(subscriber.user.id) ||
-        recipients.roles?.includes(subscriber.user.role)
-      )
-        subscriber.send(notification);
+  async publish(
+    notification: Notification,
+    recipients: { userIds?: string[]; roles?: User['role'][] },
+  ) {
+    const deliveries = await this.repository.publish(notification, recipients);
+    for (const delivery of deliveries) {
+      for (const subscriber of this.subscribers) {
+        if (subscriber.user.id === delivery.userId) subscriber.send(delivery.notification);
+      }
     }
   }
 }

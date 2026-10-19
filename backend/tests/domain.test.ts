@@ -108,7 +108,14 @@ test('La connexion accepte les comptes historiques enregistrés sans +221', asyn
       findByPhone: async (phone) => (phone === user.phone ? user : null),
       create: async () => user,
       updatePassword: async () => {},
-      updateProfile: async () => {},
+      updateProfile: async (id, name, phone, photo) => ({
+        id,
+        name,
+        phone,
+        role: 'client',
+        active: true,
+        photo: photo ?? null,
+      }),
     },
     {
       create: async () => {},

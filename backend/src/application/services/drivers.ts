@@ -109,7 +109,8 @@ export class DriverService implements DriverUseCases {
       {
         id: this.ids.next(),
         title: 'Véhicule affecté',
-        message: 'Un véhicule vous a été affecté. Vos missions associées sont disponibles dans votre espace chauffeur.',
+        message:
+          'Un véhicule vous a été affecté. Vos missions associées sont disponibles dans votre espace chauffeur.',
         createdAt: new Date().toISOString(),
       },
       { userIds: [driver.userId] },

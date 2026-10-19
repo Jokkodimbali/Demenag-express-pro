@@ -112,10 +112,13 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
       request(`${httpRoutes.bookingTrips(id)}/start`, 'POST', { photos }),
     finishBookingTrip: (id, photos) =>
       request(`${httpRoutes.bookingTrips(id)}/finish`, 'POST', { photos }),
+    finishDriverWork: (id) => request(httpRoutes.bookingDriverFinished(id), 'POST'),
     schedule: (id, date, timeSlot, version) =>
       request(`${httpRoutes.bookings}/${id}/schedule`, 'PATCH', { date, timeSlot, version }),
     updateBookingNotes: (id, notes, version) =>
       request(`${httpRoutes.bookings}/${id}/notes`, 'PATCH', { notes, version }),
+    updateBookingRoute: (id, from, to, version) =>
+      request(httpRoutes.bookingRoute(id), 'PATCH', { from, to, version }),
     assignDriver: (id, driverId, version) =>
       request(`${httpRoutes.bookings}/${id}/driver`, 'PATCH', { driverId, version }),
     quote: (id, input) => request(`${httpRoutes.bookings}/${id}/quotes`, 'POST', input),

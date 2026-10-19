@@ -35,7 +35,7 @@ export function DriverVehicleReports() {
   );
   const [breakdownPhotos, setBreakdownPhotos] = useState<File[]>([]);
   const inspectedToday = reports.inspections.some(
-    (report) => report.date === todayDakar() && report.photos.length === 6,
+    (report) => report.date === todayDakar() && report.photos.length >= 6,
   );
   useEffect(() => {
     let active = true;
@@ -104,7 +104,7 @@ export function DriverVehicleReports() {
       ) as Record<string, 'good' | 'low' | 'empty'>;
       const encoded = await filesToDataUrls([
         ...fluidItems.map(([key]) => inspectionPhotos[key][0]),
-        inspectionPhotos.condition[0],
+        ...inspectionPhotos.condition,
       ]);
       const photos = {
         engineOil: encoded[0],
@@ -112,7 +112,7 @@ export function DriverVehicleReports() {
         brakeFluid: encoded[2],
         powerSteering: encoded[3],
         washerFluid: encoded[4],
-        condition: encoded[5],
+        condition: encoded.slice(5),
       };
       const report = await api.submitVehicleInspection({
         levels,
@@ -278,9 +278,9 @@ export function DriverVehicleReports() {
               )}
             </label>
             <PhotoPicker
-              label="Preuve photo · état général"
+              label="Preuves photo · état général (1 à 5)"
               files={inspectionPhotos.condition}
-              maxPhotos={1}
+              maxPhotos={5}
               required
               validationError={fieldErrors.conditionPhoto}
               onChange={(files) => {

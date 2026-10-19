@@ -1,6 +1,7 @@
 import {
   ArrowUpRight,
   CalendarDays,
+  Check,
   Download,
   MapPin,
   MessageCircle,
@@ -68,6 +69,14 @@ export function BookingCard({
     shareQuote,
     saveBookingNotes,
   } = useBookingCard({ booking: b, onChange, admin, editInitially, onDeleted });
+  const trips = b.trips ?? [];
+  const incompleteTrips = trips.filter((trip) => !trip.finishedAt || !trip.unloadingPhotos?.length);
+  const canCloseBooking =
+    b.status === 'in_progress' &&
+    !!finalQuote &&
+    !!b.driverFinishedAt &&
+    trips.length > 0 &&
+    incompleteTrips.length === 0;
   const [editingSchedule, setEditingSchedule] = useState(false);
   const [scheduleDate, setScheduleDate] = useState(b.date ?? '');
   const [scheduleSlot, setScheduleSlot] = useState(b.timeSlot);
@@ -99,7 +108,7 @@ export function BookingCard({
             <CalendarDays size={15} />
             {b.date ? `${dateLabel(b.date)} · ${b.timeSlot}` : 'Sans date de rendez-vous'}
           </p>
-          {admin && b.status === 'pending' && (
+          {admin && !finalQuote && !terminal && (
             <button
               className="button text small"
               type="button"
@@ -108,7 +117,7 @@ export function BookingCard({
               {editingSchedule ? 'Fermer' : 'Modifier le rendez-vous'}
             </button>
           )}
-          {admin && editingSchedule && b.status === 'pending' && (
+          {admin && !finalQuote && !terminal && editingSchedule && (
             <form
               className="schedule-editor"
               onSubmit={async (event) => {
@@ -151,7 +160,13 @@ export function BookingCard({
           <strong>{money(last?.price.total ?? (last ? null : b.estimate.total))}</strong>
         </div>
       </div>
-      {(admin || driverMode) && <BookingRouteMap booking={b} />}
+      {(admin || driverMode) && (
+        <BookingRouteMap
+          booking={b}
+          admin={admin && !finalQuote}
+          onChange={admin && !finalQuote ? onChange : undefined}
+        />
+      )}
       {driverMode && (
         <a
           className="button secondary small booking-google-route"
@@ -188,7 +203,7 @@ export function BookingCard({
         <section className="booking-precision">
           <div className="booking-precision-heading">
             <strong>Note de précision</strong>
-            {!editingNotes && !terminal && (
+            {!editingNotes && !terminal && !finalQuote && (
               <button
                 className="button text small"
                 type="button"
@@ -201,7 +216,7 @@ export function BookingCard({
               </button>
             )}
           </div>
-          {editingNotes ? (
+          {editingNotes && !finalQuote ? (
             <form
               onSubmit={async (event) => {
                 event.preventDefault();
@@ -239,7 +254,11 @@ export function BookingCard({
         </section>
       )}
       <div className="card-actions">
-        <button className="button secondary small" disabled={busy} onClick={() => pdf(last)}>
+        <button
+          className="button secondary small"
+          disabled={busy}
+          onClick={() => pdf(finalQuote ?? last)}
+        >
           <Download size={16} />
           {messages.telechargerLePdf}
         </button>
@@ -252,7 +271,7 @@ export function BookingCard({
             {messages.annuler}
           </button>
         )}
-        {admin && !terminal && (
+        {admin && !terminal && !finalQuote && (
           <>
             {b.status === 'pending' && (
               <button
@@ -290,12 +309,22 @@ export function BookingCard({
             )}
           </>
         )}
+        {admin && canCloseBooking && (
+          <button
+            className="button primary small"
+            type="button"
+            disabled={busy}
+            onClick={() => void change('completed')}
+          >
+            <Check size={16} /> Valider le devis final et clôturer
+          </button>
+        )}
         {admin && last && (
           <button
             className="button secondary small"
             type="button"
             disabled={busy}
-            onClick={() => void shareQuote(last, wa)}
+            onClick={() => void shareQuote(finalQuote ?? last, finalQuote ? finalWa : wa)}
           >
             <MessageCircle size={16} />
             {messages.partagerLeDevisWhatsApp}
@@ -326,6 +355,35 @@ export function BookingCard({
         )}
       </div>
       {driverMode && <DriverCourseActions booking={b} onChange={onChange} />}
+      {admin && b.driverFinishedAt && !terminal && (
+        <div className="driver-course-complete" role="status">
+          <p>
+            Le chauffeur a signalé {trips.length} aller(s)-retour(s) terminé(s). Vérifiez les
+            preuves avant la clôture.
+          </p>
+          {!finalQuote && (
+            <p>
+              Vous pouvez encore modifier la réservation. Enregistrez ensuite le devis final ; il
+              verrouillera les modifications et permettra la clôture.
+            </p>
+          )}
+          {finalQuote && (
+            <p>
+              Le devis final est enregistré et les modifications sont verrouillées. Clôturez la
+              réservation pour terminer le dossier.
+            </p>
+          )}
+          {incompleteTrips.length > 0 && (
+            <p>
+              Clôture indisponible : vérifiez la preuve de déchargement des courses{' '}
+              {incompleteTrips.map((trip) => trip.sequence).join(', ')}.
+            </p>
+          )}
+          {finalQuote && b.status !== 'in_progress' && (
+            <p>Clôture indisponible : le statut actuel est « {statuses[b.status]} ».</p>
+          )}
+        </div>
+      )}
       {!driverMode && !!b.trips?.length && (
         <section className="booking-trip-history">
           <h4>Preuves des courses ({b.trips.length})</h4>
@@ -395,11 +453,15 @@ export function BookingCard({
                         setQuoteDraft((draft) => ({
                           ...draft,
                           kind: event.target.value === 'final' ? 'final' : 'provisional',
+                          trips:
+                            event.target.value === 'final'
+                              ? (b.trips?.length ?? draft.trips)
+                              : draft.trips,
                         }))
                       }
                     >
                       <option value="provisional">{messages.provisoire}</option>
-                      {(b.status === 'in_progress' || last?.kind === 'final') && (
+                      {(!!b.driverFinishedAt || last?.kind === 'final') && (
                         <option value="final">{messages.finalClotureLeDemenagement}</option>
                       )}
                     </select>
@@ -407,18 +469,22 @@ export function BookingCard({
                   <div>
                     <label htmlFor={'trips-' + b.id}>{messages.allersRetours}</label>
                     <input
-                      name="trips"
+                      name={quoteDraft.kind === 'final' ? undefined : 'trips'}
                       id={'trips-' + b.id}
                       type="number"
                       min={1}
-                      max={b.pricingSettings?.maxTrips}
+                      max={quoteDraft.kind === 'final' ? 10000 : b.pricingSettings?.maxTrips}
                       step={1}
                       value={quoteDraft.trips}
+                      disabled={quoteDraft.kind === 'final'}
                       onChange={(event) =>
                         setQuoteDraft((draft) => ({ ...draft, trips: Number(event.target.value) }))
                       }
                       required
                     />
+                    {quoteDraft.kind === 'final' && (
+                      <input type="hidden" name="trips" value={quoteDraft.trips} />
+                    )}
                   </div>
                 </div>
                 <div className="field-pair">
@@ -598,7 +664,11 @@ export function BookingCard({
                 {quotePreviewTotal === null ? messages.tarifAConvenir : money(quotePreviewTotal)}
               </strong>
             </div>
-            <p className="caption">{messages.unDevisFinalEstConserveSansModificationEt}</p>
+            <p className="caption">
+              {b.driverFinishedAt && quoteDraft.kind === 'final'
+                ? 'Vérifiez les trajets et les preuves, puis validez le devis final. Vous pourrez ensuite clôturer la réservation ; le devis final sera conservé avec elle.'
+                : messages.unDevisFinalEstConserveSansModificationEt}
+            </p>
             {error && (
               <p className="alert error" role="alert">
                 {error}

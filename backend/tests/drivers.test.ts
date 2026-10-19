@@ -53,7 +53,14 @@ test('Changer un chauffeur de véhicule libère automatiquement le chauffeur dé
     findByPhone: async () => null,
     create: async (user) => user,
     updatePassword: async () => {},
-    updateProfile: async () => {},
+    updateProfile: async (id, name, phone, photo) => ({
+      id,
+      name,
+      phone,
+      role: 'driver',
+      active: true,
+      photo: photo ?? null,
+    }),
   };
   const bookings: BookingRepository = {
     list: async () => [],
@@ -64,6 +71,8 @@ test('Changer un chauffeur de véhicule libère automatiquement le chauffeur dé
     update: async () => {
       throw new Error('Non utilisé par ce test');
     },
+    startTrip: async () => {},
+    finishTrip: async () => {},
   };
   const service = new DriverService(
     drivers,
@@ -142,13 +151,22 @@ test('Un chauffeur ne voit que les réservations du véhicule qui lui est affect
     findByPhone: async () => null,
     create: async (value) => value,
     updatePassword: async () => {},
-    updateProfile: async () => {},
+    updateProfile: async (id, name, phone, photo) => ({
+      id,
+      name,
+      phone,
+      role: 'driver',
+      active: true,
+      photo: photo ?? null,
+    }),
   };
   const bookings: BookingRepository = {
     list: async () => [sameVehicleBooking, otherVehicleBooking],
     find: async () => sameVehicleBooking,
     create: async (value) => value,
     update: async (value) => value,
+    startTrip: async () => {},
+    finishTrip: async () => {},
   };
   const service = new DriverService(
     drivers,

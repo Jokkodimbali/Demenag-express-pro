@@ -3,13 +3,15 @@ import type {
   VehicleInspectionInput,
   VehicleReportRepository,
 } from '../../../application/ports/index.js';
-import type { PrismaClient } from '../../../generated/prisma/client.js';
+import type { Prisma, PrismaClient } from '../../../generated/prisma/client.js';
 
 const inspectionInclude = {
   chauffeur: { select: { nom: true, telephone: true } },
   vehicule: { select: { id: true, nom: true, image: true } },
 } as const;
 const breakdownInclude = inspectionInclude;
+type InspectionRow = Prisma.ControleVehiculeGetPayload<{ include: typeof inspectionInclude }>;
+type BreakdownRow = Prisma.SignalementPanneGetPayload<{ include: typeof breakdownInclude }>;
 export class PrismaVehicleReports implements VehicleReportRepository {
   constructor(private readonly db: PrismaClient) {}
   async createInspection(
@@ -110,7 +112,7 @@ export class PrismaVehicleReports implements VehicleReportRepository {
     });
     return row ? this.inspection(row) : null;
   }
-  private inspection(row: any) {
+  private inspection(row: InspectionRow) {
     return {
       id: row.id,
       driverId: row.chauffeurId,
@@ -127,7 +129,7 @@ export class PrismaVehicleReports implements VehicleReportRepository {
       createdAt: row.creeLe.toISOString(),
     };
   }
-  private breakdown(row: any) {
+  private breakdown(row: BreakdownRow) {
     return {
       id: row.id,
       driverId: row.chauffeurId,

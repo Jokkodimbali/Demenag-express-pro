@@ -18,6 +18,7 @@ export type Notification = {
   bookingId?: string;
   readAt?: string | null;
 };
+export type NotificationDelivery = { userId: string; notification: Notification };
 export interface NotificationRepository {
   list(userId: string): Promise<Notification[]>;
   unreadCount(userId: string): Promise<number>;
@@ -26,7 +27,7 @@ export interface NotificationRepository {
   publish(
     notification: Notification,
     recipients: { userIds?: string[]; roles?: Role[] },
-  ): Promise<void>;
+  ): Promise<NotificationDelivery[]>;
 }
 export interface NotificationPublisher {
   subscribe(user: User, send: (notification: Notification) => void): () => void;

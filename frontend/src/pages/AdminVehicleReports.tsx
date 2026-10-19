@@ -19,6 +19,12 @@ const proofLabels = [
   'Lave-glace',
   'État général',
 ];
+const inspectionPhotoLabel = (index: number) =>
+  index < 5
+    ? proofLabels[index]
+    : index === 5
+      ? 'État général'
+      : `État général · photo ${index - 4}`;
 const levelLabel = (value: string) => (value === 'good' ? 'Bon' : value === 'low' ? 'Bas' : 'Vide');
 const dateLabel = (value: string) =>
   new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }).format(
@@ -31,6 +37,18 @@ export function AdminVehicleReports() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    const refreshOnReport = (event: Event) => {
+      const notification = (event as CustomEvent<{ title?: string }>).detail;
+      if (
+        notification?.title === 'Contrôle véhicule reçu' ||
+        notification?.title === 'Panne signalée'
+      )
+        setRetry((value) => value + 1);
+    };
+    window.addEventListener('demenag:notification', refreshOnReport);
+    return () => window.removeEventListener('demenag:notification', refreshOnReport);
+  }, []);
   useEffect(() => {
     let active = true;
     setLoading(true);
@@ -151,15 +169,11 @@ export function AdminVehicleReports() {
                       <a href={photo} target="_blank" rel="noreferrer">
                         <img
                           src={photo}
-                          alt={`Preuve ${proofLabels[index] ?? `photo ${index + 1}`} · ${report.vehicleName}`}
+                          alt={`Preuve ${inspectionPhotoLabel(index) ?? `photo ${index + 1}`} · ${report.vehicleName}`}
                           loading="lazy"
                         />
                       </a>
-                      <figcaption>
-                        {report.photos.length === 6
-                          ? (proofLabels[index] ?? `Photo ${index + 1}`)
-                          : `Ancienne photo ${index + 1}`}
-                      </figcaption>
+                      <figcaption>{inspectionPhotoLabel(index) ?? `Photo ${index + 1}`}</figcaption>
                     </figure>
                   ))}
                 </div>

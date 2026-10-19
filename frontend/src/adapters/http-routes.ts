@@ -12,6 +12,8 @@ export const httpRoutes = {
   },
   bookings: '/bookings',
   bookingTrips: (id: string) => `/bookings/${id}/trips`,
+  bookingDriverFinished: (id: string) => `/bookings/${id}/driver-finished`,
+  bookingRoute: (id: string) => `/bookings/${id}/route`,
   driver: {
     profile: '/driver/profile',
     bookings: '/driver/bookings',

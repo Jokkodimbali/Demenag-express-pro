@@ -134,19 +134,28 @@ export class MovingService implements MovingUseCases {
         throw new AppError(400, 'Prenez une photo du chargement pour démarrer une course.');
       }
       if (next === 'completed') {
-        requireValue(
-          (booking.trips?.length ?? 0) > 0,
-          'Enregistrez au moins une course avant de clôturer la mission.',
-        );
-        requireValue(
-          booking.trips?.every((trip) => trip.finishedAt && trip.unloadingPhotos?.length),
-          'Terminez la course en cours avec une photo du déchargement avant de clôturer la mission.',
-        );
+        throw new AppError(403, 'Seule l’administration peut clôturer la réservation.');
       }
     } else if (!canReadBooking(user, booking.userId))
       throw new AppError(404, messages.reservationIntrouvable);
     if (booking.version !== version)
       throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
+    const hasFinalQuote = booking.quotes.some((quote) => quote.kind === 'final');
+    if (hasFinalQuote && next !== 'completed')
+      throw new AppError(409, 'Le devis final est créé. Cette réservation est verrouillée.');
+    if (next === 'completed') {
+      requireAdministrator(user);
+      requireValue(hasFinalQuote, 'Créez le devis final avant de clôturer la réservation.');
+      requireValue(
+        booking.driverFinishedAt,
+        'Attendez que le chauffeur signale la fin de ses courses.',
+      );
+      requireValue(
+        (booking.trips?.length ?? 0) > 0 &&
+          booking.trips?.every((trip) => trip.finishedAt && trip.unloadingPhotos?.length),
+        'Toutes les courses doivent être terminées et justifiées par leurs photos.',
+      );
+    }
     transition(booking.status, next, user.role);
     const { settings } = await this.catalogue.get();
     if (user.role !== 'admin' && next === 'cancelled') {
@@ -170,7 +179,22 @@ export class MovingService implements MovingUseCases {
         maxAdvanceDays: 730,
       });
     }
-    return this.bookings.update({ ...booking, status: next }, version);
+    const updated = await this.bookings.update({ ...booking, status: next }, version);
+    if (user.role === 'admin' && next === 'completed' && booking.driverId) {
+      const driver = await this.drivers.find(booking.driverId);
+      if (driver?.userId)
+        await this.notifications?.publish(
+          {
+            id: this.ids.next(),
+            title: 'Réservation clôturée par l’administration',
+            message: `${updated.reference} : l’administration a vérifié les courses et clôturé la réservation.`,
+            createdAt: this.clock.now().toISOString(),
+            bookingId: updated.id,
+          },
+          { userIds: [driver.userId] },
+        );
+    }
+    return updated;
   }
   async startTrip(user: User, id: string, photos: string[]) {
     requireActiveUser(user);
@@ -180,6 +204,14 @@ export class MovingService implements MovingUseCases {
     const driver = await this.drivers.findByUserId(user.id);
     if (!booking || !driver || booking.vehicle.id !== driver.vehicleId)
       throw new AppError(404, messages.reservationIntrouvable);
+    requireValue(
+      !booking.driverFinishedAt,
+      'Vous avez déjà signalé la fin de vos courses à l’administration.',
+    );
+    requireValue(
+      !booking.quotes.some((quote) => quote.kind === 'final'),
+      'Le devis final est créé.',
+    );
     requireValue(
       ['confirmed', 'in_progress'].includes(booking.status),
       'Cette réservation ne peut pas démarrer une course.',
@@ -193,7 +225,9 @@ export class MovingService implements MovingUseCases {
     const inspection = await this.vehicleReports?.findInspection(driver.id, date);
     requireValue(inspection, 'Effectuez le contrôle du véhicule avant de démarrer une course.');
     requireValue(
-      Array.isArray(inspection.photos) && inspection.photos.length === 6,
+      Array.isArray(inspection.photos) &&
+        inspection.photos.length >= 6 &&
+        inspection.photos.length <= 10,
       'Le contrôle du jour doit inclure une photo de preuve pour chaque vérification.',
     );
     requireValue(
@@ -220,6 +254,10 @@ export class MovingService implements MovingUseCases {
     if (!booking || !driver || booking.vehicle.id !== driver.vehicleId)
       throw new AppError(404, messages.reservationIntrouvable);
     requireValue(
+      !booking.driverFinishedAt,
+      'Vous avez déjà signalé la fin de vos courses à l’administration.',
+    );
+    requireValue(
       booking.status === 'in_progress',
       'La mission doit être en cours pour terminer une course.',
     );
@@ -228,14 +266,45 @@ export class MovingService implements MovingUseCases {
     if (!updated) throw new AppError(404, messages.reservationIntrouvable);
     return updated;
   }
+  async finishDriverWork(user: User, id: string) {
+    requireActiveUser(user);
+    requireValue(user.role === 'driver', 'Cette action est réservée au chauffeur.');
+    const booking = await this.bookings.find(id);
+    const driver = await this.drivers.findByUserId(user.id);
+    if (!booking || !driver || booking.vehicle.id !== driver.vehicleId)
+      throw new AppError(404, messages.reservationIntrouvable);
+    requireValue(booking.status === 'in_progress', 'La mission doit être en cours.');
+    requireValue(!booking.driverFinishedAt, 'La fin des courses a déjà été signalée.');
+    requireValue(
+      (booking.trips?.length ?? 0) > 0 &&
+        booking.trips?.every((trip) => trip.finishedAt && trip.unloadingPhotos?.length),
+      'Terminez chaque course avec ses photos de déchargement avant de signaler la fin.',
+    );
+    const updated = await this.bookings.update(
+      { ...booking, driverFinishedAt: this.clock.now().toISOString() },
+      booking.version,
+    );
+    await this.notifications?.publish(
+      {
+        id: this.ids.next(),
+        title: 'Courses terminées par le chauffeur',
+        message: `${updated.reference} : le chauffeur signale ${updated.trips?.length ?? 0} aller(s)-retour(s) terminé(s), avec preuves de chargement et de déchargement. Vérifiez les preuves, créez le devis final puis clôturez la réservation.`,
+        createdAt: this.clock.now().toISOString(),
+        bookingId: updated.id,
+      },
+      { roles: ['admin'] },
+    );
+    return updated;
+  }
   async schedule(user: User, id: string, date: string | null, timeSlot: string, version: number) {
     requireAdministrator(user);
     const booking = await this.get(user, id);
     if (booking.version !== version)
       throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
     requireValue(
-      booking.status === 'pending',
-      'Le rendez-vous peut être modifié jusqu’à la confirmation finale de la réservation.',
+      !['completed', 'cancelled'].includes(booking.status) &&
+        !booking.quotes.some((quote) => quote.kind === 'final'),
+      'Le rendez-vous ne peut plus être modifié après la clôture ou la création du devis final.',
     );
     const { settings } = await this.catalogue.get();
     if (date) validateDate(date, timeSlot, this.clock.now(), { ...settings, maxAdvanceDays: 730 });
@@ -247,16 +316,100 @@ export class MovingService implements MovingUseCases {
     if (booking.version !== version)
       throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
     requireValue(
+      !booking.quotes.some((quote) => quote.kind === 'final'),
+      'Le devis final est créé. Cette réservation est verrouillée.',
+    );
+    requireValue(
       !['completed', 'cancelled'].includes(booking.status),
       messages.cetteReservationEstCloturee,
     );
     return this.bookings.update({ ...booking, notes: notes.trim() }, version);
+  }
+  async updateRoute(user: User, id: string, from: Point, to: Point, version: number) {
+    requireAdministrator(user);
+    const booking = await this.get(user, id);
+    if (booking.version !== version)
+      throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
+    requireValue(
+      !booking.quotes.some((quote) => quote.kind === 'final'),
+      'Le devis final est créé. Cette réservation est verrouillée.',
+    );
+    requireValue(
+      !['completed', 'cancelled'].includes(booking.status),
+      messages.cetteReservationEstCloturee,
+    );
+    const [route, fromAddress, toAddress, catalogue] = await Promise.all([
+      this.routing.route(from, to),
+      this.routing.reverse(from),
+      this.routing.reverse(to),
+      this.catalogue.get(),
+    ]);
+    const estimate = calculatePrice(
+      booking.vehicle,
+      booking.pricingSettings ?? catalogue.settings,
+      route.distanceKm,
+      booking.options,
+    );
+    const optionLabels = new Set<string>([
+      messages.manUvre,
+      messages.menuisierBureau,
+      messages.menuisierArmoire,
+      messages.menuisierLit,
+    ]);
+    const quotes = booking.quotes.map((quote) => {
+      if (quote.kind !== 'provisional') return quote;
+      const transportLine = quote.price.lines.find((line) => line.label.startsWith('Transport '));
+      const standardTransport =
+        quote.price.tier < 3 ? booking.vehicle.prices[quote.price.tier] : null;
+      const customPrice =
+        transportLine && transportLine.unitPrice !== standardTransport
+          ? transportLine.unitPrice
+          : null;
+      const extraLines = quote.price.lines
+        .filter((line) => line !== transportLine && !optionLabels.has(line.label))
+        .map(({ label, quantity, unitPrice }) => ({ label, quantity, unitPrice }));
+      const options = quote.options ?? booking.options;
+      const args = [
+        booking.vehicle,
+        booking.pricingSettings ?? catalogue.settings,
+        route.distanceKm,
+        options,
+        quote.price.trips,
+        customPrice,
+      ] as const;
+      const withoutDiscount = calculatePrice(...args, 0, extraLines);
+      const discount = Math.min(
+        quote.price.discount,
+        withoutDiscount.lines.reduce((sum, line) => sum + line.total, 0),
+      );
+      return {
+        ...quote,
+        price: calculatePrice(...args, discount, extraLines),
+      };
+    });
+    return this.bookings.update(
+      {
+        ...booking,
+        from,
+        to,
+        fromAddress,
+        toAddress,
+        distanceKm: route.distanceKm,
+        estimate,
+        quotes,
+      },
+      version,
+    );
   }
   async assignDriver(user: User, id: string, driverId: string | null, version: number) {
     requireAdministrator(user);
     const booking = await this.get(user, id);
     if (booking.version !== version)
       throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
+    requireValue(
+      !booking.quotes.some((quote) => quote.kind === 'final'),
+      'Le devis final est créé. Cette réservation est verrouillée.',
+    );
     if (driverId) {
       const driver = await this.drivers.find(driverId);
       if (!driver || !driver.active) throw new AppError(400, messages.chauffeurIntrouvable);
@@ -284,20 +437,45 @@ export class MovingService implements MovingUseCases {
     if (booking.version !== input.version)
       throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
     requireValue(
+      !booking.quotes.some((quote) => quote.kind === 'final'),
+      'Un devis final existe déjà pour cette réservation.',
+    );
+    requireValue(
       !['completed', 'cancelled'].includes(booking.status),
       messages.cetteReservationEstCloturee,
     );
-    if (input.kind === 'final')
+    if (input.kind === 'final') {
       requireValue(
         booking.status === 'in_progress',
         messages.demarrezLeDemenagementAvantDeFinaliserSonDevis,
       );
+      requireValue(
+        booking.driverFinishedAt,
+        'Attendez que le chauffeur signale la fin de ses courses.',
+      );
+      const completedTrips =
+        booking.trips?.filter((trip) => trip.finishedAt && trip.unloadingPhotos?.length).length ??
+        0;
+      requireValue(
+        completedTrips > 0 && completedTrips === booking.trips?.length,
+        'Toutes les courses doivent être terminées et justifiées par leurs photos.',
+      );
+      requireValue(
+        input.trips === completedTrips,
+        `Le devis final doit compter ${completedTrips} aller(s)-retour(s), selon les courses enregistrées.`,
+      );
+    }
     const { settings } = await this.catalogue.get();
     const options = input.options ?? booking.options;
+    const pricingSettings = booking.pricingSettings ?? settings;
+    const quoteSettings =
+      input.kind === 'final'
+        ? { ...pricingSettings, maxTrips: Math.max(pricingSettings.maxTrips, input.trips) }
+        : pricingSettings;
     // Les prix du transport sont ceux du véhicule au moment de la réservation.
     const price = calculatePrice(
       booking.vehicle,
-      booking.pricingSettings ?? settings,
+      quoteSettings,
       booking.distanceKm,
       options,
       input.trips,
@@ -323,7 +501,7 @@ export class MovingService implements MovingUseCases {
       {
         ...booking,
         quotes: [...booking.quotes, quote],
-        status: input.kind === 'final' ? 'completed' : booking.status,
+        status: booking.status,
       },
       input.version,
     );

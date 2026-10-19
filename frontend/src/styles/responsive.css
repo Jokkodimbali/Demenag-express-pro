@@ -120,6 +120,19 @@
     font-size: 11px;
   }
 }
+
+@media (max-width: 560px) {
+  .driver-course-form-actions > .button,
+  .report-photo-picker-actions > .button {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+  .driver-course-panel,
+  .booking-trip-history,
+  .vehicle-report-form {
+    padding: 12px;
+  }
+}
 @media (max-width: 600px) {
   .container {
     padding-left: 16px;

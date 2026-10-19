@@ -47,10 +47,11 @@ function VehicleShowcase({
     }
 
     const timer = window.setInterval(
-      () => setRotation((current) => ({
-        vehicleId: vehicle.id,
-        index: ((current.vehicleId === vehicle.id ? current.index : 0) + 1) % views.length,
-      })),
+      () =>
+        setRotation((current) => ({
+          vehicleId: vehicle.id,
+          index: ((current.vehicleId === vehicle.id ? current.index : 0) + 1) % views.length,
+        })),
       2300,
     );
     return () => window.clearInterval(timer);
@@ -106,9 +107,12 @@ export function Home() {
   const [vehicleTransition, setVehicleTransition] = useState<VehicleTransition | null>(null);
   const transitionTimer = useRef<number | null>(null);
   const transitionSequence = useRef(0);
-  useEffect(() => () => {
-    if (transitionTimer.current !== null) window.clearTimeout(transitionTimer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (transitionTimer.current !== null) window.clearTimeout(transitionTimer.current);
+    },
+    [],
+  );
 
   const startVehicleTransition = (fromVehicleId: string, toVehicleId: string) => {
     if (transitionTimer.current !== null) window.clearTimeout(transitionTimer.current);
@@ -163,7 +167,9 @@ export function Home() {
             vehicle={selected}
             outgoingVehicle={
               vehicleTransition?.toVehicleId === selected.id
-                ? catalogue?.vehicles.find((vehicle) => vehicle.id === vehicleTransition.fromVehicleId)
+                ? catalogue?.vehicles.find(
+                    (vehicle) => vehicle.id === vehicleTransition.fromVehicleId,
+                  )
                 : undefined
             }
             transitionSequence={

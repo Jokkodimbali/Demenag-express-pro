@@ -69,6 +69,19 @@ export function DriverCourseActions({
     }
   }
 
+  async function signalFinished() {
+    if (busy) return;
+    setBusy(true);
+    setError('');
+    try {
+      onChange(await api.finishDriverWork(booking.id));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Le signalement n’a pas pu être envoyé.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (
     booking.status === 'completed' ||
     booking.status === 'cancelled' ||
@@ -81,25 +94,22 @@ export function DriverCourseActions({
         <strong>
           <Truck size={17} /> Courses effectuées : {trips.length}
         </strong>
-        {booking.status === 'in_progress' && !openTrip && trips.length > 0 && (
-          <button
-            className="button secondary small"
-            type="button"
-            disabled={busy}
-            onClick={() =>
-              void api
-                .status(booking.id, 'completed', booking.version)
-                .then(onChange)
-                .catch((reason: unknown) =>
-                  setError(reason instanceof Error ? reason.message : 'Clôture impossible.'),
-                )
-            }
-          >
-            <Check size={16} /> Clôturer le déménagement
-          </button>
-        )}
       </div>
-      {booking.status === 'confirmed' || (booking.status === 'in_progress' && !openTrip) ? (
+      {booking.driverFinishedAt ? (
+        <p className="driver-course-complete" role="status">
+          <Check size={16} /> Fin signalée à l’administration pour {trips.length}{' '}
+          aller(s)-retour(s). En attente de vérification et clôture.
+        </p>
+      ) : booking.status === 'in_progress' && !openTrip && trips.length > 0 ? (
+        <button
+          className="button secondary small"
+          type="button"
+          disabled={busy}
+          onClick={() => void signalFinished()}
+        >
+          <Check size={16} /> Signaler la fin des courses à l’administration
+        </button>
+      ) : booking.status === 'confirmed' || (booking.status === 'in_progress' && !openTrip) ? (
         <button
           className="button primary small"
           type="button"

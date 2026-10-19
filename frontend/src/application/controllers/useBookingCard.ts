@@ -32,8 +32,8 @@ export function useBookingCard({
     [extraLines, setExtraLines] = useState<ExtraLine[]>(() => extrasFromLast(b, last)),
     [quoteNotes, setQuoteNotes] = useState(() => last?.notes || b.notes || '');
   const [quoteDraft, setQuoteDraft] = useState(() => ({
-    kind: last?.kind ?? ('provisional' as const),
-    trips: last?.price.trips ?? 1,
+    kind: b.driverFinishedAt ? ('final' as const) : (last?.kind ?? ('provisional' as const)),
+    trips: b.driverFinishedAt ? (b.trips?.length ?? 1) : (last?.price.trips ?? 1),
     customPrice:
       last?.price.lines.find((line) => line.label.includes(b.vehicle.name))?.unitPrice ?? null,
     discount: last?.price.discount ?? 0,
@@ -46,8 +46,8 @@ export function useBookingCard({
   );
   useEffect(() => {
     setQuoteDraft({
-      kind: last?.kind ?? 'provisional',
-      trips: last?.price.trips ?? 1,
+      kind: b.driverFinishedAt ? 'final' : (last?.kind ?? 'provisional'),
+      trips: b.driverFinishedAt ? (b.trips?.length ?? 1) : (last?.price.trips ?? 1),
       customPrice:
         last?.price.lines.find((line) => line.label.includes(b.vehicle.name))?.unitPrice ?? null,
       discount: last?.price.discount ?? 0,
@@ -55,7 +55,7 @@ export function useBookingCard({
     });
     setExtraLines(extrasFromLast(b, last));
     setQuoteNotes(last?.notes || b.notes || '');
-  }, [b.id, b.notes, last?.id, last?.notes]);
+  }, [b, last]);
   const terminal = ['completed', 'cancelled'].includes(b.status);
   async function change(status: BookingStatus): Promise<boolean> {
     if (busy) return false;
