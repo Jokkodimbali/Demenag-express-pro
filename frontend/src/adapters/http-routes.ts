@@ -11,6 +11,7 @@ export const httpRoutes = {
     register: '/auth/register',
   },
   bookings: '/bookings',
+  bookingTrips: (id: string) => `/bookings/${id}/trips`,
   driver: {
     profile: '/driver/profile',
     bookings: '/driver/bookings',
@@ -24,5 +25,6 @@ export const httpRoutes = {
   maps: {
     route: '/maps/route',
     search: '/maps/search',
+    reverse: '/maps/reverse',
   },
 } as const;

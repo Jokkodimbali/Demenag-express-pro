@@ -23,11 +23,17 @@ export interface NotificationRepository {
   unreadCount(userId: string): Promise<number>;
   markRead(userId: string, notificationId: string): Promise<void>;
   markAllRead(userId: string): Promise<void>;
-  publish(notification: Notification, recipients: { userIds?: string[]; roles?: Role[] }): Promise<void>;
+  publish(
+    notification: Notification,
+    recipients: { userIds?: string[]; roles?: Role[] },
+  ): Promise<void>;
 }
 export interface NotificationPublisher {
   subscribe(user: User, send: (notification: Notification) => void): () => void;
-  publish(notification: Notification, recipients: { userIds?: string[]; roles?: Role[] }): Promise<void>;
+  publish(
+    notification: Notification,
+    recipients: { userIds?: string[]; roles?: Role[] },
+  ): Promise<void>;
 }
 export interface UserRepository {
   findByPhone(phone: string): Promise<UserCredentials | null>;
@@ -50,6 +56,8 @@ export interface BookingRepository {
   find(id: string): Promise<Booking | null>;
   create(booking: Booking, requestId: string): Promise<Booking>;
   update(booking: Booking, expectedVersion: number): Promise<Booking>;
+  startTrip(bookingId: string, photos: string[]): Promise<void>;
+  finishTrip(bookingId: string, photos: string[]): Promise<void>;
   delete?(id: string): Promise<void>;
 }
 export interface DriverRepository {
@@ -74,8 +82,17 @@ export type BreakdownInput = {
 };
 export type VehicleReportRecord = Record<string, unknown>;
 export interface VehicleReportRepository {
-  createInspection(driverId: string, vehicleId: string, date: string, input: VehicleInspectionInput): Promise<VehicleReportRecord>;
-  createBreakdown(driverId: string, vehicleId: string, input: BreakdownInput): Promise<VehicleReportRecord>;
+  createInspection(
+    driverId: string,
+    vehicleId: string,
+    date: string,
+    input: VehicleInspectionInput,
+  ): Promise<VehicleReportRecord>;
+  createBreakdown(
+    driverId: string,
+    vehicleId: string,
+    input: BreakdownInput,
+  ): Promise<VehicleReportRecord>;
   listInspections(): Promise<VehicleReportRecord[]>;
   listBreakdowns(): Promise<VehicleReportRecord[]>;
   listDriverInspections(driverId: string): Promise<VehicleReportRecord[]>;
@@ -89,6 +106,7 @@ export interface RouteRepository {
 export interface RoutingProvider {
   route(from: [number, number], to: [number, number]): Promise<Route>;
   search(query: string): Promise<{ label: string; point: [number, number] }[]>;
+  reverse(point: [number, number]): Promise<string>;
 }
 export interface PasswordHasher {
   hash(password: string): Promise<string>;

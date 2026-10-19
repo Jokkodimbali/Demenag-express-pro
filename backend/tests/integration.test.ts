@@ -32,6 +32,7 @@ test(
         geometry: [from, to],
       }),
       search: async () => [],
+      reverse: async () => 'Adresse de test',
     };
     const app = createApp({
       ...compose(db, routing),

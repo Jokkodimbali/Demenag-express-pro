@@ -22,7 +22,9 @@ export const bookingSchema = estimateSchema.extend({
   customerPhone: z.string().trim().min(9).max(25),
   fromAddress: z.string().trim().min(3).max(300),
   toAddress: z.string().trim().min(3).max(300),
-  date: z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal(''), z.null()]).transform((v) => v || null),
+  date: z
+    .union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal(''), z.null()])
+    .transform((v) => v || null),
   timeSlot: z.string().max(50),
   notes: z.string().trim().max(2000).default(''),
   requestId: z.uuid(),
@@ -39,6 +41,7 @@ export const statusSchema = z.object({
   status: z.enum(['confirmed', 'in_progress', 'completed', 'cancelled']),
   version: z.number().int().positive(),
 });
+export const tripPhotosSchema = z.object({ photos: z.array(imageSchema).min(1).max(5) });
 export const driverAssignmentSchema = z.object({
   driverId: z.uuid().nullable(),
   version: z.number().int().positive(),
@@ -74,12 +77,33 @@ export const createDriverSchema = driverSchema.extend({
   password: z.string().min(10, messages.utilisezAuMoins10Caracteres).max(128),
 });
 export const driverProfileSchema = driverSchema.pick({ name: true, phone: true, photo: true });
-const reportPhotosSchema = z.array(imageSchema).min(1).max(5);
 export const vehicleInspectionSchema = z.object({
-  levels: z.record(z.string().min(1).max(50), z.enum(['good', 'low', 'empty'])).refine((v) => Object.keys(v).length === 5),
+  levels: z.object({
+    engineOil: z.enum(['good', 'low', 'empty']),
+    coolant: z.enum(['good', 'low', 'empty']),
+    brakeFluid: z.enum(['good', 'low', 'empty']),
+    powerSteering: z.enum(['good', 'low', 'empty']),
+    washerFluid: z.enum(['good', 'low', 'empty']),
+  }),
   condition: z.enum(['good', 'attention', 'unsafe']),
   notes: z.string().trim().max(1500).default(''),
-  photos: reportPhotosSchema,
+  photos: z
+    .object({
+      engineOil: imageSchema,
+      coolant: imageSchema,
+      brakeFluid: imageSchema,
+      powerSteering: imageSchema,
+      washerFluid: imageSchema,
+      condition: imageSchema,
+    })
+    .transform((photos) => [
+      photos.engineOil,
+      photos.coolant,
+      photos.brakeFluid,
+      photos.powerSteering,
+      photos.washerFluid,
+      photos.condition,
+    ]),
 });
 export const breakdownSchema = z.object({
   description: z.string().trim().min(5).max(1500),
@@ -153,5 +177,7 @@ export const catalogueSchema = z.object({
     businessAddress: z.string().trim().min(2).max(300),
     invoiceFooter: z.string().trim().min(2).max(500),
     invoiceLogo: imageSchema.nullable(),
+    invoiceStamp: imageSchema.nullable(),
+    invoiceSignature: imageSchema.nullable(),
   }),
 });

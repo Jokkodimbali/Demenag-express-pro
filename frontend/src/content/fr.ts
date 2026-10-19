@@ -50,7 +50,7 @@ export const messages = {
     bookingReference: string | number,
     total: string | number,
   ) =>
-    `Bonjour ${name}, votre devis ${quoteReference} pour la réservation ${bookingReference} est disponible dans votre espace Demenag Express. Montant : ${total}.`,
+    `Bonjour ${name}. Merci de votre confiance ! Votre devis n° **${quoteReference}**, pour la réservation **${bookingReference}**, est prêt.\n💰 Montant total : **${total} FCFA**. Vous trouverez le devis détaillé en pièce jointe.`,
   text: '',
   reduire: 'Réduire',
   voirLeDetail: 'Voir le détail',
@@ -83,10 +83,12 @@ export const messages = {
   creerUnDevis: 'Créer un devis',
   preparerLeMessageWhatsapp: ' Préparer le message WhatsApp',
   numeroWhatsappEntreprise: 'Téléphone de l’entreprise (+221XXXXXXXXX)',
-  numeroWhatsappEntrepriseAide: 'Ce numéro est utilisé pour les appels et affiché sur les coordonnées de l’entreprise.',
+  numeroWhatsappEntrepriseAide:
+    'Ce numéro est utilisé pour les appels et affiché sur les coordonnées de l’entreprise.',
   envoyerLeDevisDefinitif: 'Partager le devis définitif sur WhatsApp',
   partagerLeDevisWhatsApp: 'Partager le devis sur WhatsApp',
-  partagePdfWhatsAppIndisponible: 'Le partage direct du PDF n’est pas disponible ici. Le fichier a été téléchargé : ajoutez-le manuellement dans WhatsApp.',
+  partagePdfWhatsAppIndisponible:
+    'Le partage direct du PDF n’est pas disponible ici. Le fichier a été téléchargé : ajoutez-le manuellement dans WhatsApp.',
   modifierLeDevis: 'Modifier le devis',
   nouveauDevisClient: 'Nouveau devis client',
   unNouveauDevisPour: 'Un nouveau devis pour ',

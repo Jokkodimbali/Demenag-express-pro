@@ -52,6 +52,8 @@ export type Settings = BookingRules & {
   businessAddress: string;
   invoiceFooter: string;
   invoiceLogo: string | null;
+  invoiceStamp: string | null;
+  invoiceSignature: string | null;
 };
 export type Catalogue = { vehicles: Vehicle[]; settings: Settings };
 export type Options = { labour: number; desk: number; wardrobe: number; bed: number };
@@ -73,6 +75,22 @@ export type Route = {
 };
 export type RouteTicket = Route & { id: string; expiresAt: string };
 export type BookingStatus = 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
+export type BookingTrip = {
+  id: string;
+  sequence: number;
+  loadingPhotos: string[];
+  unloadingPhotos: string[] | null;
+  startedAt: string;
+  finishedAt: string | null;
+};
+export type VehicleInspectionPhotos = {
+  engineOil: string;
+  coolant: string;
+  brakeFluid: string;
+  powerSteering: string;
+  washerFluid: string;
+  condition: string;
+};
 export type Quote = {
   id: string;
   reference: string;
@@ -103,6 +121,7 @@ export type Booking = {
   pricingSettings?: Settings;
   estimate: Price;
   quotes: Quote[];
+  trips?: BookingTrip[];
   createdAt: string;
   version: number;
 };

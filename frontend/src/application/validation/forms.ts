@@ -131,6 +131,11 @@ export async function catalogueFromForm(
       invoiceFooter: String(data.get('invoiceFooter')),
       invoiceLogo:
         (await dataUrl(data.get('invoiceLogo'), catalogue.settings.invoiceLogo ?? '')) || null,
+      invoiceStamp:
+        (await dataUrl(data.get('invoiceStamp'), catalogue.settings.invoiceStamp ?? '')) || null,
+      invoiceSignature:
+        (await dataUrl(data.get('invoiceSignature'), catalogue.settings.invoiceSignature ?? '')) ||
+        null,
     },
   };
 }

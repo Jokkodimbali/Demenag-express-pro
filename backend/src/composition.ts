@@ -48,7 +48,14 @@ export function compose(db: PrismaClient, routing: RoutingProvider) {
     notifications,
   );
   return {
-    drivers: new DriverService(drivers, new PrismaUsers(db), bookings, new ScryptPasswords(), ids),
+    drivers: new DriverService(
+      drivers,
+      new PrismaUsers(db),
+      bookings,
+      new ScryptPasswords(),
+      ids,
+      notifications,
+    ),
     administration: new AdministrationService(
       new PrismaAdministration(db),
       new PrismaUsers(db),

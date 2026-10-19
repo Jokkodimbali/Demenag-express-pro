@@ -59,17 +59,17 @@ model SessionConnexion {
 }
 
 model Vehicule {
-  id                  String        @id
-  nom                 String        @map("name")
+  id                  String             @id
+  nom                 String             @map("name")
   volume              String
-  longueur            String        @map("length")
-  hauteur             String        @map("height")
-  largeur             String        @map("width")
-  largeurPassageRoues String        @map("wheel_width")
+  longueur            String             @map("length")
+  hauteur             String             @map("height")
+  largeur             String             @map("width")
+  largeurPassageRoues String             @map("wheel_width")
   image               String
-  interieur           String        @map("interior")
-  actif               Boolean       @default(true) @map("active")
-  tarifs              Int[]         @map("prices")
+  interieur           String             @map("interior")
+  actif               Boolean            @default(true) @map("active")
+  tarifs              Int[]              @map("prices")
   reservations        Reservation[]
   chauffeurs          Chauffeur[]
   controlesVehicule   ControleVehicule[]
@@ -80,16 +80,16 @@ model Vehicule {
 }
 
 model Chauffeur {
-  id         String    @id @default(uuid()) @db.Uuid
-  utilisateurId String? @unique @map("user_id") @db.Uuid
-  utilisateur Utilisateur? @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
-  nom        String    @map("name")
-  telephone  String    @unique @map("phone")
-  photo      String?   @map("photo")
-  actif      Boolean   @default(true) @map("active")
-  vehiculeId String?   @map("vehicle_id")
-  vehicule   Vehicule? @relation(fields: [vehiculeId], references: [id], onDelete: SetNull)
-  reservations Reservation[]
+  id                String             @id @default(uuid()) @db.Uuid
+  utilisateurId     String?            @unique @map("user_id") @db.Uuid
+  utilisateur       Utilisateur?       @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  nom               String             @map("name")
+  telephone         String             @unique @map("phone")
+  photo             String?            @map("photo")
+  actif             Boolean            @default(true) @map("active")
+  vehiculeId        String?            @map("vehicle_id")
+  vehicule          Vehicule?          @relation(fields: [vehiculeId], references: [id], onDelete: SetNull)
+  reservations      Reservation[]
   controlesVehicule ControleVehicule[]
   signalementsPanne SignalementPanne[]
 
@@ -99,17 +99,17 @@ model Chauffeur {
 }
 
 model ControleVehicule {
-  id           String   @id @default(uuid()) @db.Uuid
-  chauffeurId  String   @map("driver_id") @db.Uuid
+  id           String    @id @default(uuid()) @db.Uuid
+  chauffeurId  String    @map("driver_id") @db.Uuid
   chauffeur    Chauffeur @relation(fields: [chauffeurId], references: [id], onDelete: Cascade)
-  vehiculeId   String   @map("vehicle_id")
-  vehicule     Vehicule @relation(fields: [vehiculeId], references: [id], onDelete: Restrict)
-  dateControle DateTime @map("inspection_date") @db.Date
-  niveaux      Json     @map("levels")
-  etatVehicule String   @map("vehicle_condition")
+  vehiculeId   String    @map("vehicle_id")
+  vehicule     Vehicule  @relation(fields: [vehiculeId], references: [id], onDelete: Restrict)
+  dateControle DateTime  @map("inspection_date") @db.Date
+  niveaux      Json      @map("levels")
+  etatVehicule String    @map("vehicle_condition")
   observations String
   photos       Json
-  creeLe       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  creeLe       DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   @@unique([chauffeurId, dateControle])
   @@index([dateControle, creeLe])
@@ -118,18 +118,18 @@ model ControleVehicule {
 }
 
 model SignalementPanne {
-  id          String   @id @default(uuid()) @db.Uuid
-  chauffeurId String   @map("driver_id") @db.Uuid
+  id          String    @id @default(uuid()) @db.Uuid
+  chauffeurId String    @map("driver_id") @db.Uuid
   chauffeur   Chauffeur @relation(fields: [chauffeurId], references: [id], onDelete: Cascade)
-  vehiculeId  String   @map("vehicle_id")
-  vehicule    Vehicule @relation(fields: [vehiculeId], references: [id], onDelete: Restrict)
+  vehiculeId  String    @map("vehicle_id")
+  vehicule    Vehicule  @relation(fields: [vehiculeId], references: [id], onDelete: Restrict)
   description String
   latitude    Float
   longitude   Float
-  precision   Float?   @map("accuracy_meters")
+  precision   Float?    @map("accuracy_meters")
   photos      Json
-  statut      String   @default("nouveau") @map("status")
-  creeLe      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  statut      String    @default("nouveau") @map("status")
+  creeLe      DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   @@index([statut, creeLe])
   @@map("breakdown_reports")
@@ -137,25 +137,27 @@ model SignalementPanne {
 }
 
 model ParametreApplication {
-  id                  String @id @default("main")
-  tarifManoeuvre      Int    @map("labour_price")
-  tarifMontage        Int    @map("assembly_price")
-  telephoneEntreprise String @map("business_phone")
-  numeroWhatsapp      String @default("+221775105104") @map("whatsapp_phone")
-  nomEntreprise       String @default("Demenag Express") @map("business_name")
-  adresseEntreprise   String @default("Dakar, Sénégal") @map("business_address")
-  piedFacture         String @default("Merci pour votre confiance.") @map("invoice_footer")
+  id                  String  @id @default("main")
+  tarifManoeuvre      Int     @map("labour_price")
+  tarifMontage        Int     @map("assembly_price")
+  telephoneEntreprise String  @map("business_phone")
+  numeroWhatsapp      String  @default("+221775105104") @map("whatsapp_phone")
+  nomEntreprise       String  @default("Demenag Express") @map("business_name")
+  adresseEntreprise   String  @default("Dakar, Sénégal") @map("business_address")
+  piedFacture         String  @default("Merci pour votre confiance.") @map("invoice_footer")
   logoFacture         String? @map("invoice_logo")
+  tamponFacture       String? @map("invoice_stamp")
+  signatureFacture    String? @map("invoice_signature")
 
-  reservationsOuvertes      Boolean  @default(true) @map("bookings_enabled")
-  delaiMaximumJours         Int      @default(366) @map("max_advance_days")
-  preavisReservationHeures  Int      @default(0) @map("min_notice_hours")
-  quantiteMaximaleOptions   Int      @default(20) @map("max_options")
-  nombreMaximalTrajets      Int      @default(20) @map("max_trips")
-  annulationClientAutorisee Boolean  @default(true) @map("client_cancellation")
-  preavisAnnulationHeures   Int      @default(0) @map("cancellation_notice_hours")
-  bornesDistance            Int[]    @default([15, 25, 35]) @map("distance_bounds")
-  creneauxOuverts           Json     @map("enabled_slots")
+  reservationsOuvertes      Boolean @default(true) @map("bookings_enabled")
+  delaiMaximumJours         Int     @default(366) @map("max_advance_days")
+  preavisReservationHeures  Int     @default(0) @map("min_notice_hours")
+  quantiteMaximaleOptions   Int     @default(20) @map("max_options")
+  nombreMaximalTrajets      Int     @default(20) @map("max_trips")
+  annulationClientAutorisee Boolean @default(true) @map("client_cancellation")
+  preavisAnnulationHeures   Int     @default(0) @map("cancellation_notice_hours")
+  bornesDistance            Int[]   @default([15, 25, 35]) @map("distance_bounds")
+  creneauxOuverts           Json    @map("enabled_slots")
 
   @@map("settings")
   @@schema("demenag")
@@ -187,6 +189,7 @@ model Reservation {
   // Instantané métier : coordonnées, prix et historique des devis figés.
   donnees            Json              @map("data")
   devis              Devis[]
+  courses            Course[]
   version            Int               @default(1)
   creeLe             DateTime          @default(now()) @map("created_at") @db.Timestamptz
 
@@ -195,6 +198,22 @@ model Reservation {
   @@index([statut, date])
   @@index([chauffeurId, date])
   @@map("bookings")
+  @@schema("demenag")
+}
+
+model Course {
+  id              String      @id @default(uuid()) @db.Uuid
+  reservationId   String      @map("booking_id") @db.Uuid
+  reservation     Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  sequence        Int         @map("sequence_number")
+  loadingPhotos   Json        @map("loading_photos")
+  unloadingPhotos Json?       @map("unloading_photos")
+  startedAt       DateTime    @default(now()) @map("started_at") @db.Timestamptz
+  finishedAt      DateTime?   @map("finished_at") @db.Timestamptz
+
+  @@unique([reservationId, sequence])
+  @@index([reservationId, sequence])
+  @@map("booking_trips")
   @@schema("demenag")
 }
 

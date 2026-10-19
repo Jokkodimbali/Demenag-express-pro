@@ -29,29 +29,33 @@ export function useBookingCard({
     [deleting, setDeleting] = useState(false),
     [deleteBusy, setDeleteBusy] = useState(false),
     [deleteError, setDeleteError] = useState(''),
-    [extraLines, setExtraLines] = useState<ExtraLine[]>(() => extrasFromLast(b, last));
+    [extraLines, setExtraLines] = useState<ExtraLine[]>(() => extrasFromLast(b, last)),
+    [quoteNotes, setQuoteNotes] = useState(() => last?.notes || b.notes || '');
   const [quoteDraft, setQuoteDraft] = useState(() => ({
     kind: last?.kind ?? ('provisional' as const),
     trips: last?.price.trips ?? 1,
-    customPrice: last?.price.lines.find((line) => line.label.includes(b.vehicle.name))?.unitPrice ?? null,
+    customPrice:
+      last?.price.lines.find((line) => line.label.includes(b.vehicle.name))?.unitPrice ?? null,
     discount: last?.price.discount ?? 0,
     options: quoteOptionsFromLast(b.options, last),
   }));
   const quoteSettings = b.pricingSettings ?? catalogue?.settings;
   const quotePreviewTotal = useMemo(
-    () => quoteSettings ? quoteTotal(b, quoteSettings, quoteDraft, extraLines) : null,
+    () => (quoteSettings ? quoteTotal(b, quoteSettings, quoteDraft, extraLines) : null),
     [b, extraLines, quoteDraft, quoteSettings],
   );
   useEffect(() => {
     setQuoteDraft({
       kind: last?.kind ?? 'provisional',
       trips: last?.price.trips ?? 1,
-      customPrice: last?.price.lines.find((line) => line.label.includes(b.vehicle.name))?.unitPrice ?? null,
+      customPrice:
+        last?.price.lines.find((line) => line.label.includes(b.vehicle.name))?.unitPrice ?? null,
       discount: last?.price.discount ?? 0,
       options: quoteOptionsFromLast(b.options, last),
     });
     setExtraLines(extrasFromLast(b, last));
-  }, [last?.id]);
+    setQuoteNotes(last?.notes || b.notes || '');
+  }, [b.id, b.notes, last?.id, last?.notes]);
   const terminal = ['completed', 'cancelled'].includes(b.status);
   async function change(status: BookingStatus): Promise<boolean> {
     if (busy) return false;
@@ -69,17 +73,31 @@ export function useBookingCard({
   }
   async function saveSchedule(date: string, timeSlot: string): Promise<boolean> {
     if (busy) return false;
-    setBusy(true); setError('');
-    try { onChange(await api.schedule(b.id, date || null, date ? timeSlot : '', b.version)); return true; }
-    catch (e) { setError(errorMessage(e)); return false; }
-    finally { setBusy(false); }
+    setBusy(true);
+    setError('');
+    try {
+      onChange(await api.schedule(b.id, date || null, date ? timeSlot : '', b.version));
+      return true;
+    } catch (e) {
+      setError(errorMessage(e));
+      return false;
+    } finally {
+      setBusy(false);
+    }
   }
   async function saveBookingNotes(notes: string): Promise<boolean> {
     if (busy) return false;
-    setBusy(true); setError('');
-    try { onChange(await api.updateBookingNotes(b.id, notes, b.version)); return true; }
-    catch (e) { setError(errorMessage(e)); return false; }
-    finally { setBusy(false); }
+    setBusy(true);
+    setError('');
+    try {
+      onChange(await api.updateBookingNotes(b.id, notes, b.version));
+      return true;
+    } catch (e) {
+      setError(errorMessage(e));
+      return false;
+    } finally {
+      setBusy(false);
+    }
   }
   function requestCancellation() {
     if (busy) return;
@@ -119,27 +137,43 @@ export function useBookingCard({
     const whatsappTab = window.open('about:blank', '_blank');
     setError('');
     const blob = await pdf(quote);
-    if (!blob) { whatsappTab?.close(); return; }
+    if (!blob) {
+      whatsappTab?.close();
+      return;
+    }
     const file = new File([blob], `${quote.reference}.pdf`, { type: 'application/pdf' });
     try {
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: quote.reference, text: `Bonjour ${b.customerName}, veuillez trouver ci-joint votre devis ${quote.reference} (${b.reference}).` });
+        await navigator.share({
+          files: [file],
+          title: quote.reference,
+          text: decodeURIComponent(new URL(whatsappUrl).searchParams.get('text') || ''),
+        });
         whatsappTab?.close();
         return;
       }
     } catch (e) {
-      if (e instanceof DOMException && e.name === 'AbortError') { whatsappTab?.close(); return; }
+      if (e instanceof DOMException && e.name === 'AbortError') {
+        whatsappTab?.close();
+        return;
+      }
     }
     if (whatsappTab) whatsappTab.location.href = whatsappUrl;
-    else setError('Autorisez l’ouverture des fenêtres pour préparer WhatsApp. Le PDF a été téléchargé.');
+    else
+      setError(
+        'Autorisez l’ouverture des fenêtres pour préparer WhatsApp. Le PDF a été téléchargé.',
+      );
   }
   async function quote(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError('');
     setBusy(true);
     const form = new FormData(e.currentTarget);
+    form.set('notes', quoteNotes);
     try {
-      onChange(await api.quote(b.id, quoteFromForm(form, b.version, extraLines, quoteDraft.options)));
+      onChange(
+        await api.quote(b.id, quoteFromForm(form, b.version, extraLines, quoteDraft.options)),
+      );
       setEditing(false);
     } catch (e) {
       setError(errorMessage(e));
@@ -188,6 +222,8 @@ export function useBookingCard({
     finalQuote,
     finalWa,
     quoteDraft,
+    quoteNotes,
+    setQuoteNotes,
     setQuoteDraft,
     quotePreviewTotal,
     quoteSettings,
@@ -197,10 +233,22 @@ export function useBookingCard({
 
 function extrasFromLast(booking: Booking, quote: Quote | undefined): ExtraLine[] {
   if (!quote) return [];
-  const serviceLabels = ['Manœuvre', 'Menuisier · bureau', 'Menuisier · armoire', 'Menuisier · lit'];
+  const serviceLabels = [
+    'Manœuvre',
+    'Menuisier · bureau',
+    'Menuisier · armoire',
+    'Menuisier · lit',
+  ];
   return quote.price.lines
-    .filter((line) => !serviceLabels.includes(line.label) && !line.label.includes(booking.vehicle.name))
-    .map((line) => ({ id: crypto.randomUUID(), label: line.label, quantity: line.quantity, unitPrice: line.unitPrice }));
+    .filter(
+      (line) => !serviceLabels.includes(line.label) && !line.label.includes(booking.vehicle.name),
+    )
+    .map((line) => ({
+      id: crypto.randomUUID(),
+      label: line.label,
+      quantity: line.quantity,
+      unitPrice: line.unitPrice,
+    }));
 }
 
 function quoteOptionsFromLast(
@@ -210,7 +258,9 @@ function quoteOptionsFromLast(
   if (quote?.options) return quote.options;
   const lines = quote?.price.lines;
   if (!lines) return defaults;
-  const optionLines = lines.filter((line) => line.label.startsWith('Menuisier ·') || line.label === 'Manœuvre');
+  const optionLines = lines.filter(
+    (line) => line.label.startsWith('Menuisier ·') || line.label === 'Manœuvre',
+  );
   if (!optionLines.length) return defaults;
   return {
     labour: optionLines.find((line) => line.label === 'Manœuvre')?.quantity ?? 0,

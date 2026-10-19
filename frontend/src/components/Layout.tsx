@@ -75,7 +75,12 @@ export function Layout() {
             ) : null}
             {user ? (
               <>
-                {headerSuccess && <span className="header-success" role="status"><CheckCircle2 size={16}/>{headerSuccess}</span>}
+                {headerSuccess && (
+                  <span className="header-success" role="status">
+                    <CheckCircle2 size={16} />
+                    {headerSuccess}
+                  </span>
+                )}
                 <NotificationCenter user={user} />
                 <details className="account-menu" ref={accountMenuRef}>
                   <summary aria-label={`${messages.menuDuCompte} ${user.name}`}>
@@ -172,7 +177,14 @@ export function Layout() {
                 {messages.sms2}
               </a>
               <a
-                href={'https://wa.me/' + (catalogue.settings.whatsappPhone || catalogue.settings.businessPhone || '').replace(/\D/g, '')}
+                href={
+                  'https://wa.me/' +
+                  (
+                    catalogue.settings.whatsappPhone ||
+                    catalogue.settings.businessPhone ||
+                    ''
+                  ).replace(/\D/g, '')
+                }
                 target="_blank"
                 rel="noreferrer"
               >

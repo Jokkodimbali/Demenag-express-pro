@@ -61,7 +61,7 @@ export function createApp(deps: Dependencies) {
     await deps.notificationService.announce(getActor(res), body.title.trim(), body.message.trim());
     res.status(201).json({ sent: true });
   });
-  registerBookingRoutes(app, { ...deps, drivers: deps.drivers }, access, deps.notifications);
+  registerBookingRoutes(app, deps, access, deps.notifications);
   registerAdminRoutes(app, deps, access);
   registerDriverRoutes(app, deps, access);
   registerVehicleReportRoutes(app, deps, access);

@@ -108,6 +108,10 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
     createBooking: (input) => request(httpRoutes.bookings, 'POST', input),
     status: (id, status, version) =>
       request(`${httpRoutes.bookings}/${id}/status`, 'PATCH', { status, version }),
+    startBookingTrip: (id, photos) =>
+      request(`${httpRoutes.bookingTrips(id)}/start`, 'POST', { photos }),
+    finishBookingTrip: (id, photos) =>
+      request(`${httpRoutes.bookingTrips(id)}/finish`, 'POST', { photos }),
     schedule: (id, date, timeSlot, version) =>
       request(`${httpRoutes.bookings}/${id}/schedule`, 'PATCH', { date, timeSlot, version }),
     updateBookingNotes: (id, notes, version) =>
@@ -117,6 +121,7 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
     quote: (id, input) => request(`${httpRoutes.bookings}/${id}/quotes`, 'POST', input),
     route: (from, to) => request(httpRoutes.maps.route, 'POST', { from, to }),
     search: (query) => request(`${httpRoutes.maps.search}?q=${encodeURIComponent(query)}`),
+    reverse: (point) => request(`${httpRoutes.maps.reverse}?lat=${point[0]}&lon=${point[1]}`),
     estimate: (vehicleId, routeId, options, signal) =>
       request(httpRoutes.estimates, 'POST', { vehicleId, routeId, options }, signal),
   };

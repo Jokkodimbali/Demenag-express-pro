@@ -6,6 +6,7 @@ import type {
   BookingRepository,
   DriverRepository,
   IdGenerator,
+  NotificationPublisher,
   PasswordHasher,
   UserRepository,
 } from '../ports/index.js';
@@ -19,6 +20,7 @@ export class DriverService implements DriverUseCases {
     private readonly bookingsRepository: BookingRepository,
     private readonly passwords: PasswordHasher,
     private readonly ids: IdGenerator,
+    private readonly notifications?: NotificationPublisher,
   ) {}
   async list(actor: User) {
     requireAdministrator(actor);
@@ -47,7 +49,9 @@ export class DriverService implements DriverUseCases {
       vehicleId: input.vehicleId,
     };
     await this.releaseVehicle(driver.vehicleId, driver.id);
-    return this.drivers.create(driver);
+    const created = await this.drivers.create(driver);
+    if (created.vehicleId) await this.notifyVehicleAssignment(created);
+    return created;
   }
   async update(actor: User, input: DriverUpdate) {
     requireAdministrator(actor);
@@ -57,6 +61,8 @@ export class DriverService implements DriverUseCases {
     await this.releaseVehicle(input.vehicleId, current.id);
     const updated = await this.drivers.update({ ...input, userId: current.userId, phone });
     if (current.userId) await this.users.updateProfile(current.userId, updated.name, updated.phone);
+    if (current.vehicleId !== updated.vehicleId && updated.vehicleId)
+      await this.notifyVehicleAssignment(updated);
     return updated;
   }
   async profile(actor: User) {
@@ -96,5 +102,17 @@ export class DriverService implements DriverUseCases {
       (driver) => driver.vehicleId === vehicleId && driver.id !== driverId,
     );
     if (assigned) await this.drivers.update({ ...assigned, vehicleId: null });
+  }
+  private async notifyVehicleAssignment(driver: Driver) {
+    if (!driver.userId) return;
+    await this.notifications?.publish(
+      {
+        id: this.ids.next(),
+        title: 'Véhicule affecté',
+        message: 'Un véhicule vous a été affecté. Vos missions associées sont disponibles dans votre espace chauffeur.',
+        createdAt: new Date().toISOString(),
+      },
+      { userIds: [driver.userId] },
+    );
   }
 }

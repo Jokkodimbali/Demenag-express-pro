@@ -173,6 +173,13 @@
     padding: 9px 10px;
     gap: 5px;
   }
+  .pwa-install-button span {
+    display: none;
+  }
+  .pwa-install-button {
+    min-width: 36px;
+    justify-content: center;
+  }
   .header-inner .icon-button {
     width: 32px;
   }
@@ -392,9 +399,15 @@
     grid-template-columns: 1fr;
     gap: 14px;
   }
-  .admin-report-card { padding: 15px; }
-  .report-photo-grid img { height: 105px; }
-  .report-card-heading { flex-direction: column; }
+  .admin-report-card {
+    padding: 15px;
+  }
+  .report-photo-grid img {
+    height: 105px;
+  }
+  .report-card-heading {
+    flex-direction: column;
+  }
   .driver-vehicle-card > img {
     max-height: 210px;
   }
@@ -534,12 +547,27 @@
   .quote-form {
     padding: 14px;
   }
-  .account-dialog.quote-dialog { width: 96vw; max-height: 94dvh; padding: 16px; }
-  .quote-columns { grid-template-columns: 1fr; gap: 16px; }
-  .quote-service-options { grid-template-columns: 1fr; }
-  .quote-service-options h3 { grid-column: auto; }
-  .quote-extra-lines .field-pair { grid-template-columns: 1fr 64px; }
-  .quote-extra-lines .field-pair input:first-child { grid-column: 1 / -1; }
+  .account-dialog.quote-dialog {
+    width: 96vw;
+    max-height: 94dvh;
+    padding: 16px;
+  }
+  .quote-columns {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .quote-service-options {
+    grid-template-columns: 1fr;
+  }
+  .quote-service-options h3 {
+    grid-column: auto;
+  }
+  .quote-extra-lines .field-pair {
+    grid-template-columns: 1fr 64px;
+  }
+  .quote-extra-lines .field-pair input:first-child {
+    grid-column: 1 / -1;
+  }
   .list-heading h2 {
     font-size: 15px;
   }

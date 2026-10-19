@@ -84,4 +84,21 @@ export class OpenStreetMaps implements RoutingProvider {
       release();
     }
   }
+  async reverse(point: Point) {
+    try {
+      const response = await fetch(
+        `${this.nominatim}/reverse?format=jsonv2&lat=${point[0]}&lon=${point[1]}&zoom=18`,
+        {
+          signal: AbortSignal.timeout(10000),
+          headers: { 'User-Agent': this.userAgent, 'Accept-Language': 'fr' },
+        },
+      );
+      if (!response.ok) throw new Error('HTTP');
+      const result = (await response.json()) as { display_name?: string };
+      if (!result.display_name) throw new Error('Address');
+      return result.display_name;
+    } catch {
+      throw new AppError(503, messages.laRechercheDAdresseEstIndisponibleVousPouvez);
+    }
+  }
 }

@@ -24,7 +24,11 @@ export function ContactSettings({ catalogue }: { catalogue: Catalogue }) {
         title="Saisissez le numéro au format international, par exemple +221771234567."
         defaultValue={catalogue.settings.whatsappPhone || catalogue.settings.businessPhone}
       />
-      <p className="muted">Les boutons WhatsApp de contact de l’application ouvriront ce numéro. Saisissez le code pays et le numéro sans espace. Pour un message de devis adressé au client, WhatsApp utilise le compte connecté sur l’appareil.</p>
+      <p className="muted">
+        Les boutons WhatsApp de contact de l’application ouvriront ce numéro. Saisissez le code pays
+        et le numéro sans espace. Pour un message de devis adressé au client, WhatsApp utilise le
+        compte connecté sur l’appareil.
+      </p>
       <div className="field-pair">
         <div>
           <label htmlFor="business-name">{messages.nomDeLEntreprise}</label>
@@ -62,6 +66,44 @@ export function ContactSettings({ catalogue }: { catalogue: Catalogue }) {
         type="file"
         accept="image/png,image/jpeg,image/webp"
       />
+      {catalogue.settings.invoiceLogo && (
+        <img
+          className="invoice-asset-preview"
+          src={catalogue.settings.invoiceLogo}
+          alt="Aperçu du logo de facture"
+        />
+      )}
+      <label htmlFor="invoice-stamp">Tampon de l’entreprise</label>
+      <input
+        id="invoice-stamp"
+        name="invoiceStamp"
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+      />
+      {catalogue.settings.invoiceStamp && (
+        <img
+          className="invoice-asset-preview invoice-stamp-preview"
+          src={catalogue.settings.invoiceStamp}
+          alt="Aperçu du tampon"
+        />
+      )}
+      <label htmlFor="invoice-signature">Signature</label>
+      <input
+        id="invoice-signature"
+        name="invoiceSignature"
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+      />
+      {catalogue.settings.invoiceSignature && (
+        <img
+          className="invoice-asset-preview invoice-signature-preview"
+          src={catalogue.settings.invoiceSignature}
+          alt="Aperçu de la signature"
+        />
+      )}
+      <p className="muted">
+        Le tampon et la signature seront automatiquement adaptés à la facture et au devis PDF.
+      </p>
     </div>
   );
 }

@@ -8,7 +8,10 @@ async function assetDataUrl(path: string): Promise<string> {
   const blob = await response.blob();
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('Image invalide'));
+    reader.onload = () =>
+      typeof reader.result === 'string'
+        ? resolve(reader.result)
+        : reject(new Error('Image invalide'));
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(blob);
   });
@@ -26,11 +29,23 @@ export async function downloadQuote(
   const margin = 16;
   const contentWidth = pageWidth - margin * 2;
   const right = pageWidth - margin;
-  const clean = (value: string) => value.replace(/[\u202f\u00a0]/g, ' ').replace(/[–—]/g, '-').replace(/œ/g, 'oe');
+  const clean = (value: string) =>
+    value
+      .replace(/[\u202f\u00a0]/g, ' ')
+      .replace(/[–—]/g, '-')
+      .replace(/œ/g, 'oe');
   const pdfMoney = (value: number | null) => clean(money(value));
   let y = 15;
 
-  function paragraph(value: string, x: number, top: number, width: number, size = 9, bold = false, color: [number, number, number] = [36, 40, 44]) {
+  function paragraph(
+    value: string,
+    x: number,
+    top: number,
+    width: number,
+    size = 9,
+    bold = false,
+    color: [number, number, number] = [36, 40, 44],
+  ) {
     doc.setFont('helvetica', bold ? 'bold' : 'normal');
     doc.setFontSize(size);
     doc.setTextColor(...color);
@@ -39,30 +54,54 @@ export async function downloadQuote(
     return top + lines.length * (size * 0.42) + 1;
   }
   function ensureSpace(height: number) {
-    if (y + height > 278) { doc.addPage(); y = 20; }
+    if (y + height > 278) {
+      doc.addPage();
+      y = 20;
+    }
   }
   function addImage(data: string, x: number, top: number, width: number, height: number) {
-    const format = data.startsWith('data:image/jpeg') ? 'JPEG' : data.startsWith('data:image/webp') ? 'WEBP' : 'PNG';
+    const format = data.startsWith('data:image/jpeg')
+      ? 'JPEG'
+      : data.startsWith('data:image/webp')
+        ? 'WEBP'
+        : 'PNG';
     doc.addImage(data, format, x, top, width, height);
   }
 
   // En-tête : logo et coordonnées à gauche, titre et référence à droite.
-  const logo = settings.invoiceLogo || await assetDataUrl('/assets/logo.png');
+  const logo = settings.invoiceLogo || (await assetDataUrl('/assets/logo.png'));
   addImage(logo, margin, y, 18, 18);
   paragraph(settings.businessName || 'DEMENAG EXPRESS PRO MTH', margin + 22, y + 7, 91, 15, true);
-  paragraph(`${settings.businessAddress || 'Dakar, Sénégal'}  ·  ${settings.businessPhone}`, margin + 22, y + 13, 100, 8);
+  paragraph(
+    `${settings.businessAddress || 'Dakar, Sénégal'}  ·  ${settings.businessPhone}`,
+    margin + 22,
+    y + 13,
+    100,
+    8,
+  );
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
   doc.setTextColor(35, 37, 40);
-  doc.text(quote?.kind === 'final' ? 'DEVIS FINAL' : 'DEVIS PROVISOIRE', right, y + 2, { align: 'right' });
+  doc.text(quote?.kind === 'final' ? 'DEVIS FINAL' : 'DEVIS PROVISOIRE', right, y + 2, {
+    align: 'right',
+  });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
   doc.setTextColor(94, 101, 108);
-  doc.text(`Réf. ${quote?.reference || booking.reference}  ·  ${dateLabel((quote?.createdAt || booking.createdAt).slice(0, 10))}`, right, y + 9, { align: 'right' });
+  doc.text(
+    `Réf. ${quote?.reference || booking.reference}  ·  ${dateLabel((quote?.createdAt || booking.createdAt).slice(0, 10))}`,
+    right,
+    y + 9,
+    { align: 'right' },
+  );
 
   y = 38;
   const segmentWidth = contentWidth / 3;
-  [[12, 107, 53], [246, 215, 60], [227, 38, 47]].forEach((color, index) => {
+  [
+    [12, 107, 53],
+    [246, 215, 60],
+    [227, 38, 47],
+  ].forEach((color, index) => {
     doc.setFillColor(color[0], color[1], color[2]);
     doc.rect(margin + index * segmentWidth, y, segmentWidth, 1.4, 'F');
   });
@@ -72,17 +111,27 @@ export async function downloadQuote(
   paragraph('DATE PRÉVUE', 105, y, 88, 8, true, [96, 103, 110]);
   paragraph(booking.customerName, margin, y + 7, 82, 11, true);
   paragraph(booking.phone, margin, y + 13, 82, 9);
-  const schedule = booking.date ? `${dateLabel(booking.date)}  -  ${booking.timeSlot}` : 'À convenir';
+  const schedule = booking.date
+    ? `${dateLabel(booking.date)}  -  ${booking.timeSlot}`
+    : 'À convenir';
   paragraph(schedule, 105, y + 7, 88, 10, true);
   paragraph(booking.vehicle.name, 105, y + 13, 88, 9);
 
   y = 73;
-  paragraph('TRAJET', margin, y, contentWidth, 8, true, [96, 103, 110]);
+  paragraph('ADRESSES DU DÉMÉNAGEMENT', margin, y, contentWidth, 8, true, [96, 103, 110]);
   y += 6;
-  y = paragraph(`A   ${booking.fromAddress}`, margin, y, contentWidth, 10, true);
-  y = paragraph(`B   ${booking.toAddress}`, margin, y, contentWidth, 10, true);
-  const tierLine = price.lines.find((line) => line.label.toLocaleLowerCase().includes(booking.vehicle.name.toLocaleLowerCase()))?.label;
-  paragraph(`${booking.distanceKm.toLocaleString('fr-FR')} km par la route  ·  ${tierLine || `Trajet ${booking.vehicle.name}`}`, margin, y + 1, contentWidth, 9);
+  y = paragraph(`Adresse de retrait : ${booking.fromAddress}`, margin, y, contentWidth, 10, true);
+  y = paragraph(`Adresse de dépôt : ${booking.toAddress}`, margin, y, contentWidth, 10, true);
+  const tierLine = price.lines.find((line) =>
+    line.label.toLocaleLowerCase().includes(booking.vehicle.name.toLocaleLowerCase()),
+  )?.label;
+  paragraph(
+    `${booking.distanceKm.toLocaleString('fr-FR')} km par la route  ·  ${tierLine || `Trajet ${booking.vehicle.name}`}`,
+    margin,
+    y + 1,
+    contentWidth,
+    9,
+  );
   y += 10;
 
   // Tableau des lignes : désignation, quantité, prix unitaire et montant.
@@ -128,31 +177,53 @@ export async function downloadQuote(
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(35, 37, 40);
   doc.setFontSize(11);
-  doc.text(quote?.kind === 'final' ? 'MONTANT DÉFINITIF' : 'ESTIMATION PROVISOIRE', margin + 5, y + 10);
+  doc.text(
+    quote?.kind === 'final' ? 'MONTANT DÉFINITIF' : 'ESTIMATION PROVISOIRE',
+    margin + 5,
+    y + 10,
+  );
   doc.setFontSize(14);
   doc.text(pdfMoney(price.total), right - 5, y + 10, { align: 'right' });
   y += 25;
 
-  const explanation = quote?.notes || (quote?.kind === 'final'
-    ? messages.montantEtabliSurLaBaseDuNombreReel
-    : `Devis temporaire, calculé sur ${price.trips} aller(s)-retour(s) estimé(s). Le transport est facturé par aller-retour effectué ; le devis final, basé sur le nombre réel d'allers-retours, sera envoyé par Demenag Express à la fin du déménagement.`);
+  const explanation =
+    quote?.notes ||
+    (quote?.kind === 'final'
+      ? messages.montantEtabliSurLaBaseDuNombreReel
+      : `Devis temporaire, calculé sur ${price.trips} aller(s)-retour(s) estimé(s). Le transport est facturé par aller-retour effectué ; le devis final, basé sur le nombre réel d'allers-retours, sera envoyé par Demenag Express à la fin du déménagement.`);
   y = paragraph(explanation, margin, y, contentWidth, 8.5, false, [92, 99, 106]);
-  if (settings.invoiceFooter) y = paragraph(settings.invoiceFooter, margin, y + 2, contentWidth, 8, false, [92, 99, 106]);
+  if (settings.invoiceFooter)
+    y = paragraph(settings.invoiceFooter, margin, y + 2, contentWidth, 8, false, [92, 99, 106]);
 
   // Espaces de signature et cachet comme sur le document de référence.
   let signatureY = Math.max(y + 17, 181);
-  if (signatureY + 52 > 278) { doc.addPage(); signatureY = 30; }
+  if (signatureY + 52 > 278) {
+    doc.addPage();
+    signatureY = 30;
+  }
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(42, 45, 48);
   doc.text('Signature client', margin, signatureY);
   doc.text('Cachet et signature Demenag Express', right, signatureY, { align: 'right' });
-  const [stamp, signature] = await Promise.all([
-    assetDataUrl('/assets/invoice-stamp.png'),
-    assetDataUrl('/assets/invoice-signature.png'),
-  ]);
-  addImage(stamp, right - 40, signatureY + 5, 38, 38);
-  addImage(signature, right - 58, signatureY + 23, 31, 18);
+  const stamp = settings.invoiceStamp || (await assetDataUrl('/assets/invoice-stamp.png'));
+  const signature =
+    settings.invoiceSignature || (await assetDataUrl('/assets/invoice-signature.png'));
+  function addContainedImage(
+    data: string,
+    x: number,
+    top: number,
+    boxWidth: number,
+    boxHeight: number,
+  ) {
+    const dimensions = doc.getImageProperties(data);
+    const scale = Math.min(boxWidth / dimensions.width, boxHeight / dimensions.height);
+    const width = dimensions.width * scale;
+    const height = dimensions.height * scale;
+    addImage(data, x + (boxWidth - width) / 2, top + (boxHeight - height) / 2, width, height);
+  }
+  addContainedImage(stamp, right - 40, signatureY + 5, 38, 38);
+  addContainedImage(signature, right - 58, signatureY + 23, 31, 18);
 
   const blob = doc.output('blob');
   doc.save(`${quote?.reference || booking.reference}.pdf`);

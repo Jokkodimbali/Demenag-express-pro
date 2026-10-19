@@ -11,11 +11,12 @@ import {
   estimateSchema,
   quoteSchema,
   statusSchema,
+  tripPhotosSchema,
 } from './schemas.js';
 import { apiRoutes } from './routes.js';
 export function registerBookingRoutes(
   app: Express,
-  deps: Pick<Dependencies, 'moving' | 'drivers'>,
+  deps: Pick<Dependencies, 'moving'>,
   access: Pick<Access, 'authenticate' | 'admin'>,
   notifications?: NotificationPublisher,
 ) {
@@ -75,24 +76,75 @@ export function registerBookingRoutes(
     );
     res.json(booking);
   });
+  app.post(`${apiRoutes.bookings}/:id/trips/start`, authenticate, async (req, res) => {
+    const p = tripPhotosSchema.parse(req.body);
+    const booking = await deps.moving.startTrip(
+      getActor(res),
+      z.uuid().parse(req.params.id),
+      p.photos,
+    );
+    notify(
+      'Course démarrée',
+      `${booking.reference} : le chauffeur a envoyé les photos du chargement de la course ${booking.trips?.length ?? 1}.`,
+      { roles: ['admin'], userIds: [booking.userId] },
+      booking.id,
+    );
+    res.status(201).json(booking);
+  });
+  app.post(`${apiRoutes.bookings}/:id/trips/finish`, authenticate, async (req, res) => {
+    const p = tripPhotosSchema.parse(req.body);
+    const booking = await deps.moving.finishTrip(
+      getActor(res),
+      z.uuid().parse(req.params.id),
+      p.photos,
+    );
+    notify(
+      'Course terminée',
+      `${booking.reference} : les photos du déchargement de la course ${booking.trips?.length ?? 1} ont été reçues.`,
+      { roles: ['admin'], userIds: [booking.userId] },
+      booking.id,
+    );
+    res.json(booking);
+  });
   app.patch(`${apiRoutes.bookings}/:id/schedule`, authenticate, admin, async (req, res) => {
-    const p = z.object({ date: z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal(''), z.null()]), timeSlot: z.string().max(50), version: z.number().int().positive() }).parse(req.body);
-    res.json(await deps.moving.schedule(getActor(res), z.uuid().parse(req.params.id), p.date || null, p.timeSlot, p.version));
+    const p = z
+      .object({
+        date: z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal(''), z.null()]),
+        timeSlot: z.string().max(50),
+        version: z.number().int().positive(),
+      })
+      .parse(req.body);
+    res.json(
+      await deps.moving.schedule(
+        getActor(res),
+        z.uuid().parse(req.params.id),
+        p.date || null,
+        p.timeSlot,
+        p.version,
+      ),
+    );
   });
   app.patch(`${apiRoutes.bookings}/:id/notes`, authenticate, admin, async (req, res) => {
-    const p = z.object({ notes: z.string().trim().max(2000), version: z.number().int().positive() }).parse(req.body);
-    res.json(await deps.moving.updateNotes(getActor(res), z.uuid().parse(req.params.id), p.notes, p.version));
+    const p = z
+      .object({ notes: z.string().trim().max(2000), version: z.number().int().positive() })
+      .parse(req.body);
+    res.json(
+      await deps.moving.updateNotes(
+        getActor(res),
+        z.uuid().parse(req.params.id),
+        p.notes,
+        p.version,
+      ),
+    );
   });
   app.patch(`${apiRoutes.bookings}/:id/driver`, authenticate, admin, async (req, res) => {
     const p = driverAssignmentSchema.parse(req.body);
     const booking = await deps.moving.assignDriver(
-        getActor(res),
-        z.uuid().parse(req.params.id),
-        p.driverId,
-        p.version,
-      );
-    const driver = p.driverId ? (await deps.drivers.list(getActor(res))).find((item) => item.id === p.driverId) : null;
-    notify('Mission attribuée', `Une mission ${booking.reference} vous a été attribuée.`, { userIds: driver?.userId ? [driver.userId] : [] }, booking.id);
+      getActor(res),
+      z.uuid().parse(req.params.id),
+      p.driverId,
+      p.version,
+    );
     res.json(booking);
   });
   app.post(`${apiRoutes.bookings}/:id/quotes`, authenticate, admin, async (req, res) => {

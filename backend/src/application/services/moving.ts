@@ -52,6 +52,9 @@ export class MovingService implements MovingUseCases {
   search(query: string) {
     return this.routing.search(query);
   }
+  reverse(point: Point) {
+    return this.routing.reverse(point);
+  }
   private async priceInput(vehicleId: string, routeId: string, options: Options) {
     const [catalogue, route] = await Promise.all([this.catalogue.get(), this.routes.find(routeId)]);
     if (!route || +new Date(route.expiresAt) <= +this.clock.now())
@@ -128,10 +131,17 @@ export class MovingService implements MovingUseCases {
       if (!driver || booking.vehicle.id !== driver.vehicleId)
         throw new AppError(404, messages.reservationIntrouvable);
       if (next === 'in_progress') {
-        const date = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Dakar', year: 'numeric', month: '2-digit', day: '2-digit' }).format(this.clock.now());
-        const inspection = await this.vehicleReports?.findInspection(driver.id, date);
-        requireValue(inspection, 'Effectuez le contrôle du véhicule avant de démarrer une mission.');
-        requireValue(inspection.condition !== 'unsafe', 'Le véhicule a été déclaré dangereux. Contactez l’administration avant de démarrer une mission.');
+        throw new AppError(400, 'Prenez une photo du chargement pour démarrer une course.');
+      }
+      if (next === 'completed') {
+        requireValue(
+          (booking.trips?.length ?? 0) > 0,
+          'Enregistrez au moins une course avant de clôturer la mission.',
+        );
+        requireValue(
+          booking.trips?.every((trip) => trip.finishedAt && trip.unloadingPhotos?.length),
+          'Terminez la course en cours avec une photo du déchargement avant de clôturer la mission.',
+        );
       }
     } else if (!canReadBooking(user, booking.userId))
       throw new AppError(404, messages.reservationIntrouvable);
@@ -151,7 +161,10 @@ export class MovingService implements MovingUseCases {
       );
     }
     if (next === 'confirmed') {
-      requireValue(booking.date, 'Ajoutez une date de rendez-vous avant de confirmer la réservation.');
+      requireValue(
+        booking.date,
+        'Ajoutez une date de rendez-vous avant de confirmer la réservation.',
+      );
       validateDate(booking.date, booking.timeSlot, this.clock.now(), {
         ...settings,
         maxAdvanceDays: 730,
@@ -159,11 +172,71 @@ export class MovingService implements MovingUseCases {
     }
     return this.bookings.update({ ...booking, status: next }, version);
   }
+  async startTrip(user: User, id: string, photos: string[]) {
+    requireActiveUser(user);
+    requireValue(user.role === 'driver', 'Cette action est réservée au chauffeur.');
+    requireValue(photos.length > 0 && photos.length <= 5, 'Ajoutez de 1 à 5 photos du chargement.');
+    const booking = await this.bookings.find(id);
+    const driver = await this.drivers.findByUserId(user.id);
+    if (!booking || !driver || booking.vehicle.id !== driver.vehicleId)
+      throw new AppError(404, messages.reservationIntrouvable);
+    requireValue(
+      ['confirmed', 'in_progress'].includes(booking.status),
+      'Cette réservation ne peut pas démarrer une course.',
+    );
+    const date = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Africa/Dakar',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(this.clock.now());
+    const inspection = await this.vehicleReports?.findInspection(driver.id, date);
+    requireValue(inspection, 'Effectuez le contrôle du véhicule avant de démarrer une course.');
+    requireValue(
+      Array.isArray(inspection.photos) && inspection.photos.length === 6,
+      'Le contrôle du jour doit inclure une photo de preuve pour chaque vérification.',
+    );
+    requireValue(
+      inspection.condition !== 'unsafe',
+      'Le véhicule a été déclaré dangereux. Contactez l’administration avant de démarrer une mission.',
+    );
+    if (booking.status === 'confirmed') {
+      await this.bookings.update({ ...booking, status: 'in_progress' }, booking.version);
+    }
+    await this.bookings.startTrip(id, photos);
+    const updated = await this.bookings.find(id);
+    if (!updated) throw new AppError(404, messages.reservationIntrouvable);
+    return updated;
+  }
+  async finishTrip(user: User, id: string, photos: string[]) {
+    requireActiveUser(user);
+    requireValue(user.role === 'driver', 'Cette action est réservée au chauffeur.');
+    requireValue(
+      photos.length > 0 && photos.length <= 5,
+      'Ajoutez de 1 à 5 photos du déchargement.',
+    );
+    const booking = await this.bookings.find(id);
+    const driver = await this.drivers.findByUserId(user.id);
+    if (!booking || !driver || booking.vehicle.id !== driver.vehicleId)
+      throw new AppError(404, messages.reservationIntrouvable);
+    requireValue(
+      booking.status === 'in_progress',
+      'La mission doit être en cours pour terminer une course.',
+    );
+    await this.bookings.finishTrip(id, photos);
+    const updated = await this.bookings.find(id);
+    if (!updated) throw new AppError(404, messages.reservationIntrouvable);
+    return updated;
+  }
   async schedule(user: User, id: string, date: string | null, timeSlot: string, version: number) {
     requireAdministrator(user);
     const booking = await this.get(user, id);
-    if (booking.version !== version) throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
-    requireValue(booking.status === 'pending', 'Le rendez-vous peut être modifié jusqu’à la confirmation finale de la réservation.');
+    if (booking.version !== version)
+      throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
+    requireValue(
+      booking.status === 'pending',
+      'Le rendez-vous peut être modifié jusqu’à la confirmation finale de la réservation.',
+    );
     const { settings } = await this.catalogue.get();
     if (date) validateDate(date, timeSlot, this.clock.now(), { ...settings, maxAdvanceDays: 730 });
     return this.bookings.update({ ...booking, date, timeSlot: date ? timeSlot : '' }, version);
@@ -171,8 +244,12 @@ export class MovingService implements MovingUseCases {
   async updateNotes(user: User, id: string, notes: string, version: number) {
     requireAdministrator(user);
     const booking = await this.get(user, id);
-    if (booking.version !== version) throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
-    requireValue(!['completed', 'cancelled'].includes(booking.status), messages.cetteReservationEstCloturee);
+    if (booking.version !== version)
+      throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
+    requireValue(
+      !['completed', 'cancelled'].includes(booking.status),
+      messages.cetteReservationEstCloturee,
+    );
     return this.bookings.update({ ...booking, notes: notes.trim() }, version);
   }
   async assignDriver(user: User, id: string, driverId: string | null, version: number) {
@@ -185,9 +262,19 @@ export class MovingService implements MovingUseCases {
       if (!driver || !driver.active) throw new AppError(400, messages.chauffeurIntrouvable);
     }
     const updated = await this.bookings.update({ ...booking, driverId }, version);
-    if (driverId) {
+    if (driverId && booking.driverId !== driverId) {
       const driver = await this.drivers.find(driverId);
-      if (driver?.userId) this.notifications?.publish({ id: this.ids.next(), title: 'Mission attribuée', message: `Une réservation ${updated.reference} vous a été attribuée.`, createdAt: this.clock.now().toISOString(), bookingId: updated.id }, { userIds: [driver.userId] });
+      if (driver?.userId)
+        await this.notifications?.publish(
+          {
+            id: this.ids.next(),
+            title: 'Mission attribuée',
+            message: `Une réservation ${updated.reference} vous a été attribuée.`,
+            createdAt: this.clock.now().toISOString(),
+            bookingId: updated.id,
+          },
+          { userIds: [driver.userId] },
+        );
     }
     return updated;
   }
@@ -245,7 +332,8 @@ export class MovingService implements MovingUseCases {
     requireAdministrator(user);
     const booking = await this.bookings.find(id);
     if (!booking) throw new AppError(404, messages.reservationIntrouvable);
-    if (!this.bookings.delete) throw new AppError(501, 'La suppression des réservations est indisponible.');
+    if (!this.bookings.delete)
+      throw new AppError(501, 'La suppression des réservations est indisponible.');
     await this.bookings.delete(id);
   }
 }

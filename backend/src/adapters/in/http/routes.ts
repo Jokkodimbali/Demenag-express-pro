@@ -15,6 +15,7 @@ export const apiRoutes = {
     base: '/api/maps',
     route: '/api/maps/route',
     search: '/api/maps/search',
+    reverse: '/api/maps/reverse',
   },
   administration: {
     users: '/api/admin/users',
@@ -26,6 +27,7 @@ export const apiRoutes = {
     bookings: '/api/driver/bookings',
     inspections: '/api/driver/vehicle-inspections',
     breakdowns: '/api/driver/breakdowns',
+    bookingTrips: '/api/driver/bookings/:id/trips',
   },
   vehicleReports: '/api/admin/vehicle-reports',
   notifications: {

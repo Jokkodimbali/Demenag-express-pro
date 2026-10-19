@@ -6,6 +6,11 @@ import { AppProvider } from './application/context';
 import type { QuoteExporter } from './application/ports';
 import { AppRoutes } from './routing/AppRoutes';
 import './styles.css';
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    void navigator.serviceWorker.register('/sw.js');
+  });
+}
 const api = createHttpApi();
 const exportQuote: QuoteExporter = async (booking, quote, settings) => {
   const { downloadQuote } = await import('./adapters/pdf');

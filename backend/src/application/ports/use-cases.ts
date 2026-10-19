@@ -25,12 +25,21 @@ export interface AuthUseCases {
 export interface MovingUseCases {
   route(from: Point, to: Point): Promise<RouteTicket>;
   search(query: string): Promise<{ label: string; point: Point }[]>;
+  reverse(point: Point): Promise<string>;
   estimate(vehicleId: string, routeId: string, options: Options): Promise<Price>;
   create(user: User, input: BookingInput): Promise<Booking>;
   list(user: User): Promise<Booking[]>;
   get(user: User, id: string): Promise<Booking>;
   status(user: User, id: string, next: BookingStatus, version: number): Promise<Booking>;
-  schedule(user: User, id: string, date: string | null, timeSlot: string, version: number): Promise<Booking>;
+  startTrip(user: User, id: string, photos: string[]): Promise<Booking>;
+  finishTrip(user: User, id: string, photos: string[]): Promise<Booking>;
+  schedule(
+    user: User,
+    id: string,
+    date: string | null,
+    timeSlot: string,
+    version: number,
+  ): Promise<Booking>;
   updateNotes(user: User, id: string, notes: string, version: number): Promise<Booking>;
   assignDriver(user: User, id: string, driverId: string | null, version: number): Promise<Booking>;
   quote(user: User, id: string, input: QuoteInput): Promise<Booking>;
@@ -65,8 +74,12 @@ export interface DriverUseCases {
 export interface VehicleReportUseCases {
   submitInspection(actor: User, input: VehicleInspectionInput): Promise<VehicleReportRecord>;
   reportBreakdown(actor: User, input: BreakdownInput): Promise<VehicleReportRecord>;
-  driverReports(actor: User): Promise<{ inspections: VehicleReportRecord[]; breakdowns: VehicleReportRecord[] }>;
-  adminReports(actor: User): Promise<{ inspections: VehicleReportRecord[]; breakdowns: VehicleReportRecord[] }>;
+  driverReports(
+    actor: User,
+  ): Promise<{ inspections: VehicleReportRecord[]; breakdowns: VehicleReportRecord[] }>;
+  adminReports(
+    actor: User,
+  ): Promise<{ inspections: VehicleReportRecord[]; breakdowns: VehicleReportRecord[] }>;
 }
 export interface NotificationUseCases {
   list(actor: User): Promise<{ items: import('./index.js').Notification[]; unreadCount: number }>;

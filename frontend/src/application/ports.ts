@@ -12,6 +12,7 @@ import type {
   Settings,
   User,
   Driver,
+  VehicleInspectionPhotos,
 } from '../domain/model';
 export interface UserRepository {
   users(): Promise<User[]>;
@@ -40,6 +41,8 @@ export interface BookingRepository {
   deleteBooking(id: string): Promise<void>;
   createBooking(input: BookingInput): Promise<Booking>;
   status(id: string, status: BookingStatus, version: number): Promise<Booking>;
+  startBookingTrip(id: string, photos: string[]): Promise<Booking>;
+  finishBookingTrip(id: string, photos: string[]): Promise<Booking>;
   schedule(id: string, date: string | null, timeSlot: string, version: number): Promise<Booking>;
   updateBookingNotes(id: string, notes: string, version: number): Promise<Booking>;
   quote(id: string, input: QuoteInput): Promise<Booking>;
@@ -47,10 +50,40 @@ export interface BookingRepository {
 }
 export type DriverCreation = Omit<Driver, 'id' | 'userId' | 'active'> & { password: string };
 export type InspectionLevels = Record<string, 'good' | 'low' | 'empty'>;
-export type VehicleInspection = { id: string; driverName: string; driverPhone: string; vehicleName: string; date: string; levels: InspectionLevels; condition: 'good' | 'attention' | 'unsafe'; notes: string; photos: string[]; createdAt: string };
-export type BreakdownReport = { id: string; driverName: string; driverPhone: string; vehicleName: string; description: string; latitude: number; longitude: number; accuracy: number | null; photos: string[]; status: string; createdAt: string };
+export type VehicleInspection = {
+  id: string;
+  driverName: string;
+  driverPhone: string;
+  vehicleName: string;
+  date: string;
+  levels: InspectionLevels;
+  condition: 'good' | 'attention' | 'unsafe';
+  notes: string;
+  photos: string[];
+  createdAt: string;
+};
+export type BreakdownReport = {
+  id: string;
+  driverName: string;
+  driverPhone: string;
+  vehicleName: string;
+  description: string;
+  latitude: number;
+  longitude: number;
+  accuracy: number | null;
+  photos: string[];
+  status: string;
+  createdAt: string;
+};
 export type VehicleReports = { inspections: VehicleInspection[]; breakdowns: BreakdownReport[] };
-export type AppNotification = { id: string; title: string; message: string; createdAt: string; bookingId?: string; readAt?: string | null };
+export type AppNotification = {
+  id: string;
+  title: string;
+  message: string;
+  createdAt: string;
+  bookingId?: string;
+  readAt?: string | null;
+};
 export type NotificationInbox = { items: AppNotification[]; unreadCount: number };
 export interface DriverRepository {
   drivers(): Promise<Driver[]>;
@@ -60,13 +93,21 @@ export interface DriverRepository {
   updateDriverProfile(input: Pick<Driver, 'name' | 'phone' | 'photo'>): Promise<Driver>;
   driverBookings(): Promise<Booking[]>;
   driverReports(): Promise<VehicleReports>;
-  submitVehicleInspection(input: Omit<VehicleInspection, 'id' | 'driverName' | 'driverPhone' | 'vehicleName' | 'date' | 'createdAt'>): Promise<VehicleInspection>;
-  reportBreakdown(input: Pick<BreakdownReport, 'description' | 'latitude' | 'longitude' | 'accuracy' | 'photos'>): Promise<BreakdownReport>;
+  submitVehicleInspection(
+    input: Omit<
+      VehicleInspection,
+      'id' | 'driverName' | 'driverPhone' | 'vehicleName' | 'date' | 'createdAt' | 'photos'
+    > & { photos: VehicleInspectionPhotos },
+  ): Promise<VehicleInspection>;
+  reportBreakdown(
+    input: Pick<BreakdownReport, 'description' | 'latitude' | 'longitude' | 'accuracy' | 'photos'>,
+  ): Promise<BreakdownReport>;
   adminVehicleReports(): Promise<VehicleReports>;
 }
 export interface MapsRepository {
   route(from: Point, to: Point): Promise<RouteTicket>;
   search(query: string): Promise<{ label: string; point: Point }[]>;
+  reverse(point: Point): Promise<{ label: string }>;
 }
 export interface PricingRepository {
   estimate(

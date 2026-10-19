@@ -32,12 +32,14 @@ export function useRouteMap() {
   const activeRef = useRef(active);
   activeRef.current = active;
   const routeRequest = useRef(0),
-    searchRequest = useRef(0);
+    searchRequest = useRef(0),
+    addressRequest = useRef(0);
   const { from, to } = draft;
   const setPointRef = useRef<(side: Side, point: Point, label?: string) => void>(() => {});
   setPointRef.current = (side, point, label) => {
     routeRequest.current++;
     searchRequest.current++;
+    const requestId = ++addressRequest.current;
     setResults(null);
     setBusy(false);
     setSearching(null);
@@ -48,6 +50,13 @@ export function useRouteMap() {
       [side + 'Address']: label || `${point[0].toFixed(5)}, ${point[1].toFixed(5)}`,
       route: null,
     }));
+    if (!label) {
+      void api.reverse(point).then(({ label: address }) => {
+        if (requestId === addressRequest.current) {
+          setDraft((d) => ({ ...d, [side + 'Address']: address }));
+        }
+      }).catch(() => undefined);
+    }
     if (side === 'from') setActive('to');
   };
   const calculateRoute = useCallback(
@@ -153,6 +162,7 @@ export function useRouteMap() {
   function address(side: Side, value: string) {
     routeRequest.current++;
     searchRequest.current++;
+    addressRequest.current++;
     setBusy(false);
     setSearching(null);
     setResults(null);

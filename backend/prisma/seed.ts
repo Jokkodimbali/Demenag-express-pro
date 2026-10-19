@@ -64,6 +64,8 @@ try {
           businessAddress: 'Dakar, Sénégal',
           invoiceFooter: 'Merci pour votre confiance.',
           invoiceLogo: null,
+          invoiceStamp: null,
+          invoiceSignature: null,
           bookingsEnabled: true,
           maxAdvanceDays: 366,
           minNoticeHours: 0,

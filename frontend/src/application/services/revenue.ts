@@ -2,24 +2,27 @@ import type { Booking, Quote } from '../../domain/model';
 
 export type Revenue = { provisional: number; definitive: number; total: number };
 
-const amount = (quote: Quote | undefined) => quote?.price.total ?? 0;
 const lastQuote = (booking: Booking, kind: Quote['kind']) =>
   booking.quotes.filter((quote) => quote.kind === kind).at(-1);
 
+/** Montant courant d'une réservation : définitif, puis provisoire, puis estimation initiale. */
+export function bookingRevenueAmount(booking: Booking) {
+  const finalAmount = lastQuote(booking, 'final')?.price.total;
+  if (finalAmount !== null && finalAmount !== undefined) return finalAmount;
+  const provisionalAmount = lastQuote(booking, 'provisional')?.price.total;
+  if (provisionalAmount !== null && provisionalAmount !== undefined) return provisionalAmount;
+  return booking.estimate.total ?? 0;
+}
+
 export function revenueFor(bookings: Booking[]): Revenue {
-  const provisional = bookings.reduce(
-    (sum, booking) => sum + amount(lastQuote(booking, 'provisional')),
-    0,
-  );
-  const definitive = bookings.reduce(
-    (sum, booking) => sum + amount(lastQuote(booking, 'final')),
-    0,
-  );
-  const total = bookings.reduce(
-    (sum, booking) =>
-      sum + amount(lastQuote(booking, 'final') ?? lastQuote(booking, 'provisional')),
-    0,
-  );
+  const activeBookings = bookings.filter((booking) => booking.status !== 'cancelled');
+  const provisional = activeBookings
+    .filter((booking) => booking.status === 'pending')
+    .reduce((sum, booking) => sum + bookingRevenueAmount(booking), 0);
+  const definitive = activeBookings
+    .filter((booking) => booking.status !== 'pending')
+    .reduce((sum, booking) => sum + bookingRevenueAmount(booking), 0);
+  const total = provisional + definitive;
   return { provisional, definitive, total };
 }
 

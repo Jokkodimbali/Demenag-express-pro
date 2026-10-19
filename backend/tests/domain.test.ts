@@ -26,6 +26,8 @@ const settings: Settings = {
   businessAddress: 'Dakar, Sénégal',
   invoiceFooter: 'Merci.',
   invoiceLogo: null,
+  invoiceStamp: null,
+  invoiceSignature: null,
   bookingsEnabled: true,
   maxAdvanceDays: 366,
   minNoticeHours: 0,

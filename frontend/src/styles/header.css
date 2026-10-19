@@ -45,8 +45,50 @@
   gap: 16px;
   align-items: center;
 }
-.header-success { position: absolute; z-index: 1200; top: calc(100% + 7px); right: 0; display: inline-flex; align-items: center; gap: 7px; width: max-content; max-width: min(280px, 75vw); padding: 8px 11px; border: 1px solid #367a4b; border-radius: 8px; background: #202a23; color: #9be3ae; font-size: 11px; line-height: 1.35; box-shadow: 0 8px 22px #0005; }
-.header-success svg { flex: 0 0 16px; }
+.header-success {
+  position: absolute;
+  z-index: 1200;
+  top: calc(100% + 7px);
+  right: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: max-content;
+  max-width: min(280px, 75vw);
+  padding: 8px 11px;
+  border: 1px solid #367a4b;
+  border-radius: 8px;
+  background: #202a23;
+  color: #9be3ae;
+  font-size: 11px;
+  line-height: 1.35;
+  box-shadow: 0 8px 22px #0005;
+}
+.header-success svg {
+  flex: 0 0 16px;
+}
+.pwa-install {
+  position: relative;
+}
+.pwa-install-button {
+  white-space: nowrap;
+}
+.pwa-install-help {
+  position: absolute;
+  z-index: 1200;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(280px, 82vw);
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #272a2e;
+  color: #f7f7f5;
+  font-size: 12px;
+  line-height: 1.5;
+  box-shadow: 0 14px 35px #0008;
+}
 .nav-book {
   font-size: 12px;
   font-weight: 700;
