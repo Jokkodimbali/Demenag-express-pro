@@ -168,6 +168,13 @@ export class MovingService implements MovingUseCases {
     if (date) validateDate(date, timeSlot, this.clock.now(), { ...settings, maxAdvanceDays: 730 });
     return this.bookings.update({ ...booking, date, timeSlot: date ? timeSlot : '' }, version);
   }
+  async updateNotes(user: User, id: string, notes: string, version: number) {
+    requireAdministrator(user);
+    const booking = await this.get(user, id);
+    if (booking.version !== version) throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
+    requireValue(!['completed', 'cancelled'].includes(booking.status), messages.cetteReservationEstCloturee);
+    return this.bookings.update({ ...booking, notes: notes.trim() }, version);
+  }
   async assignDriver(user: User, id: string, driverId: string | null, version: number) {
     requireAdministrator(user);
     const booking = await this.get(user, id);

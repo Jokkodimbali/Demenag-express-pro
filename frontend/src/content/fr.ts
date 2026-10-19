@@ -82,6 +82,8 @@ export const messages = {
   reservationsTemporairementFermees: 'Les réservations sont temporairement fermées',
   creerUnDevis: 'Créer un devis',
   preparerLeMessageWhatsapp: ' Préparer le message WhatsApp',
+  numeroWhatsappEntreprise: 'Téléphone de l’entreprise (+221XXXXXXXXX)',
+  numeroWhatsappEntrepriseAide: 'Ce numéro est utilisé pour les appels et affiché sur les coordonnées de l’entreprise.',
   envoyerLeDevisDefinitif: 'Partager le devis définitif sur WhatsApp',
   partagerLeDevisWhatsApp: 'Partager le devis sur WhatsApp',
   partagePdfWhatsAppIndisponible: 'Le partage direct du PDF n’est pas disponible ici. Le fichier a été téléchargé : ajoutez-le manuellement dans WhatsApp.',

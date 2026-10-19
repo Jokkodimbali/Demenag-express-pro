@@ -125,6 +125,7 @@ export async function catalogueFromForm(
     settings: {
       ...catalogue.settings,
       businessPhone: String(data.get('phone')),
+      whatsappPhone: String(data.get('whatsappPhone')),
       businessName: String(data.get('businessName')),
       businessAddress: String(data.get('businessAddress')),
       invoiceFooter: String(data.get('invoiceFooter')),

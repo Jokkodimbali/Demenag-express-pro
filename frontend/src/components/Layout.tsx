@@ -172,7 +172,7 @@ export function Layout() {
                 {messages.sms2}
               </a>
               <a
-                href={'https://wa.me/' + catalogue.settings.businessPhone.replace(/\D/g, '')}
+                href={'https://wa.me/' + (catalogue.settings.whatsappPhone || catalogue.settings.businessPhone || '').replace(/\D/g, '')}
                 target="_blank"
                 rel="noreferrer"
               >

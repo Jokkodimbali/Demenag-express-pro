@@ -1079,4 +1079,10 @@
 .schedule-editor { display:flex; flex-wrap:wrap; align-items:end; gap:.65rem; margin-top:.65rem; }
 .schedule-editor label { display:grid; gap:.3rem; font-size:.85rem; }
 .schedule-editor input,.schedule-editor select { min-height:40px; }
+.booking-precision { margin-top:1rem; padding:1rem; border:1px solid var(--line, #3b4249); border-radius:12px; }
+.booking-precision-heading,.booking-precision-actions { display:flex; align-items:center; justify-content:space-between; gap:.6rem; }
+.booking-precision p { margin:.55rem 0 0; white-space:pre-wrap; overflow-wrap:anywhere; }
+.booking-precision form { display:grid; gap:.65rem; margin-top:.6rem; }
+.booking-precision textarea { width:100%; min-height:5rem; resize:vertical; }
+.booking-precision-actions { justify-content:flex-start; }
 @media (max-width: 600px) { .schedule-editor { align-items:stretch; flex-direction:column; } .schedule-editor label,.schedule-editor input,.schedule-editor select { width:100%; } }

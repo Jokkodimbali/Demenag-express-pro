@@ -79,6 +79,10 @@ export function registerBookingRoutes(
     const p = z.object({ date: z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal(''), z.null()]), timeSlot: z.string().max(50), version: z.number().int().positive() }).parse(req.body);
     res.json(await deps.moving.schedule(getActor(res), z.uuid().parse(req.params.id), p.date || null, p.timeSlot, p.version));
   });
+  app.patch(`${apiRoutes.bookings}/:id/notes`, authenticate, admin, async (req, res) => {
+    const p = z.object({ notes: z.string().trim().max(2000), version: z.number().int().positive() }).parse(req.body);
+    res.json(await deps.moving.updateNotes(getActor(res), z.uuid().parse(req.params.id), p.notes, p.version));
+  });
   app.patch(`${apiRoutes.bookings}/:id/driver`, authenticate, admin, async (req, res) => {
     const p = driverAssignmentSchema.parse(req.body);
     const booking = await deps.moving.assignDriver(

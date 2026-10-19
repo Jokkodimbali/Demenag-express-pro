@@ -41,6 +41,7 @@ export interface BookingRepository {
   createBooking(input: BookingInput): Promise<Booking>;
   status(id: string, status: BookingStatus, version: number): Promise<Booking>;
   schedule(id: string, date: string | null, timeSlot: string, version: number): Promise<Booking>;
+  updateBookingNotes(id: string, notes: string, version: number): Promise<Booking>;
   quote(id: string, input: QuoteInput): Promise<Booking>;
   assignDriver(id: string, driverId: string | null, version: number): Promise<Booking>;
 }

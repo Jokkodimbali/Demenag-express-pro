@@ -44,7 +44,13 @@ export function AppProvider({
     Promise.all([api.catalogue(), api.me()])
       .then(([c, u]) => {
         if (active) {
-          setCatalogue(c);
+          setCatalogue({
+            ...c,
+            settings: {
+              ...c.settings,
+              whatsappPhone: c.settings.whatsappPhone || c.settings.businessPhone || '',
+            },
+          });
           setUser(u);
           setDraft((draft) => ({
             ...draft,

@@ -59,6 +59,7 @@ try {
           labourPrice: 6000,
           assemblyPrice: 15000,
           businessPhone: '+221775105104',
+          whatsappPhone: '+221775105104',
           businessName: 'Demenag Express',
           businessAddress: 'Dakar, Sénégal',
           invoiceFooter: 'Merci pour votre confiance.',

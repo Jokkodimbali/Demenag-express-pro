@@ -141,6 +141,7 @@ model ParametreApplication {
   tarifManoeuvre      Int    @map("labour_price")
   tarifMontage        Int    @map("assembly_price")
   telephoneEntreprise String @map("business_phone")
+  numeroWhatsapp      String @default("+221775105104") @map("whatsapp_phone")
   nomEntreprise       String @default("Demenag Express") @map("business_name")
   adresseEntreprise   String @default("Dakar, Sénégal") @map("business_address")
   piedFacture         String @default("Merci pour votre confiance.") @map("invoice_footer")

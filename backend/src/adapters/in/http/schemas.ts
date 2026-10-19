@@ -148,6 +148,7 @@ export const catalogueSchema = z.object({
     labourPrice: z.number().int().min(0).max(1000000),
     assemblyPrice: z.number().int().min(0).max(1000000),
     businessPhone: z.string().regex(/^\+221[0-9]{9}$/),
+    whatsappPhone: z.string().regex(/^\+[1-9][0-9]{7,14}$/),
     businessName: z.string().trim().min(2).max(100),
     businessAddress: z.string().trim().min(2).max(300),
     invoiceFooter: z.string().trim().min(2).max(500),

@@ -74,6 +74,13 @@ export function useBookingCard({
     catch (e) { setError(errorMessage(e)); return false; }
     finally { setBusy(false); }
   }
+  async function saveBookingNotes(notes: string): Promise<boolean> {
+    if (busy) return false;
+    setBusy(true); setError('');
+    try { onChange(await api.updateBookingNotes(b.id, notes, b.version)); return true; }
+    catch (e) { setError(errorMessage(e)); return false; }
+    finally { setBusy(false); }
+  }
   function requestCancellation() {
     if (busy) return;
     setError('');
@@ -164,6 +171,7 @@ export function useBookingCard({
     terminal,
     change,
     saveSchedule,
+    saveBookingNotes,
     requestCancellation,
     confirmCancellation,
     deleting,

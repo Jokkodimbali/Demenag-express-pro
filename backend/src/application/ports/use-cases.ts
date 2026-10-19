@@ -31,6 +31,7 @@ export interface MovingUseCases {
   get(user: User, id: string): Promise<Booking>;
   status(user: User, id: string, next: BookingStatus, version: number): Promise<Booking>;
   schedule(user: User, id: string, date: string | null, timeSlot: string, version: number): Promise<Booking>;
+  updateNotes(user: User, id: string, notes: string, version: number): Promise<Booking>;
   assignDriver(user: User, id: string, driverId: string | null, version: number): Promise<Booking>;
   quote(user: User, id: string, input: QuoteInput): Promise<Booking>;
   delete(user: User, id: string): Promise<void>;

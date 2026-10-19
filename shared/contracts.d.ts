@@ -47,6 +47,7 @@ export type Settings = BookingRules & {
   labourPrice: number;
   assemblyPrice: number;
   businessPhone: string;
+  whatsappPhone: string;
   businessName: string;
   businessAddress: string;
   invoiceFooter: string;

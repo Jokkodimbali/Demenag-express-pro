@@ -1,4 +1,4 @@
-import { CalendarDays, Download, MapPin, MessageCircle, Trash2, X } from 'lucide-react';
+import { CalendarDays, Download, MapPin, MessageCircle, Save, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import { useBookingCard } from '../application/controllers/useBookingCard';
 import { ConfirmationDialog } from './ConfirmationDialog';
@@ -53,10 +53,13 @@ export function BookingCard({
     saveSchedule,
     enabledSlots,
     shareQuote,
+    saveBookingNotes,
   } = useBookingCard({ booking: b, onChange, admin, editInitially, onDeleted });
   const [editingSchedule, setEditingSchedule] = useState(false);
   const [scheduleDate, setScheduleDate] = useState(b.date ?? '');
   const [scheduleSlot, setScheduleSlot] = useState(b.timeSlot);
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [bookingNotes, setBookingNotes] = useState(b.notes);
 
   return (
     <article className="booking-card panel">
@@ -117,6 +120,19 @@ export function BookingCard({
           </div>
         </dl>
       </div>
+      {admin && <section className="booking-precision">
+        <div className="booking-precision-heading">
+          <strong>Note de précision</strong>
+          {!editingNotes && !terminal && <button className="button text small" type="button" onClick={() => { setBookingNotes(b.notes); setEditingNotes(true); }}>Modifier</button>}
+        </div>
+        {editingNotes ? <form onSubmit={async (event) => { event.preventDefault(); if (await saveBookingNotes(bookingNotes)) setEditingNotes(false); }}>
+          <textarea aria-label="Note de précision de la réservation" rows={3} maxLength={2000} value={bookingNotes} onChange={(event) => setBookingNotes(event.target.value)} placeholder="Ajouter une précision pour cette réservation…" />
+          <div className="booking-precision-actions">
+            <button className="button primary small" type="submit" disabled={busy}><Save size={15} /> Enregistrer</button>
+            <button className="button secondary small" type="button" disabled={busy} onClick={() => { setBookingNotes(b.notes); setEditingNotes(false); }}><X size={15} /> Annuler</button>
+          </div>
+        </form> : <p className={b.notes ? '' : 'muted'}>{b.notes || 'Aucune note de précision.'}</p>}
+      </section>}
       <div className="card-actions">
         <button className="button secondary small" disabled={busy} onClick={() => pdf(last)}>
           <Download size={16} />
