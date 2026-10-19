@@ -168,14 +168,32 @@ export function BookingCard({
         />
       )}
       {driverMode && (
-        <a
-          className="button secondary small booking-google-route"
-          href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(`${b.from[0]},${b.from[1]}`)}&destination=${encodeURIComponent(`${b.to[0]},${b.to[1]}`)}&travelmode=driving`}
-          target="_blank"
-          rel="noreferrer"
-        >
-          <MapPin size={16} /> {messages.ouvrirLeTrajetDansGoogleMaps} <ArrowUpRight size={15} />
-        </a>
+        <div className="booking-route-actions">
+          <a
+            className="button secondary small booking-google-route"
+            href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(`${b.from[0]},${b.from[1]}`)}&destination=${encodeURIComponent(`${b.to[0]},${b.to[1]}`)}&travelmode=driving`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <MapPin size={16} /> {messages.ouvrirLeTrajetDansGoogleMaps} <ArrowUpRight size={15} />
+          </a>
+          <a
+            className="button secondary small booking-google-route"
+            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${b.from[0]},${b.from[1]}`)}&travelmode=driving`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <MapPin size={16} /> {messages.versLeDepart} <ArrowUpRight size={15} />
+          </a>
+          <a
+            className="button secondary small booking-google-route"
+            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${b.to[0]},${b.to[1]}`)}&travelmode=driving`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <MapPin size={16} /> {messages.versLArrivee} <ArrowUpRight size={15} />
+          </a>
+        </div>
       )}
       <div className="booking-detail">
         <dl>

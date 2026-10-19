@@ -29,6 +29,39 @@ export function ContactSettings({ catalogue }: { catalogue: Catalogue }) {
         et le numéro sans espace. Pour un message de devis adressé au client, WhatsApp utilise le
         compte connecté sur l’appareil.
       </p>
+      <h3>{messages.reseauxSociaux}</h3>
+      <div className="social-settings">
+        <div>
+          <label htmlFor="business-tiktok">{messages.compteTikTok}</label>
+          <input
+            id="business-tiktok"
+            name="tiktokUrl"
+            type="url"
+            placeholder="https://www.tiktok.com/@votrecompte"
+            defaultValue={catalogue.settings.tiktokUrl ?? ''}
+          />
+        </div>
+        <div>
+          <label htmlFor="business-facebook">{messages.compteFacebook}</label>
+          <input
+            id="business-facebook"
+            name="facebookUrl"
+            type="url"
+            placeholder="https://www.facebook.com/votrepage"
+            defaultValue={catalogue.settings.facebookUrl ?? ''}
+          />
+        </div>
+        <div>
+          <label htmlFor="business-instagram">{messages.compteInstagram}</label>
+          <input
+            id="business-instagram"
+            name="instagramUrl"
+            type="url"
+            placeholder="https://www.instagram.com/votrecompte"
+            defaultValue={catalogue.settings.instagramUrl ?? ''}
+          />
+        </div>
+      </div>
       <div className="field-pair">
         <div>
           <label htmlFor="business-name">{messages.nomDeLEntreprise}</label>

@@ -129,6 +129,9 @@ export async function catalogueFromForm(
       businessName: String(data.get('businessName')),
       businessAddress: String(data.get('businessAddress')),
       invoiceFooter: String(data.get('invoiceFooter')),
+      tiktokUrl: String(data.get('tiktokUrl') || '').trim() || null,
+      facebookUrl: String(data.get('facebookUrl') || '').trim() || null,
+      instagramUrl: String(data.get('instagramUrl') || '').trim() || null,
       invoiceLogo:
         (await dataUrl(data.get('invoiceLogo'), catalogue.settings.invoiceLogo ?? '')) || null,
       invoiceStamp:

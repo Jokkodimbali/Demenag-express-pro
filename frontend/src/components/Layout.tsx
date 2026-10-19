@@ -4,8 +4,11 @@ import {
   ClipboardList,
   ClipboardCheck,
   CheckCircle2,
+  Facebook,
+  Instagram,
   LogOut,
   MessageCircle,
+  Music2,
   Phone,
   UserRound,
 } from 'lucide-react';
@@ -15,6 +18,17 @@ import { useLayout } from '../application/controllers/useLayout';
 import { messages } from '../content/fr';
 import { routes } from '../routing/routes';
 import { NotificationCenter } from './NotificationCenter';
+
+function secureSocialUrl(value: string | null) {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 export function Layout() {
   const { user, catalogue, error, logout } = useLayout();
   const [headerSuccess, setHeaderSuccess] = useState('');
@@ -192,6 +206,48 @@ export function Layout() {
                 {messages.whatsapp}
               </a>
             </div>
+            {(secureSocialUrl(catalogue.settings.tiktokUrl) ||
+              secureSocialUrl(catalogue.settings.facebookUrl) ||
+              secureSocialUrl(catalogue.settings.instagramUrl)) && (
+              <div className="footer-social-section">
+                <p>{messages.reseauxSociaux}</p>
+                <div className="footer-socials">
+                  {secureSocialUrl(catalogue.settings.tiktokUrl) && (
+                    <a
+                      href={secureSocialUrl(catalogue.settings.tiktokUrl)!}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={messages.ouvrirLeCompteTikTok}
+                      title="TikTok"
+                    >
+                      <Music2 size={17} /> TikTok
+                    </a>
+                  )}
+                  {secureSocialUrl(catalogue.settings.facebookUrl) && (
+                    <a
+                      href={secureSocialUrl(catalogue.settings.facebookUrl)!}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={messages.ouvrirLaPageFacebook}
+                      title="Facebook"
+                    >
+                      <Facebook size={17} /> Facebook
+                    </a>
+                  )}
+                  {secureSocialUrl(catalogue.settings.instagramUrl) && (
+                    <a
+                      href={secureSocialUrl(catalogue.settings.instagramUrl)!}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={messages.ouvrirLeCompteInstagram}
+                      title="Instagram"
+                    >
+                      <Instagram size={17} /> Instagram
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </footer>
       )}

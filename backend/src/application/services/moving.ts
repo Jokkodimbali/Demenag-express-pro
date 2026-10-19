@@ -180,6 +180,20 @@ export class MovingService implements MovingUseCases {
       });
     }
     const updated = await this.bookings.update({ ...booking, status: next }, version);
+    if (user.role === 'admin' && next === 'confirmed' && booking.driverId) {
+      const driver = await this.drivers.find(booking.driverId);
+      if (driver?.userId)
+        await this.notifications?.publish(
+          {
+            id: this.ids.next(),
+            title: 'Nouvelle mission confirmée',
+            message: `${updated.reference} est confirmée pour le ${updated.date} (${updated.timeSlot}). Consultez les détails dans votre espace chauffeur.`,
+            createdAt: this.clock.now().toISOString(),
+            bookingId: updated.id,
+          },
+          { userIds: [driver.userId] },
+        );
+    }
     if (user.role === 'admin' && next === 'completed' && booking.driverId) {
       const driver = await this.drivers.find(booking.driverId);
       if (driver?.userId)

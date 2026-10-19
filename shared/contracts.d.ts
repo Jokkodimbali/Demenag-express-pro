@@ -51,6 +51,9 @@ export type Settings = BookingRules & {
   businessName: string;
   businessAddress: string;
   invoiceFooter: string;
+  tiktokUrl: string | null;
+  facebookUrl: string | null;
+  instagramUrl: string | null;
   invoiceLogo: string | null;
   invoiceStamp: string | null;
   invoiceSignature: string | null;

@@ -140,6 +140,24 @@
   border-radius: 999px;
   font-size: 14px;
 }
+.footer-social-section > p {
+  margin: 0 0 8px;
+}
+.footer-socials {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.footer-socials a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: white;
+  color: #0b6b35;
+  font-size: 14px;
+}
 .mobile-booking-bar {
   display: none;
 }

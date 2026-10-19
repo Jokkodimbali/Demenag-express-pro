@@ -335,9 +335,14 @@ div.driver-course-complete p {
   color: var(--text);
   font: inherit;
 }
+.booking-route-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
 .booking-google-route {
   justify-self: start;
-  margin-bottom: 8px;
 }
 .booking-route-map {
   width: 100%;
@@ -709,6 +714,21 @@ div.driver-course-complete p {
 }
 .settings-form h2 {
   font-size: 25px;
+}
+.settings-form h3 {
+  margin: 22px 0 10px;
+  font-size: 17px;
+}
+.social-settings {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.social-settings > div {
+  display: grid;
+  align-content: start;
+  gap: 6px;
 }
 .settings-form > .panel > .muted {
   font-size: 12px;

@@ -4,6 +4,14 @@ const imageSchema = z
   .string()
   .max(4_000_000)
   .regex(/^(\/assets\/[a-z0-9-]+\.(png|jpg|jpeg|webp)|data:image\/(png|jpeg|webp);base64,)/i);
+const socialUrlSchema = z
+  .string()
+  .trim()
+  .url()
+  .refine((value) => new URL(value).protocol === 'https:', 'Utilisez une adresse HTTPS.')
+  .nullable()
+  .optional()
+  .default(null);
 export const optionsSchema = z.object({
   labour: z.number().int().min(0).max(20),
   desk: z.number().int().min(0).max(20),
@@ -179,6 +187,9 @@ export const catalogueSchema = z.object({
     businessName: z.string().trim().min(2).max(100),
     businessAddress: z.string().trim().min(2).max(300),
     invoiceFooter: z.string().trim().min(2).max(500),
+    tiktokUrl: socialUrlSchema,
+    facebookUrl: socialUrlSchema,
+    instagramUrl: socialUrlSchema,
     invoiceLogo: imageSchema.nullable(),
     invoiceStamp: imageSchema.nullable(),
     invoiceSignature: imageSchema.nullable(),
