@@ -10,20 +10,27 @@ export function readEnv() {
       PORT: z.coerce.number().int().min(1).max(65535).default(4000),
       DATABASE_URL: z.string().min(1),
       FRONTEND_ORIGIN: z
-        .url()
-        .refine((value) => {
-          const url = new URL(value);
-          return (
-            ['http:', 'https:'].includes(url.protocol) &&
-            !url.username &&
-            !url.password &&
-            url.pathname === '/' &&
-            !url.search &&
-            !url.hash
-          );
-        })
+        .string()
         .default(
-          process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:5173',
+          process.env.NODE_ENV === 'production'
+            ? 'https://demenag-express-pro.vercel.app,https://www.demenagexpresspro.com'
+            : 'http://localhost:5173',
+        )
+        .transform((value) => value.split(',').map((origin) => origin.trim()))
+        .pipe(
+          z.array(
+            z.url().refine((value) => {
+              const url = new URL(value);
+              return (
+                ['http:', 'https:'].includes(url.protocol) &&
+                !url.username &&
+                !url.password &&
+                url.pathname === '/' &&
+                !url.search &&
+                !url.hash
+              );
+            }),
+          ).min(1),
         ),
       OSRM_URL: z.url().default('https://router.project-osrm.org'),
       NOMINATIM_URL: z.url().default('https://nominatim.openstreetmap.org'),
@@ -31,7 +38,8 @@ export function readEnv() {
     })
     .refine(
       (value) =>
-        value.NODE_ENV !== 'production' || new URL(value.FRONTEND_ORIGIN).protocol === 'https:',
+        value.NODE_ENV !== 'production' ||
+        value.FRONTEND_ORIGIN.every((origin) => new URL(origin).protocol === 'https:'),
       { path: ['FRONTEND_ORIGIN'] },
     )
     .safeParse(process.env);

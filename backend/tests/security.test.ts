@@ -109,28 +109,34 @@ test('HTTP : authentification, rôle, CSRF, en-têtes et limitation de fréquenc
   assert.equal((await request(app).get('/api/limited')).status, 429);
 });
 
-test('HTTP : le domaine Vercel du déploiement est autorisé en production', async () => {
-  const previous = process.env.VERCEL_URL;
-  process.env.VERCEL_URL = 'demenag-preview.vercel.app';
-  try {
-    const app = express();
-    registerSecurityMiddleware(app, { origin: 'https://demenag.example', production: true });
-    app.post('/api/check', (_req, res) => res.json({ ok: true }));
+test('HTTP : les deux origines configurées passent CORS et CSRF derrière le proxy Vercel', async () => {
+  const app = express();
+  registerSecurityMiddleware(app, {
+    origin: 'https://demenag-express-pro.vercel.app, https://www.demenagexpresspro.com',
+    production: true,
+  });
+  app.post('/api/check', (req, res) => res.json({ ok: true, secure: req.secure }));
+
+  for (const origin of [
+    'https://demenag-express-pro.vercel.app',
+    'https://www.demenagexpresspro.com',
+  ]) {
     const response = await request(app)
       .post('/api/check')
-      .set('Origin', 'https://demenag-preview.vercel.app')
-      .set('X-Requested-With', 'DemenagExpress');
+      .set('Origin', origin)
+      .set('X-Requested-With', 'DemenagExpress')
+      .set('X-Forwarded-Proto', 'https');
     assert.equal(response.status, 200);
-    assert.equal(
-      response.headers['access-control-allow-origin'],
-      'https://demenag-preview.vercel.app',
-    );
-    assert.equal(
-      (await request(app).post('/api/check').set('Origin', 'https://foreign.example')).status,
-      403,
-    );
-  } finally {
-    if (previous === undefined) delete process.env.VERCEL_URL;
-    else process.env.VERCEL_URL = previous;
+    assert.equal(response.body.secure, true);
+    assert.equal(response.headers['access-control-allow-origin'], origin);
   }
+
+  const rejected = await request(app)
+    .post('/api/check')
+    .set('Origin', 'https://foreign.example')
+    .set('X-Requested-With', 'DemenagExpress')
+    .set('X-Forwarded-Proto', 'https');
+  assert.equal(rejected.status, 403);
+  assert.deepEqual(rejected.body, { message: 'Origine de la requête refusée.' });
+  assert.equal(rejected.headers['access-control-allow-origin'], undefined);
 });

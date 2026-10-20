@@ -17,7 +17,7 @@ export type Dependencies = {
   vehicleReports: VehicleReportUseCases;
   notificationService: NotificationUseCases;
   ready: () => Promise<void>;
-  origin: string;
+  origin: string | string[];
   production: boolean;
   notifications?: NotificationPublisher;
 };
