@@ -109,7 +109,7 @@ export async function verifyAccountAdministration(context: IntegrationContext, u
 
 export async function verifySessionLifecycle(context: IntegrationContext) {
   const { clients, phone } = context;
-  const { admin, first } = clients;
+  const { first } = clients;
   const password = 'Password-changed-2026!';
   assert.equal((await first.post('/api/auth/logout').set(integrationHeader)).status, 204);
   assert.equal((await first.get('/api/bookings')).status, 401);

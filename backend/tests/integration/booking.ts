@@ -5,7 +5,7 @@ import { integrationHeader } from './context.js';
 import { createBookingInput } from './configuration.js';
 
 export async function createAndAuthorizeBooking(context: IntegrationContext, routeId: string) {
-  const { db, app, clients, phone } = context;
+  const { db, app, clients } = context;
   const { first, second, admin } = clients;
   assert.equal((await first.put('/api/catalogue').set(integrationHeader).send({})).status, 403);
   assert.equal((await request(app).get('/api/bookings')).status, 401);
