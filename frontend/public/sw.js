@@ -1,5 +1,13 @@
-const CACHE_NAME = 'demenag-shell-v1';
+const CACHE_NAME = 'demenag-shell-v2';
 const APP_SHELL = ['/', '/manifest.webmanifest', '/assets/pwa-192.png', '/assets/pwa-512.png'];
+
+function cacheResponse(request, response) {
+  const responseCopy = response.clone();
+  void caches
+    .open(CACHE_NAME)
+    .then((cache) => cache.put(request, responseCopy))
+    .catch(() => {});
+}
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
@@ -31,8 +39,7 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          if (response.ok)
-            caches.open(CACHE_NAME).then((cache) => cache.put('/', response.clone()));
+          if (response.ok) cacheResponse('/', response);
           return response;
         })
         .catch(async () => (await caches.match('/')) || Response.error()),
@@ -46,8 +53,7 @@ self.addEventListener('fetch', (event) => {
         (cached) =>
           cached ||
           fetch(request).then((response) => {
-            if (response.ok)
-              caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
+            if (response.ok) cacheResponse(request, response);
             return response;
           }),
       ),
