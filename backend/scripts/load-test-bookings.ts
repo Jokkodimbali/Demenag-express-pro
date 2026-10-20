@@ -133,7 +133,6 @@ async function run() {
       production: true,
     });
     const errors = new Map<string, number>();
-    const errorDetails = new Map<string, number>();
     const originalConsoleError = console.error;
     console.error = (...args: unknown[]) => {
       const detail = args.find((value) => typeof value === 'object' && value !== null && 'code' in value) as { code?: unknown } | undefined;
