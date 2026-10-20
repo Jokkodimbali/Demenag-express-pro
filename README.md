@@ -365,7 +365,7 @@ Dans Render, définir `FRONTEND_ORIGIN=https://demenag-express-pro.vercel.app,ht
 
 ### Vérifications CI avant mise en production
 
-Les workflows GitHub Actions séparés [`Backend CI`](.github/workflows/backend-ci.yml) et [`Frontend CI`](.github/workflows/frontend-ci.yml) contrôlent les migrations, les tests backend sur PostgreSQL temporaire, les builds et les vérifications frontend. Les étapes de configuration pour exiger ces contrôles avant la production sur Render et Vercel sont décrites dans [docs/ci-cd.md](docs/ci-cd.md). Les workflows n’ont besoin d’aucun secret de production.
+Le workflow GitHub Actions unique [`Full Stack CI`](.github/workflows/full-stack-ci.yml) contrôle le backend et le frontend dans le même pipeline, dont les migrations et tests backend sur PostgreSQL temporaire, les vérifications frontend et les deux builds. Les étapes pour exiger ce contrôle avant la production sur Render et Vercel sont décrites dans [docs/ci-cd.md](docs/ci-cd.md). Le workflow n’a besoin d’aucun secret de production.
 
 Après déploiement, vérifier `https://api.demenagexpresspro.com/api/ready` et `/api/catalogue`, puis `https://demenag-express-pro.vercel.app/api/ready`, `/connexion` et `/api/auth/me`. Les avertissements du navigateur concernant certaines directives `Permissions-Policy` ne sont pas la cause d’un `403` de connexion ; inspecter le corps JSON de la réponse si le problème persiste. Le backend ne crée pas automatiquement le premier administrateur : initialiser le catalogue et créer le compte sur la base de production comme indiqué plus haut.
 

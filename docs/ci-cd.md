@@ -1,9 +1,6 @@
 # CI/CD GitHub Actions
 
-Le dépôt dispose de deux contrôles indépendants, exécutés sur chaque pull request vers `main` et chaque push sur une branche :
-
-- **Backend CI** : formatage, ESLint, validation/génération Prisma, replay des migrations sur un PostgreSQL temporaire vide, seed du catalogue de test, tests unitaires et API avec PostgreSQL, compilation TypeScript et construction de l’image Docker Render.
-- **Frontend CI** : formatage, ESLint, vérification TypeScript et build Vite avec la même commande que Vercel.
+Le dépôt dispose d’un seul pipeline **Full Stack CI**, exécuté sur chaque pull request vers `main` et chaque push sur une branche. Dans un même job, il vérifie le formatage et ESLint du backend et du frontend, valide et génère Prisma, rejoue les migrations sur un PostgreSQL temporaire vide, initialise le catalogue de test, lance les tests backend, vérifie les types et construit les deux applications ainsi que l’image Docker Render.
 
 Les bases de données utilisées par le workflow backend sont temporaires et propres à l’exécution. Aucun secret de production n’est requis ni exposé dans GitHub Actions.
 
@@ -11,10 +8,10 @@ Les bases de données utilisées par le workflow backend sont temporaires et pro
 
 Les workflows vérifient le code. Pour en faire une barrière effective avant la production, relier les contrôles aux services existants :
 
-1. Dans **GitHub → Settings → Rules → Rulesets** (ou **Branches → Branch protection rules**), protéger `main`, interdire les pushes directs et exiger les contrôles `Backend CI / backend-ci` et `Frontend CI / frontend-ci` avant fusion.
+1. Dans **GitHub → Settings → Rules → Rulesets** (ou **Branches → Branch protection rules**), protéger `main`, interdire les pushes directs et exiger le contrôle `Full Stack CI / full-stack-ci` avant fusion.
 2. Le `render.yaml` déclare maintenant `autoDeployTrigger: checksPass`. Synchroniser ce Blueprint avec le service Render, ou sélectionner **After CI Checks Pass** dans **Render → service API → Settings → Auto-Deploy** si le service existant n’est pas géré par ce Blueprint. Render attend les résultats GitHub Actions avant le déploiement. Le `preDeployCommand` garde l’application des migrations sur la base Render au moment du déploiement.
-3. Dans **Vercel → projet frontend → Settings → Deployment Checks**, ajouter comme contrôles GitHub Actions `Backend CI / backend-ci` et `Frontend CI / frontend-ci`. Vercel peut préparer le déploiement, mais ne l’associera pas au domaine de production avant le succès de ces contrôles.
-4. Faire une pull request de test vers `main`, attendre les deux contrôles verts, puis fusionner. Confirmer dans Render et Vercel qu’ils attendent bien les contrôles avant la mise en production.
+3. Dans **Vercel → projet frontend → Settings → Deployment Checks**, ajouter le contrôle GitHub Actions `Full Stack CI / full-stack-ci`. Vercel peut préparer le déploiement, mais ne l’associera pas au domaine de production avant le succès du pipeline.
+4. Faire une pull request de test vers `main`, attendre le contrôle vert, puis fusionner. Confirmer dans Render et Vercel qu’ils attendent bien ce contrôle avant la mise en production.
 
 Les deux services peuvent continuer à construire automatiquement depuis GitHub. Aucun token de déploiement n’est nécessaire dans les secrets GitHub avec ces réglages natifs.
 
