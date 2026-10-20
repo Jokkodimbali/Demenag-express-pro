@@ -25,27 +25,18 @@ export const estimateSchema = z.object({
   routeId: z.uuid(),
   options: optionsSchema,
 });
-export const bookingSchema = estimateSchema
-  .extend({
-    customerName: z.string().trim().min(2).max(100),
-    customerPhone: z.string().trim().min(9).max(25),
-    fromAddress: z.string().trim().min(3).max(300),
-    toAddress: z.string().trim().min(3).max(300),
-    date: z
-      .union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal(''), z.null()])
-      .transform((v) => v || null),
-    timeSlot: z.string().max(50),
-    notes: z.string().trim().max(2000).default(''),
-    requestId: z.uuid(),
-  })
-  .superRefine((booking, context) => {
-    if (booking.date && !/^([01]\d|2[0-3]):[0-5]\d$/.test(booking.timeSlot))
-      context.addIssue({
-        code: 'custom',
-        path: ['timeSlot'],
-        message: 'Saisissez une heure valide au format HH:mm.',
-      });
-  });
+export const bookingSchema = estimateSchema.extend({
+  customerName: z.string().trim().min(2).max(100),
+  customerPhone: z.string().trim().min(9).max(25),
+  fromAddress: z.string().trim().min(3).max(300),
+  toAddress: z.string().trim().min(3).max(300),
+  date: z
+    .union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal(''), z.null()])
+    .transform((v) => v || null),
+  timeSlot: z.string().max(50),
+  notes: z.string().trim().max(2000).default(''),
+  requestId: z.uuid(),
+});
 export const loginSchema = z.object({
   phone: z.string().min(9).max(25),
   password: z.string().min(1).max(128),

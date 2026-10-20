@@ -2,6 +2,7 @@ services:
   - type: web
     name: demenag-api
     runtime: docker
+    autoDeployTrigger: checksPass
     dockerContext: .
     dockerfilePath: ./backend/Dockerfile
     dockerCommand: node dist/main.js

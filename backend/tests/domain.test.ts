@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { calculatePrice, tierOf } from '../src/domain/pricing.js';
-import { validateDate, validateTime, transition } from '../src/domain/booking.js';
+import { validateDate, transition } from '../src/domain/booking.js';
 import { AuthService, normalizePhone } from '../src/application/services/auth.js';
 import { ScryptPasswords } from '../src/adapters/out/security/crypto.js';
 import type { Settings, UserCredentials, Vehicle } from '../src/domain/model.js';
@@ -75,19 +75,11 @@ test('Les montants et quantités invalides sont refusés', () => {
   assert.throws(() => calculatePrice(vehicle, settings, 10, { ...none, labour: -1 }));
   assert.throws(() => tierOf(NaN, settings.distanceBounds));
 });
-test('La date passée et la date invalide sont refusées, sans restriction d’heure', () => {
+test('La date passée et la date invalide sont refusées, l’heure reste libre', () => {
   const now = new Date('2026-10-15T10:00:00Z');
   assert.throws(() => validateDate('2026-10-14', now, settings));
   assert.throws(() => validateDate('2026-02-30', now, settings));
   assert.doesNotThrow(() => validateDate('2026-10-15', now, settings));
-});
-test('Les heures sont valides au format 24 h, sans plage horaire restreinte', () => {
-  assert.doesNotThrow(() => validateTime('00:00'));
-  assert.doesNotThrow(() => validateTime('23:59'));
-  assert.doesNotThrow(() => validateTime('14:35'));
-  assert.throws(() => validateTime('24:00'));
-  assert.throws(() => validateTime('9:30'));
-  assert.throws(() => validateTime('Matin'));
 });
 test('Les statuts respectent le rôle et la clôture', () => {
   assert.doesNotThrow(() => transition('pending', 'confirmed', 'admin'));

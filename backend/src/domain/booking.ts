@@ -16,12 +16,6 @@ export function validateDate(date: string, now: Date, rules: BookingRules) {
     messages.maximumAdvanceNotice(rules.maxAdvanceDays),
   );
 }
-export function validateTime(time: string) {
-  requireValue(
-    /^([01]\d|2[0-3]):[0-5]\d$/.test(time),
-    'Saisissez une heure valide au format HH:mm.',
-  );
-}
 export function transition(current: BookingStatus, next: BookingStatus, role: Role) {
   const allowed: Record<BookingStatus, BookingStatus[]> = {
     pending: ['confirmed', 'cancelled'],

@@ -18,19 +18,21 @@ export function readEnv() {
         )
         .transform((value) => value.split(',').map((origin) => origin.trim()))
         .pipe(
-          z.array(
-            z.url().refine((value) => {
-              const url = new URL(value);
-              return (
-                ['http:', 'https:'].includes(url.protocol) &&
-                !url.username &&
-                !url.password &&
-                url.pathname === '/' &&
-                !url.search &&
-                !url.hash
-              );
-            }),
-          ).min(1),
+          z
+            .array(
+              z.url().refine((value) => {
+                const url = new URL(value);
+                return (
+                  ['http:', 'https:'].includes(url.protocol) &&
+                  !url.username &&
+                  !url.password &&
+                  url.pathname === '/' &&
+                  !url.search &&
+                  !url.hash
+                );
+              }),
+            )
+            .min(1),
         ),
       OSRM_URL: z.url().default('https://router.project-osrm.org'),
       NOMINATIM_URL: z.url().default('https://nominatim.openstreetmap.org'),

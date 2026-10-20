@@ -78,9 +78,7 @@ export function BookingCard({
     incompleteTrips.length === 0;
   const [editingSchedule, setEditingSchedule] = useState(false);
   const [scheduleDate, setScheduleDate] = useState(b.date ?? '');
-  const [scheduleSlot, setScheduleSlot] = useState(
-    /^([01]\d|2[0-3]):[0-5]\d$/.test(b.timeSlot) ? b.timeSlot : '',
-  );
+  const [scheduleSlot, setScheduleSlot] = useState(b.timeSlot);
   const [editingNotes, setEditingNotes] = useState(false);
   const [bookingNotes, setBookingNotes] = useState(b.notes);
 
@@ -137,10 +135,10 @@ export function BookingCard({
               </label>
               {scheduleDate && (
                 <label>
-                  Heure du rendez-vous
+                  Heure ou créneau
                   <input
-                    type="time"
-                    required
+                    type="text"
+                    maxLength={50}
                     value={scheduleSlot}
                     onChange={(event) => setScheduleSlot(event.target.value)}
                   />

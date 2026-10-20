@@ -363,6 +363,10 @@ Le fichier `vercel.json` construit le frontend Vite depuis `frontend/` et sert `
 
 Dans Render, définir `FRONTEND_ORIGIN=https://demenag-express-pro.vercel.app,https://www.demenagexpresspro.com`. Ces deux origines exactes sont vérifiées par CORS et la protection CSRF ; les origines inconnues sont refusées. Vercel transmet les requêtes `/api` au backend et Express fait confiance au proxy en amont. Après changement, redéployer le backend Render. Vercel n’a besoin d’aucune URL de base de données ni de secret backend ; laisser `VITE_API_URL` absent ou égal à `/api`.
 
+### Vérifications CI avant mise en production
+
+Les workflows GitHub Actions séparés [`Backend CI`](.github/workflows/backend-ci.yml) et [`Frontend CI`](.github/workflows/frontend-ci.yml) contrôlent les migrations, les tests backend sur PostgreSQL temporaire, les builds et les vérifications frontend. Les étapes de configuration pour exiger ces contrôles avant la production sur Render et Vercel sont décrites dans [docs/ci-cd.md](docs/ci-cd.md). Les workflows n’ont besoin d’aucun secret de production.
+
 Après déploiement, vérifier `https://api.demenagexpresspro.com/api/ready` et `/api/catalogue`, puis `https://demenag-express-pro.vercel.app/api/ready`, `/connexion` et `/api/auth/me`. Les avertissements du navigateur concernant certaines directives `Permissions-Policy` ne sont pas la cause d’un `403` de connexion ; inspecter le corps JSON de la réponse si le problème persiste. Le backend ne crée pas automatiquement le premier administrateur : initialiser le catalogue et créer le compte sur la base de production comme indiqué plus haut.
 
 Les services publics OSRM et Nominatim ont des limites d’utilisation : configurer `OSRM_URL`, `NOMINATIM_URL` et `MAPS_USER_AGENT` dans Render si le trafic devient soutenu. Les notifications sont actuellement diffusées en mémoire du processus : avec plusieurs instances Render, les événements ne seront pas partagés entre instances sans transport commun.

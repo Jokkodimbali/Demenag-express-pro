@@ -1,0 +1,85 @@
+name: Backend CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-ci:
+    name: backend-ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: demenag_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d demenag_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/demenag_ci?schema=public
+      DATABASE_URL_UNPOOLED: postgresql://ci:ci@localhost:5432/demenag_ci?schema=public
+      TEST_DATABASE_URL: postgresql://ci:ci@localhost:5432/demenag_ci?schema=public
+      FRONTEND_ORIGIN: http://localhost:5173
+
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Installer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Vérifier le formatage du backend
+        run: npx prettier --check backend/src backend/tests backend/prisma/seed.ts backend/prisma.config.ts shared
+
+      - name: Vérifier ESLint du backend
+        run: npx eslint backend shared --max-warnings 0
+
+      - name: Vérifier et générer Prisma
+        run: npx prisma validate --schema prisma/schema.prisma
+        working-directory: backend
+
+      - name: Générer le client Prisma
+        run: npm run db:generate -w backend
+
+      - name: Rejouer toutes les migrations sur PostgreSQL vierge
+        run: npm run db:migrate -w backend
+
+      - name: Initialiser le catalogue de test
+        run: npm run db:seed -w backend
+
+      - name: Vérifier les types backend
+        run: npm run typecheck -w backend
+
+      - name: Tests backend, API et PostgreSQL
+        run: npm run test -w backend
+
+      - name: Compiler le backend
+        run: npm run build -w backend
+
+      - name: Construire l’image Render
+        run: docker build --file backend/Dockerfile --tag demenag-backend:ci .

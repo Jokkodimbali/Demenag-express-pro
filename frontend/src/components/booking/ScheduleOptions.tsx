@@ -40,10 +40,11 @@ export function ScheduleOptions({
           <label htmlFor="booking-slot">Heure souhaitée</label>
           <input
             id="booking-slot"
-            type="time"
+            type="text"
             list="booking-time-suggestions"
             required={Boolean(draft.date)}
-            value={/^([01]\d|2[0-3]):[0-5]\d$/.test(draft.timeSlot) ? draft.timeSlot : ''}
+            maxLength={50}
+            value={draft.timeSlot}
             onChange={(e) => setDraft((d) => ({ ...d, timeSlot: e.target.value }))}
           />
           <datalist id="booking-time-suggestions">
@@ -55,7 +56,7 @@ export function ScheduleOptions({
               />
             ))}
           </datalist>
-          <small className="muted">Choisissez une heure au format 24 h.</small>
+          <small className="muted">Saisissez l’heure souhaitée ou choisissez une suggestion.</small>
         </div>
       </div>
       <div className="options">
