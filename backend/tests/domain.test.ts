@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { calculatePrice, tierOf } from '../src/domain/pricing.js';
-import { validateDate, transition } from '../src/domain/booking.js';
+import { validateDate, validateTime, transition } from '../src/domain/booking.js';
 import { AuthService, normalizePhone } from '../src/application/services/auth.js';
 import { ScryptPasswords } from '../src/adapters/out/security/crypto.js';
 import type { Settings, UserCredentials, Vehicle } from '../src/domain/model.js';
@@ -75,12 +75,19 @@ test('Les montants et quantités invalides sont refusés', () => {
   assert.throws(() => calculatePrice(vehicle, settings, 10, { ...none, labour: -1 }));
   assert.throws(() => tierOf(NaN, settings.distanceBounds));
 });
-test('La date et le créneau passé sont refusés en heure de Dakar', () => {
+test('La date passée et la date invalide sont refusées, sans restriction d’heure', () => {
   const now = new Date('2026-10-15T10:00:00Z');
-  assert.throws(() => validateDate('2026-10-14', 'Matin (8h – 12h)', now, settings));
-  assert.throws(() => validateDate('2026-10-15', 'Matin (8h – 12h)', now, settings));
-  assert.throws(() => validateDate('2026-02-30', 'Matin (8h – 12h)', now, settings));
-  assert.doesNotThrow(() => validateDate('2026-10-15', 'Après-midi (13h – 17h)', now, settings));
+  assert.throws(() => validateDate('2026-10-14', now, settings));
+  assert.throws(() => validateDate('2026-02-30', now, settings));
+  assert.doesNotThrow(() => validateDate('2026-10-15', now, settings));
+});
+test('Les heures sont valides au format 24 h, sans plage horaire restreinte', () => {
+  assert.doesNotThrow(() => validateTime('00:00'));
+  assert.doesNotThrow(() => validateTime('23:59'));
+  assert.doesNotThrow(() => validateTime('14:35'));
+  assert.throws(() => validateTime('24:00'));
+  assert.throws(() => validateTime('9:30'));
+  assert.throws(() => validateTime('Matin'));
 });
 test('Les statuts respectent le rôle et la clôture', () => {
   assert.doesNotThrow(() => transition('pending', 'confirmed', 'admin'));
@@ -157,26 +164,8 @@ test('Les bornes et limites choisies par l’administration pilotent le calcul',
   assert.throws(() => calculatePrice(vehicle, configured, 12, { ...none, labour: 3 }));
   assert.throws(() => calculatePrice(vehicle, configured, 12, none, 4));
 });
-test('Le préavis, les créneaux ouverts et l’horizon configurés sont appliqués', () => {
+test('La date reste dans l’horizon configuré, indépendamment des horaires disponibles', () => {
   const now = new Date('2026-10-15T10:00:00Z');
-  assert.throws(() =>
-    validateDate('2026-10-16', 'Matin (8h – 12h)', now, { ...settings, minNoticeHours: 24 }),
-  );
-  assert.throws(() =>
-    validateDate('2026-10-18', 'Matin (8h – 12h)', now, { ...settings, maxAdvanceDays: 2 }),
-  );
-  assert.throws(() =>
-    validateDate('2026-10-16', 'Matin (8h – 12h)', now, {
-      ...settings,
-      enabledSlots: [{ label: 'Soir (17h – 20h)', startHour: 17 }],
-    }),
-  );
-  assert.doesNotThrow(() =>
-    validateDate('2026-10-16', 'Soir (17h – 20h)', now, {
-      ...settings,
-      minNoticeHours: 24,
-      maxAdvanceDays: 2,
-      enabledSlots: [{ label: 'Soir (17h – 20h)', startHour: 17 }],
-    }),
-  );
+  assert.throws(() => validateDate('2026-10-18', now, { ...settings, maxAdvanceDays: 2 }));
+  assert.doesNotThrow(() => validateDate('2026-10-16', now, { ...settings, maxAdvanceDays: 2 }));
 });

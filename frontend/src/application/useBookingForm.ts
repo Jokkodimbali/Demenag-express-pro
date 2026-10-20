@@ -56,11 +56,11 @@ export function useBookingForm() {
       )
         ? current.vehicleId
         : (catalogue.vehicles.find((v) => v.active !== false)?.id ?? current.vehicleId);
-      const slots = catalogue.settings.enabledSlots;
-      const timeSlot =
-        slots.length && !slots.some((slot) => slot.label === current.timeSlot)
-          ? slots[0].label
-          : current.timeSlot;
+      const timeSlot = /^([01]\d|2[0-3]):[0-5]\d$/.test(current.timeSlot)
+        ? current.timeSlot
+        : catalogue.settings.enabledSlots[0]
+          ? `${String(catalogue.settings.enabledSlots[0].startHour).padStart(2, '0')}:00`
+          : '';
       return vehicleId === current.vehicleId && timeSlot === current.timeSlot
         ? current
         : { ...current, vehicleId, timeSlot };

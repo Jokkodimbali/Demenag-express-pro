@@ -117,6 +117,14 @@ export function registerBookingRoutes(
         timeSlot: z.string().max(50),
         version: z.number().int().positive(),
       })
+      .superRefine((schedule, context) => {
+        if (schedule.date && !/^([01]\d|2[0-3]):[0-5]\d$/.test(schedule.timeSlot))
+          context.addIssue({
+            code: 'custom',
+            path: ['timeSlot'],
+            message: 'Saisissez une heure valide au format HH:mm.',
+          });
+      })
       .parse(req.body);
     res.json(
       await deps.moving.schedule(

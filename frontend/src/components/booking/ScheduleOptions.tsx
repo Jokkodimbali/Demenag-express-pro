@@ -37,16 +37,25 @@ export function ScheduleOptions({
           />
         </div>
         <div>
-          <label htmlFor="booking-slot">{messages.creneauSouhaite}</label>
-          <select
+          <label htmlFor="booking-slot">Heure souhaitée</label>
+          <input
             id="booking-slot"
-            value={draft.timeSlot}
+            type="time"
+            list="booking-time-suggestions"
+            required={Boolean(draft.date)}
+            value={/^([01]\d|2[0-3]):[0-5]\d$/.test(draft.timeSlot) ? draft.timeSlot : ''}
             onChange={(e) => setDraft((d) => ({ ...d, timeSlot: e.target.value }))}
-          >
+          />
+          <datalist id="booking-time-suggestions">
             {catalogue.settings.enabledSlots.map((slot) => (
-              <option key={slot.label}>{slot.label}</option>
+              <option
+                key={slot.label}
+                value={`${String(slot.startHour).padStart(2, '0')}:00`}
+                label={slot.label}
+              />
             ))}
-          </select>
+          </datalist>
+          <small className="muted">Choisissez une heure au format 24 h.</small>
         </div>
       </div>
       <div className="options">

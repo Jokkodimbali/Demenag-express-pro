@@ -25,18 +25,27 @@ export const estimateSchema = z.object({
   routeId: z.uuid(),
   options: optionsSchema,
 });
-export const bookingSchema = estimateSchema.extend({
-  customerName: z.string().trim().min(2).max(100),
-  customerPhone: z.string().trim().min(9).max(25),
-  fromAddress: z.string().trim().min(3).max(300),
-  toAddress: z.string().trim().min(3).max(300),
-  date: z
-    .union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal(''), z.null()])
-    .transform((v) => v || null),
-  timeSlot: z.string().max(50),
-  notes: z.string().trim().max(2000).default(''),
-  requestId: z.uuid(),
-});
+export const bookingSchema = estimateSchema
+  .extend({
+    customerName: z.string().trim().min(2).max(100),
+    customerPhone: z.string().trim().min(9).max(25),
+    fromAddress: z.string().trim().min(3).max(300),
+    toAddress: z.string().trim().min(3).max(300),
+    date: z
+      .union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal(''), z.null()])
+      .transform((v) => v || null),
+    timeSlot: z.string().max(50),
+    notes: z.string().trim().max(2000).default(''),
+    requestId: z.uuid(),
+  })
+  .superRefine((booking, context) => {
+    if (booking.date && !/^([01]\d|2[0-3]):[0-5]\d$/.test(booking.timeSlot))
+      context.addIssue({
+        code: 'custom',
+        path: ['timeSlot'],
+        message: 'Saisissez une heure valide au format HH:mm.',
+      });
+  });
 export const loginSchema = z.object({
   phone: z.string().min(9).max(25),
   password: z.string().min(1).max(128),
@@ -173,12 +182,12 @@ export const catalogueSchema = z.object({
     enabledSlots: z
       .array(
         z.object({
-          label: z.string().trim().min(2).max(50),
+          label: z.string().trim().min(2).max(100),
           startHour: z.number().int().min(0).max(23),
         }),
       )
-      .min(1)
-      .max(3)
+      .min(0)
+      .max(24)
       .refine((v) => new Set(v.map((slot) => slot.label)).size === v.length),
     labourPrice: z.number().int().min(0).max(1000000),
     assemblyPrice: z.number().int().min(0).max(1000000),

@@ -103,16 +103,10 @@ export async function catalogueFromForm(
         ...catalogue.settings,
         bookingsEnabled: data.get('bookingsEnabled') === 'on',
         clientCancellation: data.get('clientCancellation') === 'on',
-        enabledSlots: catalogue.settings.enabledSlots.flatMap((slot, index) =>
-          data.get(`slotActive-${index}`) === 'on'
-            ? [
-                {
-                  label: String(data.get(`slotLabel-${index}`)),
-                  startHour: integer(data.get(`slotHour-${index}`)),
-                },
-              ]
-            : [],
-        ),
+        enabledSlots: Array.from({ length: integer(data.get('slotCount')) }, (_, index) => ({
+          label: String(data.get(`slotLabel-${index}`) ?? '').trim(),
+          startHour: integer(data.get(`slotHour-${index}`)),
+        })).filter((slot) => slot.label.length > 0),
         maxAdvanceDays: integer(data.get('maxAdvanceDays')),
         minNoticeHours: integer(data.get('minNoticeHours')),
         maxOptions: integer(data.get('maxOptions')),

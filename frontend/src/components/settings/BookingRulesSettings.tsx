@@ -1,6 +1,10 @@
+import { useState } from 'react';
 import { messages } from '../../content/fr';
 import type { Catalogue } from '../../domain/model';
 export function BookingRulesSettings({ catalogue }: { catalogue: Catalogue }) {
+  const [slots, setSlots] = useState(() =>
+    catalogue.settings.enabledSlots.map((slot, id) => ({ ...slot, id })),
+  );
   return (
     <div className="panel">
       <h2>{messages.reglesDeReservation}</h2>
@@ -24,10 +28,8 @@ export function BookingRulesSettings({ catalogue }: { catalogue: Catalogue }) {
         {(
           [
             ['maxAdvanceDays', messages.horizonDeReservationJours, 1, 730],
-            ['minNoticeHours', messages.delaiAvantReservationHeures, 0, 720],
             ['maxOptions', messages.quantiteMaximaleParOption, 0, 20],
             ['maxTrips', messages.nombreMaximalDeTrajetsParDevis, 1, 20],
-            ['cancellationNoticeHours', messages.preavisDAnnulationClientHeures, 0, 720],
           ] as const
         ).map(([key, label, min, max]) => (
           <div key={key}>
@@ -46,18 +48,10 @@ export function BookingRulesSettings({ catalogue }: { catalogue: Catalogue }) {
         ))}
       </div>
       <fieldset>
-        <legend>{messages.creneauxOuvertsAuMoinsUn}</legend>
-        {catalogue.settings.enabledSlots.map((slot, index) => (
-          <div className="field-pair" key={slot.label}>
-            <label className="checkbox-label" htmlFor={`slot-active-${index}`}>
-              <input
-                type="checkbox"
-                id={`slot-active-${index}`}
-                name={`slotActive-${index}`}
-                defaultChecked
-              />
-              {messages.creneauActif}
-            </label>
+        <legend>Horaires proposés aux clients</legend>
+        <input type="hidden" name="slotCount" value={slots.length} />
+        {slots.map((slot, index) => (
+          <div className="field-pair" key={slot.id}>
             <div>
               <label htmlFor={`slot-label-${index}`}>{messages.creneauSouhaite}</label>
               <input
@@ -65,6 +59,7 @@ export function BookingRulesSettings({ catalogue }: { catalogue: Catalogue }) {
                 name={`slotLabel-${index}`}
                 defaultValue={slot.label}
                 required
+                maxLength={100}
               />
             </div>
             <div>
@@ -75,12 +70,35 @@ export function BookingRulesSettings({ catalogue }: { catalogue: Catalogue }) {
                 type="number"
                 min={0}
                 max={23}
+                step={1}
                 defaultValue={slot.startHour}
                 required
               />
             </div>
+            <button
+              type="button"
+              className="button secondary small"
+              onClick={() =>
+                setSlots((current) => current.filter((currentSlot) => currentSlot.id !== slot.id))
+              }
+            >
+              Supprimer
+            </button>
           </div>
         ))}
+        <button
+          type="button"
+          className="button secondary small"
+          disabled={slots.length >= 24}
+          onClick={() =>
+            setSlots((current) => [
+              ...current,
+              { id: Math.max(-1, ...current.map((slot) => slot.id)) + 1, label: '', startHour: 12 },
+            ])
+          }
+        >
+          Ajouter une heure suggérée
+        </button>
       </fieldset>
       <p className="caption">{messages.lesTarifsDejaAcceptesSontConservesDansLa}</p>
     </div>

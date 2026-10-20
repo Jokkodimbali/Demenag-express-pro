@@ -129,7 +129,7 @@ test('Un chauffeur ne voit que les réservations du véhicule qui lui est affect
     to: [14.75, -17.39],
     distanceKm: 10,
     date: '2026-10-20',
-    timeSlot: 'Matin',
+    timeSlot: '08:00',
     options: { labour: 0, desk: 0, wardrobe: 0, bed: 0 },
     notes: '',
     status: 'confirmed',

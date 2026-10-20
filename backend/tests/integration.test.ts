@@ -121,7 +121,7 @@ test(
         fromAddress: 'Ouakam Dakar',
         toAddress: 'Almadies Dakar',
         date: tomorrow,
-        timeSlot: 'Matin (8h – 12h)',
+        timeSlot: '08:00',
         options: { labour: 1, desk: 0, wardrobe: 0, bed: 1 },
         notes: 'Test isolé',
         requestId: randomUUID(),

@@ -1,7 +1,7 @@
 import { AppError, requireValue } from './errors.js';
 import { messages } from './messages/fr.js';
 import type { BookingRules, BookingStatus, Role } from './model.js';
-export function validateDate(date: string, slot: string, now: Date, rules: BookingRules) {
+export function validateDate(date: string, now: Date, rules: BookingRules) {
   const parsed = new Date(`${date}T00:00:00Z`);
   requireValue(
     /^\d{4}-\d{2}-\d{2}$/.test(date) &&
@@ -15,14 +15,12 @@ export function validateDate(date: string, slot: string, now: Date, rules: Booki
     +parsed <= +now + rules.maxAdvanceDays * 86400000,
     messages.maximumAdvanceNotice(rules.maxAdvanceDays),
   );
-  const configuredSlot = rules.enabledSlots.find((configured) => configured.label === slot);
-  requireValue(configuredSlot, messages.creneauInvalide);
+}
+export function validateTime(time: string) {
   requireValue(
-    +parsed + configuredSlot.startHour * 3600000 >= +now + rules.minNoticeHours * 3600000,
-    messages.leDelaiMinimumAvantReservationNEstPas,
+    /^([01]\d|2[0-3]):[0-5]\d$/.test(time),
+    'Saisissez une heure valide au format HH:mm.',
   );
-  if (date === today)
-    requireValue(now.getUTCHours() < configuredSlot.startHour, messages.ceCreneauADejaCommence);
 }
 export function transition(current: BookingStatus, next: BookingStatus, role: Role) {
   const allowed: Record<BookingStatus, BookingStatus[]> = {

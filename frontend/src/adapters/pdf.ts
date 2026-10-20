@@ -189,10 +189,9 @@ export async function downloadQuote(
   y += 25;
 
   const explanation =
-    documentQuote?.notes ||
-    (documentQuote?.kind === 'final'
+    documentQuote?.kind === 'final'
       ? messages.montantEtabliSurLaBaseDuNombreReel
-      : `Devis temporaire, calculé sur ${price.trips} aller(s)-retour(s) estimé(s). Le transport est facturé par aller-retour effectué ; le devis final, basé sur le nombre réel d'allers-retours, sera envoyé par Demenag Express à la fin du déménagement.`);
+      : `Devis temporaire, calculé sur ${price.trips} aller(s)-retour(s) estimé(s). Le transport est facturé par aller-retour effectué ; le devis final, basé sur le nombre réel d'allers-retours, sera envoyé par Demenag Express à la fin du déménagement.`;
   y = paragraph(explanation, margin, y, contentWidth, 8.5, false, [92, 99, 106]);
   if (settings.invoiceFooter)
     y = paragraph(settings.invoiceFooter, margin, y + 2, contentWidth, 8, false, [92, 99, 106]);

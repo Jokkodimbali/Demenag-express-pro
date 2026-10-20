@@ -1,4 +1,4 @@
-import { transition, validateDate } from '../../domain/booking.js';
+import { transition, validateDate, validateTime } from '../../domain/booking.js';
 import { AppError, requireValue } from '../../domain/errors.js';
 import { messages } from '../../domain/messages/fr.js';
 import type {
@@ -83,7 +83,10 @@ export class MovingService implements MovingUseCases {
         settings.bookingsEnabled !== false,
         messages.lesReservationsSontTemporairementFermees,
       );
-    if (input.date) validateDate(input.date, input.timeSlot, this.clock.now(), settings);
+    if (input.date) {
+      validateDate(input.date, this.clock.now(), settings);
+      validateTime(input.timeSlot);
+    }
     const id = this.ids.next();
     return this.bookings.create(
       {
@@ -161,20 +164,13 @@ export class MovingService implements MovingUseCases {
     if (user.role !== 'admin' && next === 'cancelled') {
       requireValue(booking.date, messages.dateInvalide);
       requireValue(settings.clientCancellation, messages.contactezLAdministrationPourAnnuler);
-      const configuredSlot = settings.enabledSlots.find((slot) => slot.label === booking.timeSlot);
-      requireValue(configuredSlot, messages.creneauInvalide);
-      const start = +new Date(booking.date + 'T00:00:00Z') + configuredSlot.startHour * 3600000;
-      requireValue(
-        start - +this.clock.now() >= settings.cancellationNoticeHours * 3600000,
-        messages.leDelaiDAnnulationEstDepasseContactezL,
-      );
     }
     if (next === 'confirmed') {
       requireValue(
         booking.date,
         'Ajoutez une date de rendez-vous avant de confirmer la réservation.',
       );
-      validateDate(booking.date, booking.timeSlot, this.clock.now(), {
+      validateDate(booking.date, this.clock.now(), {
         ...settings,
         maxAdvanceDays: 730,
       });
@@ -321,7 +317,10 @@ export class MovingService implements MovingUseCases {
       'Le rendez-vous ne peut plus être modifié après la clôture ou la création du devis final.',
     );
     const { settings } = await this.catalogue.get();
-    if (date) validateDate(date, timeSlot, this.clock.now(), { ...settings, maxAdvanceDays: 730 });
+    if (date) {
+      validateDate(date, this.clock.now(), { ...settings, maxAdvanceDays: 730 });
+      validateTime(timeSlot);
+    }
     return this.bookings.update({ ...booking, date, timeSlot: date ? timeSlot : '' }, version);
   }
   async updateNotes(user: User, id: string, notes: string, version: number) {
