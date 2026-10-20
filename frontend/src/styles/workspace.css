@@ -655,7 +655,8 @@ div.driver-course-complete p {
   margin-top: 15px;
 }
 .admin-tabs {
-  display: inline-flex;
+  display: flex;
+  flex-wrap: wrap;
   margin: 28px 0 20px;
   max-width: 100%;
 }
@@ -665,6 +666,86 @@ div.driver-course-complete p {
   justify-content: center;
   gap: 8px;
   flex: auto;
+}
+.client-code {
+  color: inherit;
+  font-size: 0.85em;
+  opacity: 0.8;
+  white-space: nowrap;
+}
+.client-search-label {
+  display: block;
+  margin-bottom: 7px;
+}
+.client-search {
+  margin-bottom: 16px;
+}
+.client-stats {
+  margin-bottom: 20px;
+}
+.client-table-wrap {
+  overflow-x: auto;
+  padding: 0 18px;
+  overscroll-behavior-inline: contain;
+}
+.client-table-scroll-hint {
+  display: none;
+  margin: 0;
+  padding: 12px 0 0;
+  font-size: 11px;
+}
+.client-table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  text-align: left;
+}
+.client-table th,
+.client-table td {
+  padding: 14px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.client-table thead th {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.client-table tbody tr:last-child > * {
+  border-bottom: 0;
+}
+.client-table-name {
+  font-size: 14px;
+  font-weight: 700;
+}
+.client-identifier {
+  display: grid;
+  place-items: center;
+  min-width: 48px;
+  height: 42px;
+  padding: 0 8px;
+  border-radius: 9px;
+  background: #f6d73c18;
+  color: var(--yellow);
+  font-size: 11px;
+  font-weight: 800;
+}
+.client-phone {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .client-table-scroll-hint {
+    display: block;
+  }
+}
+.client-recognition {
+  margin: 8px 0 0;
+  color: #176b3a;
+  font-size: 12px;
 }
 .admin-toolbar {
   display: flex;
@@ -707,6 +788,24 @@ div.driver-course-complete p {
   border: 0;
   background: transparent;
   font-size: 11px;
+}
+.booking-date-filters {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.booking-date-filters > div {
+  display: grid;
+  gap: 5px;
+}
+.booking-date-filters label {
+  color: var(--muted);
+  font-size: 11px;
+}
+.booking-date-filters input,
+.booking-date-filters select {
+  min-height: 38px;
 }
 .settings-form {
   display: grid;
@@ -827,12 +926,12 @@ div.driver-course-complete p {
 }
 .fleet-actions {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 14px;
 }
 .fleet-actions .button {
-  flex: 1 1 0;
+  flex: 1 1 130px;
   min-width: 0;
   padding: 11px 12px;
   font-size: 11px;
@@ -927,10 +1026,12 @@ div.driver-course-complete p {
 }
 .admin-dashboard {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
 }
 .revenue-grid > div {
   display: grid;
+  min-width: 0;
   gap: 8px;
   padding: 16px;
   text-align: left;
@@ -938,6 +1039,7 @@ div.driver-course-complete p {
 .revenue-grid strong {
   font-size: 22px;
   color: var(--yellow);
+  overflow-wrap: anywhere;
 }
 .revenue-controls {
   display: flex;
@@ -1090,6 +1192,44 @@ div.driver-course-complete p {
 }
 .calendar-booking strong {
   font-size: 10px;
+}
+.calendar-booking-title,
+.daily-booking-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+.calendar-booking-title strong,
+.daily-booking-title strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.calendar-booking .calendar-client-id {
+  width: fit-content;
+  flex: 0 0 auto;
+  overflow: visible;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: #f6d73c;
+  color: #202020;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.daily-booking-title .calendar-client-id {
+  flex: 0 0 auto;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: #f6d73c;
+  color: #202020;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 .calendar-booking span {
   font-size: 9px;

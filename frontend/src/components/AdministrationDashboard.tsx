@@ -7,6 +7,7 @@ import {
   sameWeek,
 } from '../application/services/revenue';
 import { quoteNotificationUrl } from '../application/services/quote-notification';
+import { clientIdentifier } from '../application/services/client-summary';
 import { messages } from '../content/fr';
 import { dateLabel, money } from '../domain/format';
 import type { Booking, Vehicle } from '../domain/model';
@@ -217,7 +218,10 @@ function DailyBookings({
               onClick={() => onSelect(booking)}
             >
               <span>
-                <strong>{booking.customerName}</strong>
+                <span className="daily-booking-title">
+                  <strong>{booking.customerName}</strong>
+                  <small className="calendar-client-id">ID {clientIdentifier(booking.phone)}</small>
+                </span>
                 <small>{booking.timeSlot || 'Créneau à convenir'}</small>
               </span>
               <span>
@@ -386,9 +390,14 @@ function BookingCalendar({
                   key={booking.id}
                   className={'calendar-booking ' + booking.status}
                   onClick={() => onSelect(booking)}
-                  title={`${booking.customerName} · ${booking.timeSlot || 'Créneau à convenir'}`}
+                  title={`${booking.customerName} · ID client ${clientIdentifier(booking.phone)} · ${booking.timeSlot || 'Heure à convenir'}`}
                 >
-                  <strong>{booking.customerName}</strong>
+                  <span className="calendar-booking-title">
+                    <strong>{booking.customerName}</strong>
+                    <small className="calendar-client-id">
+                      ID {clientIdentifier(booking.phone)}
+                    </small>
+                  </span>
                   <span>{booking.timeSlot || 'Créneau à convenir'}</span>
                 </button>
               ))}
@@ -423,7 +432,8 @@ function BookingCalendar({
                       onClick={() => onSelect(booking)}
                     >
                       <span>
-                        {booking.customerName} · {booking.timeSlot || 'Créneau à convenir'}
+                        {booking.customerName} · ID client : {clientIdentifier(booking.phone)} ·{' '}
+                        {booking.timeSlot || 'Heure à convenir'}
                       </span>
                       <strong>{money(bookingRevenueAmount(booking))}</strong>
                     </button>

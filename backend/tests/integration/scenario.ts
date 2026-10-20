@@ -25,21 +25,21 @@ export async function runIntegrationScenario() {
   if (!url) return;
   const context = createIntegrationContext(url);
   let original: Awaited<ReturnType<typeof captureOriginalConfiguration>> | undefined;
-  const userIds: string[] = [];
   const routeIds: string[] = [];
+  let scenarioError: unknown;
 
   try {
     original = await captureOriginalConfiguration(context.db);
     await configureDeterministicPricing(context);
     const users = await registerScenarioUsers(context);
-    userIds.push(...users.userIds);
+    assert.equal(users.userIds.length, 4);
 
     const route = await context.clients.first
       .post('/api/maps/route')
       .set(integrationHeader)
       .send({ from: [14.69, -17.44], to: [14.73, -17.48] });
+    if (typeof route.body.id === 'string') routeIds.push(route.body.id);
     assert.equal(route.status, 200, JSON.stringify(route.body));
-    routeIds.push(route.body.id);
 
     const booking = await createAndAuthorizeBooking(context, route.body.id);
     const input = booking.input as Record<string, unknown>;
@@ -65,12 +65,29 @@ export async function runIntegrationScenario() {
     await verifyAccountAdministration(context, users.userIds);
     await verifySettingsRules(context, input);
     await verifySessionLifecycle(context);
-  } finally {
-    try {
-      if (original) await restoreConfiguration(context, original);
-      await deleteScenarioData(context, userIds, routeIds);
-    } finally {
-      await context.db.$disconnect();
-    }
+  } catch (error) {
+    scenarioError = error;
   }
+
+  const cleanupErrors: unknown[] = [];
+  try {
+    if (original) await restoreConfiguration(context, original);
+  } catch (error) {
+    cleanupErrors.push(error);
+  }
+  try {
+    await deleteScenarioData(context, routeIds);
+  } catch (error) {
+    cleanupErrors.push(error);
+  }
+  try {
+    await context.db.$disconnect();
+  } catch (error) {
+    cleanupErrors.push(error);
+  }
+
+  const failures = [...(scenarioError ? [scenarioError] : []), ...cleanupErrors];
+  if (failures.length === 1) throw failures[0];
+  if (failures.length > 1)
+    throw new AggregateError(failures, 'Le scénario ou son nettoyage a échoué.');
 }

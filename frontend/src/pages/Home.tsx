@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { useBookingForm } from '../application/useBookingForm';
 import { BookingSummary } from '../components/booking/BookingSummary';
 import { CustomerDetails } from '../components/booking/CustomerDetails';
+import { normalizedClientPhone } from '../application/services/client-summary';
 import { ScheduleOptions } from '../components/booking/ScheduleOptions';
 import { VehicleSelector } from '../components/booking/VehicleSelector';
 import { messages } from '../content/fr';
@@ -146,6 +147,9 @@ export function Home() {
     option,
     extras,
     administrativeQuote,
+    clientRecognition,
+    recognizingClient,
+    recognizeClient,
   } = state;
   const bookingsClosed = catalogue?.settings.bookingsEnabled === false && !administrativeQuote;
   return (
@@ -252,7 +256,18 @@ export function Home() {
                   extras={extras}
                   option={option}
                 />
-                <CustomerDetails draft={draft} setDraft={setDraft} />
+                <CustomerDetails
+                  draft={draft}
+                  setDraft={setDraft}
+                  onPhoneBlur={recognizeClient}
+                  recognition={
+                    clientRecognition &&
+                    clientRecognition.phone === normalizedClientPhone(draft.customerPhone)
+                      ? clientRecognition
+                      : null
+                  }
+                  recognizingClient={recognizingClient}
+                />
               </div>
               <BookingSummary
                 catalogue={catalogue}

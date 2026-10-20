@@ -23,13 +23,39 @@ export async function restoreConfiguration(
   });
 }
 
-export async function deleteScenarioData(
-  context: IntegrationContext,
-  userIds: string[],
-  routeIds: string[],
-) {
+export async function deleteScenarioData(context: IntegrationContext, routeIds: string[]) {
   const { db } = context;
-  await db.reservation.deleteMany({ where: { utilisateurId: { in: userIds } } });
-  await db.utilisateur.deleteMany({ where: { id: { in: userIds } } });
-  await db.itineraire.deleteMany({ where: { id: { in: routeIds } } });
+  const scenarioUsers =
+    context.testUserIds.length || context.testPhones.length
+      ? await db.utilisateur.findMany({
+          where: {
+            OR: [
+              ...(context.testUserIds.length ? [{ id: { in: context.testUserIds } }] : []),
+              ...(context.testPhones.length
+                ? [{ telephone: { in: context.testPhones }, nom: { startsWith: context.prefix } }]
+                : []),
+            ],
+          },
+          select: { id: true },
+        })
+      : [];
+  const userIds = [...new Set([...context.testUserIds, ...scenarioUsers.map(({ id }) => id)])];
+
+  if (userIds.length) {
+    await db.$transaction([
+      db.reservation.deleteMany({ where: { utilisateurId: { in: userIds } } }),
+      db.utilisateur.deleteMany({ where: { id: { in: userIds } } }),
+    ]);
+  }
+  if (routeIds.length) await db.itineraire.deleteMany({ where: { id: { in: routeIds } } });
+
+  const [remainingUsers, remainingBookings, remainingRoutes] = await Promise.all([
+    userIds.length ? db.utilisateur.count({ where: { id: { in: userIds } } }) : 0,
+    userIds.length ? db.reservation.count({ where: { utilisateurId: { in: userIds } } }) : 0,
+    routeIds.length ? db.itineraire.count({ where: { id: { in: routeIds } } }) : 0,
+  ]);
+  if (remainingUsers || remainingBookings || remainingRoutes)
+    throw new Error(
+      `Nettoyage incomplet du scénario : ${remainingUsers} compte(s), ${remainingBookings} réservation(s), ${remainingRoutes} itinéraire(s) restant(s).`,
+    );
 }

@@ -6,7 +6,7 @@ import { readEnv } from './config/env.js';
 import { messages } from './domain/messages/fr.js';
 async function main() {
   const env = readEnv();
-  const db = createPrisma(env.DATABASE_URL);
+  const db = createPrisma(env.DATABASE_URL, env.DATABASE_POOL_MAX);
   const services = compose(
     db,
     new OpenStreetMaps(env.OSRM_URL, env.NOMINATIM_URL, env.MAPS_USER_AGENT),

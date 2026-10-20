@@ -114,8 +114,12 @@ export function registerBookingRoutes(
     const p = z
       .object({
         date: z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal(''), z.null()]),
-        timeSlot: z.string().max(50),
+        timeSlot: z.union([z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/), z.literal('')]),
         version: z.number().int().positive(),
+      })
+      .refine((schedule) => !schedule.date || Boolean(schedule.timeSlot), {
+        path: ['timeSlot'],
+        message: messages.creneauInvalide,
       })
       .parse(req.body);
     res.json(

@@ -53,7 +53,7 @@ export interface CatalogueRepository {
   update(vehicles: Vehicle[], settings: Settings): Promise<void>;
 }
 export interface BookingRepository {
-  list(userId?: string): Promise<Booking[]>;
+  list(userId?: string, vehicleId?: string): Promise<Booking[]>;
   find(id: string): Promise<Booking | null>;
   create(booking: Booking, requestId: string): Promise<Booking>;
   update(booking: Booking, expectedVersion: number): Promise<Booking>;

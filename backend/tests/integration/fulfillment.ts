@@ -78,7 +78,10 @@ export async function createFinalQuoteAndClose(
     .send({ status: 'completed', version: finalQuote.body.version });
   assert.equal(closed.status, 200, JSON.stringify(closed.body));
   assert.equal(closed.body.status, 'completed');
-  return finalQuote.body as { version: number; quotes: { id: string }[] };
+  return {
+    ...finalQuote.body,
+    version: closed.body.version,
+  } as { version: number; quotes: { id: string }[] };
 }
 
 export async function verifyQuoteSnapshots(

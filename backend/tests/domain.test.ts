@@ -65,6 +65,24 @@ test('Le transport, les options et la remise sont calculés en FCFA entiers', ()
   assert.equal(price.total, 133000);
   assert.equal(price.lines.length, 3);
 });
+test('Chaque ligne du devis conserve la quantité exacte de sa prestation', () => {
+  const price = calculatePrice(
+    vehicle,
+    settings,
+    20,
+    { ...none, labour: 2, desk: 1, wardrobe: 1 },
+    3,
+  );
+  assert.deepEqual(
+    price.lines.map(({ label, quantity }) => ({ label, quantity })),
+    [
+      { label: 'Transport Sprinter · aller-retour', quantity: 3 },
+      { label: 'Manœuvre', quantity: 2 },
+      { label: 'Menuisier · bureau', quantity: 1 },
+      { label: 'Menuisier · armoire', quantity: 1 },
+    ],
+  );
+});
 test('Un trajet de plus de 35 km reste sur devis, jamais à zéro', () => {
   assert.equal(calculatePrice(vehicle, settings, 50, none).total, null);
   assert.equal(calculatePrice(vehicle, settings, 50, none, 2, 60000).total, 120000);

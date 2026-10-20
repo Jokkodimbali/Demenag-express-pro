@@ -40,23 +40,15 @@ export function ScheduleOptions({
           <label htmlFor="booking-slot">Heure souhaitée</label>
           <input
             id="booking-slot"
-            type="text"
-            list="booking-time-suggestions"
+            type="time"
+            step="60"
             required={Boolean(draft.date)}
-            maxLength={50}
             value={draft.timeSlot}
             onChange={(e) => setDraft((d) => ({ ...d, timeSlot: e.target.value }))}
           />
-          <datalist id="booking-time-suggestions">
-            {catalogue.settings.enabledSlots.map((slot) => (
-              <option
-                key={slot.label}
-                value={`${String(slot.startHour).padStart(2, '0')}:00`}
-                label={slot.label}
-              />
-            ))}
-          </datalist>
-          <small className="muted">Saisissez l’heure souhaitée ou choisissez une suggestion.</small>
+          <small className="muted">
+            Choisissez l’heure qui vous convient. L’équipe confirmera le rendez-vous.
+          </small>
         </div>
       </div>
       <div className="options">

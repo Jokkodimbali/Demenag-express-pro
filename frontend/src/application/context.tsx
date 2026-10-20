@@ -55,7 +55,6 @@ export function AppProvider({
           setDraft((draft) => ({
             ...draft,
             vehicleId: draft.vehicleId || blankDraft(c).vehicleId,
-            timeSlot: draft.timeSlot || blankDraft(c).timeSlot,
           }));
         }
       })

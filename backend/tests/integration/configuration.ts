@@ -45,7 +45,7 @@ export function createBookingInput(context: IntegrationContext, routeId: string)
     fromAddress: 'Ouakam Dakar',
     toAddress: 'Almadies Dakar',
     date: tomorrow,
-    timeSlot: 'Début de journée à convenir',
+    timeSlot: '09:30',
     options: { labour: 1, desk: 0, wardrobe: 0, bed: 1 },
     notes: 'Test isolé',
     requestId: crypto.randomUUID(),

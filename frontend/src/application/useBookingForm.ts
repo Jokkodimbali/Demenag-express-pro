@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { messages } from '../content/fr';
 import { tierLabels } from '../domain/format';
 import type { Booking, Options, Price } from '../domain/model';
+import { normalizedClientPhone } from './services/client-summary';
 import { blankDraft, useApp } from './context';
 import { errorMessage } from './error-message';
 import { routes } from '../routing/routes';
@@ -16,8 +17,16 @@ export function useBookingForm() {
     [estimateError, setEstimateError] = useState(''),
     [submitError, setSubmitError] = useState(''),
     [submitting, setSubmitting] = useState(false),
-    [done, setDone] = useState<Booking | null>(null);
+    [done, setDone] = useState<Booking | null>(null),
+    [clientRecognition, setClientRecognition] = useState<{
+      phone: string;
+      name: string;
+      bookingCount: number;
+    } | null>(null),
+    [recognizingClient, setRecognizingClient] = useState(false);
   const submitLock = useRef(false);
+  const bookingLookup = useRef<Promise<Booking[]> | null>(null);
+  const lookupPhone = useRef('');
   const tiers = tierLabels(catalogue?.settings.distanceBounds);
   const selected = catalogue?.vehicles.find((v) => v.id === draft.vehicleId);
   const administrativeQuote = user?.role === 'admin' && params.get('newQuote') === '1';
@@ -56,12 +65,41 @@ export function useBookingForm() {
       )
         ? current.vehicleId
         : (catalogue.vehicles.find((v) => v.active !== false)?.id ?? current.vehicleId);
-      const timeSlot = current.timeSlot;
-      return vehicleId === current.vehicleId && timeSlot === current.timeSlot
-        ? current
-        : { ...current, vehicleId, timeSlot };
+      return vehicleId === current.vehicleId ? current : { ...current, vehicleId };
     });
   }, [catalogue, setDraft]);
+  async function recognizeClient(phone: string) {
+    const normalizedPhone = normalizedClientPhone(phone);
+    if (normalizedPhone.length < 9 || !user) {
+      setClientRecognition(null);
+      return;
+    }
+    lookupPhone.current = normalizedPhone;
+    setRecognizingClient(true);
+    setClientRecognition(null);
+    try {
+      bookingLookup.current ??= api.bookings();
+      const bookings = await bookingLookup.current;
+      if (lookupPhone.current !== normalizedPhone) return;
+      const previousBookings = bookings.filter(
+        (booking) => normalizedClientPhone(booking.phone) === normalizedPhone,
+      );
+      if (!previousBookings.length) return;
+      const latestBooking = previousBookings.reduce((latest, booking) =>
+        booking.createdAt > latest.createdAt ? booking : latest,
+      );
+      setClientRecognition({
+        phone: normalizedPhone,
+        name: latestBooking.customerName,
+        bookingCount: previousBookings.length,
+      });
+    } catch {
+      // La reconnaissance reste indicative et ne doit pas bloquer la réservation.
+      bookingLookup.current = null;
+    } finally {
+      if (lookupPhone.current === normalizedPhone) setRecognizingClient(false);
+    }
+  }
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (submitLock.current) return;
@@ -90,6 +128,7 @@ export function useBookingForm() {
         notes: draft.notes,
         requestId: draft.requestId,
       });
+      bookingLookup.current = null;
       setDraft(blankDraft());
       if (administrativeQuote) {
         navigate(
@@ -142,5 +181,8 @@ export function useBookingForm() {
     option,
     extras,
     administrativeQuote,
+    clientRecognition,
+    recognizingClient,
+    recognizeClient,
   };
 }

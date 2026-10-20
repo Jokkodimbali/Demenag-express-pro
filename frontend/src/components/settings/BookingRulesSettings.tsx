@@ -48,7 +48,10 @@ export function BookingRulesSettings({ catalogue }: { catalogue: Catalogue }) {
         ))}
       </div>
       <fieldset>
-        <legend>Horaires proposés aux clients</legend>
+        <legend>Horaires de référence</legend>
+        <p className="muted">
+          Ces horaires servent de repères. Le client peut choisir librement une autre heure.
+        </p>
         <input type="hidden" name="slotCount" value={slots.length} />
         {slots.map((slot, index) => (
           <div className="field-pair" key={slot.id}>

@@ -33,6 +33,9 @@ const AdminInvoicing = lazy(() =>
 const AdminUsers = lazy(() =>
   import('../pages/AdminUsers').then((m) => ({ default: m.AdminUsers })),
 );
+const AdminClients = lazy(() =>
+  import('../pages/AdminClients').then((m) => ({ default: m.AdminClients })),
+);
 const AdminVehicleReports = lazy(() =>
   import('../pages/AdminVehicleReports').then((m) => ({ default: m.AdminVehicleReports })),
 );
@@ -113,6 +116,7 @@ export function AppRoutes() {
               <Route path="facturation" element={<AdminInvoicing />} />
             </Route>
             <Route path="comptes" element={<AdminUsers />} />
+            <Route path="clients" element={<AdminClients />} />
             <Route path="vehicules/rapports" element={<AdminVehicleReports />} />
             <Route path="annonces" element={<AdminAnnouncements />} />
           </Route>

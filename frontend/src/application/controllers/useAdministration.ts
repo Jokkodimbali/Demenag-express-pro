@@ -13,6 +13,8 @@ export function useAdministration() {
     [error, setError] = useState(''),
     [retry, setRetry] = useState(0),
     [filter, setFilter] = useState<BookingStatus | 'all'>('all'),
+    [dateFilter, setDateFilter] = useState(''),
+    [weekdayFilter, setWeekdayFilter] = useState('all'),
     [query, setQuery] = useState(() => params.get('q') ?? '');
   useEffect(() => setQuery(params.get('q') ?? ''), [params]);
   useEffect(() => {
@@ -39,11 +41,15 @@ export function useAdministration() {
       active = false;
     };
   }, [api, retry]);
-  const visible = bookings.filter(
-    (b) =>
+  const visible = bookings.filter((b) => {
+    const weekday = b.date ? String(new Date(b.date + 'T00:00:00Z').getUTCDay() || 7) : '';
+    return (
       (filter === 'all' || filter === b.status) &&
-      `${b.reference} ${b.customerName} ${b.phone}`.toLowerCase().includes(query.toLowerCase()),
-  );
+      (!dateFilter || b.date === dateFilter) &&
+      (weekdayFilter === 'all' || weekday === weekdayFilter) &&
+      `${b.reference} ${b.customerName} ${b.phone}`.toLowerCase().includes(query.toLowerCase())
+    );
+  });
   const stats = [
     { label: messages.demandesRecues, status: 'pending', Icon: ClipboardList },
     { label: messages.aPreparer, status: 'confirmed', Icon: CalendarDays },
@@ -58,6 +64,10 @@ export function useAdministration() {
     setRetry,
     filter,
     setFilter,
+    dateFilter,
+    setDateFilter,
+    weekdayFilter,
+    setWeekdayFilter,
     query,
     setQuery,
     visible,
