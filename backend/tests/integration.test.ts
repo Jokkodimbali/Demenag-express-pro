@@ -41,7 +41,8 @@ test(
     });
     const a = request.agent(app),
       b = request.agent(app),
-      admin = request.agent(app);
+      admin = request.agent(app),
+      driverAgent = request.agent(app);
     const header = { 'X-Requested-With': 'DemenagExpress', Origin: 'http://localhost:5173' };
     const seed = Math.floor(Math.random() * 8000000) + 1000000;
     const phone = (n: number) => '77' + String(seed + n).padStart(7, '0');
@@ -103,6 +104,24 @@ test(
         where: { id: userIds[2] },
         data: { role: 'administrateur' },
       });
+      const driverCreated = await admin
+        .post('/api/admin/drivers')
+        .set(header)
+        .send({
+          name: prefix + ' Chauffeur',
+          phone: phone(3),
+          photo: '/assets/test-driver.jpg',
+          active: true,
+          vehicleId: 'sprinter',
+          password,
+        });
+      assert.equal(driverCreated.status, 201, JSON.stringify(driverCreated.body));
+      userIds.push(driverCreated.body.userId);
+      const driverLogin = await driverAgent
+        .post('/api/auth/login')
+        .set(header)
+        .send({ phone: phone(3), password });
+      assert.equal(driverLogin.status, 200, JSON.stringify(driverLogin.body));
       assert.equal((await a.put('/api/catalogue').set(header).send({})).status, 403);
       assert.equal((await request(app).get('/api/bookings')).status, 401);
       assert.equal((await a.post('/api/bookings').send({})).status, 403);
@@ -158,19 +177,24 @@ test(
       assert.equal(await db.reservation.count({ where: { utilisateurId: userIds[0] } }), 1);
       assert.equal((await b.get('/api/bookings/' + id)).status, 404);
       assert.equal((await b.get('/api/bookings')).body.length, 0);
+      const assigned = await admin
+        .patch('/api/bookings/' + id + '/driver')
+        .set(header)
+        .send({ driverId: driverCreated.body.id, version: 1 });
+      assert.equal(assigned.status, 200, JSON.stringify(assigned.body));
       assert.equal(
         (
           await a
             .patch('/api/bookings/' + id + '/status')
             .set(header)
-            .send({ status: 'confirmed', version: 1 })
+            .send({ status: 'confirmed', version: assigned.body.version })
         ).status,
         403,
       );
       const confirmed = await admin
         .patch('/api/bookings/' + id + '/status')
         .set(header)
-        .send({ status: 'confirmed', version: 1 });
+        .send({ status: 'confirmed', version: assigned.body.version });
       assert.equal(confirmed.status, 200, JSON.stringify(confirmed.body));
       assert.equal(
         (
@@ -198,8 +222,48 @@ test(
       const started = await admin
         .patch('/api/bookings/' + id + '/status')
         .set(header)
-        .send({ status: 'in_progress', version: 2 });
+        .send({ status: 'in_progress', version: confirmed.body.version });
       assert.equal(started.status, 200);
+      const proof = '/assets/test-proof.jpg';
+      const inspection = await driverAgent
+        .post('/api/driver/vehicle-inspections')
+        .set(header)
+        .send({
+          levels: {
+            engineOil: 'good',
+            coolant: 'good',
+            brakeFluid: 'good',
+            powerSteering: 'good',
+            washerFluid: 'good',
+          },
+          condition: 'good',
+          notes: '',
+          photos: {
+            engineOil: proof,
+            coolant: proof,
+            brakeFluid: proof,
+            powerSteering: proof,
+            washerFluid: proof,
+            condition: [proof],
+          },
+        });
+      assert.equal(inspection.status, 201, JSON.stringify(inspection.body));
+      for (let trip = 0; trip < 2; trip++) {
+        const tripStarted = await driverAgent
+          .post('/api/bookings/' + id + '/trips/start')
+          .set(header)
+          .send({ photos: [proof] });
+        assert.equal(tripStarted.status, 201, JSON.stringify(tripStarted.body));
+        const tripFinished = await driverAgent
+          .post('/api/bookings/' + id + '/trips/finish')
+          .set(header)
+          .send({ photos: [proof] });
+        assert.equal(tripFinished.status, 200, JSON.stringify(tripFinished.body));
+      }
+      const driverFinished = await driverAgent
+        .post('/api/bookings/' + id + '/driver-finished')
+        .set(header);
+      assert.equal(driverFinished.status, 200, JSON.stringify(driverFinished.body));
       const final = await admin
         .post('/api/bookings/' + id + '/quotes')
         .set(header)
@@ -209,7 +273,7 @@ test(
           discount: 1000,
           customPrice: null,
           notes: 'Terminé',
-          version: 3,
+          version: driverFinished.body.version,
         });
       assert.equal(final.status, 201, JSON.stringify(final.body));
       assert.equal(final.body.status, 'completed');
@@ -242,7 +306,7 @@ test(
               discount: 0,
               customPrice: null,
               notes: 'Modification',
-              version: 4,
+              version: final.body.version,
             })
         ).status,
         400,
