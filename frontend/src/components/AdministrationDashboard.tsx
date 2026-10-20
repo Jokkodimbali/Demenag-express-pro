@@ -185,8 +185,52 @@ export function RevenueDashboard({ bookings, vehicles = [], onSelect }: Dashboar
         selectedDay={selectedDay}
         onSelectDay={selectDay}
       />
+      <DailyBookings bookings={dailyBookings} selectedDay={selectedDay} onSelect={onSelect} />
       <DailyVehicleRevenue bookings={dailyBookings} selectedDay={selectedDay} />
     </div>
+  );
+}
+
+function DailyBookings({
+  bookings,
+  selectedDay,
+  onSelect,
+}: {
+  bookings: Booking[];
+  selectedDay: string;
+  onSelect: (booking: Booking) => void;
+}) {
+  return (
+    <section className="panel daily-bookings" aria-live="polite">
+      <div className="section-heading">
+        <div>
+          <h2>{messages.reservationsDuJour(dateLabel(selectedDay))}</h2>
+          <p>{bookings.length} réservation(s)</p>
+        </div>
+      </div>
+      {bookings.length ? (
+        <div className="daily-booking-list">
+          {bookings.map((booking) => (
+            <button
+              className={'daily-booking-row ' + booking.status}
+              key={booking.id}
+              onClick={() => onSelect(booking)}
+            >
+              <span>
+                <strong>{booking.customerName}</strong>
+                <small>{booking.timeSlot || 'Créneau à convenir'}</small>
+              </span>
+              <span>
+                <small>{booking.vehicle.name}</small>
+                <small>{booking.reference}</small>
+              </span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className="muted">{messages.aucuneReservationCeJour}</p>
+      )}
+    </section>
   );
 }
 
@@ -323,6 +367,7 @@ function BookingCalendar({
                 className="calendar-date"
                 onClick={() => onSelectDay(key)}
                 aria-label={dateLabel(key)}
+                aria-pressed={selectedDay === key}
               >
                 {day.getDate()}
               </button>
@@ -341,9 +386,10 @@ function BookingCalendar({
                   key={booking.id}
                   className={'calendar-booking ' + booking.status}
                   onClick={() => onSelect(booking)}
-                  title={`${booking.reference} · ${dateLabel(booking.date)}`}
+                  title={`${booking.customerName} · ${booking.timeSlot || 'Créneau à convenir'}`}
                 >
-                  {booking.reference}
+                  <strong>{booking.customerName}</strong>
+                  <span>{booking.timeSlot || 'Créneau à convenir'}</span>
                 </button>
               ))}
             </div>
@@ -377,7 +423,7 @@ function BookingCalendar({
                       onClick={() => onSelect(booking)}
                     >
                       <span>
-                        {booking.reference} · {booking.customerName}
+                        {booking.customerName} · {booking.timeSlot || 'Créneau à convenir'}
                       </span>
                       <strong>{money(bookingRevenueAmount(booking))}</strong>
                     </button>

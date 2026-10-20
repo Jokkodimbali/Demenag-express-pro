@@ -93,7 +93,16 @@ test(
         userIds.push(r.body.id);
         assert.match(r.headers['set-cookie'][0], /HttpOnly/);
       }
-      await db.utilisateur.update({ where: { id: userIds[2] }, data: { role: 'administrateur' } });
+      // L’inscription crée des comptes inactifs : les activer ici permet de
+      // tester les autorisations de rôle plutôt que le refus d’authentification.
+      await db.utilisateur.updateMany({
+        where: { id: { in: userIds } },
+        data: { actif: true },
+      });
+      await db.utilisateur.update({
+        where: { id: userIds[2] },
+        data: { role: 'administrateur' },
+      });
       assert.equal((await a.put('/api/catalogue').set(header).send({})).status, 403);
       assert.equal((await request(app).get('/api/bookings')).status, 401);
       assert.equal((await a.post('/api/bookings').send({})).status, 403);
