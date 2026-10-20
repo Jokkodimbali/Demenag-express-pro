@@ -1078,6 +1078,71 @@ div.driver-course-complete p {
   padding: 4px;
   font-size: 10px;
   text-align: left;
+  display: grid;
+  gap: 2px;
+  overflow: hidden;
+}
+.calendar-booking strong,
+.calendar-booking span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.calendar-booking strong {
+  font-size: 10px;
+}
+.calendar-booking span {
+  font-size: 9px;
+  opacity: 0.88;
+}
+.daily-bookings .section-heading {
+  margin-bottom: 12px;
+}
+.daily-bookings .section-heading h2 {
+  font-size: 17px;
+}
+.daily-booking-list {
+  display: grid;
+  gap: 8px;
+}
+.daily-booking-row {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-left: 4px solid #69717b;
+  border-radius: 8px;
+  background: var(--surface, #25292e);
+  color: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  text-align: left;
+  cursor: pointer;
+}
+.daily-booking-row.confirmed {
+  border-left-color: #2274a5;
+}
+.daily-booking-row.in_progress {
+  border-left-color: #bf7d00;
+}
+.daily-booking-row.completed {
+  border-left-color: #287b52;
+}
+.daily-booking-row.cancelled {
+  border-left-color: #7c3030;
+}
+.daily-booking-row > span {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.daily-booking-row > span:last-child {
+  text-align: right;
+}
+.daily-booking-row small {
+  color: var(--muted);
+  overflow-wrap: anywhere;
 }
 .calendar-booking.confirmed {
   background: #2274a5;

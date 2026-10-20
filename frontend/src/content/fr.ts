@@ -5,6 +5,8 @@ export const messages = {
   notifications: 'Notifications',
   aucuneNotification: 'Aucune nouvelle notification.',
   pagination: 'Pagination',
+  reservationsDuJour: (day: string | number) => `Réservations du ${day}`,
+  aucuneReservationCeJour: 'Aucune réservation pour cette date.',
   pagePrecedente: 'Page précédente',
   pageSuivante: 'Page suivante',
   resultatsPaginees: (total: number, page: number, pageCount: number) =>

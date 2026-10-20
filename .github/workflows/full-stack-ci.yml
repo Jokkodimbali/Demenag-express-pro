@@ -1,4 +1,4 @@
-name: Backend CI
+name: Full Stack CI
 
 on:
   pull_request:
@@ -10,12 +10,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: backend-ci-${{ github.ref }}
+  group: full-stack-ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  backend-ci:
-    name: backend-ci
+  full-stack-ci:
+    name: full-stack-ci
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -57,6 +57,7 @@ jobs:
         run: npx prisma validate --schema prisma/schema.prisma && npx prisma generate --schema prisma/schema.prisma
         working-directory: backend
 
+      # Partie backend : format, lint, migrations, tests, compilation et image Render.
       - name: Vérifier le formatage du backend
         run: npx prettier --check backend/src backend/tests backend/prisma/seed.ts backend/prisma.config.ts shared
 
@@ -80,3 +81,16 @@ jobs:
 
       - name: Construire l’image Render
         run: docker build --file backend/Dockerfile --tag demenag-backend:ci .
+
+      # Partie frontend : format, lint, types et build Vite pour Vercel.
+      - name: Vérifier le formatage du frontend
+        run: npx prettier --check frontend/src frontend/index.html shared
+
+      - name: Vérifier ESLint du frontend
+        run: npx eslint frontend shared --max-warnings 0
+
+      - name: Vérifier les types frontend
+        run: npm run typecheck -w frontend
+
+      - name: Construire le frontend comme sur Vercel
+        run: npm run build -w frontend

@@ -8,7 +8,7 @@
     "build": "prisma generate && tsc -p tsconfig.json",
     "typecheck": "prisma generate && tsc -p tsconfig.check.json",
     "start": "node dist/main.js",
-    "test": "node --import tsx --test --test-isolation=none tests/*.test.ts",
+    "test": "node --import tsx --test tests/*.test.ts",
     "db:migrate": "prisma migrate deploy",
     "admin:create": "node --import tsx scripts/create-admin.ts",
     "db:generate": "prisma generate",

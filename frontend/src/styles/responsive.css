@@ -529,6 +529,14 @@
   .calendar-booking {
     grid-column: 2;
   }
+  .daily-booking-row {
+    align-items: flex-start;
+    padding: 10px;
+    gap: 8px;
+  }
+  .daily-booking-row > span:last-child {
+    max-width: 42%;
+  }
   .revenue-table > div {
     grid-template-columns: 1.4fr 1fr 1fr 0.4fr;
     gap: 8px;
