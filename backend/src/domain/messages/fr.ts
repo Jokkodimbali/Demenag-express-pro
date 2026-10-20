@@ -38,6 +38,8 @@ export const messages = {
   origineDeLaRequeteRefusee: 'Origine de la requête refusée.',
   leCalculDuTrajetEstIndisponibleReessayezDans:
     'Le calcul du trajet est indisponible. Réessayez dans un instant.',
+  leServiceCartographiqueEstSurcharge:
+    'Le service cartographique est très sollicité. Réessayez dans un instant.',
   laRechercheDAdresseEstIndisponibleVousPouvez:
     'La recherche d’adresse est indisponible. Vous pouvez placer les points sur la carte.',
   accesAdministrateurRequis: 'Accès administrateur requis.',

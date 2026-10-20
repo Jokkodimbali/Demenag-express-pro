@@ -140,6 +140,7 @@ test('Un chauffeur ne voit que les réservations du véhicule qui lui est affect
   });
   const sameVehicleBooking = makeBooking('booking-1', 'vehicle-a', null);
   const otherVehicleBooking = makeBooking('booking-2', 'vehicle-b', driver.id);
+  let requestedVehicleId: string | undefined;
   const drivers: DriverRepository = {
     list: async () => [driver],
     find: async () => driver,
@@ -161,7 +162,12 @@ test('Un chauffeur ne voit que les réservations du véhicule qui lui est affect
     }),
   };
   const bookings: BookingRepository = {
-    list: async () => [sameVehicleBooking, otherVehicleBooking],
+    list: async (_userId, vehicleId) => {
+      requestedVehicleId = vehicleId;
+      return [sameVehicleBooking, otherVehicleBooking].filter(
+        (booking) => booking.vehicle.id === vehicleId,
+      );
+    },
     find: async () => sameVehicleBooking,
     create: async (value) => value,
     update: async (value) => value,
@@ -177,4 +183,5 @@ test('Un chauffeur ne voit que les réservations du véhicule qui lui est affect
   );
 
   assert.deepEqual(await service.bookings(actor), [sameVehicleBooking]);
+  assert.equal(requestedVehicleId, driver.vehicleId);
 });

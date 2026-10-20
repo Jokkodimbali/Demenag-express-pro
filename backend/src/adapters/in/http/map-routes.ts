@@ -6,7 +6,9 @@ import { messages } from '../../../domain/messages/fr.js';
 import type { Dependencies } from './dependencies.js';
 import { routeSchema } from './schemas.js';
 import { apiRoutes } from './routes.js';
-export function registerMapRoutes(app: Express, deps: Pick<Dependencies, 'moving'>) {
+type MapUseCases = Pick<Dependencies['moving'], 'route' | 'search' | 'reverse'>;
+
+export function registerMapRoutes(app: Express, deps: { moving: MapUseCases }) {
   app.use(
     apiRoutes.maps.base,
     rateLimit({

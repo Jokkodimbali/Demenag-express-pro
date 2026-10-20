@@ -20,6 +20,7 @@ const sections = [
   { to: routes.administrationFleet, label: messages.flotteEtChauffeurs, Icon: Truck },
   { to: routes.administrationSettings, label: messages.tarifsEtParametres, Icon: Settings2 },
   { to: routes.administrationUsers, label: messages.comptesEtAcces, Icon: UsersRound },
+  { to: routes.administrationClients, label: messages.clients, Icon: UsersRound },
   { to: routes.administrationVehicleReports, label: 'Contrôles véhicules', Icon: ClipboardCheck },
   { to: routes.administrationAnnouncements, label: 'Annonces chauffeurs', Icon: Megaphone },
 ];

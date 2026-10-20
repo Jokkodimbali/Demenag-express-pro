@@ -17,13 +17,21 @@ export function Admin() {
     setRetry,
     filter,
     setFilter,
+    dateFilter,
+    setDateFilter,
+    weekdayFilter,
+    setWeekdayFilter,
     query,
     setQuery,
     visible,
     stats,
   } = useAdministration();
   const [params] = useSearchParams();
-  const pagination = usePagination(visible, pageSizes.bookings, `${filter}:${query}`);
+  const pagination = usePagination(
+    visible,
+    pageSizes.bookings,
+    `${filter}:${query}:${dateFilter}:${weekdayFilter}`,
+  );
   return (
     <>
       <div className="section-heading">
@@ -79,6 +87,32 @@ export function Admin() {
               onChange={(e) => setQuery(e.target.value)}
               placeholder={messages.nomReferenceTelephone}
             />
+          </div>
+          <div className="booking-date-filters">
+            <div>
+              <label htmlFor="booking-date-filter">{messages.filtrerParDate}</label>
+              <input
+                id="booking-date-filter"
+                type="date"
+                value={dateFilter}
+                onChange={(event) => setDateFilter(event.target.value)}
+              />
+            </div>
+            <div>
+              <label htmlFor="booking-weekday-filter">{messages.filtrerParJour}</label>
+              <select
+                id="booking-weekday-filter"
+                value={weekdayFilter}
+                onChange={(event) => setWeekdayFilter(event.target.value)}
+              >
+                <option value="all">{messages.tousLesJours}</option>
+                {messages.joursSemaine.map((day, index) => (
+                  <option key={day} value={String(index + 1)}>
+                    {day}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
         {error && (

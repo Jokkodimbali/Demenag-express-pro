@@ -6,6 +6,7 @@ import { mapConfiguration } from '../config/maps';
 import type { Booking, Point } from '../domain/model';
 import { useApp } from '../application/context';
 import { errorMessage } from '../application/error-message';
+import { getCachedRoute } from '../application/services/route-cache';
 
 export function BookingRouteMap({
   booking,
@@ -105,8 +106,7 @@ export function BookingRouteMap({
       map.on('click', (event) => changePoint(selected, [event.latlng.lat, event.latlng.lng]));
     }
 
-    void api
-      .route(from, to)
+    void getCachedRoute(api, from, to)
       .then((route) => {
         if (!active) return;
         L.polyline(route.geometry, { color: '#1a73e8', weight: 6, opacity: 0.95 }).addTo(map);

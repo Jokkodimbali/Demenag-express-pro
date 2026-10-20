@@ -24,9 +24,7 @@ export const blankDraft = (catalogue?: Catalogue): Draft => ({
   to: null,
   route: null,
   date: '',
-  timeSlot: catalogue?.settings.enabledSlots[0]
-    ? `${String(catalogue.settings.enabledSlots[0].startHour).padStart(2, '0')}:00`
-    : '',
+  timeSlot: '',
   options: { labour: 0, desk: 0, wardrobe: 0, bed: 0 },
   notes: '',
   requestId: crypto.randomUUID(),

@@ -78,9 +78,7 @@ export class DriverService implements DriverUseCases {
   async bookings(actor: User) {
     const profile = await this.requireProfile(actor);
     if (!profile.vehicleId) return [];
-    return (await this.bookingsRepository.list()).filter(
-      (booking) => booking.vehicle.id === profile.vehicleId,
-    );
+    return this.bookingsRepository.list(undefined, profile.vehicleId);
   }
   private async requireProfile(actor: User) {
     requireActiveUser(actor);

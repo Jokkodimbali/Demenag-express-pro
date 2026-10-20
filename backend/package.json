@@ -10,6 +10,7 @@
     "start": "node dist/main.js",
     "test": "node --import tsx --test tests/*.test.ts",
     "db:migrate": "prisma migrate deploy",
+    "load:test:bookings": "node --import tsx scripts/load-test-bookings.ts",
     "admin:create": "node --import tsx scripts/create-admin.ts",
     "db:generate": "prisma generate",
     "db:seed": "node --import tsx prisma/seed.ts",

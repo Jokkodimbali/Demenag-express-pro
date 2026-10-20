@@ -4,54 +4,59 @@ import type { IntegrationContext } from './context.js';
 import { integrationHeader, integrationPassword } from './context.js';
 
 export async function registerScenarioUsers(context: IntegrationContext) {
-  const { db, clients, prefix, phone } = context;
-  const userIds: string[] = [];
+  const { db, clients, prefix, phone, testUserIds, testPhones } = context;
   for (const [agent, n] of [
     [clients.first, 0],
     [clients.second, 1],
     [clients.admin, 2],
   ] as const) {
+    const testPhone = phone(n);
+    testPhones.push('+221' + testPhone);
     const response = await agent
       .post('/api/auth/register')
       .set(integrationHeader)
       .send({
         name: prefix + ' ' + n,
-        phone: phone(n),
+        phone: testPhone,
         password: integrationPassword,
         role: 'admin',
       });
+    if (response.status === 201 && typeof response.body.id === 'string')
+      testUserIds.push(response.body.id);
     assert.equal(response.status, 201, JSON.stringify(response.body));
     assert.equal(response.body.role, 'client');
     assert.equal(response.body.passwordHash, undefined);
-    userIds.push(response.body.id);
     assert.match(response.headers['set-cookie'][0], /HttpOnly/);
   }
 
-  await db.utilisateur.updateMany({ where: { id: { in: userIds } }, data: { actif: true } });
+  await db.utilisateur.updateMany({ where: { id: { in: testUserIds } }, data: { actif: true } });
   await db.utilisateur.update({
-    where: { id: userIds[2] },
+    where: { id: testUserIds[2] },
     data: { role: 'administrateur' },
   });
+  const driverPhone = phone(3);
+  testPhones.push('+221' + driverPhone);
   const driver = await clients.admin
     .post('/api/admin/drivers')
     .set(integrationHeader)
     .send({
       name: prefix + ' Chauffeur',
-      phone: phone(3),
+      phone: driverPhone,
       photo: '/assets/test-driver.jpg',
       active: true,
       vehicleId: 'sprinter',
       password: integrationPassword,
     });
+  if (driver.status === 201 && typeof driver.body.userId === 'string')
+    testUserIds.push(driver.body.userId);
   assert.equal(driver.status, 201, JSON.stringify(driver.body));
-  userIds.push(driver.body.userId);
   context.driverId = driver.body.id;
   const login = await clients.driver
     .post('/api/auth/login')
     .set(integrationHeader)
-    .send({ phone: phone(3), password: integrationPassword });
+    .send({ phone: driverPhone, password: integrationPassword });
   assert.equal(login.status, 200, JSON.stringify(login.body));
-  return { userIds, driverId: driver.body.id };
+  return { userIds: testUserIds, driverId: driver.body.id };
 }
 
 export async function verifyAccountAdministration(context: IntegrationContext, userIds: string[]) {

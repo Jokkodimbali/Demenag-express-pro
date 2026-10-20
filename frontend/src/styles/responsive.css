@@ -552,7 +552,7 @@
     font-size: 14px;
   }
   .tariff-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .tariff-card img {
     max-width: 240px;

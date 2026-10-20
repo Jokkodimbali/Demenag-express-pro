@@ -30,9 +30,12 @@ export class PrismaBookings implements BookingRepository {
       })),
     };
   }
-  async list(userId?: string) {
+  async list(userId?: string, vehicleId?: string) {
     const rows = await this.db.reservation.findMany({
-      where: userId ? { utilisateurId: userId } : undefined,
+      where: {
+        ...(userId ? { utilisateurId: userId } : {}),
+        ...(vehicleId ? { vehiculeId: vehicleId } : {}),
+      },
       orderBy: { creeLe: 'desc' },
       take: userId ? 200 : undefined,
       include: { courses: { orderBy: { sequence: 'asc' } } },

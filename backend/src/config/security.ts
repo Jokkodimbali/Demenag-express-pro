@@ -9,6 +9,6 @@ export const security = {
   limits: {
     api: { windowMs: 60000, limit: 300 },
     authentication: { windowMs: 15 * 60000, limit: 30 },
-    maps: { windowMs: 60000, limit: 30 },
+    maps: { windowMs: 60000, limit: 120 },
   },
 } as const;
