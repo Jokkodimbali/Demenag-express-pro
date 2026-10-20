@@ -17,10 +17,7 @@ export function registerSecurityMiddleware(
     ? deps.origin
     : deps.origin.split(',').map((origin) => origin.trim());
   const origins = [...new Set(configuredOrigins)];
-  if (
-    !deps.production &&
-    origins.some((origin) => new URL(origin).hostname === 'localhost')
-  ) {
+  if (!deps.production && origins.some((origin) => new URL(origin).hostname === 'localhost')) {
     for (const origin of origins) {
       if (new URL(origin).hostname === 'localhost')
         origins.push(origin.replace('localhost', '127.0.0.1'));

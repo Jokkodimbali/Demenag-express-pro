@@ -56,11 +56,7 @@ export function useBookingForm() {
       )
         ? current.vehicleId
         : (catalogue.vehicles.find((v) => v.active !== false)?.id ?? current.vehicleId);
-      const timeSlot = /^([01]\d|2[0-3]):[0-5]\d$/.test(current.timeSlot)
-        ? current.timeSlot
-        : catalogue.settings.enabledSlots[0]
-          ? `${String(catalogue.settings.enabledSlots[0].startHour).padStart(2, '0')}:00`
-          : '';
+      const timeSlot = current.timeSlot;
       return vehicleId === current.vehicleId && timeSlot === current.timeSlot
         ? current
         : { ...current, vehicleId, timeSlot };

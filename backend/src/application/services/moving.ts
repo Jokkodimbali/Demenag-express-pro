@@ -1,4 +1,4 @@
-import { transition, validateDate, validateTime } from '../../domain/booking.js';
+import { transition, validateDate } from '../../domain/booking.js';
 import { AppError, requireValue } from '../../domain/errors.js';
 import { messages } from '../../domain/messages/fr.js';
 import type {
@@ -83,10 +83,7 @@ export class MovingService implements MovingUseCases {
         settings.bookingsEnabled !== false,
         messages.lesReservationsSontTemporairementFermees,
       );
-    if (input.date) {
-      validateDate(input.date, this.clock.now(), settings);
-      validateTime(input.timeSlot);
-    }
+    if (input.date) validateDate(input.date, this.clock.now(), settings);
     const id = this.ids.next();
     return this.bookings.create(
       {
@@ -317,10 +314,7 @@ export class MovingService implements MovingUseCases {
       'Le rendez-vous ne peut plus être modifié après la clôture ou la création du devis final.',
     );
     const { settings } = await this.catalogue.get();
-    if (date) {
-      validateDate(date, this.clock.now(), { ...settings, maxAdvanceDays: 730 });
-      validateTime(timeSlot);
-    }
+    if (date) validateDate(date, this.clock.now(), { ...settings, maxAdvanceDays: 730 });
     return this.bookings.update({ ...booking, date, timeSlot: date ? timeSlot : '' }, version);
   }
   async updateNotes(user: User, id: string, notes: string, version: number) {
