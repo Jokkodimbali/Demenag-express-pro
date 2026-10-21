@@ -19,6 +19,22 @@ export const optionsSchema = z.object({
   bed: z.number().int().min(0).max(20),
 });
 export const pointSchema = z.tuple([z.number().min(12).max(17), z.number().min(-18.5).max(-11)]);
+export const tollPointSchema = z
+  .object({
+    name: z.string().trim().min(2).max(100),
+    operator: z.string().trim().min(2).max(60),
+    heavyPrice: z.number().int().positive().max(10000000),
+    latitude: z.number().min(12).max(17).nullable(),
+    longitude: z.number().min(-18.5).max(-11).nullable(),
+  })
+  .refine((point) => (point.latitude === null) === (point.longitude === null), {
+    message: 'Renseignez les deux coordonnées du péage.',
+    path: ['latitude'],
+  });
+export const tollPointCreateSchema = tollPointSchema.refine(
+  (point) => point.latitude !== null && point.longitude !== null,
+  { message: 'Placez le point de péage sur la carte.', path: ['latitude'] },
+);
 export const routeSchema = z.object({ from: pointSchema, to: pointSchema });
 export const estimateSchema = z.object({
   vehicleId: z.string().min(1).max(30),

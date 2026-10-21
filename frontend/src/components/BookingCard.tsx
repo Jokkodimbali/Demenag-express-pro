@@ -9,12 +9,14 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useBookingCard } from '../application/controllers/useBookingCard';
 import { ConfirmationDialog } from './ConfirmationDialog';
 import { Modal } from './Modal';
 import { DriverCourseActions } from './DriverCourseActions';
 import { BookingRouteMap } from './BookingRouteMap';
+import { TollRateSelector } from './TollRateSelector';
+import { quotedServiceOptions } from '../application/services/quote-service-options';
 import { messages } from '../content/fr';
 import { dateLabel, money, statuses } from '../domain/format';
 import type { Booking } from '../domain/model';
@@ -24,6 +26,7 @@ export function BookingCard({
   admin = false,
   driverMode = false,
   editInitially = false,
+  initialTollLines,
   onDeleted,
 }: {
   booking: Booking;
@@ -31,6 +34,7 @@ export function BookingCard({
   admin?: boolean;
   driverMode?: boolean;
   editInitially?: boolean;
+  initialTollLines?: { id: string; label: string; quantity: number; unitPrice: number }[];
   onDeleted?: () => void;
 }) {
   const {
@@ -69,6 +73,9 @@ export function BookingCard({
     saveBookingNotes,
   } = useBookingCard({ booking: b, onChange, admin, editInitially, onDeleted });
   const trips = b.trips ?? [];
+  const displayedQuote = finalQuote ?? last;
+  const displayedPrice = displayedQuote?.price ?? b.estimate;
+  const displayedOptions = quotedServiceOptions(b, displayedQuote);
   const incompleteTrips = trips.filter((trip) => !trip.finishedAt || !trip.unloadingPhotos?.length);
   const canCloseBooking =
     b.status === 'in_progress' &&
@@ -83,6 +90,16 @@ export function BookingCard({
   );
   const [editingNotes, setEditingNotes] = useState(false);
   const [bookingNotes, setBookingNotes] = useState(b.notes);
+
+  useEffect(() => {
+    if (initialTollLines?.length) {
+      setExtraLines((lines) => {
+        const existingLabels = new Set(lines.map((line) => line.label));
+        const newLines = initialTollLines.filter((line) => !existingLabels.has(line.label));
+        return newLines.length ? [...lines, ...newLines] : lines;
+      });
+    }
+  }, [initialTollLines, setExtraLines]);
 
   return (
     <article className="booking-card panel">
@@ -154,8 +171,8 @@ export function BookingCard({
           )}
         </div>
         <div className="booking-amount">
-          <span>{last ? 'Dernier devis' : 'Estimation'}</span>
-          <strong>{money(last?.price.total ?? (last ? null : b.estimate.total))}</strong>
+          <span>{displayedQuote ? 'Dernier devis' : 'Estimation'}</span>
+          <strong>{money(displayedPrice.total)}</strong>
         </div>
       </div>
       {(admin || driverMode) && (
@@ -204,16 +221,58 @@ export function BookingCard({
           </div>
           <div>
             <dt>{messages.manUvres}</dt>
-            <dd>{b.options.labour}</dd>
+            <dd>{displayedOptions.labour}</dd>
           </div>
           <div>
-            <dt>{messages.montageDemontage}</dt>
-            <dd>
-              {b.options.desk + b.options.wardrobe + b.options.bed}
-              {messages.meubleS}
-            </dd>
+            <dt>{messages.montageDemontageDeBureau}</dt>
+            <dd>{displayedOptions.desk}</dd>
+          </div>
+          <div>
+            <dt>{messages.montageDemontageDArmoire}</dt>
+            <dd>{displayedOptions.wardrobe}</dd>
+          </div>
+          <div>
+            <dt>{messages.montageDemontageDeLit}</dt>
+            <dd>{displayedOptions.bed}</dd>
           </div>
         </dl>
+        <div className="booking-price-breakdown">
+          <h4>{displayedQuote ? 'Détail du devis' : 'Détail de l’estimation'}</h4>
+          <div className="booking-price-table-wrap">
+            <table className="booking-price-table">
+              <thead>
+                <tr>
+                  <th>Prestation</th>
+                  <th>Qté</th>
+                  <th>Prix unitaire</th>
+                  <th>Montant</th>
+                </tr>
+              </thead>
+              <tbody>
+                {displayedPrice.lines.map((line, index) => (
+                  <tr key={`${line.label}-${index}`}>
+                    <td>{line.label}</td>
+                    <td>{line.quantity}</td>
+                    <td>{money(line.unitPrice)}</td>
+                    <td>{money(line.total)}</td>
+                  </tr>
+                ))}
+                {displayedPrice.discount > 0 && (
+                  <tr>
+                    <td colSpan={3}>Remise</td>
+                    <td>−{money(displayedPrice.discount)}</td>
+                  </tr>
+                )}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th colSpan={3}>Total</th>
+                  <th>{money(displayedPrice.total)}</th>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
       </div>
       {admin && (
         <section className="booking-precision">
@@ -273,7 +332,7 @@ export function BookingCard({
         <button
           className="button secondary small"
           disabled={busy}
-          onClick={() => pdf(finalQuote ?? last)}
+          onClick={() => pdf(displayedQuote)}
         >
           <Download size={16} />
           {messages.telechargerLePdf}
@@ -674,6 +733,16 @@ export function BookingCard({
                 );
               })}
             </div>
+            <TollRateSelector
+              lines={extraLines}
+              onToggle={(line, selected) =>
+                setExtraLines((current) =>
+                  selected
+                    ? [...current.filter((existing) => existing.id !== line.id), line]
+                    : current.filter((existing) => existing.id !== line.id),
+                )
+              }
+            />
             <div className="quote-live-total" aria-live="polite">
               <span>{messages.montantCalculeDuDevis}</span>
               <strong>

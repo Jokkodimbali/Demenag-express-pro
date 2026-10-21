@@ -7,6 +7,7 @@ import type { Booking, Point } from '../domain/model';
 import { useApp } from '../application/context';
 import { errorMessage } from '../application/error-message';
 import { getCachedRoute } from '../application/services/route-cache';
+import { addTollMarkers } from './maps/toll-markers';
 
 export function BookingRouteMap({
   booking,
@@ -17,7 +18,7 @@ export function BookingRouteMap({
   admin?: boolean;
   onChange?: (booking: Booking) => void;
 }) {
-  const { api } = useApp();
+  const { api, tollPoints } = useApp();
   const host = useRef<HTMLDivElement>(null);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(false);
@@ -78,6 +79,7 @@ export function BookingRouteMap({
       attribution: mapConfiguration.attribution,
       maxZoom: 19,
     }).addTo(map);
+    addTollMarkers(map, tollPoints);
     const markerIcon = (label: string, side: string) =>
       L.divIcon({
         className: 'booking-route-pin-host',
@@ -129,7 +131,7 @@ export function BookingRouteMap({
       resize.disconnect();
       map.remove();
     };
-  }, [admin, api, changePoint, editing, from, fromKey, selected, to, toKey]);
+  }, [admin, api, changePoint, editing, from, fromKey, selected, to, toKey, tollPoints]);
 
   useEffect(() => {
     if (!editing) {

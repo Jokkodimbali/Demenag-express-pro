@@ -1,5 +1,5 @@
 import { ClipboardList, RefreshCw, Search } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { useAdministration } from '../application/controllers/useAdministration';
 import { usePagination } from '../application/usePagination';
 import { BookingCard } from '../components/BookingCard';
@@ -27,6 +27,10 @@ export function Admin() {
     stats,
   } = useAdministration();
   const [params] = useSearchParams();
+  const location = useLocation();
+  const quoteHandoff = location.state as {
+    initialTollLines?: { id: string; label: string; quantity: number; unitPrice: number }[];
+  } | null;
   const pagination = usePagination(
     visible,
     pageSizes.bookings,
@@ -137,6 +141,9 @@ export function Admin() {
                 key={b.id}
                 admin
                 editInitially={params.get('detail') === b.id && params.get('edit') === 'quote'}
+                initialTollLines={
+                  params.get('detail') === b.id ? quoteHandoff?.initialTollLines : undefined
+                }
                 booking={b}
                 onChange={(next) =>
                   setBookings((rows) => rows.map((r) => (r.id === next.id ? next : r)))

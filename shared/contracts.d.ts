@@ -59,6 +59,15 @@ export type Settings = BookingRules & {
   invoiceSignature: string | null;
 };
 export type Catalogue = { vehicles: Vehicle[]; settings: Settings };
+export type TollPoint = {
+  id: string;
+  name: string;
+  operator: string;
+  heavyPrice: number;
+  latitude: number | null;
+  longitude: number | null;
+};
+export type TollPointInput = Omit<TollPoint, 'id'>;
 export type Options = { labour: number; desk: number; wardrobe: number; bed: number };
 export type PriceLine = { label: string; quantity: number; unitPrice: number; total: number };
 export type Price = {

@@ -24,6 +24,9 @@ const AdminSettings = lazy(() =>
 const AdminPricing = lazy(() =>
   import('../pages/AdminPricing').then((m) => ({ default: m.AdminPricing })),
 );
+const AdminTollPoints = lazy(() =>
+  import('../pages/AdminTollPoints').then((m) => ({ default: m.AdminTollPoints })),
+);
 const AdminBookingRules = lazy(() =>
   import('../pages/AdminBookingRules').then((m) => ({ default: m.AdminBookingRules })),
 );
@@ -112,6 +115,7 @@ export function AppRoutes() {
             <Route path="parametres" element={<AdminSettings />}>
               <Route index element={<Navigate to="tarifs" replace />} />
               <Route path="tarifs" element={<AdminPricing />} />
+              <Route path="peages" element={<AdminTollPoints />} />
               <Route path="reservations" element={<AdminBookingRules />} />
               <Route path="facturation" element={<AdminInvoicing />} />
             </Route>

@@ -24,7 +24,7 @@ export async function downloadQuote(
 ): Promise<Blob> {
   const { jsPDF } = await import('jspdf');
   const finalQuote = booking.quotes.filter((item) => item.kind === 'final').at(-1);
-  const documentQuote = quote?.kind === 'final' ? quote : (finalQuote ?? quote);
+  const documentQuote = quote ?? finalQuote;
   const doc = new jsPDF({ format: 'a4', unit: 'mm' });
   const price = documentQuote?.price || booking.estimate;
   const pageWidth = doc.internal.pageSize.getWidth();

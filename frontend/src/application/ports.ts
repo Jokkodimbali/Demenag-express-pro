@@ -10,6 +10,8 @@ import type {
   QuoteInput,
   RouteTicket,
   Settings,
+  TollPoint,
+  TollPointInput,
   User,
   Driver,
   VehicleInspectionPhotos,
@@ -26,6 +28,12 @@ export interface AdminProfileRepository {
 export interface CatalogueRepository {
   catalogue(): Promise<Catalogue>;
   updateCatalogue(value: Catalogue): Promise<Catalogue>;
+}
+export interface TollPointRepository {
+  tollPoints(): Promise<TollPoint[]>;
+  createTollPoint(input: TollPointInput): Promise<TollPoint>;
+  updateTollPoint(id: string, input: TollPointInput): Promise<TollPoint>;
+  deleteTollPoint(id: string): Promise<void>;
 }
 export interface AuthRepository {
   onSessionExpired?(listener: () => void): () => void;
@@ -131,6 +139,7 @@ export interface ApplicationApi
     UserRepository,
     AdminProfileRepository,
     CatalogueRepository,
+    TollPointRepository,
     AuthRepository,
     BookingRepository,
     DriverRepository,

@@ -3,6 +3,7 @@ export const httpRoutes = {
   adminProfile: '/admin/profile',
   drivers: '/admin/drivers',
   catalogue: '/catalogue',
+  tollPoints: '/toll-points',
   authentication: {
     current: '/auth/me',
     login: '/auth/login',

@@ -6,6 +6,8 @@ import type {
   RouteTicket,
   Role,
   Settings,
+  TollPoint,
+  TollPointInput,
   User,
   UserCredentials,
   Vehicle,
@@ -51,6 +53,10 @@ export interface SessionRepository {
 export interface CatalogueRepository {
   get(): Promise<Catalogue>;
   update(vehicles: Vehicle[], settings: Settings): Promise<void>;
+  listTollPoints(): Promise<TollPoint[]>;
+  createTollPoint(input: TollPointInput): Promise<TollPoint>;
+  updateTollPoint(id: string, input: TollPointInput): Promise<TollPoint>;
+  deleteTollPoint(id: string): Promise<void>;
 }
 export interface BookingRepository {
   list(userId?: string, vehicleId?: string): Promise<Booking[]>;

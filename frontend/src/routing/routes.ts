@@ -10,6 +10,7 @@ export const routes = {
   administrationFleet: '/admin/flotte',
   administrationSettings: '/admin/parametres',
   administrationPricing: '/admin/parametres/tarifs',
+  administrationTollPoints: '/admin/parametres/peages',
   administrationBookingRules: '/admin/parametres/reservations',
   administrationInvoicing: '/admin/parametres/facturation',
   administrationUsers: '/admin/comptes',

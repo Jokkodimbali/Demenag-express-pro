@@ -457,7 +457,7 @@ div.driver-course-complete p {
 }
 .booking-detail dl {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 8px;
 }
 .booking-detail dt {
@@ -467,6 +467,36 @@ div.driver-course-complete p {
 .booking-detail dd {
   margin: 3px 0 0;
   font-weight: 700;
+}
+.booking-price-breakdown {
+  margin-top: 14px;
+}
+.booking-price-breakdown h4 {
+  margin: 0 0 7px;
+  font-size: 12px;
+}
+.booking-price-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.booking-price-table {
+  width: 100%;
+  min-width: 420px;
+  border-collapse: collapse;
+  text-align: left;
+}
+.booking-price-table th,
+.booking-price-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+}
+.booking-price-table th:not(:first-child),
+.booking-price-table td:not(:first-child) {
+  text-align: right;
+  white-space: nowrap;
+}
+.booking-price-table tfoot th {
+  color: var(--yellow);
 }
 .quote-form {
   margin-top: 20px;
@@ -600,6 +630,136 @@ div.driver-course-complete p {
 }
 .quote-extra-lines .field-pair input:first-child {
   grid-column: 1 / -1;
+}
+.toll-rate-selector {
+  display: block;
+  margin: 16px 0;
+  border: 1px solid var(--line, #dedede);
+  border-radius: 12px;
+  background: var(--panel-soft, #25282b);
+  color: var(--text, #f4f5f6);
+}
+.toll-rate-selector > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 54px;
+  padding: 10px 14px;
+  cursor: pointer;
+  list-style: none;
+}
+.toll-rate-selector > summary::-webkit-details-marker {
+  display: none;
+}
+.toll-rate-selector > summary::after {
+  content: '⌄';
+  color: var(--yellow, #f6d73c);
+  font-size: 1.2rem;
+}
+.toll-rate-selector[open] > summary::after {
+  content: '⌃';
+}
+.toll-rate-selector > summary > span:first-child {
+  display: grid;
+  gap: 3px;
+}
+.toll-rate-selector > summary small,
+.toll-dropdown-hint {
+  color: var(--muted, #aeb4bb);
+  font-size: 0.8rem;
+}
+.toll-dropdown-hint {
+  margin-left: auto;
+}
+.toll-rate-content {
+  display: grid;
+  gap: 10px;
+  padding: 0 14px 14px;
+  border-top: 1px solid var(--line, #dedede);
+}
+.booking-toll-options {
+  display: block;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line, #dedede);
+}
+.booking-toll-options .toll-rate-selector {
+  margin: 4px 0 0;
+}
+.toll-rate-selector .section-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.toll-rate-selector h4,
+.toll-rate-selector p {
+  margin: 0;
+}
+.toll-rate-selector .section-heading a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--accent, #805d00);
+  font-size: 0.8rem;
+}
+.toll-rate-list {
+  display: grid;
+  gap: 6px;
+}
+.toll-rate-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line, #dedede);
+  font-size: 0.85rem;
+}
+.toll-rate-station {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+.toll-rate-station input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--yellow, #f6d73c);
+}
+.toll-rate-price {
+  white-space: nowrap;
+}
+.toll-rate-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.toll-rate-controls input {
+  width: 68px;
+  min-height: 34px;
+  padding: 5px 8px;
+  border: 1px solid var(--line, #3b4046);
+  border-radius: 7px;
+  background: var(--panel-soft, #25282b);
+  color: var(--text, #f4f5f6);
+}
+.toll-rate-controls select {
+  width: 125px;
+  min-height: 34px;
+  padding: 5px 7px;
+  border: 1px solid var(--line, #3b4046);
+  border-radius: 7px;
+  background: var(--panel-soft, #25282b);
+  color: var(--text, #f4f5f6);
+}
+.toll-rate-row strong small {
+  color: var(--muted, #6b7280);
+  font-weight: 400;
 }
 .quote-form .quote-live-total,
 .quote-form > .caption,
@@ -1016,6 +1176,96 @@ div.driver-course-complete p {
 }
 .settings-tabs {
   margin-top: 0;
+}
+.toll-admin-layout {
+  display: grid;
+  gap: 20px;
+}
+.toll-admin-form-panel,
+.toll-admin-list-panel {
+  min-width: 0;
+}
+.toll-admin-form {
+  display: grid;
+  gap: 14px;
+}
+.toll-admin-form label {
+  display: grid;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 13px;
+}
+.toll-admin-form input {
+  width: 100%;
+  min-width: 0;
+}
+.toll-admin-coordinate-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.toll-editor-map {
+  height: min(55vh, 420px);
+  min-height: 250px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.toll-map-icon-host {
+  background: transparent;
+  border: 0;
+}
+.toll-map-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 2px solid #222;
+  border-radius: 50%;
+  background: #f6d73c;
+  color: #222;
+  font-size: 20px;
+  font-weight: 900;
+  box-shadow: 0 2px 8px #0008;
+}
+.toll-admin-table-wrap {
+  overflow-x: auto;
+}
+.toll-admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+.toll-admin-table th,
+.toll-admin-table td {
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+.toll-admin-table th {
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 12px;
+}
+.toll-admin-table td {
+  font-size: 13px;
+}
+.toll-admin-actions,
+.toll-location {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.toll-admin-actions {
+  flex-wrap: wrap;
+}
+@media (max-width: 600px) {
+  .toll-admin-coordinate-fields {
+    grid-template-columns: 1fr;
+  }
+  .toll-admin-table {
+    min-width: 700px;
+  }
 }
 .text-link {
   color: var(--yellow);

@@ -2,6 +2,7 @@ export const apiRoutes = {
   health: '/api/health',
   ready: '/api/ready',
   catalogue: '/api/catalogue',
+  tollPoints: '/api/toll-points',
   auth: {
     register: '/api/auth/register',
     login: '/api/auth/login',

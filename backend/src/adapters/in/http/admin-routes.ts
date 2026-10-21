@@ -7,6 +7,8 @@ import {
   catalogueSchema,
   createDriverSchema,
   driverSchema,
+  tollPointCreateSchema,
+  tollPointSchema,
 } from './schemas.js';
 import { apiRoutes } from './routes.js';
 import { accountSchema, createAccountSchema, userIdSchema } from './validation/administration.js';
@@ -46,6 +48,24 @@ export function registerAdminRoutes(
     const p = catalogueSchema.parse(req.body);
     await deps.catalogue.update(getActor(res), p.vehicles, p.settings);
     res.json(await deps.catalogue.get());
+  });
+  app.post(apiRoutes.tollPoints, authenticate, admin, async (req, res) =>
+    res.status(201).json(
+      await deps.catalogue.createTollPoint(getActor(res), tollPointCreateSchema.parse(req.body)),
+    ),
+  );
+  app.put(`${apiRoutes.tollPoints}/:id`, authenticate, admin, async (req, res) =>
+    res.json(
+      await deps.catalogue.updateTollPoint(
+        getActor(res),
+        userIdSchema.parse(req.params.id),
+        tollPointSchema.parse(req.body),
+      ),
+    ),
+  );
+  app.delete(`${apiRoutes.tollPoints}/:id`, authenticate, admin, async (req, res) => {
+    await deps.catalogue.deleteTollPoint(getActor(res), userIdSchema.parse(req.params.id));
+    res.status(204).end();
   });
   app.get(apiRoutes.administration.drivers, authenticate, admin, async (_req, res) =>
     res.json(await deps.drivers.list(getActor(res))),

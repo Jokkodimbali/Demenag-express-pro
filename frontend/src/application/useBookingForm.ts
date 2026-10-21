@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { messages } from '../content/fr';
 import { tierLabels } from '../domain/format';
 import type { Booking, Options, Price } from '../domain/model';
@@ -7,11 +7,12 @@ import { normalizedClientPhone } from './services/client-summary';
 import { blankDraft, useApp } from './context';
 import { errorMessage } from './error-message';
 import { routes } from '../routing/routes';
+type TollExtraLine = { id: string; label: string; quantity: number; unitPrice: number };
 export function useBookingForm() {
   const { catalogue, loading, error, reload, api, user, draft, setDraft } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
-  const [params] = useSearchParams();
+  const [tollLines, setTollLines] = useState<TollExtraLine[]>([]);
   const [price, setPrice] = useState<Price | null>(null),
     [estimating, setEstimating] = useState(false),
     [estimateError, setEstimateError] = useState(''),
@@ -29,7 +30,7 @@ export function useBookingForm() {
   const lookupPhone = useRef('');
   const tiers = tierLabels(catalogue?.settings.distanceBounds);
   const selected = catalogue?.vehicles.find((v) => v.id === draft.vehicleId);
-  const administrativeQuote = user?.role === 'admin' && params.get('newQuote') === '1';
+  const administrativeQuote = user?.role === 'admin';
   useEffect(() => {
     if (administrativeQuote) setDraft(blankDraft(catalogue ?? undefined));
   }, [administrativeQuote, catalogue, setDraft]);
@@ -133,6 +134,7 @@ export function useBookingForm() {
       if (administrativeQuote) {
         navigate(
           `${routes.administrationBookings}?q=${booking.reference}&detail=${booking.id}&edit=quote`,
+          { state: { initialTollLines: tollLines } },
         );
         return;
       }
@@ -160,6 +162,22 @@ export function useBookingForm() {
     ['wardrobe', messages.montageDemontageDArmoire, messages.demontageEtRemontageSurPlace],
     ['bed', messages.montageDemontageDeLit, messages.litDeuxPlaces],
   ];
+  const tollTotal = tollLines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
+  const priceWithTolls = price
+    ? {
+        ...price,
+        lines: [
+          ...price.lines,
+          ...tollLines.map((line) => ({
+            label: line.label,
+            quantity: line.quantity,
+            unitPrice: line.unitPrice,
+            total: line.quantity * line.unitPrice,
+          })),
+        ],
+        total: price.total === null ? null : price.total + tollTotal,
+      }
+    : null;
   return {
     catalogue,
     loading,
@@ -168,7 +186,7 @@ export function useBookingForm() {
     user,
     draft,
     setDraft,
-    price,
+    price: priceWithTolls,
     estimating,
     estimateError,
     submitError,
@@ -181,6 +199,8 @@ export function useBookingForm() {
     option,
     extras,
     administrativeQuote,
+    tollLines,
+    setTollLines,
     clientRecognition,
     recognizingClient,
     recognizeClient,

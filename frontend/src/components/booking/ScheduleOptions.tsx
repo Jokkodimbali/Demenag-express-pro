@@ -3,6 +3,7 @@ import type { BookingViewState } from '../../application/contracts/booking-view'
 import { messages } from '../../content/fr';
 import { money, today } from '../../domain/format';
 import type { Catalogue } from '../../domain/model';
+import { TollRateSelector } from '../TollRateSelector';
 
 export function ScheduleOptions({
   catalogue,
@@ -10,8 +11,16 @@ export function ScheduleOptions({
   setDraft,
   extras,
   option,
+  administrativeQuote = false,
+  tollLines = [],
+  setTollLines,
 }: Pick<BookingViewState, 'catalogue' | 'draft' | 'setDraft' | 'extras' | 'option'> & {
   catalogue: Catalogue;
+  administrativeQuote?: boolean;
+  tollLines?: { id: string; label: string; quantity: number; unitPrice: number }[];
+  setTollLines?: React.Dispatch<
+    React.SetStateAction<{ id: string; label: string; quantity: number; unitPrice: number }[]>
+  >;
 }) {
   return (
     <section className="panel">
@@ -87,6 +96,20 @@ export function ScheduleOptions({
           </div>
         ))}
       </div>
+      {administrativeQuote && setTollLines && (
+        <div className="booking-toll-options">
+          <TollRateSelector
+            lines={tollLines}
+            onToggle={(line, selected) =>
+              setTollLines((current) =>
+                selected
+                  ? [...current.filter((existing) => existing.id !== line.id), line]
+                  : current.filter((existing) => existing.id !== line.id),
+              )
+            }
+          />
+        </div>
+      )}
     </section>
   );
 }
