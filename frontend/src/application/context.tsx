@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import type { Catalogue, User } from '../domain/model';
+import type { Catalogue, TollPoint, User } from '../domain/model';
 import { blankDraft, type Draft } from './booking-draft';
 import { errorMessage } from './error-message';
 import type { ApplicationApi, QuoteExporter } from './ports';
@@ -13,6 +13,8 @@ type AppContextValue = {
   authLoading: boolean;
   catalogue: Catalogue | null;
   setCatalogue: (value: Catalogue) => void;
+  tollPoints: TollPoint[];
+  setTollPoints: React.Dispatch<React.SetStateAction<TollPoint[]>>;
   loading: boolean;
   error: string;
   reload: () => void;
@@ -36,13 +38,14 @@ export function AppProvider({
     [error, setError] = useState(''),
     [retry, setRetry] = useState(0);
   const [draft, setDraft] = useState(blankDraft);
+  const [tollPoints, setTollPoints] = useState<TollPoint[]>([]);
   useEffect(() => api.onSessionExpired?.(() => setUser(null)), [api]);
   useEffect(() => {
     let active = true;
     setLoading(true);
     setError('');
-    Promise.all([api.catalogue(), api.me()])
-      .then(([c, u]) => {
+    Promise.all([api.catalogue(), api.me(), api.tollPoints()])
+      .then(([c, u, points]) => {
         if (active) {
           setCatalogue({
             ...c,
@@ -52,6 +55,7 @@ export function AppProvider({
             },
           });
           setUser(u);
+          setTollPoints(points);
           setDraft((draft) => ({
             ...draft,
             vehicleId: draft.vehicleId || blankDraft(c).vehicleId,
@@ -81,6 +85,8 @@ export function AppProvider({
         authLoading,
         catalogue,
         setCatalogue,
+        tollPoints,
+        setTollPoints,
         loading,
         error,
         reload: () => setRetry((n) => n + 1),

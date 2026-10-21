@@ -13,6 +13,7 @@ export function AdminSettings() {
       </div>
       <nav className="tabs settings-tabs" aria-label={messages.tarifsEtParametres}>
         <NavLink to={routes.administrationPricing}>{messages.tarification}</NavLink>
+        <NavLink to={routes.administrationTollPoints}>Péages</NavLink>
         <NavLink to={routes.administrationBookingRules}>{messages.regles}</NavLink>
         <NavLink to={routes.administrationInvoicing}>{messages.facturation}</NavLink>
       </nav>

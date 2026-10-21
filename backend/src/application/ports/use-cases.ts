@@ -10,6 +10,8 @@ import type {
   QuoteInput,
   RouteTicket,
   Settings,
+  TollPoint,
+  TollPointInput,
   User,
   Vehicle,
 } from '../../domain/model.js';
@@ -56,6 +58,10 @@ export interface AdministrationUseCases {
 export interface CatalogueUseCases {
   get(): Promise<Catalogue>;
   update(actor: User, vehicles: Vehicle[], settings: Settings): Promise<void>;
+  listTollPoints(): Promise<TollPoint[]>;
+  createTollPoint(actor: User, input: TollPointInput): Promise<TollPoint>;
+  updateTollPoint(actor: User, id: string, input: TollPointInput): Promise<TollPoint>;
+  deleteTollPoint(actor: User, id: string): Promise<void>;
 }
 export type DriverCreation = {
   name: string;

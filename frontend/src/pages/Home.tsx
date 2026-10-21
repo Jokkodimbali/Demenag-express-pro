@@ -147,6 +147,8 @@ export function Home() {
     option,
     extras,
     administrativeQuote,
+    tollLines,
+    setTollLines,
     clientRecognition,
     recognizingClient,
     recognizeClient,
@@ -255,6 +257,9 @@ export function Home() {
                   setDraft={setDraft}
                   extras={extras}
                   option={option}
+                  administrativeQuote={administrativeQuote}
+                  tollLines={tollLines}
+                  setTollLines={setTollLines}
                 />
                 <CustomerDetails
                   draft={draft}
@@ -280,6 +285,7 @@ export function Home() {
                 submitError={submitError}
                 submitting={submitting}
                 user={user}
+                selectedTolls={tollLines}
                 allowWhenBookingsClosed={administrativeQuote}
               />
             </form>

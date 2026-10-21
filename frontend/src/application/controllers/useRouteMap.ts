@@ -2,6 +2,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { mapConfiguration } from '../../config/maps';
+import { addTollMarkers } from '../../components/maps/toll-markers';
 import { messages } from '../../content/fr';
 import type { Point } from '../../domain/model';
 import { useApp } from '../context';
@@ -15,7 +16,7 @@ const pin = (side: Side) =>
     iconAnchor: [16, 38],
   });
 export function useRouteMap() {
-  const { api, draft, setDraft } = useApp();
+  const { api, draft, setDraft, tollPoints } = useApp();
   const [active, setActive] = useState<Side>('from'),
     [full, setFull] = useState(false),
     [error, setError] = useState(''),
@@ -29,6 +30,7 @@ export function useRouteMap() {
     map = useRef<L.Map | null>(null),
     markers = useRef<Partial<Record<Side, L.Marker>>>({}),
     line = useRef<L.Polyline | null>(null);
+  const tollLayer = useRef<L.LayerGroup | null>(null);
   const activeRef = useRef(active);
   activeRef.current = active;
   const routeRequest = useRef(0),
@@ -105,10 +107,20 @@ export function useRouteMap() {
       map.current = null;
       markers.current = {};
       line.current = null;
+      tollLayer.current = null;
       routeCounter.current++;
       searchCounter.current++;
     };
   }, []);
+  useEffect(() => {
+    if (!map.current) return;
+    tollLayer.current?.remove();
+    tollLayer.current = addTollMarkers(map.current, tollPoints);
+    return () => {
+      tollLayer.current?.remove();
+      tollLayer.current = null;
+    };
+  }, [tollPoints]);
   useEffect(() => {
     if (!map.current) return;
     for (const side of ['from', 'to'] as const) {

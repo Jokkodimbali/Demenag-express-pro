@@ -610,6 +610,27 @@
     max-width: 62px;
   }
 }
+@media (max-width: 560px) {
+  .toll-rate-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px 8px;
+  }
+  .toll-rate-station {
+    grid-column: 1 / -1;
+  }
+  .toll-rate-price {
+    font-size: 0.75rem;
+  }
+  .toll-rate-controls {
+    gap: 5px;
+  }
+  .toll-rate-controls input {
+    width: 58px;
+  }
+  .toll-rate-controls select {
+    width: 112px;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

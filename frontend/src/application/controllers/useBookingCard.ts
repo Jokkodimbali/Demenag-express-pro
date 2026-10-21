@@ -7,6 +7,7 @@ import { quoteFromForm } from '../validation/forms';
 import { quoteNotificationUrl } from '../services/quote-notification';
 import { useMemo } from 'react';
 import { quoteTotal } from '../services/quote-total';
+import { quotedServiceOptions } from '../services/quote-service-options';
 type ExtraLine = { id: string; label: string; quantity: number; unitPrice: number };
 export function useBookingCard({
   booking: b,
@@ -37,7 +38,7 @@ export function useBookingCard({
     customPrice:
       last?.price.lines.find((line) => line.label.includes(b.vehicle.name))?.unitPrice ?? null,
     discount: last?.price.discount ?? 0,
-    options: quoteOptionsFromLast(b.options, last),
+    options: quotedServiceOptions(b, last),
   }));
   const quoteSettings = b.pricingSettings ?? catalogue?.settings;
   const quotePreviewTotal = useMemo(
@@ -51,7 +52,7 @@ export function useBookingCard({
       customPrice:
         last?.price.lines.find((line) => line.label.includes(b.vehicle.name))?.unitPrice ?? null,
       discount: last?.price.discount ?? 0,
-      options: quoteOptionsFromLast(b.options, last),
+      options: quotedServiceOptions(b, last),
     });
     setExtraLines(extrasFromLast(b, last));
     setQuoteNotes(last?.notes || b.notes || '');
@@ -249,23 +250,4 @@ function extrasFromLast(booking: Booking, quote: Quote | undefined): ExtraLine[]
       quantity: line.quantity,
       unitPrice: line.unitPrice,
     }));
-}
-
-function quoteOptionsFromLast(
-  defaults: Booking['options'],
-  quote: Quote | undefined,
-): Booking['options'] {
-  if (quote?.options) return quote.options;
-  const lines = quote?.price.lines;
-  if (!lines) return defaults;
-  const optionLines = lines.filter(
-    (line) => line.label.startsWith('Menuisier ·') || line.label === 'Manœuvre',
-  );
-  if (!optionLines.length) return defaults;
-  return {
-    labour: optionLines.find((line) => line.label === 'Manœuvre')?.quantity ?? 0,
-    desk: optionLines.find((line) => line.label === 'Menuisier · bureau')?.quantity ?? 0,
-    wardrobe: optionLines.find((line) => line.label === 'Menuisier · armoire')?.quantity ?? 0,
-    bed: optionLines.find((line) => line.label === 'Menuisier · lit')?.quantity ?? 0,
-  };
 }

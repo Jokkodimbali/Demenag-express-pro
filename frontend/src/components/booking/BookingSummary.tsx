@@ -15,6 +15,7 @@ export function BookingSummary({
   submitError,
   submitting,
   user,
+  selectedTolls = [],
   allowWhenBookingsClosed = false,
 }: Pick<
   BookingViewState,
@@ -28,7 +29,12 @@ export function BookingSummary({
   | 'submitError'
   | 'submitting'
   | 'user'
-> & { catalogue: Catalogue; selected: Vehicle; allowWhenBookingsClosed?: boolean }) {
+> & {
+  catalogue: Catalogue;
+  selected: Vehicle;
+  selectedTolls?: { label: string; quantity: number; unitPrice: number }[];
+  allowWhenBookingsClosed?: boolean;
+}) {
   return (
     <aside className="summary">
       <div className="summary-top">
@@ -76,6 +82,16 @@ export function BookingSummary({
             <strong>{money(line.total)}</strong>
           </div>
         ))}
+        {!price &&
+          selectedTolls.map((line) => (
+            <div key={line.label}>
+              <span>
+                {line.label}
+                {line.quantity > 1 ? messages.quantityMultiplier(line.quantity) : ''}
+              </span>
+              <strong>{money(line.quantity * line.unitPrice)}</strong>
+            </div>
+          ))}
       </div>
       <div className="summary-total">
         <span>{messages.estimationProvisoire}</span>
@@ -106,9 +122,11 @@ export function BookingSummary({
       >
         {submitting
           ? messages.enregistrement
-          : user
-            ? 'Envoyer ma demande'
-            : messages.meConnecterEtReserver}
+          : allowWhenBookingsClosed
+            ? 'Créer le devis'
+            : user
+              ? 'Envoyer ma demande'
+              : messages.meConnecterEtReserver}
         <ArrowRight size={18} />
       </button>
       <p className="summary-note">
