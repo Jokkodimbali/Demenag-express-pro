@@ -50,9 +50,11 @@ export function registerAdminRoutes(
     res.json(await deps.catalogue.get());
   });
   app.post(apiRoutes.tollPoints, authenticate, admin, async (req, res) =>
-    res.status(201).json(
-      await deps.catalogue.createTollPoint(getActor(res), tollPointCreateSchema.parse(req.body)),
-    ),
+    res
+      .status(201)
+      .json(
+        await deps.catalogue.createTollPoint(getActor(res), tollPointCreateSchema.parse(req.body)),
+      ),
   );
   app.put(`${apiRoutes.tollPoints}/:id`, authenticate, admin, async (req, res) =>
     res.json(

@@ -26,7 +26,9 @@ export function createApp(deps: Dependencies) {
     }
   });
   app.get(apiRoutes.catalogue, async (_req, res) => res.json(await deps.catalogue.get()));
-  app.get(apiRoutes.tollPoints, async (_req, res) => res.json(await deps.catalogue.listTollPoints()));
+  app.get(apiRoutes.tollPoints, async (_req, res) =>
+    res.json(await deps.catalogue.listTollPoints()),
+  );
   registerAuthRoutes(app, deps, access);
   registerMapRoutes(app, deps);
   app.get('/api/notifications/stream', access.authenticate, (req, res) => {

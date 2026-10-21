@@ -1,7 +1,13 @@
 import type { CatalogueRepository } from '../../../application/ports/index.js';
 import { AppError } from '../../../domain/errors.js';
 import { messages } from '../../../domain/messages/fr.js';
-import type { Catalogue, Settings, TollPoint, TollPointInput, Vehicle } from '../../../domain/model.js';
+import type {
+  Catalogue,
+  Settings,
+  TollPoint,
+  TollPointInput,
+  Vehicle,
+} from '../../../domain/model.js';
 import { Prisma, type PointPeage, type PrismaClient } from '../../../generated/prisma/client.js';
 import { fromSettings, fromVehicle, toSettings, toVehicle } from './mapping.js';
 export class PrismaCatalogue implements CatalogueRepository {
@@ -30,7 +36,9 @@ export class PrismaCatalogue implements CatalogueRepository {
     ]);
   }
   async listTollPoints(): Promise<TollPoint[]> {
-    const rows = await this.db.pointPeage.findMany({ orderBy: [{ operateur: 'asc' }, { nom: 'asc' }] });
+    const rows = await this.db.pointPeage.findMany({
+      orderBy: [{ operateur: 'asc' }, { nom: 'asc' }],
+    });
     return rows.map(fromTollPoint);
   }
   async createTollPoint(input: TollPointInput): Promise<TollPoint> {
@@ -42,7 +50,9 @@ export class PrismaCatalogue implements CatalogueRepository {
   }
   async updateTollPoint(id: string, input: TollPointInput): Promise<TollPoint> {
     try {
-      return fromTollPoint(await this.db.pointPeage.update({ where: { id }, data: toTollPoint(input) }));
+      return fromTollPoint(
+        await this.db.pointPeage.update({ where: { id }, data: toTollPoint(input) }),
+      );
     } catch (error) {
       throw tollPointError(error);
     }
