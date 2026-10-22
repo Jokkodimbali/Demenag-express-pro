@@ -151,9 +151,8 @@ export class MovingService implements MovingUseCases {
         'Attendez que le chauffeur signale la fin de ses courses.',
       );
       requireValue(
-        (booking.trips?.length ?? 0) > 0 &&
-          booking.trips?.every((trip) => trip.finishedAt && trip.unloadingPhotos?.length),
-        'Toutes les courses doivent être terminées et justifiées par leurs photos.',
+        (booking.trips?.length ?? 0) > 0 && booking.trips?.every((trip) => trip.finishedAt),
+        'Toutes les courses doivent être terminées avant de clôturer la réservation.',
       );
     }
     transition(booking.status, next, user.role);
@@ -205,11 +204,15 @@ export class MovingService implements MovingUseCases {
   }
   async startTrip(user: User, id: string, photos: string[]) {
     requireActiveUser(user);
-    requireValue(user.role === 'driver', 'Cette action est réservée au chauffeur.');
-    requireValue(photos.length > 0 && photos.length <= 5, 'Ajoutez de 1 à 5 photos du chargement.');
+    requireValue(['driver', 'admin'].includes(user.role), 'Action réservée à l’administration.');
+    if (user.role === 'driver')
+      requireValue(photos.length > 0, 'Ajoutez au moins une photo du chargement.');
     const booking = await this.bookings.find(id);
-    const driver = await this.drivers.findByUserId(user.id);
-    if (!booking || !driver || booking.vehicle.id !== driver.vehicleId)
+    const driver = user.role === 'driver' ? await this.drivers.findByUserId(user.id) : null;
+    if (
+      !booking ||
+      (user.role === 'driver' && (!driver || booking.vehicle.id !== driver.vehicleId))
+    )
       throw new AppError(404, messages.reservationIntrouvable);
     requireValue(
       !booking.driverFinishedAt,
@@ -223,24 +226,26 @@ export class MovingService implements MovingUseCases {
       ['confirmed', 'in_progress'].includes(booking.status),
       'Cette réservation ne peut pas démarrer une course.',
     );
-    const date = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Africa/Dakar',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).format(this.clock.now());
-    const inspection = await this.vehicleReports?.findInspection(driver.id, date);
-    requireValue(inspection, 'Effectuez le contrôle du véhicule avant de démarrer une course.');
-    requireValue(
-      Array.isArray(inspection.photos) &&
-        inspection.photos.length >= 6 &&
-        inspection.photos.length <= 10,
-      'Le contrôle du jour doit inclure une photo de preuve pour chaque vérification.',
-    );
-    requireValue(
-      inspection.condition !== 'unsafe',
-      'Le véhicule a été déclaré dangereux. Contactez l’administration avant de démarrer une mission.',
-    );
+    if (driver) {
+      const date = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Africa/Dakar',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(this.clock.now());
+      const inspection = await this.vehicleReports?.findInspection(driver.id, date);
+      requireValue(inspection, 'Effectuez le contrôle du véhicule avant de démarrer une course.');
+      requireValue(
+        Array.isArray(inspection.photos) &&
+          inspection.photos.length >= 6 &&
+          inspection.photos.length <= 10,
+        'Le contrôle du jour doit inclure une photo de preuve pour chaque vérification.',
+      );
+      requireValue(
+        inspection.condition !== 'unsafe',
+        'Le véhicule a été déclaré dangereux. Contactez l’administration avant de démarrer une mission.',
+      );
+    }
     if (booking.status === 'confirmed') {
       await this.bookings.update({ ...booking, status: 'in_progress' }, booking.version);
     }
@@ -251,14 +256,15 @@ export class MovingService implements MovingUseCases {
   }
   async finishTrip(user: User, id: string, photos: string[]) {
     requireActiveUser(user);
-    requireValue(user.role === 'driver', 'Cette action est réservée au chauffeur.');
-    requireValue(
-      photos.length > 0 && photos.length <= 5,
-      'Ajoutez de 1 à 5 photos du déchargement.',
-    );
+    requireValue(['driver', 'admin'].includes(user.role), 'Action réservée à l’administration.');
+    if (user.role === 'driver')
+      requireValue(photos.length > 0, 'Ajoutez au moins une photo du déchargement.');
     const booking = await this.bookings.find(id);
-    const driver = await this.drivers.findByUserId(user.id);
-    if (!booking || !driver || booking.vehicle.id !== driver.vehicleId)
+    const driver = user.role === 'driver' ? await this.drivers.findByUserId(user.id) : null;
+    if (
+      !booking ||
+      (user.role === 'driver' && (!driver || booking.vehicle.id !== driver.vehicleId))
+    )
       throw new AppError(404, messages.reservationIntrouvable);
     requireValue(
       !booking.driverFinishedAt,
@@ -275,18 +281,25 @@ export class MovingService implements MovingUseCases {
   }
   async finishDriverWork(user: User, id: string) {
     requireActiveUser(user);
-    requireValue(user.role === 'driver', 'Cette action est réservée au chauffeur.');
+    requireValue(['driver', 'admin'].includes(user.role), 'Action réservée à l’administration.');
     const booking = await this.bookings.find(id);
-    const driver = await this.drivers.findByUserId(user.id);
-    if (!booking || !driver || booking.vehicle.id !== driver.vehicleId)
+    const driver = user.role === 'driver' ? await this.drivers.findByUserId(user.id) : null;
+    if (
+      !booking ||
+      (user.role === 'driver' && (!driver || booking.vehicle.id !== driver.vehicleId))
+    )
       throw new AppError(404, messages.reservationIntrouvable);
     requireValue(booking.status === 'in_progress', 'La mission doit être en cours.');
     requireValue(!booking.driverFinishedAt, 'La fin des courses a déjà été signalée.');
     requireValue(
-      (booking.trips?.length ?? 0) > 0 &&
-        booking.trips?.every((trip) => trip.finishedAt && trip.unloadingPhotos?.length),
-      'Terminez chaque course avec ses photos de déchargement avant de signaler la fin.',
+      (booking.trips?.length ?? 0) > 0 && booking.trips?.every((trip) => trip.finishedAt),
+      'Terminez chaque course avant de signaler la fin.',
     );
+    if (user.role === 'driver')
+      requireValue(
+        booking.trips?.every((trip) => trip.unloadingPhotos?.length),
+        'Le chauffeur doit joindre les preuves de déchargement de chaque course.',
+      );
     const updated = await this.bookings.update(
       { ...booking, driverFinishedAt: this.clock.now().toISOString() },
       booking.version,
@@ -294,8 +307,11 @@ export class MovingService implements MovingUseCases {
     await this.notifications?.publish(
       {
         id: this.ids.next(),
-        title: 'Courses terminées par le chauffeur',
-        message: `${updated.reference} : le chauffeur signale ${updated.trips?.length ?? 0} aller(s)-retour(s) terminé(s), avec preuves de chargement et de déchargement. Vérifiez les preuves, créez le devis final puis clôturez la réservation.`,
+        title:
+          user.role === 'admin'
+            ? 'Courses terminées par l’administration'
+            : 'Courses terminées par le chauffeur',
+        message: `${updated.reference} : ${user.role === 'admin' ? 'l’administration' : 'le chauffeur'} signale ${updated.trips?.length ?? 0} aller(s)-retour(s) terminé(s). Vérifiez le dossier, créez le devis final puis clôturez la réservation.`,
         createdAt: this.clock.now().toISOString(),
         bookingId: updated.id,
       },
@@ -422,12 +438,10 @@ export class MovingService implements MovingUseCases {
         booking.driverFinishedAt,
         'Attendez que le chauffeur signale la fin de ses courses.',
       );
-      const completedTrips =
-        booking.trips?.filter((trip) => trip.finishedAt && trip.unloadingPhotos?.length).length ??
-        0;
+      const completedTrips = booking.trips?.filter((trip) => trip.finishedAt).length ?? 0;
       requireValue(
         completedTrips > 0 && completedTrips === booking.trips?.length,
-        'Toutes les courses doivent être terminées et justifiées par leurs photos.',
+        'Toutes les courses doivent être terminées avant de créer le devis final.',
       );
       requireValue(
         input.trips === completedTrips,

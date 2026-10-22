@@ -9,6 +9,7 @@ import { normalizedClientPhone } from './services/client-summary';
 import { blankDraft, useApp } from './context';
 import { errorMessage } from './error-message';
 import { routes } from '../routing/routes';
+import { clearAdminQuoteDraft } from './admin-quote-draft-storage';
 type TollExtraLine = { id: string; label: string; quantity: number; unitPrice: number };
 export type AdminQuoteConfig = { trips: number; discount: number; customPrice: number | null };
 export function useBookingForm({
@@ -35,6 +36,7 @@ export function useBookingForm({
   const bookingLookup = useRef<Promise<Booking[]> | null>(null);
   const lookupPhone = useRef('');
   const autofilledName = useRef<{ phone: string; name: string } | null>(null);
+  const adminQuoteInitialized = useRef(false);
   const tiers = tierLabels(catalogue?.settings.distanceBounds);
   const selected = catalogue?.vehicles.find((v) => v.id === draft.vehicleId);
   const administrativeQuote = mode === 'admin-quote' && user?.role === 'admin';
@@ -55,7 +57,9 @@ export function useBookingForm({
     });
   }, [draft.vehicleId, tollPoints]);
   useEffect(() => {
-    if (administrativeQuote) setDraft(blankDraft(catalogue ?? undefined));
+    if (!administrativeQuote || adminQuoteInitialized.current) return;
+    adminQuoteInitialized.current = true;
+    setDraft(blankDraft(catalogue ?? undefined));
   }, [administrativeQuote, catalogue, setDraft]);
   useEffect(() => {
     if (location.hash === '#reserver' && !loading)
@@ -189,6 +193,7 @@ export function useBookingForm({
         notes: bookingNotes,
         requestId: draft.requestId,
       });
+      if (administrativeQuote) clearAdminQuoteDraft();
       bookingLookup.current = null;
       setDraft(blankDraft());
       if (administrativeQuote) {

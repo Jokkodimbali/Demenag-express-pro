@@ -1,7 +1,12 @@
 import { ArrowLeft, Minus, Plus } from 'lucide-react';
-import { Suspense, lazy, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useBookingForm, type AdminQuoteConfig } from '../application/useBookingForm';
+import { useBookingForm } from '../application/useBookingForm';
+import {
+  readAdminQuoteDraft,
+  saveAdminQuoteDraft,
+  type AdminQuoteConfig,
+} from '../application/admin-quote-draft-storage';
 import { normalizedClientPhone } from '../application/services/client-summary';
 import { CallInventory } from '../components/booking/CallInventory';
 import { TollRateSelector } from '../components/TollRateSelector';
@@ -12,6 +17,8 @@ import { routes } from '../routing/routes';
 const RouteMap = lazy(() => import('../components/RouteMap'));
 
 export function AdminCreateQuote() {
+  const restoredDraft = useRef(false);
+  const skipInitialSave = useRef(false);
   const [quoteConfig, setQuoteConfig] = useState<AdminQuoteConfig>({
     trips: 1,
     discount: 0,
@@ -40,6 +47,24 @@ export function AdminCreateQuote() {
     clientRecognition,
     recognizingClient,
   } = state;
+  useEffect(() => {
+    const saved = readAdminQuoteDraft();
+    if (saved) {
+      setDraft(saved.draft);
+      setQuoteConfig(saved.quoteConfig);
+      setTollLines(saved.tollLines);
+    }
+    restoredDraft.current = true;
+    skipInitialSave.current = true;
+  }, [setDraft, setTollLines]);
+  useEffect(() => {
+    if (!restoredDraft.current) return;
+    if (skipInitialSave.current) {
+      skipInitialSave.current = false;
+      return;
+    }
+    saveAdminQuoteDraft({ draft, quoteConfig, tollLines });
+  }, [draft, quoteConfig, tollLines]);
   const inventoryText = inventoryNote(draft.inventory);
   const totalTolls = tollLines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
   const discountTooHigh = Boolean(
@@ -486,7 +511,7 @@ export function AdminCreateQuote() {
           )}
           <button
             className="button primary admin-quote-submit"
-            disabled={submitting || estimating || !price || price.total === null || !draft.route}
+            disabled={submitting || estimating || previewTotal === null || !draft.route}
           >
             {submitting ? 'Enregistrement…' : 'Enregistrer le devis provisoire'}
           </button>

@@ -3,6 +3,7 @@ import {
   CalendarDays,
   Check,
   Download,
+  Eye,
   MapPin,
   MessageCircle,
   Save,
@@ -56,6 +57,7 @@ export function BookingCard({
     deleteError,
     confirmDelete,
     pdf,
+    createPdf,
     quote,
     extraLines,
     setExtraLines,
@@ -76,7 +78,7 @@ export function BookingCard({
   const displayedQuote = finalQuote ?? last;
   const displayedPrice = displayedQuote?.price ?? b.estimate;
   const displayedOptions = quotedServiceOptions(b, displayedQuote);
-  const incompleteTrips = trips.filter((trip) => !trip.finishedAt || !trip.unloadingPhotos?.length);
+  const incompleteTrips = trips.filter((trip) => !trip.finishedAt);
   const canCloseBooking =
     b.status === 'in_progress' &&
     !!finalQuote &&
@@ -90,6 +92,26 @@ export function BookingCard({
   );
   const [editingNotes, setEditingNotes] = useState(false);
   const [bookingNotes, setBookingNotes] = useState(b.notes);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState('');
+  const [pdfPreviewName, setPdfPreviewName] = useState('');
+
+  useEffect(
+    () => () => {
+      if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
+    },
+    [pdfPreviewUrl],
+  );
+
+  async function previewQuote() {
+    const blob = await createPdf(displayedQuote);
+    if (!blob) return;
+    const nextUrl = URL.createObjectURL(blob);
+    setPdfPreviewUrl((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return nextUrl;
+    });
+    setPdfPreviewName(`${displayedQuote?.reference || b.reference}.pdf`);
+  }
 
   useEffect(() => {
     if (initialTollLines?.length) {
@@ -332,6 +354,13 @@ export function BookingCard({
         <button
           className="button secondary small"
           disabled={busy}
+          onClick={() => void previewQuote()}
+        >
+          <Eye size={16} /> Aperçu du devis PDF
+        </button>
+        <button
+          className="button secondary small"
+          disabled={busy}
           onClick={() => pdf(displayedQuote)}
         >
           <Download size={16} />
@@ -429,12 +458,42 @@ export function BookingCard({
           </button>
         )}
       </div>
+      {pdfPreviewUrl && (
+        <Modal
+          titleId={'pdf-preview-title-' + b.id}
+          busy={busy}
+          onClose={() => setPdfPreviewUrl('')}
+          className="account-dialog quote-pdf-preview"
+        >
+          <div className="quote-pdf-preview-heading">
+            <h2 id={'pdf-preview-title-' + b.id}>Aperçu du devis</h2>
+            <div className="dialog-actions">
+              <a className="button primary small" href={pdfPreviewUrl} download={pdfPreviewName}>
+                <Download size={16} /> Télécharger le PDF
+              </a>
+              <button
+                type="button"
+                className="button secondary small"
+                onClick={() => setPdfPreviewUrl('')}
+              >
+                <X size={16} /> Fermer
+              </button>
+            </div>
+          </div>
+          <iframe title="Aperçu du devis PDF" src={pdfPreviewUrl} />
+        </Modal>
+      )}
       {driverMode && <DriverCourseActions booking={b} onChange={onChange} />}
+      {admin && b.status === 'in_progress' && !finalQuote && !b.driverFinishedAt && (
+        <DriverCourseActions booking={b} onChange={onChange} adminMode />
+      )}
       {admin && b.driverFinishedAt && !terminal && (
         <div className="driver-course-complete" role="status">
           <p>
-            Le chauffeur a signalé {trips.length} aller(s)-retour(s) terminé(s). Vérifiez les
-            preuves avant la clôture.
+            {trips.length > 0
+              ? `${admin ? 'L’administration a' : 'Le chauffeur a'} signalé ${trips.length} aller(s)-retour(s) terminé(s).`
+              : 'Les courses sont signalées comme terminées.'}{' '}
+            Vérifiez le dossier avant la clôture.
           </p>
           {!finalQuote && (
             <p>
@@ -450,7 +509,7 @@ export function BookingCard({
           )}
           {incompleteTrips.length > 0 && (
             <p>
-              Clôture indisponible : vérifiez la preuve de déchargement des courses{' '}
+              Clôture indisponible : terminez les courses{' '}
               {incompleteTrips.map((trip) => trip.sequence).join(', ')}.
             </p>
           )}
@@ -461,31 +520,39 @@ export function BookingCard({
       )}
       {!driverMode && !!b.trips?.length && (
         <section className="booking-trip-history">
-          <h4>Preuves des courses ({b.trips.length})</h4>
+          <h4>Courses et preuves ({b.trips.length})</h4>
           {b.trips.map((trip) => (
             <div className="booking-trip-proof" key={trip.id}>
               <strong>Course {trip.sequence}</strong>
               <div>
                 <span>Chargement</span>
-                {trip.loadingPhotos.map((photo, index) => (
-                  <a key={`load-${index}`} href={photo} target="_blank" rel="noreferrer">
-                    <img
-                      src={photo}
-                      alt={`Chargement, course ${trip.sequence}, photo ${index + 1}`}
-                    />
-                  </a>
-                ))}
+                {trip.loadingPhotos.length ? (
+                  trip.loadingPhotos.map((photo, index) => (
+                    <a key={`load-${index}`} href={photo} target="_blank" rel="noreferrer">
+                      <img
+                        src={photo}
+                        alt={`Chargement, course ${trip.sequence}, photo ${index + 1}`}
+                      />
+                    </a>
+                  ))
+                ) : (
+                  <em>Aucune photo enregistrée</em>
+                )}
               </div>
               <div>
                 <span>Déchargement</span>
-                {trip.unloadingPhotos?.map((photo, index) => (
-                  <a key={`unload-${index}`} href={photo} target="_blank" rel="noreferrer">
-                    <img
-                      src={photo}
-                      alt={`Déchargement, course ${trip.sequence}, photo ${index + 1}`}
-                    />
-                  </a>
-                )) ?? <em>En attente</em>}
+                {trip.unloadingPhotos?.length ? (
+                  trip.unloadingPhotos.map((photo, index) => (
+                    <a key={`unload-${index}`} href={photo} target="_blank" rel="noreferrer">
+                      <img
+                        src={photo}
+                        alt={`Déchargement, course ${trip.sequence}, photo ${index + 1}`}
+                      />
+                    </a>
+                  ))
+                ) : (
+                  <em>{trip.finishedAt ? 'Aucune photo enregistrée' : 'En attente'}</em>
+                )}
               </div>
             </div>
           ))}

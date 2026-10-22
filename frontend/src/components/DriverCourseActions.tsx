@@ -33,9 +33,11 @@ async function compressPhoto(file: File): Promise<string> {
 export function DriverCourseActions({
   booking,
   onChange,
+  adminMode = false,
 }: {
   booking: Booking;
   onChange: (booking: Booking) => void;
+  adminMode?: boolean;
 }) {
   const { api } = useApp();
   const [mode, setMode] = useState<'loading' | 'unloading' | null>(null);
@@ -48,7 +50,7 @@ export function DriverCourseActions({
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (!mode || !photos.length || busy) return;
+    if (!mode || (!adminMode && !photos.length) || busy) return;
     setBusy(true);
     setError('');
     try {
@@ -100,6 +102,29 @@ export function DriverCourseActions({
           <Check size={16} /> Fin signalée à l’administration pour {trips.length}{' '}
           aller(s)-retour(s). En attente de vérification et clôture.
         </p>
+      ) : adminMode && booking.status === 'in_progress' && !openTrip && trips.length > 0 ? (
+        <div className="driver-course-form-actions">
+          <button
+            className="button secondary small"
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              setPhotos([]);
+              setError('');
+              setMode('loading');
+            }}
+          >
+            <Play size={16} /> Démarrer la course {nextSequence}
+          </button>
+          <button
+            className="button primary small"
+            type="button"
+            disabled={busy}
+            onClick={() => void signalFinished()}
+          >
+            <Check size={16} /> Signaler la fin des courses
+          </button>
+        </div>
       ) : booking.status === 'in_progress' && !openTrip && trips.length > 0 ? (
         <button
           className="button secondary small"
@@ -144,13 +169,17 @@ export function DriverCourseActions({
           </h4>
           <p>
             {mode === 'loading'
-              ? 'Prenez au moins une photo des colis chargés avant le départ.'
-              : 'Prenez au moins une photo des colis déchargés pour terminer cette course.'}
+              ? adminMode
+                ? 'La preuve de chargement est facultative pour l’administration.'
+                : 'Prenez au moins une photo des colis chargés avant le départ.'
+              : adminMode
+                ? 'La preuve de déchargement est facultative pour l’administration.'
+                : 'Prenez au moins une photo des colis déchargés pour terminer cette course.'}
           </p>
           <PhotoPicker
-            label="Photos de preuve (1 à 5)"
+            label={adminMode ? 'Photos de preuve facultatives (1 à 5)' : 'Photos de preuve (1 à 5)'}
             files={photos}
-            required
+            required={!adminMode}
             onChange={setPhotos}
           />
           {error && (
@@ -162,7 +191,7 @@ export function DriverCourseActions({
             <button
               className="button primary small"
               type="submit"
-              disabled={busy || !photos.length}
+              disabled={busy || (!adminMode && !photos.length)}
             >
               {busy
                 ? 'Envoi…'

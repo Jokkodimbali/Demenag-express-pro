@@ -266,6 +266,5 @@ export async function downloadQuote(
   addContainedImage(signature, right - 58, signatureY + 23, 31, 18);
 
   const blob = doc.output('blob');
-  doc.save(`${documentQuote?.reference || booking.reference}.pdf`);
   return blob;
 }

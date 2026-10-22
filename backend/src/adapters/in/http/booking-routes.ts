@@ -79,14 +79,11 @@ export function registerBookingRoutes(
   });
   app.post(`${apiRoutes.bookings}/:id/trips/start`, authenticate, async (req, res) => {
     const p = tripPhotosSchema.parse(req.body);
-    const booking = await deps.moving.startTrip(
-      getActor(res),
-      z.uuid().parse(req.params.id),
-      p.photos,
-    );
+    const actor = getActor(res);
+    const booking = await deps.moving.startTrip(actor, z.uuid().parse(req.params.id), p.photos);
     await notify(
       'Course démarrée',
-      `${booking.reference} : le chauffeur a envoyé les photos du chargement de la course ${booking.trips?.length ?? 1}.`,
+      `${booking.reference} : ${actor.role === 'admin' ? 'l’administration a démarré' : 'le chauffeur a envoyé les preuves et démarré'} la course ${booking.trips?.length ?? 1}.`,
       { roles: ['admin'] },
       booking.id,
     );
@@ -94,14 +91,13 @@ export function registerBookingRoutes(
   });
   app.post(`${apiRoutes.bookings}/:id/trips/finish`, authenticate, async (req, res) => {
     const p = tripPhotosSchema.parse(req.body);
-    const booking = await deps.moving.finishTrip(
-      getActor(res),
-      z.uuid().parse(req.params.id),
-      p.photos,
-    );
+    const actor = getActor(res);
+    const booking = await deps.moving.finishTrip(actor, z.uuid().parse(req.params.id), p.photos);
     await notify(
-      'Course terminée · preuves reçues',
-      `${booking.reference} : course ${booking.trips?.length ?? 1} terminée. ${booking.trips?.length ?? 1} aller(s)-retour(s) enregistré(s) avec les preuves de chargement et de déchargement.`,
+      actor.role === 'admin'
+        ? 'Course terminée par l’administration'
+        : 'Course terminée · preuves reçues',
+      `${booking.reference} : ${actor.role === 'admin' ? 'l’administration a terminé' : 'le chauffeur a terminé avec preuves'} la course ${booking.trips?.length ?? 1}.`,
       { roles: ['admin'] },
       booking.id,
     );

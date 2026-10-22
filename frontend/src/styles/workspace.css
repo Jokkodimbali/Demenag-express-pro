@@ -575,6 +575,38 @@ div.driver-course-complete p {
   padding: 24px;
   overflow-x: hidden;
 }
+.account-dialog.quote-pdf-preview {
+  box-sizing: border-box;
+  width: min(96vw, 1100px);
+  max-width: none;
+  height: min(92dvh, 900px);
+  max-height: 92dvh;
+  padding: 16px;
+  overflow: hidden;
+}
+.quote-pdf-preview-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 0 12px;
+}
+.quote-pdf-preview-heading h2 {
+  margin: 0;
+}
+.quote-pdf-preview-heading .dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.quote-pdf-preview iframe {
+  display: block;
+  width: 100%;
+  height: calc(100% - 62px);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
 .quote-form {
   display: grid;
   gap: 12px;
