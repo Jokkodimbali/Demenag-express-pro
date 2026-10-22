@@ -338,62 +338,25 @@ export class MovingService implements MovingUseCases {
     if (booking.version !== version)
       throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
     requireValue(
-      !booking.quotes.some((quote) => quote.kind === 'final'),
-      'Le devis final est créé. Cette réservation est verrouillée.',
+      booking.quotes.length === 0,
+      'Le trajet est verrouillé après la création d’un devis. Les montants des devis existants doivent rester inchangés.',
     );
     requireValue(
       !['completed', 'cancelled'].includes(booking.status),
       messages.cetteReservationEstCloturee,
     );
-    const [route, fromAddress, toAddress, catalogue] = await Promise.all([
+    if (!booking.pricingSettings) throw new AppError(409, messages.tarifsHistoriquesIndisponibles);
+    const [route, fromAddress, toAddress] = await Promise.all([
       this.routing.route(from, to),
       this.routing.reverse(from),
       this.routing.reverse(to),
-      this.catalogue.get(),
     ]);
     const estimate = calculatePrice(
       booking.vehicle,
-      booking.pricingSettings ?? catalogue.settings,
+      booking.pricingSettings,
       route.distanceKm,
       booking.options,
     );
-    const optionLabels = new Set<string>([
-      messages.manUvre,
-      messages.menuisierBureau,
-      messages.menuisierArmoire,
-      messages.menuisierLit,
-    ]);
-    const quotes = booking.quotes.map((quote) => {
-      if (quote.kind !== 'provisional') return quote;
-      const transportLine = quote.price.lines.find((line) => line.label.startsWith('Transport '));
-      const standardTransport =
-        quote.price.tier < 3 ? booking.vehicle.prices[quote.price.tier] : null;
-      const customPrice =
-        transportLine && transportLine.unitPrice !== standardTransport
-          ? transportLine.unitPrice
-          : null;
-      const extraLines = quote.price.lines
-        .filter((line) => line !== transportLine && !optionLabels.has(line.label))
-        .map(({ label, quantity, unitPrice }) => ({ label, quantity, unitPrice }));
-      const options = quote.options ?? booking.options;
-      const args = [
-        booking.vehicle,
-        booking.pricingSettings ?? catalogue.settings,
-        route.distanceKm,
-        options,
-        quote.price.trips,
-        customPrice,
-      ] as const;
-      const withoutDiscount = calculatePrice(...args, 0, extraLines);
-      const discount = Math.min(
-        quote.price.discount,
-        withoutDiscount.lines.reduce((sum, line) => sum + line.total, 0),
-      );
-      return {
-        ...quote,
-        price: calculatePrice(...args, discount, extraLines),
-      };
-    });
     return this.bookings.update(
       {
         ...booking,
@@ -403,7 +366,6 @@ export class MovingService implements MovingUseCases {
         toAddress,
         distanceKm: route.distanceKm,
         estimate,
-        quotes,
       },
       version,
     );
@@ -472,9 +434,9 @@ export class MovingService implements MovingUseCases {
         `Le devis final doit compter ${completedTrips} aller(s)-retour(s), selon les courses enregistrées.`,
       );
     }
-    const { settings } = await this.catalogue.get();
+    if (!booking.pricingSettings) throw new AppError(409, messages.tarifsHistoriquesIndisponibles);
     const options = input.options ?? booking.options;
-    const pricingSettings = booking.pricingSettings ?? settings;
+    const pricingSettings = booking.pricingSettings;
     const quoteSettings =
       input.kind === 'final'
         ? { ...pricingSettings, maxTrips: Math.max(pricingSettings.maxTrips, input.trips) }
