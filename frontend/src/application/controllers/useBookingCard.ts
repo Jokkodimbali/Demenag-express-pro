@@ -123,11 +123,12 @@ export function useBookingCard({
     }
   }
   async function pdf(quote?: Quote): Promise<Blob | null> {
-    if (!catalogue) return null;
+    const settings = b.pricingSettings ?? catalogue?.settings;
+    if (!settings) return null;
     setError('');
     setBusy(true);
     try {
-      return await exportQuote(b, quote, catalogue.settings);
+      return await exportQuote(b, quote, settings);
     } catch {
       setError(messages.lePdfNAPasPuEtreGenere);
       return null;
