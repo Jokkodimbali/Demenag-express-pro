@@ -1,5 +1,6 @@
 import { ClipboardList, RefreshCw, Search } from 'lucide-react';
-import { useLocation, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
+import { routes } from '../routing/routes';
 import { useAdministration } from '../application/controllers/useAdministration';
 import { usePagination } from '../application/usePagination';
 import { BookingCard } from '../components/BookingCard';
@@ -30,6 +31,7 @@ export function Admin() {
   const location = useLocation();
   const quoteHandoff = location.state as {
     initialTollLines?: { id: string; label: string; quantity: number; unitPrice: number }[];
+    quoteError?: string;
   } | null;
   const pagination = usePagination(
     visible,
@@ -38,19 +40,29 @@ export function Admin() {
   );
   return (
     <>
+      {quoteHandoff?.quoteError && (
+        <p className="alert error" role="alert">
+          {quoteHandoff.quoteError}
+        </p>
+      )}
       <div className="section-heading">
         <div>
-          <h2>{messages.reservations}</h2>
+          <h2>{messages.tableauDeBord}</h2>
           <p>{messages.suivezEtTraitezLesDemandes}</p>
         </div>
-        <button
-          className="button secondary small"
-          disabled={loading}
-          onClick={() => setRetry((n) => n + 1)}
-        >
-          <RefreshCw size={16} />
-          {messages.actualiser2}
-        </button>
+        <div className="admin-heading-actions">
+          <Link className="button primary small" to={routes.administrationCreateQuote}>
+            Créer un devis
+          </Link>
+          <button
+            className="button secondary small"
+            disabled={loading}
+            onClick={() => setRetry((n) => n + 1)}
+          >
+            <RefreshCw size={16} />
+            {messages.actualiser2}
+          </button>
+        </div>
       </div>
       <div className="stats-grid">
         {stats.map(({ label, status, Icon }) => (

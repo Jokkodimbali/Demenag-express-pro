@@ -25,6 +25,11 @@ export interface AdminProfileRepository {
   adminProfile(): Promise<User>;
   updateAdminProfile(input: Pick<User, 'name' | 'phone' | 'photo'>): Promise<User>;
 }
+export interface ClientDirectoryRepository {
+  hiddenClients(): Promise<{ phone: string; hiddenAt: string }[]>;
+  updateClient(phone: string, input: { name: string; phone: string }): Promise<void>;
+  hideClient(phone: string): Promise<{ phone: string; hiddenAt: string }>;
+}
 export interface CatalogueRepository {
   catalogue(): Promise<Catalogue>;
   updateCatalogue(value: Catalogue): Promise<Catalogue>;
@@ -138,6 +143,7 @@ export interface ApplicationApi
   extends
     UserRepository,
     AdminProfileRepository,
+    ClientDirectoryRepository,
     CatalogueRepository,
     TollPointRepository,
     AuthRepository,

@@ -22,8 +22,12 @@ export const pointSchema = z.tuple([z.number().min(12).max(17), z.number().min(-
 export const tollPointSchema = z
   .object({
     name: z.string().trim().min(2).max(100),
-    operator: z.string().trim().min(2).max(60),
+    region: z.string().trim().max(80).default(''),
+    axis: z.string().trim().max(120).default(''),
     heavyPrice: z.number().int().positive().max(10000000),
+    vehiclePrices: z
+      .record(z.string().min(1).max(30), z.number().int().positive().max(10000000))
+      .default({}),
     latitude: z.number().min(12).max(17).nullable(),
     longitude: z.number().min(-18.5).max(-11).nullable(),
   })

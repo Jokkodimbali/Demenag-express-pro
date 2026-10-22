@@ -12,6 +12,12 @@ import {
 } from './schemas.js';
 import { apiRoutes } from './routes.js';
 import { accountSchema, createAccountSchema, userIdSchema } from './validation/administration.js';
+import { z } from 'zod';
+const clientPhoneSchema = z.string().regex(/^\d{9}$/);
+const clientUpdateSchema = z.object({
+  name: z.string().trim().min(2).max(100),
+  phone: z.string().min(9).max(25),
+});
 export function registerAdminRoutes(
   app: Express,
   deps: Pick<Dependencies, 'administration' | 'catalogue' | 'drivers'>,
@@ -28,6 +34,27 @@ export function registerAdminRoutes(
   );
   app.get(apiRoutes.administration.users, authenticate, admin, async (_req, res) =>
     res.json(await deps.administration.listUsers(getActor(res))),
+  );
+  app.get(`${apiRoutes.administration.clients}/hidden`, authenticate, admin, async (_req, res) =>
+    res.json(await deps.administration.listHiddenClients(getActor(res))),
+  );
+  app.patch(`${apiRoutes.administration.clients}/:phone`, authenticate, admin, async (req, res) => {
+    const input = clientUpdateSchema.parse(req.body);
+    await deps.administration.updateClient(
+      getActor(res),
+      clientPhoneSchema.parse(req.params.phone),
+      input.name,
+      input.phone,
+    );
+    res.status(204).end();
+  });
+  app.delete(`${apiRoutes.administration.clients}/:phone`, authenticate, admin, async (req, res) =>
+    res.json(
+      await deps.administration.hideClient(
+        getActor(res),
+        clientPhoneSchema.parse(req.params.phone),
+      ),
+    ),
   );
   app.post(apiRoutes.administration.users, authenticate, admin, async (req, res) =>
     res

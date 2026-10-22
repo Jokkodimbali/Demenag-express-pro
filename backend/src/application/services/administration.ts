@@ -21,6 +21,18 @@ export class AdministrationService implements AdministrationUseCases {
     requireAdministrator(actor);
     return this.repository.listUsers();
   }
+  listHiddenClients(actor: User) {
+    requireAdministrator(actor);
+    return this.repository.listHiddenClients();
+  }
+  hideClient(actor: User, phone: string) {
+    requireAdministrator(actor);
+    return this.repository.hideClient(phone);
+  }
+  updateClient(actor: User, phone: string, name: string, nextPhone: string) {
+    requireAdministrator(actor);
+    return this.repository.updateClient(phone, name.trim(), normalizePhone(nextPhone));
+  }
   updateUser(actor: User, user: User) {
     requireAdministrator(actor);
     if (user.id === actor.id && (user.role !== 'admin' || user.active === false))

@@ -2,6 +2,7 @@ import { ArrowRight, ShieldCheck, Truck } from 'lucide-react';
 import type { BookingViewState } from '../../application/contracts/booking-view';
 import { messages } from '../../content/fr';
 import { money } from '../../domain/format';
+import { inventoryNote } from '../../domain/inventory';
 import type { Catalogue, Vehicle } from '../../domain/model';
 
 export function BookingSummary({
@@ -43,7 +44,7 @@ export function BookingSummary({
           <Truck size={23} />
         </span>
       </div>
-      <h3>{messages.estimation}</h3>
+      <h3>{allowWhenBookingsClosed ? 'DEVIS EN DIRECT' : messages.estimation}</h3>
       <p className="muted">{messages.prixEstimePourVotreDemenagement}</p>
       <div className="summary-vehicle">
         <img src={selected.image} alt={messages.text} />
@@ -65,6 +66,25 @@ export function BookingSummary({
           <span>{draft.toAddress || messages.votreAdresseDArrivee}</span>
         </div>
       </div>
+      {(draft.customerName || draft.date || draft.timeSlot) && (
+        <div className="summary-details">
+          {draft.customerName && (
+            <div>
+              <span>Client</span>
+              <strong>{draft.customerName}</strong>
+            </div>
+          )}
+          {draft.date && (
+            <div>
+              <span>Date souhaitée</span>
+              <strong>
+                {draft.date.split('-').reverse().join('/')}
+                {draft.timeSlot ? ` · ${draft.timeSlot}` : ''}
+              </strong>
+            </div>
+          )}
+        </div>
+      )}
       {draft.route && (
         <p className="distance-label">
           {draft.route.distanceKm}
@@ -93,6 +113,12 @@ export function BookingSummary({
             </div>
           ))}
       </div>
+      {allowWhenBookingsClosed && inventoryNote(draft.inventory) && (
+        <details className="summary-inventory">
+          <summary>Inventaire de la fiche d’appel</summary>
+          <pre>{inventoryNote(draft.inventory)}</pre>
+        </details>
+      )}
       <div className="summary-total">
         <span>{messages.estimationProvisoire}</span>
         <strong aria-live="polite">

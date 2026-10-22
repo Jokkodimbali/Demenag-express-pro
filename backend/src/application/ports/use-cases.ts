@@ -51,6 +51,9 @@ export interface MovingUseCases {
 }
 export interface AdministrationUseCases {
   listUsers(actor: User): Promise<User[]>;
+  listHiddenClients(actor: User): Promise<{ phone: string; hiddenAt: string }[]>;
+  hideClient(actor: User, phone: string): Promise<{ phone: string; hiddenAt: string }>;
+  updateClient(actor: User, phone: string, name: string, nextPhone: string): Promise<void>;
   updateUser(actor: User, user: User): Promise<User>;
   createUser(actor: User, input: Omit<User, 'id'> & { password: string }): Promise<User>;
   updateProfile(actor: User, input: Pick<User, 'name' | 'phone' | 'photo'>): Promise<User>;

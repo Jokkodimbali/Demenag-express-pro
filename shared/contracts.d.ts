@@ -62,8 +62,10 @@ export type Catalogue = { vehicles: Vehicle[]; settings: Settings };
 export type TollPoint = {
   id: string;
   name: string;
-  operator: string;
+  region: string;
+  axis: string;
   heavyPrice: number;
+  vehiclePrices: Record<string, number>;
   latitude: number | null;
   longitude: number | null;
 };

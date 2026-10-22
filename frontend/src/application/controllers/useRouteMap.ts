@@ -1,13 +1,16 @@
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { mapConfiguration } from '../../config/maps';
 import { addTollMarkers } from '../../components/maps/toll-markers';
 import { messages } from '../../content/fr';
-import type { Point } from '../../domain/model';
+import type { Point, TollPoint } from '../../domain/model';
+import { tollLine, type TollExtraLine } from '../../domain/toll-selection';
+import { tollsOnRoute } from '../../domain/tolls-on-route';
 import { useApp } from '../context';
 import { errorMessage } from '../error-message';
 type Side = 'from' | 'to';
+const EMPTY_TOLL_LINES: TollExtraLine[] = [];
 const pin = (side: Side) =>
   L.divIcon({
     className: 'map-pin-host',
@@ -15,7 +18,10 @@ const pin = (side: Side) =>
     iconSize: [32, 38],
     iconAnchor: [16, 38],
   });
-export function useRouteMap() {
+export function useRouteMap(
+  tollLines: TollExtraLine[] = EMPTY_TOLL_LINES,
+  onTollToggle?: (line: TollExtraLine, selected: boolean) => void,
+) {
   const { api, draft, setDraft, tollPoints } = useApp();
   const [active, setActive] = useState<Side>('from'),
     [full, setFull] = useState(false),
@@ -33,10 +39,26 @@ export function useRouteMap() {
   const tollLayer = useRef<L.LayerGroup | null>(null);
   const activeRef = useRef(active);
   activeRef.current = active;
+  const canChooseTolls = Boolean(onTollToggle);
+  const tollStateRef = useRef({ tollLines, onTollToggle });
+  tollStateRef.current = { tollLines, onTollToggle };
   const routeRequest = useRef(0),
     searchRequest = useRef(0),
     addressRequest = useRef(0);
   const { from, to } = draft;
+  const routeTolls = useMemo(
+    () => tollsOnRoute(draft.route?.geometry ?? [], tollPoints),
+    [draft.route, tollPoints],
+  );
+  const toggleToll = useCallback(
+    (point: TollPoint) => {
+      const { tollLines: current, onTollToggle: toggle } = tollStateRef.current;
+      if (!toggle) return;
+      const existing = current.find((line) => line.id === point.id);
+      toggle(existing ?? tollLine(point, draft.vehicleId, 'round-trip', 1), !existing);
+    },
+    [draft.vehicleId],
+  );
   const setPointRef = useRef<(side: Side, point: Point, label?: string) => void>(() => {});
   setPointRef.current = (side, point, label) => {
     routeRequest.current++;
@@ -115,12 +137,19 @@ export function useRouteMap() {
   useEffect(() => {
     if (!map.current) return;
     tollLayer.current?.remove();
-    tollLayer.current = addTollMarkers(map.current, tollPoints);
+    tollLayer.current = addTollMarkers(
+      map.current,
+      tollPoints,
+      canChooseTolls ? toggleToll : undefined,
+      new Set(tollLines.map((item) => item.id)),
+      undefined,
+      new Set(routeTolls.map((point) => point.id)),
+    );
     return () => {
       tollLayer.current?.remove();
       tollLayer.current = null;
     };
-  }, [tollPoints]);
+  }, [tollPoints, canChooseTolls, tollLines, routeTolls, toggleToll]);
   useEffect(() => {
     if (!map.current) return;
     for (const side of ['from', 'to'] as const) {
@@ -225,6 +254,10 @@ export function useRouteMap() {
   }
   return {
     draft,
+    routeTolls,
+    canChooseTolls,
+    tollLines,
+    toggleToll,
     active,
     setActive,
     full,

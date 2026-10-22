@@ -3,11 +3,12 @@ import L from 'leaflet';
 import { MapPin, Pencil, Save, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { mapConfiguration } from '../config/maps';
-import type { Booking, Point } from '../domain/model';
+import type { Booking, Point, TollPoint } from '../domain/model';
 import { useApp } from '../application/context';
 import { errorMessage } from '../application/error-message';
 import { getCachedRoute } from '../application/services/route-cache';
 import { addTollMarkers } from './maps/toll-markers';
+import { tollsOnRoute } from '../domain/tolls-on-route';
 
 export function BookingRouteMap({
   booking,
@@ -24,6 +25,7 @@ export function BookingRouteMap({
   const [editing, setEditing] = useState(false);
   const [selected, setSelected] = useState<'from' | 'to'>('from');
   const [busy, setBusy] = useState(false);
+  const [routeTolls, setRouteTolls] = useState<TollPoint[]>([]);
   const [draftFrom, setDraftFrom] = useState<Point>(booking.from);
   const [draftTo, setDraftTo] = useState<Point>(booking.to);
   const [draftFromAddress, setDraftFromAddress] = useState(booking.fromAddress);
@@ -72,6 +74,7 @@ export function BookingRouteMap({
     if (!element) return;
     let active = true;
     setError('');
+    setRouteTolls([]);
     const start: L.LatLngExpression = from;
     const end: L.LatLngExpression = to;
     const map = L.map(element, { scrollWheelZoom: false, zoomControl: true }).setView(start, 12);
@@ -79,7 +82,7 @@ export function BookingRouteMap({
       attribution: mapConfiguration.attribution,
       maxZoom: 19,
     }).addTo(map);
-    addTollMarkers(map, tollPoints);
+    let tollLayer = addTollMarkers(map, tollPoints);
     const markerIcon = (label: string, side: string) =>
       L.divIcon({
         className: 'booking-route-pin-host',
@@ -112,10 +115,22 @@ export function BookingRouteMap({
       .then((route) => {
         if (!active) return;
         L.polyline(route.geometry, { color: '#1a73e8', weight: 6, opacity: 0.95 }).addTo(map);
+        const matches = tollsOnRoute(route.geometry, tollPoints);
+        setRouteTolls(matches);
+        tollLayer.remove();
+        tollLayer = addTollMarkers(
+          map,
+          tollPoints,
+          undefined,
+          undefined,
+          undefined,
+          new Set(matches.map((point) => point.id)),
+        );
         map.fitBounds(L.latLngBounds(route.geometry), { padding: [32, 32], maxZoom: 15 });
       })
       .catch(() => {
         if (!active) return;
+        setRouteTolls([]);
         L.polyline([start, end], {
           color: '#1a73e8',
           weight: 5,
@@ -222,6 +237,17 @@ export function BookingRouteMap({
           <b>B</b> {editing ? draftToAddress : booking.toAddress}
         </span>
       </div>
+      {routeTolls.length > 0 && (
+        <div className="route-tolls" role="status">
+          <strong>Péages repérés sur cet itinéraire</strong>
+          <ul>
+            {routeTolls.map((point) => (
+              <li key={point.id}>{point.name}</li>
+            ))}
+          </ul>
+          <p>Repérage indicatif : l’équipe confirme les péages réellement empruntés.</p>
+        </div>
+      )}
       {error && <small className="booking-route-map-error">{error}</small>}
     </div>
   );

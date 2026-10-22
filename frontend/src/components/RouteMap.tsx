@@ -2,9 +2,21 @@ import 'leaflet/dist/leaflet.css';
 import { Expand, LocateFixed, Search, X } from 'lucide-react';
 import { useRouteMap } from '../application/controllers/useRouteMap';
 import { messages } from '../content/fr';
-export default function RouteMap() {
+import type { TollExtraLine } from '../domain/toll-selection';
+const EMPTY_TOLL_LINES: TollExtraLine[] = [];
+export default function RouteMap({
+  tollLines = EMPTY_TOLL_LINES,
+  onTollToggle,
+}: {
+  tollLines?: TollExtraLine[];
+  onTollToggle?: (line: TollExtraLine, selected: boolean) => void;
+}) {
   const {
     draft,
+    routeTolls,
+    canChooseTolls,
+    tollLines: selectedTolls,
+    toggleToll,
     active,
     setActive,
     full,
@@ -19,7 +31,7 @@ export default function RouteMap() {
     search,
     route,
     locate,
-  } = useRouteMap();
+  } = useRouteMap(tollLines, onTollToggle);
 
   return (
     <div className="route-picker">
@@ -141,6 +153,41 @@ export default function RouteMap() {
               : messages.calculerMonTrajet}
         </button>
       </div>
+      {draft.route && (
+        <div className="route-tolls" role="status" aria-live="polite">
+          <strong>
+            {routeTolls.length === 0
+              ? 'Aucun péage géolocalisé repéré sur le tracé'
+              : routeTolls.length === 1
+                ? 'Un péage repéré sur le trajet'
+                : `${routeTolls.length} péages repérés sur le trajet`}
+          </strong>
+          <ul>
+            {routeTolls.map((point) => {
+              const selected = selectedTolls.some((line) => line.id === point.id);
+              return (
+                <li key={point.id}>
+                  <span>{point.name}</span>
+                  {canChooseTolls && (
+                    <button
+                      type="button"
+                      className="button secondary small"
+                      aria-pressed={selected}
+                      onClick={() => toggleToll(point)}
+                    >
+                      {selected ? 'Inclus dans le devis' : 'Ajouter au devis'}
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          <p>
+            Repérage indicatif à partir du tracé et des positions enregistrées. L’équipe confirme
+            les péages réellement empruntés.
+          </p>
+        </div>
+      )}
       {error && (
         <p className="alert error" role="alert">
           {error}

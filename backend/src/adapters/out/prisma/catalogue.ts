@@ -37,7 +37,7 @@ export class PrismaCatalogue implements CatalogueRepository {
   }
   async listTollPoints(): Promise<TollPoint[]> {
     const rows = await this.db.pointPeage.findMany({
-      orderBy: [{ operateur: 'asc' }, { nom: 'asc' }],
+      orderBy: [{ nom: 'asc' }],
     });
     return rows.map(fromTollPoint);
   }
@@ -70,8 +70,10 @@ function fromTollPoint(row: PointPeage): TollPoint {
   return {
     id: row.id,
     name: row.nom,
-    operator: row.operateur,
+    region: row.region,
+    axis: row.axe,
     heavyPrice: row.tarifLourd,
+    vehiclePrices: (row.tarifsVehicules ?? {}) as Record<string, number>,
     latitude: row.latitude,
     longitude: row.longitude,
   };
@@ -80,8 +82,10 @@ function fromTollPoint(row: PointPeage): TollPoint {
 function toTollPoint(input: TollPointInput) {
   return {
     nom: input.name.trim(),
-    operateur: input.operator.trim(),
+    region: input.region.trim(),
+    axe: input.axis.trim(),
     tarifLourd: input.heavyPrice,
+    tarifsVehicules: input.vehiclePrices,
     latitude: input.latitude,
     longitude: input.longitude,
   };

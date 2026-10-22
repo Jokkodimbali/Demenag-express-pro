@@ -17,9 +17,7 @@ export function AdminFinance() {
         </div>
         <button
           className="button primary"
-          onClick={() =>
-            navigate({ pathname: routes.home, search: '?newQuote=1', hash: '#reserver' })
-          }
+          onClick={() => navigate(routes.administrationCreateQuote)}
         >
           <FilePlus2 size={17} />
           {messages.nouveauDevisClient}

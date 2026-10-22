@@ -3,33 +3,36 @@ import { money } from '../domain/format';
 import { useApp } from '../application/context';
 import type { TollPoint } from '../domain/model';
 import { agerouteTariffUrl, secaaTariffUrl } from '../domain/toll-rates';
+import { tollLine, type TollDirection } from '../domain/toll-selection';
+import { tollPrice } from '../domain/toll-prices';
 
 type TollExtraLine = { id: string; label: string; quantity: number; unitPrice: number };
-type TollDirection = 'one-way' | 'round-trip';
-
-const directionLabels: Record<TollDirection, string> = {
-  'one-way': 'Aller simple',
-  'round-trip': 'Aller-retour',
-};
 
 export function TollRateSelector({
   lines,
   onToggle,
+  vehicleId,
 }: {
   lines: TollExtraLine[];
   onToggle: (line: TollExtraLine, selected: boolean) => void;
+  vehicleId?: string;
 }) {
-  const { tollPoints } = useApp();
-  const selectedTollTotal = lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
+  const { tollPoints, draft, catalogue } = useApp();
+  const selectedVehicleId = vehicleId ?? draft.vehicleId;
+  const vehicle = catalogue?.vehicles.find((item) => item.id === selectedVehicleId);
+  const selectedTollLines = lines.filter((line) =>
+    tollPoints.some((point) => point.id === line.id),
+  );
+  const selectedTollTotal = selectedTollLines.reduce(
+    (sum, line) => sum + line.quantity * line.unitPrice,
+    0,
+  );
 
   function renderRows(stations: TollPoint[]) {
     return stations.map((station) => {
-      const stationLabel = `Péage ${station.operator} · ${station.name}`;
-      const selectedLine = lines.find(
-        (line) => line.label === stationLabel || line.label.startsWith(`${stationLabel} · `),
-      );
+      const selectedLine = lines.find((line) => line.id === station.id);
       const selected = Boolean(selectedLine);
-      const unitPrice = station.heavyPrice;
+      const unitPrice = selectedLine?.unitPrice ?? tollPrice(station, selectedVehicleId);
       const direction: TollDirection = selectedLine?.label.endsWith(' · Aller simple')
         ? 'one-way'
         : 'round-trip';
@@ -37,12 +40,8 @@ export function TollRateSelector({
       const journeyCount = selectedLine
         ? Math.max(1, Math.ceil(selectedLine.quantity / multiplier))
         : 1;
-      const createLine = (nextDirection: TollDirection, nextCount: number): TollExtraLine => ({
-        id: selectedLine?.id ?? crypto.randomUUID(),
-        label: `${stationLabel} · ${directionLabels[nextDirection]}`,
-        quantity: nextCount * (nextDirection === 'round-trip' ? 2 : 1),
-        unitPrice,
-      });
+      const createLine = (nextDirection: TollDirection, nextCount: number): TollExtraLine =>
+        tollLine(station, selectedVehicleId, nextDirection, nextCount, selectedLine?.unitPrice);
       return (
         <div className="toll-rate-row" key={station.id}>
           <label className="toll-rate-station">
@@ -98,7 +97,8 @@ export function TollRateSelector({
         <span>
           <strong>Gares de péage</strong>
           <small>
-            {lines.length} sélectionnée{lines.length === 1 ? '' : 's'} · {money(selectedTollTotal)}
+            {selectedTollLines.length} sélectionnée{selectedTollLines.length === 1 ? '' : 's'} ·{' '}
+            {money(selectedTollTotal)}
           </small>
         </span>
         <span className="toll-dropdown-hint">Choisir les gares</span>
@@ -106,7 +106,7 @@ export function TollRateSelector({
       <div className="toll-rate-content" aria-labelledby="toll-rate-title">
         <div className="section-heading">
           <div>
-            <h4 id="toll-rate-title">Tarifs officiels · poids lourd</h4>
+            <h4 id="toll-rate-title">Tarifs enregistrés · {vehicle?.name ?? 'véhicule'}</h4>
             <p className="caption">
               Choisissez le nombre de trajets et le sens pour chaque gare. Un aller-retour compte
               deux passages.
@@ -123,12 +123,38 @@ export function TollRateSelector({
         </div>
         <div className="toll-rate-list">
           {tollPoints.length === 0 && <p className="caption">Aucun point de péage configuré.</p>}
-          {Array.from(new Set(tollPoints.map((point) => point.operator))).map((operator) => (
-            <div key={operator}>
-              <h5>{operator}</h5>
-              {renderRows(tollPoints.filter((point) => point.operator === operator))}
-            </div>
-          ))}
+          {Array.from(new Set(tollPoints.map((point) => point.region || 'Autres régions'))).map(
+            (region) => (
+              <section className="toll-region" key={region}>
+                <h5>
+                  {region} ·{' '}
+                  {
+                    tollPoints.filter((point) => (point.region || 'Autres régions') === region)
+                      .length
+                  }{' '}
+                  point(s)
+                </h5>
+                {Array.from(
+                  new Set(
+                    tollPoints
+                      .filter((point) => (point.region || 'Autres régions') === region)
+                      .map((point) => point.axis || 'Autre route'),
+                  ),
+                ).map((axis) => (
+                  <div className="toll-axis" key={axis}>
+                    <h6>{axis}</h6>
+                    {renderRows(
+                      tollPoints.filter(
+                        (point) =>
+                          (point.region || 'Autres régions') === region &&
+                          (point.axis || 'Autre route') === axis,
+                      ),
+                    )}
+                  </div>
+                ))}
+              </section>
+            ),
+          )}
         </div>
         <p className="caption">Total des péages sélectionnés : {money(selectedTollTotal)}</p>
       </div>
