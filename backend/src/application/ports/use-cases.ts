@@ -15,7 +15,18 @@ import type {
   User,
   Vehicle,
 } from '../../domain/model.js';
-import type { BreakdownInput, VehicleInspectionInput, VehicleReportRecord } from './index.js';
+import type {
+  AccountingEntry,
+  BreakdownInput,
+  ManualAccountingInput,
+  VehicleInspectionInput,
+  VehicleReportRecord,
+} from './index.js';
+export interface AccountingUseCases {
+  list(actor: User, month?: string): Promise<AccountingEntry[]>;
+  create(actor: User, input: ManualAccountingInput): Promise<AccountingEntry>;
+  void(actor: User, id: string): Promise<void>;
+}
 export type AuthSession = { user: User; token: string };
 export interface AuthUseCases {
   register(name: string, phone: string, password: string): Promise<AuthSession>;

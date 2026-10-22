@@ -18,12 +18,39 @@ const clientUpdateSchema = z.object({
   name: z.string().trim().min(2).max(100),
   phone: z.string().min(9).max(25),
 });
+const accountingMonthSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
+const accountingEntrySchema = z.object({
+  type: z.enum(['charge', 'revenu']),
+  category: z.string().trim().min(2).max(100),
+  label: z.string().trim().min(2).max(200),
+  amount: z.number().int().positive().max(1_000_000_000),
+  date: z.iso.date(),
+});
 export function registerAdminRoutes(
   app: Express,
-  deps: Pick<Dependencies, 'administration' | 'catalogue' | 'drivers'>,
+  deps: Pick<Dependencies, 'administration' | 'catalogue' | 'drivers' | 'accounting'>,
   access: Pick<Access, 'authenticate' | 'admin'>,
 ) {
   const { authenticate, admin } = access;
+  app.get(apiRoutes.administration.accounting, authenticate, admin, async (req, res) => {
+    const month =
+      req.query.month === undefined ? undefined : accountingMonthSchema.parse(req.query.month);
+    res.json(await deps.accounting.list(getActor(res), month));
+  });
+  app.post(apiRoutes.administration.accounting, authenticate, admin, async (req, res) =>
+    res
+      .status(201)
+      .json(await deps.accounting.create(getActor(res), accountingEntrySchema.parse(req.body))),
+  );
+  app.delete(
+    `${apiRoutes.administration.accounting}/:id`,
+    authenticate,
+    admin,
+    async (req, res) => {
+      await deps.accounting.void(getActor(res), userIdSchema.parse(req.params.id));
+      res.status(204).end();
+    },
+  );
   app.get(apiRoutes.administration.profile, authenticate, admin, async (_req, res) =>
     res.json(getActor(res)),
   );

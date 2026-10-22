@@ -43,9 +43,22 @@ export function AppProvider({
   useEffect(() => {
     let active = true;
     setLoading(true);
+    setAuthLoading(true);
     setError('');
-    Promise.all([api.catalogue(), api.me(), api.tollPoints()])
-      .then(([c, u, points]) => {
+    void api
+      .me()
+      .then((currentUser) => {
+        if (active) setUser(currentUser);
+      })
+      .catch((cause: unknown) => {
+        if (active) setError(errorMessage(cause));
+      })
+      .finally(() => {
+        if (active) setAuthLoading(false);
+      });
+    void api
+      .catalogue()
+      .then((c) => {
         if (active) {
           setCatalogue({
             ...c,
@@ -54,8 +67,6 @@ export function AppProvider({
               whatsappPhone: c.settings.whatsappPhone || c.settings.businessPhone || '',
             },
           });
-          setUser(u);
-          setTollPoints(points);
           setDraft((draft) => ({
             ...draft,
             vehicleId: draft.vehicleId || blankDraft(c).vehicleId,
@@ -66,9 +77,17 @@ export function AppProvider({
         if (active) setError(errorMessage(e));
       })
       .finally(() => {
+        if (active) setLoading(false);
+      });
+    void api
+      .tollPoints()
+      .then((points) => {
+        if (active) setTollPoints(points);
+      })
+      .catch((cause: unknown) => {
         if (active) {
-          setLoading(false);
-          setAuthLoading(false);
+          setTollPoints([]);
+          setError(errorMessage(cause));
         }
       });
     return () => {

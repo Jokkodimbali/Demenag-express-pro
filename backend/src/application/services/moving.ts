@@ -479,6 +479,11 @@ export class MovingService implements MovingUseCases {
     requireAdministrator(user);
     const booking = await this.bookings.find(id);
     if (!booking) throw new AppError(404, messages.reservationIntrouvable);
+    if (booking.quotes.some((quote) => quote.kind === 'final'))
+      throw new AppError(
+        409,
+        'Cette réservation possède un devis final et une écriture comptable : suppression impossible.',
+      );
     if (!this.bookings.delete)
       throw new AppError(501, 'La suppression des réservations est indisponible.');
     await this.bookings.delete(id);

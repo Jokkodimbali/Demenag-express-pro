@@ -416,7 +416,7 @@ export function BookingCard({
             {messages.envoyerLeDevisDefinitif}
           </button>
         )}
-        {admin && (
+        {admin && !finalQuote && (
           <button
             className="button text danger small"
             disabled={busy || deleteBusy}

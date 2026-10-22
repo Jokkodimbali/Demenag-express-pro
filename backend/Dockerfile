@@ -20,8 +20,9 @@ COPY --from=build /app/node_modules /app/node_modules
 COPY --from=build /app/backend/package.json /app/backend/package.json
 COPY --from=build /app/backend/prisma.config.ts /app/backend/prisma.config.ts
 COPY --from=build /app/backend/prisma /app/backend/prisma
+COPY --from=build /app/backend/scripts/verify-database-target.mjs /app/backend/scripts/verify-database-target.mjs
 COPY --from=build /app/backend/dist /app/backend/dist
 USER node
 WORKDIR /app/backend
 EXPOSE 80
-CMD ["node", "dist/main.js"]
+CMD ["sh", "-c", "npm run db:migrate && node dist/main.js"]

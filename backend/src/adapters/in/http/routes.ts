@@ -19,6 +19,7 @@ export const apiRoutes = {
     reverse: '/api/maps/reverse',
   },
   administration: {
+    accounting: '/api/admin/accounting',
     users: '/api/admin/users',
     clients: '/api/admin/clients',
     drivers: '/api/admin/drivers',

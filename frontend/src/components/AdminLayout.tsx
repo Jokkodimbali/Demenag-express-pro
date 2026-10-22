@@ -8,6 +8,7 @@ import {
   ClipboardCheck,
   Megaphone,
   FilePlus2,
+  BookOpenText,
 } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { messages } from '../content/fr';
@@ -18,6 +19,7 @@ const sections = [
   { to: routes.administrationCreateQuote, label: 'Devis', Icon: FilePlus2 },
   { to: routes.administrationPlanning, label: messages.planning, Icon: CalendarDays },
   { to: routes.administrationFinance, label: messages.devisEtFactures, Icon: ReceiptText },
+  { to: routes.administrationAccounting, label: 'Comptabilité', Icon: BookOpenText },
   { to: routes.administrationFleet, label: messages.flotteEtChauffeurs, Icon: Truck },
   { to: routes.administrationSettings, label: messages.tarifsEtParametres, Icon: Settings2 },
   { to: routes.administrationUsers, label: messages.comptesEtAcces, Icon: UsersRound },

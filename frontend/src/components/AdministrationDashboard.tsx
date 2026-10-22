@@ -36,7 +36,7 @@ function RevenueLegend({ provisional, definitive }: { provisional: number; defin
       </span>
       <span className="definitive">
         <i />
-        {messages.definitif} · {money(definitive)}
+        {messages.montantPrevisionnelConfirme} · {money(definitive)}
       </span>
     </div>
   );
@@ -171,12 +171,7 @@ export function RevenueDashboard({ bookings, vehicles = [], onSelect }: Dashboar
         </div>
       </div>
       <RevenueLegend provisional={scopeRevenue.provisional} definitive={scopeRevenue.definitive} />
-      <p className="muted revenue-definition">
-        Les demandes en attente sont provisoires. Les réservations confirmées, en cours ou terminées
-        sont comptées en définitif ; le montant retenu est le devis final, sinon le devis
-        provisoire, sinon l’estimation. Le global additionne chaque réservation active une seule
-        fois et exclut les annulations.
-      </p>
+      <p className="muted revenue-definition">{messages.revenuDashboardDefinition}</p>
       <BookingCalendar
         bookings={scoped}
         onSelect={onSelect}
@@ -268,7 +263,7 @@ function DailyVehicleRevenue({
           <div role="row" className="revenue-table-header">
             <span>{messages.vehicule}</span>
             <span>{messages.provisoire}</span>
-            <span>{messages.definitif}</span>
+            <span>{messages.montantPrevisionnelConfirme}</span>
             <span>{messages.reservations}</span>
           </div>
           {rows.map((row) => (

@@ -8,6 +8,7 @@ export const routes = {
   administrationCreateQuote: '/admin/creer-un-devis',
   administrationPlanning: '/admin/planning',
   administrationFinance: '/admin/finances',
+  administrationAccounting: '/admin/comptabilite',
   administrationFleet: '/admin/flotte',
   administrationSettings: '/admin/parametres',
   administrationPricing: '/admin/parametres/tarifs',
