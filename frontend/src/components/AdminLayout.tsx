@@ -7,6 +7,7 @@ import {
   UsersRound,
   ClipboardCheck,
   Megaphone,
+  FilePlus2,
 } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { messages } from '../content/fr';
@@ -14,7 +15,7 @@ import { routes } from '../routing/routes';
 
 const sections = [
   { to: routes.administration, label: messages.tableauDeBord, Icon: ClipboardList, end: true },
-  { to: routes.administrationBookings, label: messages.reservations, Icon: ClipboardList },
+  { to: routes.administrationCreateQuote, label: 'Devis', Icon: FilePlus2 },
   { to: routes.administrationPlanning, label: messages.planning, Icon: CalendarDays },
   { to: routes.administrationFinance, label: messages.devisEtFactures, Icon: ReceiptText },
   { to: routes.administrationFleet, label: messages.flotteEtChauffeurs, Icon: Truck },
@@ -24,7 +25,6 @@ const sections = [
   { to: routes.administrationVehicleReports, label: 'Contrôles véhicules', Icon: ClipboardCheck },
   { to: routes.administrationAnnouncements, label: 'Annonces chauffeurs', Icon: Megaphone },
 ];
-
 export function AdminLayout() {
   return (
     <section className="container workspace-page admin-workspace">
@@ -36,11 +36,11 @@ export function AdminLayout() {
         </div>
       </div>
       <nav className="tabs admin-tabs" aria-label={messages.navigationAdministration}>
-        {sections.map(({ to, label, Icon, end }) => (
+        {sections.map(({ to, label, Icon }) => (
           <NavLink
             key={to}
             to={to}
-            end={end}
+            end={to === routes.administration}
             className={({ isActive }) => (isActive ? 'active' : '')}
           >
             <Icon size={17} />

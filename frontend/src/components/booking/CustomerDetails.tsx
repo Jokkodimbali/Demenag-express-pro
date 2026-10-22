@@ -4,11 +4,9 @@ import { messages } from '../../content/fr';
 export function CustomerDetails({
   draft,
   setDraft,
-  onPhoneBlur,
   recognition,
   recognizingClient,
 }: Pick<BookingViewState, 'draft' | 'setDraft'> & {
-  onPhoneBlur: (phone: string) => void;
   recognition: { phone: string; name: string; bookingCount: number } | null;
   recognizingClient: boolean;
 }) {
@@ -45,7 +43,6 @@ export function CustomerDetails({
             maxLength={25}
             required
             value={draft.customerPhone}
-            onBlur={(event) => onPhoneBlur(event.currentTarget.value)}
             onChange={(event) =>
               setDraft((value) => ({ ...value, customerPhone: event.target.value }))
             }

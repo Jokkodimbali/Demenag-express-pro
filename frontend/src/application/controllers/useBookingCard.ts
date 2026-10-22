@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { messages } from '../../content/fr';
-import type { Booking, BookingStatus, Quote } from '../../domain/model';
+import type { Booking, BookingStatus, Quote, TollPoint } from '../../domain/model';
+import { tollPointForLine } from '../../domain/toll-selection';
 import { useApp } from '../context';
 import { errorMessage } from '../error-message';
 import { quoteFromForm } from '../validation/forms';
@@ -21,7 +22,7 @@ export function useBookingCard({
   editInitially?: boolean;
   onDeleted?: () => void;
 }) {
-  const { api, catalogue, exportQuote } = useApp();
+  const { api, catalogue, exportQuote, tollPoints } = useApp();
   const last = b.quotes.at(-1);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
@@ -30,7 +31,7 @@ export function useBookingCard({
     [deleting, setDeleting] = useState(false),
     [deleteBusy, setDeleteBusy] = useState(false),
     [deleteError, setDeleteError] = useState(''),
-    [extraLines, setExtraLines] = useState<ExtraLine[]>(() => extrasFromLast(b, last)),
+    [extraLines, setExtraLines] = useState<ExtraLine[]>(() => extrasFromLast(b, last, tollPoints)),
     [quoteNotes, setQuoteNotes] = useState(() => last?.notes || b.notes || '');
   const [quoteDraft, setQuoteDraft] = useState(() => ({
     kind: b.driverFinishedAt ? ('final' as const) : (last?.kind ?? ('provisional' as const)),
@@ -54,9 +55,9 @@ export function useBookingCard({
       discount: last?.price.discount ?? 0,
       options: quotedServiceOptions(b, last),
     });
-    setExtraLines(extrasFromLast(b, last));
+    setExtraLines(extrasFromLast(b, last, tollPoints));
     setQuoteNotes(last?.notes || b.notes || '');
-  }, [b, last]);
+  }, [b, last, tollPoints]);
   const terminal = ['completed', 'cancelled'].includes(b.status);
   async function change(status: BookingStatus): Promise<boolean> {
     if (busy) return false;
@@ -232,7 +233,11 @@ export function useBookingCard({
   };
 }
 
-function extrasFromLast(booking: Booking, quote: Quote | undefined): ExtraLine[] {
+function extrasFromLast(
+  booking: Booking,
+  quote: Quote | undefined,
+  tollPoints: TollPoint[],
+): ExtraLine[] {
   if (!quote) return [];
   const serviceLabels = [
     'Manœuvre',
@@ -245,7 +250,7 @@ function extrasFromLast(booking: Booking, quote: Quote | undefined): ExtraLine[]
       (line) => !serviceLabels.includes(line.label) && !line.label.includes(booking.vehicle.name),
     )
     .map((line) => ({
-      id: crypto.randomUUID(),
+      id: tollPointForLine(line.label, tollPoints)?.id ?? crypto.randomUUID(),
       label: line.label,
       quantity: line.quantity,
       unitPrice: line.unitPrice,

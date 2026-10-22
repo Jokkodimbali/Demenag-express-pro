@@ -131,6 +131,9 @@ export interface IdGenerator {
 }
 export interface AdministrationRepository {
   listUsers(): Promise<User[]>;
+  listHiddenClients(): Promise<{ phone: string; hiddenAt: string }[]>;
+  hideClient(phone: string): Promise<{ phone: string; hiddenAt: string }>;
+  updateClient(phone: string, name: string, nextPhone: string): Promise<void>;
   transaction<T>(work: (repository: AdministrationTransaction) => Promise<T>): Promise<T>;
 }
 export interface AdministrationTransaction {

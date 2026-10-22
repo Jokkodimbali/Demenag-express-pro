@@ -1,4 +1,5 @@
 import type { Catalogue, Options, Point, RouteTicket } from '../domain/model';
+import { blankInventory, type Inventory } from '../domain/inventory';
 export type Draft = {
   vehicleId: string;
   customerName: string;
@@ -12,6 +13,7 @@ export type Draft = {
   timeSlot: string;
   options: Options;
   notes: string;
+  inventory: Inventory;
   requestId: string;
 };
 export const blankDraft = (catalogue?: Catalogue): Draft => ({
@@ -27,5 +29,6 @@ export const blankDraft = (catalogue?: Catalogue): Draft => ({
   timeSlot: '',
   options: { labour: 0, desk: 0, wardrobe: 0, bed: 0 },
   notes: '',
+  inventory: blankInventory(),
   requestId: crypto.randomUUID(),
 });

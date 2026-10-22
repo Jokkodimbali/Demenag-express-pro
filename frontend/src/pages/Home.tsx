@@ -146,14 +146,10 @@ export function Home() {
     submit,
     option,
     extras,
-    administrativeQuote,
-    tollLines,
-    setTollLines,
     clientRecognition,
     recognizingClient,
-    recognizeClient,
   } = state;
-  const bookingsClosed = catalogue?.settings.bookingsEnabled === false && !administrativeQuote;
+  const bookingsClosed = catalogue?.settings.bookingsEnabled === false;
   return (
     <>
       <section className="hero container">
@@ -257,14 +253,10 @@ export function Home() {
                   setDraft={setDraft}
                   extras={extras}
                   option={option}
-                  administrativeQuote={administrativeQuote}
-                  tollLines={tollLines}
-                  setTollLines={setTollLines}
                 />
                 <CustomerDetails
                   draft={draft}
                   setDraft={setDraft}
-                  onPhoneBlur={recognizeClient}
                   recognition={
                     clientRecognition &&
                     clientRecognition.phone === normalizedClientPhone(draft.customerPhone)
@@ -285,8 +277,6 @@ export function Home() {
                 submitError={submitError}
                 submitting={submitting}
                 user={user}
-                selectedTolls={tollLines}
-                allowWhenBookingsClosed={administrativeQuote}
               />
             </form>
           ) : null}

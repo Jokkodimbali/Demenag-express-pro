@@ -20,6 +20,7 @@ export const apiRoutes = {
   },
   administration: {
     users: '/api/admin/users',
+    clients: '/api/admin/clients',
     drivers: '/api/admin/drivers',
     profile: '/api/admin/profile',
   },

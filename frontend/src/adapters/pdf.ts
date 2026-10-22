@@ -2,6 +2,23 @@ import { messages } from '../content/fr';
 import { dateLabel, money } from '../domain/format';
 import type { Booking, Quote, Settings } from '../domain/model';
 
+function notesForPdf(value: string): string {
+  const lines = value.trim().split(/\r?\n/);
+  if (!/^FICHE D['’]APPEL\b/u.test(lines[0] ?? '')) return value.trim();
+  const departure = /^Départ\s*:.*? · étage (.+)$/u.exec(lines[1] ?? '');
+  const arrival = /^Arrivée\s*:.*? · étage (.+)$/u.exec(lines[2] ?? '');
+  if (!departure || !arrival) return value.trim();
+  const access = (value: string) =>
+    value.replace(/^(\d+)(?=\s|$)/u, (_match, floor: string) =>
+      floor === '1' ? '1er étage' : `${floor}e étage`,
+    );
+  return [
+    lines[0],
+    `Accès : A · ${access(departure[1])} ; B · ${access(arrival[1])}`,
+    ...lines.slice(3),
+  ].join('\n');
+}
+
 async function assetDataUrl(path: string): Promise<string> {
   const response = await fetch(path);
   if (!response.ok) throw new Error(`Impossible de charger ${path}`);
@@ -193,6 +210,28 @@ export async function downloadQuote(
       ? messages.montantEtabliSurLaBaseDuNombreReel
       : `Devis temporaire, calculé sur ${price.trips} aller(s)-retour(s) estimé(s). Le transport est facturé par aller-retour effectué ; le devis final, basé sur le nombre réel d'allers-retours, sera envoyé par Demenag Express à la fin du déménagement.`;
   y = paragraph(explanation, margin, y, contentWidth, 8.5, false, [92, 99, 106]);
+  const quoteNotes = notesForPdf(documentQuote ? documentQuote.notes : booking.notes);
+  if (quoteNotes) {
+    y += 8;
+    ensureSpace(12);
+    y = paragraph('FICHE D’APPEL ET PRÉCISIONS', margin, y, contentWidth, 9, true);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(36, 40, 44);
+    for (const sourceLine of quoteNotes.split(/\r?\n/)) {
+      if (!sourceLine) {
+        y += 3;
+        continue;
+      }
+      for (const line of doc.splitTextToSize(clean(sourceLine), contentWidth) as string[]) {
+        ensureSpace(6);
+        doc.text(line, margin, y);
+        y += 4.5;
+      }
+    }
+    y += 3;
+  }
+  ensureSpace(12);
   if (settings.invoiceFooter)
     y = paragraph(settings.invoiceFooter, margin, y + 2, contentWidth, 8, false, [92, 99, 106]);
 

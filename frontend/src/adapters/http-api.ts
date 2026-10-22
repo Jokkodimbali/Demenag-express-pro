@@ -76,6 +76,9 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
     changePassword: (oldPassword, newPassword) =>
       request(httpRoutes.authentication.password, 'POST', { oldPassword, newPassword }),
     users: () => request(httpRoutes.users),
+    hiddenClients: () => request(`${httpRoutes.clients}/hidden`),
+    updateClient: (phone, input) => request(`${httpRoutes.clients}/${phone}`, 'PATCH', input),
+    hideClient: (phone) => request(`${httpRoutes.clients}/${phone}`, 'DELETE'),
     adminProfile: () => request(httpRoutes.adminProfile),
     updateAdminProfile: (input) => request(httpRoutes.adminProfile, 'PUT', input),
     updateUser: (user) => request(`${httpRoutes.users}/${user.id}`, 'PUT', user),

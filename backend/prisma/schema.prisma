@@ -256,17 +256,26 @@ model LigneDevis {
 }
 
 model PointPeage {
-  id          String   @id @default(uuid()) @db.Uuid
-  nom         String   @map("name")
-  operateur   String   @map("operator")
-  tarifLourd  Int      @map("heavy_price")
-  latitude    Float?
-  longitude   Float?
-  creeLe      DateTime @default(now()) @map("created_at") @db.Timestamptz
-  modifieLe   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  id              String   @id @default(uuid()) @db.Uuid
+  nom             String   @map("name")
+  region          String   @default("")
+  axe             String   @default("") @map("axis")
+  tarifLourd      Int      @map("heavy_price")
+  tarifsVehicules Json     @default("{}") @map("vehicle_prices")
+  latitude        Float?
+  longitude       Float?
+  creeLe          DateTime @default(now()) @map("created_at") @db.Timestamptz
+  modifieLe       DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  @@unique([operateur, nom])
   @@map("toll_points")
+  @@schema("demenag")
+}
+
+model ClientMasque {
+  telephoneNormalise String   @id @map("normalized_phone")
+  masqueLe           DateTime @default(now()) @map("hidden_at") @db.Timestamptz
+
+  @@map("hidden_clients")
   @@schema("demenag")
 }
 

@@ -1,5 +1,6 @@
 export const httpRoutes = {
   users: '/admin/users',
+  clients: '/admin/clients',
   adminProfile: '/admin/profile',
   drivers: '/admin/drivers',
   catalogue: '/catalogue',

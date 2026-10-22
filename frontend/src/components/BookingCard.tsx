@@ -735,6 +735,7 @@ export function BookingCard({
             </div>
             <TollRateSelector
               lines={extraLines}
+              vehicleId={b.vehicle.id}
               onToggle={(line, selected) =>
                 setExtraLines((current) =>
                   selected
