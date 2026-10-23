@@ -6,6 +6,8 @@ export type Draft = {
   customerPhone: string;
   fromAddress: string;
   toAddress: string;
+  fromNote: string;
+  toNote: string;
   from: Point | null;
   to: Point | null;
   route: RouteTicket | null;
@@ -14,6 +16,7 @@ export type Draft = {
   options: Options;
   notes: string;
   inventory: Inventory;
+  questionnaireAnswers: Record<string, string>;
   requestId: string;
 };
 export const blankDraft = (catalogue?: Catalogue): Draft => ({
@@ -22,6 +25,8 @@ export const blankDraft = (catalogue?: Catalogue): Draft => ({
   customerPhone: '',
   fromAddress: '',
   toAddress: '',
+  fromNote: '',
+  toNote: '',
   from: null,
   to: null,
   route: null,
@@ -30,5 +35,6 @@ export const blankDraft = (catalogue?: Catalogue): Draft => ({
   options: { labour: 0, desk: 0, wardrobe: 0, bed: 0 },
   notes: '',
   inventory: blankInventory(),
+  questionnaireAnswers: {},
   requestId: crypto.randomUUID(),
 });

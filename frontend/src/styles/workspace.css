@@ -449,6 +449,9 @@ div.driver-course-complete p {
   align-items: center;
   margin-top: 12px;
 }
+.booking-close-hint {
+  margin-top: 4px;
+}
 .booking-detail {
   margin-top: 8px;
   border-top: 1px solid var(--line);
@@ -943,6 +946,161 @@ div.driver-course-complete p {
 @media (max-width: 600px) {
   .client-table-scroll-hint {
     display: block;
+  }
+}
+.booking-plan-toggle-wrap {
+  margin-top: 14px;
+}
+.booking-plan-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.booking-plan-toggle > span {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #3b4046;
+  font-size: 11px;
+}
+.booking-work-plan {
+  margin-top: 12px;
+  padding: clamp(12px, 2vw, 18px);
+  border: 1px solid #424850;
+  border-radius: 14px;
+  background: #202326;
+}
+.booking-work-plan > header > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.booking-work-plan > header strong {
+  color: #f6d73c;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+}
+.booking-work-plan > header span,
+.booking-plan-step p,
+.booking-plan-read-only {
+  color: #aeb4bb;
+  font-size: 12px;
+}
+.booking-work-plan-steps {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.booking-plan-step {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr) minmax(170px, 0.6fr);
+  align-items: start;
+  gap: 14px;
+  padding: 12px 0;
+  border-top: 1px solid #3b4046;
+}
+.booking-plan-step-time {
+  display: grid;
+  gap: 4px;
+}
+.booking-plan-step-time > strong {
+  font-size: 18px;
+}
+.booking-plan-step-time small {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #aeb4bb;
+}
+.booking-plan-step-main h4 {
+  margin: 0;
+  font-size: 14px;
+}
+.booking-plan-step-main p {
+  margin: 4px 0 0;
+}
+.booking-plan-review-form {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  margin-top: 10px;
+}
+.booking-plan-review-form > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.booking-plan-review-form > div button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: 5px 9px;
+  border: 1px solid #4a5057;
+  border-radius: 8px;
+  background: #272a2e;
+  color: #d5d9de;
+  cursor: pointer;
+}
+.booking-plan-review-form > div button.selected.success {
+  border-color: #36a269;
+  color: #72d49b;
+}
+.booking-plan-review-form > div button.selected.warning {
+  border-color: #e5a83b;
+  color: #ffd16d;
+}
+.booking-plan-review-form label {
+  display: grid;
+  width: min(100%, 480px);
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.booking-plan-review-form textarea {
+  width: 100%;
+  min-height: 62px;
+  padding: 9px;
+  border: 1px solid #555d65;
+  border-radius: 8px;
+  background: #1b1d20;
+  color: #fff;
+  resize: vertical;
+}
+.booking-plan-current-review {
+  display: grid;
+  gap: 3px;
+  font-size: 11px;
+}
+.booking-plan-current-review > span {
+  color: #ffd16d;
+  overflow-wrap: anywhere;
+}
+.booking-plan-current-review > small {
+  color: #858d95;
+}
+.booking-plan-status.success {
+  color: #72d49b;
+}
+.booking-plan-status.warning {
+  color: #ffd16d;
+}
+.booking-plan-status.pending {
+  color: #aeb4bb;
+}
+.booking-plan-read-only {
+  margin-top: 8px !important;
+}
+@media (max-width: 760px) {
+  .booking-plan-step {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .booking-plan-step-time {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
   }
 }
 .client-recognition {

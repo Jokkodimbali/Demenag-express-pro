@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { messages } from '../content/fr';
 import { tierLabels } from '../domain/format';
-import type { Booking, Options, Price } from '../domain/model';
+import type { Booking, BookingInput, Options, Price } from '../domain/model';
 import { inventoryNote } from '../domain/inventory';
 import { tollPrice } from '../domain/toll-prices';
 import { normalizedClientPhone } from './services/client-summary';
@@ -156,7 +156,11 @@ export function useBookingForm({
       if (lookupPhone.current === normalizedPhone) setRecognizingClient(false);
     }
   }
-  async function submit(e: React.FormEvent) {
+  async function submit(
+    e: React.FormEvent,
+    quoteWorkSummary = '',
+    workPlan: NonNullable<BookingInput['workPlan']> = [],
+  ) {
     e.preventDefault();
     if (submitLock.current) return;
     setSubmitError('');
@@ -164,11 +168,20 @@ export function useBookingForm({
       setSubmitError(messages.calculezLeTrajetPourObtenirUneEstimation);
       return;
     }
+    const activeQuestions = catalogue?.settings.questionnaire ?? [];
     if (!user) {
       navigate(`${routes.login}?retour=reservation`);
       return;
     }
-    const bookingNotes = [administrativeQuote ? inventoryNote(draft.inventory) : '', draft.notes]
+    const bookingNotes = [
+      administrativeQuote ? inventoryNote(draft.inventory) : '',
+      administrativeQuote && draft.fromNote.trim()
+        ? `Repère départ : ${draft.fromNote.trim()}`
+        : '',
+      administrativeQuote && draft.toNote.trim() ? `Repère arrivée : ${draft.toNote.trim()}` : '',
+      administrativeQuote ? quoteWorkSummary : '',
+      draft.notes,
+    ]
       .filter(Boolean)
       .join('\n\n');
     if (bookingNotes.length > 2000) {
@@ -191,6 +204,35 @@ export function useBookingForm({
         timeSlot: draft.date ? draft.timeSlot : '',
         options: draft.options,
         notes: bookingNotes,
+        questionnaireAnswers: administrativeQuote
+          ? [
+              ...activeQuestions
+                .filter(
+                  (question) =>
+                    question.active &&
+                    draft.questionnaireAnswers[question.id]?.trim() &&
+                    draft.questionnaireAnswers[question.id].trim() !== 'À poser',
+                )
+                .map((question) => ({
+                  questionId: question.id,
+                  group: question.group,
+                  question: question.label,
+                  answer: draft.questionnaireAnswers[question.id].trim(),
+                })),
+              ...[
+                ['key-ready', 'Le matériel sera-t-il prêt à être chargé ?'],
+                ['key-stairs', 'Tout le matériel passe-t-il dans les escaliers ?'],
+              ]
+                .filter(([id]) => draft.questionnaireAnswers[id]?.trim())
+                .map(([questionId, question]) => ({
+                  questionId,
+                  group: 'Questions clés',
+                  question,
+                  answer: draft.questionnaireAnswers[questionId].trim(),
+                })),
+            ]
+          : [],
+        workPlan: administrativeQuote ? workPlan : [],
         requestId: draft.requestId,
       });
       if (administrativeQuote) clearAdminQuoteDraft();

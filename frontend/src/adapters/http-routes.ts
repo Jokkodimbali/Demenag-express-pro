@@ -15,6 +15,8 @@ export const httpRoutes = {
   },
   bookings: '/bookings',
   bookingTrips: (id: string) => `/bookings/${id}/trips`,
+  bookingWorkPlanReview: (id: string, stepId: string) =>
+    `/bookings/${id}/work-plan/${stepId}/review`,
   bookingDriverFinished: (id: string) => `/bookings/${id}/driver-finished`,
   bookingRoute: (id: string) => `/bookings/${id}/route`,
   driver: {

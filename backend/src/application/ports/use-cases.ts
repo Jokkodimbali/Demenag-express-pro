@@ -55,6 +55,14 @@ export interface MovingUseCases {
     version: number,
   ): Promise<Booking>;
   updateNotes(user: User, id: string, notes: string, version: number): Promise<Booking>;
+  reviewWorkPlan(
+    user: User,
+    id: string,
+    stepId: string,
+    status: 'respected' | 'not_respected',
+    reason: string,
+    version: number,
+  ): Promise<Booking>;
   updateRoute(user: User, id: string, from: Point, to: Point, version: number): Promise<Booking>;
   assignDriver(user: User, id: string, driverId: string | null, version: number): Promise<Booking>;
   quote(user: User, id: string, input: QuoteInput): Promise<Booking>;

@@ -42,6 +42,20 @@ export type BookingRules = {
   cancellationNoticeHours: number;
   enabledSlots: BookingSlot[];
 };
+export type ClientQuestion = {
+  id: string;
+  group: string;
+  label: string;
+  answerType: 'text' | 'yes_no';
+  required: boolean;
+  active: boolean;
+};
+export type ClientQuestionAnswer = {
+  questionId: string;
+  group: string;
+  question: string;
+  answer: string;
+};
 export type Settings = BookingRules & {
   distanceBounds: [number, number, number];
   labourPrice: number;
@@ -57,6 +71,7 @@ export type Settings = BookingRules & {
   invoiceLogo: string | null;
   invoiceStamp: string | null;
   invoiceSignature: string | null;
+  questionnaire?: ClientQuestion[];
 };
 export type Catalogue = { vehicles: Vehicle[]; settings: Settings };
 export type TollPoint = {
@@ -97,6 +112,22 @@ export type BookingTrip = {
   startedAt: string;
   finishedAt: string | null;
 };
+export type WorkPlanCompliance = 'pending' | 'respected' | 'not_respected';
+export type WorkPlanReview = {
+  status: WorkPlanCompliance;
+  reason: string;
+  checkedAt: string | null;
+  checkedBy: string | null;
+};
+export type WorkPlanStep = {
+  id: string;
+  time: string;
+  title: string;
+  detail: string;
+  minutes: number;
+  review: WorkPlanReview;
+};
+export type WorkPlanStepInput = Pick<WorkPlanStep, 'id' | 'time' | 'title' | 'detail' | 'minutes'>;
 export type VehicleInspectionPhotos = {
   engineOil: string;
   coolant: string;
@@ -131,11 +162,13 @@ export type Booking = {
   timeSlot: string;
   options: Options;
   notes: string;
+  questionnaireAnswers?: ClientQuestionAnswer[];
   status: BookingStatus;
   pricingSettings?: Settings;
   estimate: Price;
   quotes: Quote[];
   trips?: BookingTrip[];
+  workPlan?: WorkPlanStep[];
   driverFinishedAt?: string | null;
   createdAt: string;
   version: number;
@@ -151,6 +184,8 @@ export type BookingInput = {
   timeSlot: string;
   options: Options;
   notes: string;
+  questionnaireAnswers?: ClientQuestionAnswer[];
+  workPlan?: WorkPlanStepInput[];
   requestId: string;
 };
 export type QuoteInput = {

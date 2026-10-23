@@ -60,6 +60,16 @@ function harness() {
     estimate: { lines: [], total: 30000, discount: 0, tier: 1, trips: 1, currency: 'XOF' },
     quotes: [],
     trips: [],
+    workPlan: [
+      {
+        id: 'plan-1',
+        time: '08:00',
+        title: 'Chargement',
+        detail: 'Charger le mobilier',
+        minutes: 90,
+        review: { status: 'pending', reason: '', checkedAt: null, checkedBy: null },
+      },
+    ],
     createdAt: now.toISOString(),
     version: 1,
   };
@@ -87,6 +97,14 @@ function harness() {
         ],
       };
     },
+    addTripLoadingPhotos: async (_id: string, photos: string[]) => {
+      booking = {
+        ...booking,
+        trips: booking.trips?.map((trip) =>
+          !trip.finishedAt ? { ...trip, loadingPhotos: photos } : trip,
+        ),
+      };
+    },
     finishTrip: async (_id: string, photos: string[]) => {
       booking = {
         ...booking,
@@ -103,7 +121,8 @@ function harness() {
     get: async () => ({ vehicles: [], settings }) as Catalogue,
   } as unknown as CatalogueRepository;
   const drivers = {
-    findByUserId: async () => driver,
+    findByUserId: async (userId: string) =>
+      userId === driverUser.id ? driver : { ...driver, userId, vehicleId: 'other-vehicle' },
     find: async () => driver,
   } as unknown as DriverRepository;
   const service = new MovingService(
@@ -140,9 +159,18 @@ test('admin can start and finish courses without photos, then close with a final
   const scenario = harness();
   const { service, getBooking, addFinalQuote } = scenario;
 
+  await assert.rejects(
+    service.status(admin, 'booking-1', 'in_progress', getBooking().version),
+    /Démarrez une course depuis les actions/u,
+  );
   await service.startTrip(admin, 'booking-1', []);
   assert.equal(getBooking().status, 'in_progress');
   assert.deepEqual(getBooking().trips?.[0]?.loadingPhotos, []);
+
+  const driverAddedProof = await service.startTrip(driverUser, 'booking-1', ['/loading.jpg']);
+  assert.equal(driverAddedProof.trips?.length, 1);
+  assert.deepEqual(driverAddedProof.trips?.[0]?.loadingPhotos, ['/loading.jpg']);
+  await assert.rejects(service.startTrip(admin, 'booking-1', []), /Une course est déjà en cours/u);
 
   await service.finishTrip(admin, 'booking-1', []);
   await service.finishDriverWork(admin, 'booking-1');
@@ -160,4 +188,46 @@ test('driver still needs loading and unloading photos; client cannot manage cour
   await assert.rejects(service.startTrip(driverUser, 'booking-1', []), /photo du chargement/u);
   await assert.rejects(service.finishTrip(driverUser, 'booking-1', []), /photo du déchargement/u);
   await assert.rejects(service.startTrip(client, 'booking-1', []), /réservée à l’administration/u);
+});
+
+test('driver can refresh only bookings assigned to their vehicle', async () => {
+  const { service } = harness();
+  assert.equal((await service.get(driverUser, 'booking-1')).id, 'booking-1');
+  await assert.rejects(service.get({ ...driverUser, id: 'other-driver' }, 'booking-1'));
+});
+
+test('driver and admin update one shared schedule check and missed times require a reason', async () => {
+  const { service, getBooking } = harness();
+  await assert.rejects(
+    service.reviewWorkPlan(admin, 'booking-1', 'plan-1', 'not_respected', '', 1),
+    /Justifiez/u,
+  );
+
+  const driverChecked = await service.reviewWorkPlan(
+    driverUser,
+    'booking-1',
+    'plan-1',
+    'not_respected',
+    'Le camion est arrivé en retard.',
+    1,
+  );
+  assert.equal(driverChecked.workPlan?.[0]?.review.status, 'not_respected');
+  assert.equal(driverChecked.workPlan?.[0]?.review.reason, 'Le camion est arrivé en retard.');
+  assert.equal(driverChecked.workPlan?.[0]?.review.checkedBy, driverUser.name);
+
+  const adminChecked = await service.reviewWorkPlan(
+    admin,
+    'booking-1',
+    'plan-1',
+    'respected',
+    '',
+    getBooking().version,
+  );
+  assert.equal(adminChecked.workPlan?.[0]?.review.status, 'respected');
+  assert.equal(adminChecked.workPlan?.[0]?.review.reason, '');
+  assert.equal(adminChecked.workPlan?.[0]?.review.checkedBy, admin.name);
+  await assert.rejects(
+    service.reviewWorkPlan(client, 'booking-1', 'plan-1', 'respected', '', getBooking().version),
+    /réservée/u,
+  );
 });

@@ -13,6 +13,7 @@ import {
   quoteSchema,
   statusSchema,
   tripPhotosSchema,
+  workPlanReviewSchema,
 } from './schemas.js';
 import { apiRoutes } from './routes.js';
 export function registerBookingRoutes(
@@ -27,11 +28,16 @@ export function registerBookingRoutes(
     message: string,
     recipients: { userIds?: string[]; roles?: ('client' | 'admin' | 'driver')[] },
     bookingId?: string,
-  ) =>
-    await notifications?.publish(
-      { id: crypto.randomUUID(), title, message, createdAt: new Date().toISOString(), bookingId },
-      recipients,
-    );
+  ) => {
+    try {
+      await notifications?.publish(
+        { id: crypto.randomUUID(), title, message, createdAt: new Date().toISOString(), bookingId },
+        recipients,
+      );
+    } catch (error) {
+      console.error('Notification non envoyée après une action de réservation :', error);
+    }
+  };
   app.post(apiRoutes.estimates, async (req, res) => {
     const p = estimateSchema.parse(req.body);
     res.json(await deps.moving.estimate(p.vehicleId, p.routeId, p.options));
@@ -141,6 +147,26 @@ export function registerBookingRoutes(
       ),
     );
   });
+  app.patch(
+    `${apiRoutes.bookings}/:id/work-plan/:stepId/review`,
+    authenticate,
+    async (req, res) => {
+      const p = workPlanReviewSchema.parse(req.body);
+      res.json(
+        await deps.moving.reviewWorkPlan(
+          getActor(res),
+          z.uuid().parse(req.params.id),
+          z
+            .string()
+            .regex(/^[a-zA-Z0-9_-]{1,80}$/)
+            .parse(req.params.stepId),
+          p.status,
+          p.reason,
+          p.version,
+        ),
+      );
+    },
+  );
   app.patch(`${apiRoutes.bookings}/:id/route`, authenticate, admin, async (req, res) => {
     const p = bookingRouteUpdateSchema.parse(req.body);
     res.json(

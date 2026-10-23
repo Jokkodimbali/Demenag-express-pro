@@ -1,7 +1,7 @@
 import type { BookingRepository } from '../../../application/ports/index.js';
 import { AppError } from '../../../domain/errors.js';
 import { messages } from '../../../domain/messages/fr.js';
-import type { Booking } from '../../../domain/model.js';
+import type { Booking, WorkPlanReview } from '../../../domain/model.js';
 import { type PrismaClient } from '../../../generated/prisma/client.js';
 import { conflict, json } from './helpers.js';
 import { toStatus } from './mapping.js';
@@ -18,8 +18,33 @@ export class PrismaBookings implements BookingRepository {
       finishedAt: Date | null;
     }[];
   }): Booking {
+    const booking = row.donnees as Booking;
+    const workPlan = booking.workPlan?.length
+      ? booking.workPlan.map((step) => {
+          const legacyStep = step as typeof step & {
+            review?: WorkPlanReview;
+            driverReview?: WorkPlanReview;
+            adminReview?: WorkPlanReview;
+          };
+          if (legacyStep.review) return step;
+          const reviews = [legacyStep.driverReview, legacyStep.adminReview].filter(
+            (review): review is NonNullable<typeof review> => Boolean(review),
+          );
+          const review = reviews.sort(
+            (left, right) =>
+              new Date(right.checkedAt ?? 0).getTime() - new Date(left.checkedAt ?? 0).getTime(),
+          )[0] ?? {
+            status: 'pending' as const,
+            reason: '',
+            checkedAt: null,
+            checkedBy: null,
+          };
+          return { ...step, review };
+        })
+      : this.workPlanFromLegacyNotes(booking.notes);
     return {
-      ...(row.donnees as Booking),
+      ...booking,
+      workPlan,
       trips: row.courses.map((trip) => ({
         id: trip.id,
         sequence: trip.sequence,
@@ -29,6 +54,31 @@ export class PrismaBookings implements BookingRepository {
         finishedAt: trip.finishedAt?.toISOString() ?? null,
       })),
     };
+  }
+  private workPlanFromLegacyNotes(notes: string) {
+    const items: NonNullable<Booking['workPlan']> = [];
+    for (const line of notes.split('\n')) {
+      const match =
+        /^(\d{2}:\d{2}) · (.{1,120}?) · (\d+ min|\d+ h(?: \d+)?)\s*(?:\((.*)\))?$/u.exec(
+          line.trim(),
+        );
+      if (!match) continue;
+      const duration = match[3] ?? '';
+      const hours = /^(\d+) h(?: (\d+))?$/u.exec(duration);
+      const minutes = hours
+        ? Number(hours[1]) * 60 + Number(hours[2] ?? 0)
+        : Number(/^\d+/u.exec(duration)?.[0] ?? 0);
+      const pending = { status: 'pending' as const, reason: '', checkedAt: null, checkedBy: null };
+      items.push({
+        id: `legacy-plan-${items.length + 1}`,
+        time: match[1] ?? '08:00',
+        title: match[2] ?? 'Étape de mission',
+        detail: match[4] ?? '',
+        minutes,
+        review: pending,
+      });
+    }
+    return items;
   }
   async list(userId?: string, vehicleId?: string) {
     const rows = await this.db.reservation.findMany({
@@ -52,6 +102,7 @@ export class PrismaBookings implements BookingRepository {
   async startTrip(bookingId: string, photos: string[]) {
     try {
       await this.db.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT "id" FROM "demenag"."bookings" WHERE "id" = ${bookingId}::uuid FOR UPDATE`;
         const open = await tx.course.findFirst({
           where: { reservationId: bookingId, finishedAt: null },
         });
@@ -66,18 +117,37 @@ export class PrismaBookings implements BookingRepository {
       conflict(error);
     }
   }
+  async addTripLoadingPhotos(bookingId: string, photos: string[]) {
+    await this.db.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "demenag"."bookings" WHERE "id" = ${bookingId}::uuid FOR UPDATE`;
+      const open = await tx.course.findFirst({
+        where: { reservationId: bookingId, finishedAt: null },
+        orderBy: { sequence: 'desc' },
+      });
+      if (!open) throw new AppError(409, 'Aucune course en cours à compléter.');
+      if ((open.loadingPhotos as string[]).length)
+        throw new AppError(
+          409,
+          'Les preuves de chargement de cette course sont déjà enregistrées.',
+        );
+      await tx.course.update({ where: { id: open.id }, data: { loadingPhotos: photos } });
+    });
+  }
   async finishTrip(bookingId: string, photos: string[]) {
-    const trip = await this.db.course.findFirst({
-      where: { reservationId: bookingId, finishedAt: null },
-      orderBy: { sequence: 'desc' },
+    await this.db.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "demenag"."bookings" WHERE "id" = ${bookingId}::uuid FOR UPDATE`;
+      const trip = await tx.course.findFirst({
+        where: { reservationId: bookingId, finishedAt: null },
+        orderBy: { sequence: 'desc' },
+      });
+      if (!trip) throw new AppError(409, 'Aucune course en cours à terminer.');
+      const result = await tx.course.updateMany({
+        where: { id: trip.id, finishedAt: null },
+        data: { unloadingPhotos: photos, finishedAt: new Date() },
+      });
+      if (!result.count)
+        throw new AppError(409, 'Cette course a déjà été terminée. Actualisez la page.');
     });
-    if (!trip) throw new AppError(409, 'Aucune course en cours à terminer.');
-    const result = await this.db.course.updateMany({
-      where: { id: trip.id, finishedAt: null },
-      data: { unloadingPhotos: photos, finishedAt: new Date() },
-    });
-    if (!result.count)
-      throw new AppError(409, 'Cette course a déjà été terminée. Actualisez la page.');
   }
   async delete(id: string) {
     await this.db.$transaction(async (tx) => {

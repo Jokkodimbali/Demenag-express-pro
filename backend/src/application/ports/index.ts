@@ -85,6 +85,7 @@ export interface BookingRepository {
   create(booking: Booking, requestId: string): Promise<Booking>;
   update(booking: Booking, expectedVersion: number): Promise<Booking>;
   startTrip(bookingId: string, photos: string[]): Promise<void>;
+  addTripLoadingPhotos(bookingId: string, photos: string[]): Promise<void>;
   finishTrip(bookingId: string, photos: string[]): Promise<void>;
   delete?(id: string): Promise<void>;
 }

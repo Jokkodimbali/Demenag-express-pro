@@ -1,10 +1,12 @@
 import type {
   BookingSlot,
+  ClientQuestion,
   Driver,
   Settings,
   UserCredentials,
   Vehicle,
 } from '../../../domain/model.js';
+import { defaultClientQuestions } from '../../../domain/questionnaire.js';
 import type {
   ParametreApplication,
   Utilisateur,
@@ -101,6 +103,9 @@ export const fromSettings = (row: ParametreApplication): Settings => ({
   clientCancellation: row.annulationClientAutorisee,
   cancellationNoticeHours: row.preavisAnnulationHeures,
   enabledSlots: row.creneauxOuverts as BookingSlot[],
+  questionnaire: Array.isArray(row.questionnaire)
+    ? (row.questionnaire as ClientQuestion[])
+    : defaultClientQuestions,
 });
 export const toSettings = (value: Settings) => ({
   bornesDistance: value.distanceBounds,
@@ -125,6 +130,7 @@ export const toSettings = (value: Settings) => ({
   annulationClientAutorisee: value.clientCancellation,
   preavisAnnulationHeures: value.cancellationNoticeHours,
   creneauxOuverts: value.enabledSlots,
+  questionnaire: value.questionnaire ?? defaultClientQuestions,
 });
 
 export const toStatus = {

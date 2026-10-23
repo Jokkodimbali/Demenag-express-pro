@@ -7,9 +7,15 @@ const EMPTY_TOLL_LINES: TollExtraLine[] = [];
 export default function RouteMap({
   tollLines = EMPTY_TOLL_LINES,
   onTollToggle,
+  fromNote,
+  toNote,
+  onNoteChange,
 }: {
   tollLines?: TollExtraLine[];
   onTollToggle?: (line: TollExtraLine, selected: boolean) => void;
+  fromNote?: string;
+  toNote?: string;
+  onNoteChange?: (side: 'from' | 'to', value: string) => void;
 }) {
   const {
     draft,
@@ -63,6 +69,18 @@ export default function RouteMap({
                 <Search size={18} />
               </button>
             </div>
+            {onNoteChange && (
+              <label className="route-address-note" htmlFor={'address-note-' + side}>
+                <span>{side === 'from' ? 'Repère de départ' : 'Repère d’arrivée'}</span>
+                <input
+                  id={'address-note-' + side}
+                  value={side === 'from' ? (fromNote ?? '') : (toNote ?? '')}
+                  onChange={(event) => onNoteChange(side, event.target.value)}
+                  placeholder="Bâtiment, porte, lieu connu…"
+                  maxLength={300}
+                />
+              </label>
+            )}
           </div>
         ))}
       </div>

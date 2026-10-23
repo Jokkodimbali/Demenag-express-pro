@@ -9,9 +9,12 @@ import {
 } from '../application/admin-quote-draft-storage';
 import { normalizedClientPhone } from '../application/services/client-summary';
 import { CallInventory } from '../components/booking/CallInventory';
+import { ClientQuestionnaire } from '../components/booking/ClientQuestionnaire';
 import { TollRateSelector } from '../components/TollRateSelector';
 import { inventoryNote } from '../domain/inventory';
 import { money, today } from '../domain/format';
+import { estimateMovingWork, movingEstimateNote } from '../domain/moving-estimate';
+import { defaultClientQuestions } from '../domain/questionnaire';
 import { routes } from '../routing/routes';
 
 const RouteMap = lazy(() => import('../components/RouteMap'));
@@ -24,6 +27,7 @@ export function AdminCreateQuote() {
     discount: 0,
     customPrice: null,
   });
+  const [questionnaireOpen, setQuestionnaireOpen] = useState(false);
   const state = useBookingForm({ mode: 'admin-quote', quoteConfig });
   const {
     catalogue,
@@ -66,6 +70,60 @@ export function AdminCreateQuote() {
     saveAdminQuoteDraft({ draft, quoteConfig, tollLines });
   }, [draft, quoteConfig, tollLines]);
   const inventoryText = inventoryNote(draft.inventory);
+  const movingEstimate = selected
+    ? estimateMovingWork(draft.inventory, selected, draft.route, {
+        trips: quoteConfig.trips,
+        crew: draft.inventory.crew,
+        startTime: draft.timeSlot,
+      })
+    : null;
+  const questionnaire = (catalogue?.settings.questionnaire ?? defaultClientQuestions).map(
+    (question) => {
+      const legacyLabels: Record<string, string> = {
+        floor: 'À quel étage, et y a-t-il un ascenseur, au départ et à l’arrivée ?',
+        lift: 'L’ascenseur est-il assez grand pour un canapé ?',
+      };
+      const previousLabels: Record<string, string> = {
+        floor: 'À quel étage, au départ et à l’arrivée ?',
+        lift: 'Y a-t-il un ascenseur assez grand pour les meubles ?',
+      };
+      return question.label === previousLabels[question.id]
+        ? { ...question, label: legacyLabels[question.id] }
+        : question;
+    },
+  );
+  const inventoryCount =
+    Object.values(draft.inventory.entries).reduce((sum, entry) => sum + entry.quantity, 0) +
+    draft.inventory.variants.reduce((sum, entry) => sum + entry.quantity, 0) +
+    draft.inventory.custom.reduce((sum, entry) => sum + entry.quantity, 0);
+  const questionnaireAutoAnswers = {
+    name: Boolean(draft.customerName.trim()),
+    phone: Boolean(draft.customerPhone.trim()),
+    date: Boolean(draft.date),
+    time: Boolean(draft.timeSlot),
+    from: Boolean(draft.fromAddress.trim()),
+    to: Boolean(draft.toAddress.trim()),
+    rep: Boolean(draft.fromNote.trim() && draft.toNote.trim()),
+    dwelling: Boolean(draft.inventory.dwellingType),
+    items: inventoryCount > 0,
+  };
+  const estimateText = movingEstimate?.volume ? movingEstimateNote(movingEstimate) : '';
+  const questionnaireText = [
+    ...questionnaire
+      .filter(
+        (question) =>
+          question.active &&
+          draft.questionnaireAnswers[question.id]?.trim() &&
+          !['Question posée', 'À poser'].includes(draft.questionnaireAnswers[question.id].trim()),
+      )
+      .map((question) => question.label + ' : ' + draft.questionnaireAnswers[question.id].trim()),
+    ...[
+      ['key-ready', 'Le matériel sera-t-il prêt à être chargé ?'],
+      ['key-stairs', 'Tout le matériel passe-t-il dans les escaliers ?'],
+    ]
+      .filter(([id]) => draft.questionnaireAnswers[id]?.trim())
+      .map(([id, label]) => `${label} : ${draft.questionnaireAnswers[id].trim()}`),
+  ].join('\n');
   const totalTolls = tollLines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
   const discountTooHigh = Boolean(
     price &&
@@ -152,16 +210,32 @@ export function AdminCreateQuote() {
   return (
     <div className="admin-quote-page">
       <div className="admin-quote-heading">
-        <div>
+        <div className="admin-quote-heading-copy">
           <p className="eyebrow">NOUVEAU DEVIS · CLIENT EN AGENCE</p>
           <h2>CRÉER UN DEVIS</h2>
           <p>Complétez la fiche d’appel. Le devis à droite se met à jour pendant la saisie.</p>
         </div>
-        <Link to={routes.administration} className="button secondary small">
+        <Link to={routes.administration} className="button secondary small admin-quote-back">
           <ArrowLeft size={16} /> Vue d’ensemble
         </Link>
       </div>
-      <form id="admin-quote-form" onSubmit={submit} className="admin-quote-layout">
+      <form
+        id="admin-quote-form"
+        onSubmit={(event) =>
+          void submit(
+            event,
+            estimateText,
+            (movingEstimate?.planning ?? []).map((step, index) => ({
+              id: `plan-${index + 1}`,
+              time: step.time,
+              title: step.title,
+              detail: step.detail,
+              minutes: step.minutes,
+            })),
+          )
+        }
+        className="admin-quote-layout"
+      >
         <div className="admin-quote-fields">
           <section className="admin-quote-card">
             <h3>NOUVEAU DEVIS · CLIENT EN AGENCE</h3>
@@ -245,7 +319,18 @@ export function AdminCreateQuote() {
           <section className="admin-quote-card">
             <h3>TRAJET · CARTE</h3>
             <Suspense fallback={<div className="map loading">Chargement de la carte…</div>}>
-              <RouteMap tollLines={tollLines} onTollToggle={onTollToggle} />
+              <RouteMap
+                tollLines={tollLines}
+                onTollToggle={onTollToggle}
+                fromNote={draft.fromNote}
+                toNote={draft.toNote}
+                onNoteChange={(side, value) =>
+                  setDraft((current) => ({
+                    ...current,
+                    [side === 'from' ? 'fromNote' : 'toNote']: value,
+                  }))
+                }
+              />
             </Suspense>
             {draft.fromAddress && draft.toAddress && (
               <a
@@ -402,6 +487,38 @@ export function AdminCreateQuote() {
             draft={draft}
             setDraft={setDraft}
             maxOptions={catalogue.settings.maxOptions}
+            vehicles={catalogue.vehicles}
+            selectedVehicleId={draft.vehicleId}
+            quoteTrips={quoteConfig.trips}
+            maxTrips={catalogue.settings.maxTrips}
+            onApplyEstimate={(vehicleId, trips) => {
+              setDraft((current) => ({ ...current, vehicleId }));
+              setQuoteConfig((current) => ({ ...current, trips }));
+            }}
+          />
+          <ClientQuestionnaire
+            questions={questionnaire}
+            answers={draft.questionnaireAnswers}
+            autoAnswers={questionnaireAutoAnswers}
+            autoQuestionIds={[
+              'name',
+              'phone',
+              'date',
+              'time',
+              'from',
+              'to',
+              'rep',
+              'dwelling',
+              'items',
+            ]}
+            open={questionnaireOpen}
+            onToggle={() => setQuestionnaireOpen((value) => !value)}
+            onChange={(id, value) =>
+              setDraft((current) => ({
+                ...current,
+                questionnaireAnswers: { ...current.questionnaireAnswers, [id]: value },
+              }))
+            }
           />
         </div>
 
@@ -444,6 +561,8 @@ export function AdminCreateQuote() {
                 <strong>
                   {draft.fromAddress || 'Départ'} → {draft.toAddress || 'Arrivée'}
                 </strong>
+                {draft.fromNote.trim() && <span>Repère départ : {draft.fromNote.trim()}</span>}
+                {draft.toNote.trim() && <span>Repère arrivée : {draft.toNote.trim()}</span>}
                 <span>
                   {draft.route
                     ? `${draft.route.distanceKm} km · ${price ? tiers[price.tier] : ''}`
@@ -484,9 +603,11 @@ export function AdminCreateQuote() {
                 <strong>{previewTotal === null ? 'À calculer' : money(previewTotal)}</strong>
               </div>
             </div>
-            {(inventoryText || draft.notes) && (
+            {(inventoryText || estimateText || questionnaireText || draft.notes) && (
               <div className="admin-quote-paper-note">
-                {[inventoryText, draft.notes].filter(Boolean).join('\n\n')}
+                {[inventoryText, estimateText, questionnaireText, draft.notes]
+                  .filter(Boolean)
+                  .join('\n\n')}
               </div>
             )}
             <p>
