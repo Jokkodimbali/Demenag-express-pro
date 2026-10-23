@@ -1,4 +1,8 @@
 export const mapConfiguration = {
-  tileUrl: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  tileUrl: 'https://mt{s}.google.com/vt/lyrs=m&hl=fr&gl=SN&x={x}&y={y}&z={z}',
+  tileOptions: {
+    subdomains: '0123',
+    maxZoom: 20,
+    attribution: 'Données cartographiques © Google',
+  },
 } as const;

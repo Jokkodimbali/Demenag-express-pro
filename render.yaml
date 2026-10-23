@@ -5,7 +5,7 @@ services:
     autoDeployTrigger: checksPass
     dockerContext: .
     dockerfilePath: ./backend/Dockerfile
-    dockerCommand: node dist/main.js
+    dockerCommand: sh -c 'npm run db:migrate && node dist/main.js'
     healthCheckPath: /api/ready
     preDeployCommand: cd /app/backend && npm run db:migrate
     envVars:

@@ -575,6 +575,38 @@ div.driver-course-complete p {
   padding: 24px;
   overflow-x: hidden;
 }
+.account-dialog.quote-pdf-preview {
+  box-sizing: border-box;
+  width: min(96vw, 1100px);
+  max-width: none;
+  height: min(92dvh, 900px);
+  max-height: 92dvh;
+  padding: 16px;
+  overflow: hidden;
+}
+.quote-pdf-preview-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 0 12px;
+}
+.quote-pdf-preview-heading h2 {
+  margin: 0;
+}
+.quote-pdf-preview-heading .dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.quote-pdf-preview iframe {
+  display: block;
+  width: 100%;
+  height: calc(100% - 62px);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
 .quote-form {
   display: grid;
   gap: 12px;
@@ -1374,7 +1406,7 @@ div.driver-course-complete p {
 }
 .toll-map-label {
   position: absolute;
-  bottom: -5px;
+  bottom: -7px;
   left: 0;
   display: flex;
   align-items: center;
@@ -1387,12 +1419,12 @@ div.driver-course-complete p {
   display: block;
   padding: 5px 8px;
   border: 2px solid #f6d73c;
-  border-radius: 6px;
-  background: #24272b;
+  border-radius: 8px;
+  background: #1e2023;
   color: #fff;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
-  box-shadow: 0 2px 8px #0008;
+  box-shadow: 0 2px 6px #0006;
 }
 .toll-map-label.selected .toll-map-label-text {
   background: #f6d73c;
@@ -1442,13 +1474,13 @@ div.driver-course-complete p {
 }
 .toll-map-label-stem {
   width: 2px;
-  height: 10px;
+  height: 8px;
   background: #f6d73c;
 }
 .toll-map-label-dot {
-  width: 8px;
-  height: 8px;
-  border: 2px solid #24272b;
+  width: 10px;
+  height: 10px;
+  border: 2px solid #1e2023;
   border-radius: 50%;
   background: #f6d73c;
 }

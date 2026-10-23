@@ -36,15 +36,16 @@ export function TollPointEditorMap({
 
   useEffect(() => {
     if (!host.current) return;
-    const instance = L.map(host.current, { scrollWheelZoom: false, minZoom: 7 }).setView(
-      [14.6928, -17.4467],
-      8,
-    );
+    const instance = L.map(host.current, {
+      scrollWheelZoom: true,
+      minZoom: 8,
+      maxBounds: [
+        [12, -18.2],
+        [16.8, -11.2],
+      ],
+    }).setView([14.72, -17.22], 10);
     map.current = instance;
-    L.tileLayer(mapConfiguration.tileUrl, {
-      attribution: mapConfiguration.attribution,
-      maxZoom: 19,
-    }).addTo(instance);
+    L.tileLayer(mapConfiguration.tileUrl, mapConfiguration.tileOptions).addTo(instance);
     instance.on('click', (event) => onSelectRef.current(event.latlng.lat, event.latlng.lng));
     const observer = new ResizeObserver(() => instance.invalidateSize());
     observer.observe(host.current);

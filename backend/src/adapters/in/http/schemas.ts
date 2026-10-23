@@ -74,7 +74,7 @@ export const statusSchema = z.object({
   status: z.enum(['confirmed', 'in_progress', 'completed', 'cancelled']),
   version: z.number().int().positive(),
 });
-export const tripPhotosSchema = z.object({ photos: z.array(imageSchema).min(1).max(5) });
+export const tripPhotosSchema = z.object({ photos: z.array(imageSchema).max(5).default([]) });
 export const driverAssignmentSchema = z.object({
   driverId: z.uuid().nullable(),
   version: z.number().int().positive(),

@@ -63,6 +63,27 @@ export interface BookingRepository {
   quote(id: string, input: QuoteInput): Promise<Booking>;
   assignDriver(id: string, driverId: string | null, version: number): Promise<Booking>;
 }
+export type AccountingEntry = {
+  id: string;
+  type: 'charge' | 'revenu';
+  category: string;
+  label: string;
+  amount: number;
+  date: string;
+  automatic: boolean;
+  bookingId?: string;
+  reference?: string;
+  bookingReference?: string;
+};
+export type ManualAccountingInput = Pick<
+  AccountingEntry,
+  'type' | 'category' | 'label' | 'amount' | 'date'
+>;
+export interface AccountingRepository {
+  accountingEntries(month?: string): Promise<AccountingEntry[]>;
+  createAccountingEntry(input: ManualAccountingInput): Promise<AccountingEntry>;
+  voidAccountingEntry(id: string): Promise<void>;
+}
 export type DriverCreation = Omit<Driver, 'id' | 'userId' | 'active'> & { password: string };
 export type InspectionLevels = Record<string, 'good' | 'low' | 'empty'>;
 export type VehicleInspection = {
@@ -151,7 +172,8 @@ export interface ApplicationApi
     DriverRepository,
     MapsRepository,
     PricingRepository,
-    NotificationRepository {}
+    NotificationRepository,
+    AccountingRepository {}
 export type QuoteExporter = (
   booking: Booking,
   quote: Quote | undefined,

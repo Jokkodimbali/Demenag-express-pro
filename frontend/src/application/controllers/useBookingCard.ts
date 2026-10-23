@@ -122,7 +122,7 @@ export function useBookingCard({
       setDeleteBusy(false);
     }
   }
-  async function pdf(quote?: Quote): Promise<Blob | null> {
+  async function createPdf(quote?: Quote): Promise<Blob | null> {
     const settings = b.pricingSettings ?? catalogue?.settings;
     if (!settings) return null;
     setError('');
@@ -136,10 +136,20 @@ export function useBookingCard({
       setBusy(false);
     }
   }
+  async function pdf(quote?: Quote): Promise<Blob | null> {
+    const blob = await createPdf(quote);
+    if (!blob) return null;
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${quote?.reference || b.reference}.pdf`;
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    return blob;
+  }
   async function shareQuote(quote: Quote, whatsappUrl: string) {
     const whatsappTab = window.open('about:blank', '_blank');
     setError('');
-    const blob = await pdf(quote);
+    const blob = await createPdf(quote);
     if (!blob) {
       whatsappTab?.close();
       return;
@@ -162,10 +172,16 @@ export function useBookingCard({
       }
     }
     if (whatsappTab) whatsappTab.location.href = whatsappUrl;
-    else
+    else {
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${quote.reference}.pdf`;
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(link.href), 1000);
       setError(
         'Autorisez l’ouverture des fenêtres pour préparer WhatsApp. Le PDF a été téléchargé.',
       );
+    }
   }
   async function quote(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -217,6 +233,7 @@ export function useBookingCard({
     deleteError,
     confirmDelete,
     pdf,
+    createPdf,
     shareQuote,
     quote,
     extraLines,

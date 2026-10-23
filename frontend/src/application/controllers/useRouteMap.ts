@@ -3,6 +3,7 @@ import 'leaflet/dist/leaflet.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { mapConfiguration } from '../../config/maps';
 import { addTollMarkers } from '../../components/maps/toll-markers';
+import { addRouteLine } from '../../components/maps/route-line';
 import { messages } from '../../content/fr';
 import type { Point, TollPoint } from '../../domain/model';
 import { tollLine, type TollExtraLine } from '../../domain/toll-selection';
@@ -35,7 +36,7 @@ export function useRouteMap(
   const host = useRef<HTMLDivElement>(null),
     map = useRef<L.Map | null>(null),
     markers = useRef<Partial<Record<Side, L.Marker>>>({}),
-    line = useRef<L.Polyline | null>(null);
+    line = useRef<L.FeatureGroup | null>(null);
   const tollLayer = useRef<L.LayerGroup | null>(null);
   const activeRef = useRef(active);
   activeRef.current = active;
@@ -108,18 +109,15 @@ export function useRouteMap(
     const routeCounter = routeRequest;
     const searchCounter = searchRequest;
     const m = L.map(host.current, {
-      scrollWheelZoom: false,
-      minZoom: 7,
+      scrollWheelZoom: true,
+      minZoom: 9,
       maxBounds: [
-        [12, -18.5],
-        [17, -11],
+        [12, -18.2],
+        [16.8, -11.2],
       ],
     }).setView([14.6928, -17.4467], 12);
     map.current = m;
-    L.tileLayer(mapConfiguration.tileUrl, {
-      attribution: mapConfiguration.attribution,
-      maxZoom: 19,
-    }).addTo(m);
+    L.tileLayer(mapConfiguration.tileUrl, mapConfiguration.tileOptions).addTo(m);
     m.on('click', (e) => setPointRef.current(activeRef.current, [e.latlng.lat, e.latlng.lng]));
     const observer = new ResizeObserver(() => m.invalidateSize());
     observer.observe(host.current);
@@ -181,10 +179,8 @@ export function useRouteMap(
     line.current?.remove();
     line.current = null;
     if (draft.route && map.current) {
-      line.current = L.polyline(draft.route.geometry, { color: '#f6d73c', weight: 5 }).addTo(
-        map.current,
-      );
-      map.current.fitBounds(line.current.getBounds(), { padding: [35, 35] });
+      line.current = addRouteLine(map.current, draft.route.geometry);
+      map.current.fitBounds(line.current.getBounds(), { padding: [50, 50] });
     }
   }, [draft.route]);
   useEffect(() => {

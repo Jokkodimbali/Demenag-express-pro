@@ -2,6 +2,7 @@ export const httpRoutes = {
   users: '/admin/users',
   clients: '/admin/clients',
   adminProfile: '/admin/profile',
+  accounting: '/admin/accounting',
   drivers: '/admin/drivers',
   catalogue: '/catalogue',
   tollPoints: '/toll-points',

@@ -20,6 +20,27 @@ export type Notification = {
   bookingId?: string;
   readAt?: string | null;
 };
+export type AccountingEntry = {
+  id: string;
+  type: 'charge' | 'revenu';
+  category: string;
+  label: string;
+  amount: number;
+  date: string;
+  automatic: boolean;
+  bookingId?: string;
+  reference?: string;
+  bookingReference?: string;
+};
+export type ManualAccountingInput = Omit<
+  AccountingEntry,
+  'id' | 'automatic' | 'bookingId' | 'reference' | 'bookingReference'
+>;
+export interface AccountingRepository {
+  list(month?: string): Promise<AccountingEntry[]>;
+  create(input: ManualAccountingInput): Promise<AccountingEntry>;
+  void(id: string): Promise<boolean>;
+}
 export type NotificationDelivery = { userId: string; notification: Notification };
 export interface NotificationRepository {
   list(userId: string): Promise<Notification[]>;

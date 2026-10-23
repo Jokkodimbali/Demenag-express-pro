@@ -81,6 +81,15 @@ export class PrismaBookings implements BookingRepository {
   }
   async delete(id: string) {
     await this.db.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "demenag"."bookings" WHERE "id" = ${id}::uuid FOR UPDATE`;
+      const finalQuotes = await tx.devis.count({
+        where: { reservationId: id, nature: 'definitif' },
+      });
+      if (finalQuotes)
+        throw new AppError(
+          409,
+          'Cette réservation possède un devis final et une écriture comptable : suppression impossible.',
+        );
       await tx.notification.deleteMany({ where: { reservationId: id } });
       await tx.reservation.delete({ where: { id } });
     });

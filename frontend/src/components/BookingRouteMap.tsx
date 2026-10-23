@@ -7,6 +7,7 @@ import type { Booking, Point, TollPoint } from '../domain/model';
 import { useApp } from '../application/context';
 import { errorMessage } from '../application/error-message';
 import { getCachedRoute } from '../application/services/route-cache';
+import { addRouteLine } from './maps/route-line';
 import { addTollMarkers } from './maps/toll-markers';
 import { tollsOnRoute } from '../domain/tolls-on-route';
 
@@ -77,11 +78,16 @@ export function BookingRouteMap({
     setRouteTolls([]);
     const start: L.LatLngExpression = from;
     const end: L.LatLngExpression = to;
-    const map = L.map(element, { scrollWheelZoom: false, zoomControl: true }).setView(start, 12);
-    L.tileLayer(mapConfiguration.tileUrl, {
-      attribution: mapConfiguration.attribution,
-      maxZoom: 19,
-    }).addTo(map);
+    const map = L.map(element, {
+      scrollWheelZoom: true,
+      zoomControl: true,
+      minZoom: 9,
+      maxBounds: [
+        [12, -18.2],
+        [16.8, -11.2],
+      ],
+    }).setView(start, 12);
+    L.tileLayer(mapConfiguration.tileUrl, mapConfiguration.tileOptions).addTo(map);
     let tollLayer = addTollMarkers(map, tollPoints);
     const markerIcon = (label: string, side: string) =>
       L.divIcon({
@@ -105,7 +111,7 @@ export function BookingRouteMap({
     };
     addMarker(from, 'A', 'from');
     addMarker(to, 'B', 'to');
-    map.fitBounds(L.latLngBounds(start, end), { padding: [32, 32], maxZoom: 13 });
+    map.fitBounds(L.latLngBounds(start, end), { padding: [50, 50], maxZoom: 13 });
     if (admin && editing) {
       map.getContainer().classList.add('booking-route-map-editing');
       map.on('click', (event) => changePoint(selected, [event.latlng.lat, event.latlng.lng]));
@@ -114,7 +120,7 @@ export function BookingRouteMap({
     void getCachedRoute(api, from, to)
       .then((route) => {
         if (!active) return;
-        L.polyline(route.geometry, { color: '#1a73e8', weight: 6, opacity: 0.95 }).addTo(map);
+        addRouteLine(map, route.geometry);
         const matches = tollsOnRoute(route.geometry, tollPoints);
         setRouteTolls(matches);
         tollLayer.remove();
@@ -126,17 +132,12 @@ export function BookingRouteMap({
           undefined,
           new Set(matches.map((point) => point.id)),
         );
-        map.fitBounds(L.latLngBounds(route.geometry), { padding: [32, 32], maxZoom: 15 });
+        map.fitBounds(L.latLngBounds(route.geometry), { padding: [50, 50], maxZoom: 15 });
       })
       .catch(() => {
         if (!active) return;
         setRouteTolls([]);
-        L.polyline([start, end], {
-          color: '#1a73e8',
-          weight: 5,
-          dashArray: '8 8',
-          opacity: 0.9,
-        }).addTo(map);
+        addRouteLine(map, [from, to], true);
       });
 
     const resize = new ResizeObserver(() => map.invalidateSize());

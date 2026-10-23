@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
 import { routes } from './routes';
 import { useApp } from '../application/context';
@@ -13,28 +13,9 @@ export function Guard({
   admin?: boolean;
   roles?: Role[];
 }) {
-  const { api, user, setUser, authLoading, error, reload } = useApp();
-  const [checkingSession, setCheckingSession] = useState(true);
-  useEffect(() => {
-    let active = true;
-    void api
-      .me()
-      .then((currentUser) => {
-        if (active) setUser(currentUser);
-      })
-      .catch(() => {
-        if (active) setUser(null);
-      })
-      .finally(() => {
-        if (active) setCheckingSession(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [api, setUser]);
-  if (authLoading || checkingSession)
-    return <p className="container loading">{messages.chargementDuCompte}</p>;
-  if (error)
+  const { user, authLoading, error, reload } = useApp();
+  if (authLoading) return <p className="container loading">{messages.chargementDuCompte}</p>;
+  if (error && !user)
     return (
       <div className="container alert error">
         <p>{error}</p>
