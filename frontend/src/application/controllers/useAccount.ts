@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { Booking } from '../../domain/model';
 import { useApp } from '../context';
 import { errorMessage } from '../error-message';
+import { subscribeToBookingNotifications } from './booking-notification-refresh';
 export function useAccount() {
   const { api, user } = useApp();
   const [bookings, setBookings] = useState<Booking[]>([]),
@@ -9,10 +10,8 @@ export function useAccount() {
     [error, setError] = useState(''),
     [retry, setRetry] = useState(0);
   useEffect(() => {
-    const refreshOnNotification = () => setRetry((value) => value + 1);
-    window.addEventListener('demenag:notification', refreshOnNotification);
-    return () => window.removeEventListener('demenag:notification', refreshOnNotification);
-  }, []);
+    return subscribeToBookingNotifications(api, setBookings);
+  }, [api]);
   useEffect(() => {
     let active = true;
     setLoading(true);

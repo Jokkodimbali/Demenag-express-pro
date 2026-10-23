@@ -1,6 +1,7 @@
 import {
   ArrowUpRight,
   CalendarDays,
+  CalendarClock,
   Check,
   Download,
   Eye,
@@ -15,6 +16,7 @@ import { useBookingCard } from '../application/controllers/useBookingCard';
 import { ConfirmationDialog } from './ConfirmationDialog';
 import { Modal } from './Modal';
 import { DriverCourseActions } from './DriverCourseActions';
+import { BookingWorkPlan } from './BookingWorkPlan';
 import { BookingRouteMap } from './BookingRouteMap';
 import { TollRateSelector } from './TollRateSelector';
 import { quotedServiceOptions } from '../application/services/quote-service-options';
@@ -79,13 +81,17 @@ export function BookingCard({
   const displayedPrice = displayedQuote?.price ?? b.estimate;
   const displayedOptions = quotedServiceOptions(b, displayedQuote);
   const incompleteTrips = trips.filter((trip) => !trip.finishedAt);
-  const canCloseBooking =
-    b.status === 'in_progress' &&
-    !!finalQuote &&
-    !!b.driverFinishedAt &&
-    trips.length > 0 &&
-    incompleteTrips.length === 0;
+  const bookingClosureBlockers = [
+    !finalQuote ? 'enregistrer le devis final' : '',
+    !b.driverFinishedAt ? 'attendre le signalement de fin des courses' : '',
+    trips.length === 0 ? 'enregistrer au moins une course' : '',
+    incompleteTrips.length > 0
+      ? `terminer les courses ${incompleteTrips.map((trip) => trip.sequence).join(', ')}`
+      : '',
+  ].filter(Boolean);
+  const canCloseBooking = b.status === 'in_progress' && bookingClosureBlockers.length === 0;
   const [editingSchedule, setEditingSchedule] = useState(false);
+  const [planningOpen, setPlanningOpen] = useState(false);
   const [scheduleDate, setScheduleDate] = useState(b.date ?? '');
   const [scheduleSlot, setScheduleSlot] = useState(() =>
     /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(b.timeSlot) ? b.timeSlot : '',
@@ -204,6 +210,21 @@ export function BookingCard({
           onChange={admin && !finalQuote ? onChange : undefined}
         />
       )}
+      <div className="booking-plan-toggle-wrap">
+        <button
+          type="button"
+          className="button secondary small booking-plan-toggle"
+          aria-expanded={planningOpen}
+          onClick={() => setPlanningOpen((value) => !value)}
+        >
+          <CalendarClock size={16} />
+          {planningOpen ? 'Fermer le planning' : 'Ouvrir le planning'}
+          {b.workPlan?.length ? <span>{b.workPlan.length} étapes</span> : null}
+        </button>
+      </div>
+      {planningOpen && (
+        <BookingWorkPlan booking={b} admin={admin} driverMode={driverMode} onChange={onChange} />
+      )}
       {driverMode && (
         <div className="booking-route-actions">
           <a
@@ -296,6 +317,17 @@ export function BookingCard({
           </div>
         </div>
       </div>
+      {!!b.questionnaireAnswers?.length && (
+        <section className="booking-precision booking-client-questionnaire">
+          <strong>Questionnaire client</strong>
+          {b.questionnaireAnswers.map((answer) => (
+            <div key={answer.questionId}>
+              <span>{answer.question}</span>
+              <strong>{answer.answer}</strong>
+            </div>
+          ))}
+        </section>
+      )}
       {admin && (
         <section className="booking-precision">
           <div className="booking-precision-heading">
@@ -386,15 +418,6 @@ export function BookingCard({
                 {messages.confirmerLaReservation}
               </button>
             )}
-            {b.status === 'confirmed' && (
-              <button
-                className="button primary small"
-                disabled={busy}
-                onClick={() => change('in_progress')}
-              >
-                {messages.demarrerLeDemenagement}
-              </button>
-            )}
             <button
               className="button secondary small"
               disabled={busy}
@@ -413,14 +436,14 @@ export function BookingCard({
             )}
           </>
         )}
-        {admin && canCloseBooking && (
+        {admin && b.status === 'in_progress' && (
           <button
             className="button primary small"
             type="button"
-            disabled={busy}
+            disabled={busy || !canCloseBooking}
             onClick={() => void change('completed')}
           >
-            <Check size={16} /> Valider le devis final et clôturer
+            <Check size={16} /> Clôturer la réservation
           </button>
         )}
         {admin && last && (
@@ -458,6 +481,11 @@ export function BookingCard({
           </button>
         )}
       </div>
+      {admin && b.status === 'in_progress' && !canCloseBooking && (
+        <p className="caption booking-close-hint" role="status">
+          Pour clôturer : {bookingClosureBlockers.join(' ; ')}.
+        </p>
+      )}
       {pdfPreviewUrl && (
         <Modal
           titleId={'pdf-preview-title-' + b.id}
@@ -484,9 +512,10 @@ export function BookingCard({
         </Modal>
       )}
       {driverMode && <DriverCourseActions booking={b} onChange={onChange} />}
-      {admin && b.status === 'in_progress' && !finalQuote && !b.driverFinishedAt && (
-        <DriverCourseActions booking={b} onChange={onChange} adminMode />
-      )}
+      {admin &&
+        ['confirmed', 'in_progress'].includes(b.status) &&
+        !finalQuote &&
+        !b.driverFinishedAt && <DriverCourseActions booking={b} onChange={onChange} adminMode />}
       {admin && b.driverFinishedAt && !terminal && (
         <div className="driver-course-complete" role="status">
           <p>

@@ -3,6 +3,7 @@ import type { Booking, Driver } from '../../domain/model';
 import { useApp } from '../context';
 import { errorMessage } from '../error-message';
 import { dataUrl } from '../validation/forms';
+import { subscribeToBookingNotifications } from './booking-notification-refresh';
 
 export function useDriverWorkspace(loadBookings = true) {
   const { api, user, setUser } = useApp();
@@ -13,10 +14,9 @@ export function useDriverWorkspace(loadBookings = true) {
   const [saving, setSaving] = useState(false);
   const [retry, setRetry] = useState(0);
   useEffect(() => {
-    const refreshOnNotification = () => setRetry((value) => value + 1);
-    window.addEventListener('demenag:notification', refreshOnNotification);
-    return () => window.removeEventListener('demenag:notification', refreshOnNotification);
-  }, []);
+    if (!loadBookings) return;
+    return subscribeToBookingNotifications(api, setBookings);
+  }, [api, loadBookings]);
   useEffect(() => {
     let active = true;
     setLoading(true);

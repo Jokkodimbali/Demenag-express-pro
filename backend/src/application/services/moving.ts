@@ -2,12 +2,14 @@ import { transition, validateDate } from '../../domain/booking.js';
 import { AppError, requireValue } from '../../domain/errors.js';
 import { messages } from '../../domain/messages/fr.js';
 import type {
+  Booking,
   BookingInput,
   BookingStatus,
   Options,
   Point,
   QuoteInput,
   User,
+  WorkPlanReview,
 } from '../../domain/model.js';
 import {
   canReadBooking,
@@ -102,6 +104,19 @@ export class MovingService implements MovingUseCases {
         timeSlot: input.timeSlot,
         options: input.options,
         notes: input.notes,
+        questionnaireAnswers: user.role === 'admin' ? (input.questionnaireAnswers ?? []) : [],
+        workPlan:
+          user.role === 'admin'
+            ? (input.workPlan ?? []).map((step) => {
+                const emptyReview: WorkPlanReview = {
+                  status: 'pending',
+                  reason: '',
+                  checkedAt: null,
+                  checkedBy: null,
+                };
+                return { ...step, review: emptyReview };
+              })
+            : [],
         pricingSettings: settings,
         estimate,
         quotes: [],
@@ -118,8 +133,14 @@ export class MovingService implements MovingUseCases {
   }
   async get(user: User, id: string) {
     const booking = await this.bookings.find(id);
-    if (!booking || !canReadBooking(user, booking.userId))
+    if (!booking) throw new AppError(404, messages.reservationIntrouvable);
+    if (user.role === 'driver') {
+      const driver = await this.drivers.findByUserId(user.id);
+      if (!driver || booking.vehicle.id !== driver.vehicleId)
+        throw new AppError(404, messages.reservationIntrouvable);
+    } else if (!canReadBooking(user, booking.userId)) {
       throw new AppError(404, messages.reservationIntrouvable);
+    }
     return booking;
   }
   async status(user: User, id: string, next: BookingStatus, version: number) {
@@ -140,6 +161,10 @@ export class MovingService implements MovingUseCases {
       throw new AppError(404, messages.reservationIntrouvable);
     if (booking.version !== version)
       throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
+    requireValue(
+      next !== 'in_progress',
+      'Démarrez une course depuis les actions de la mission pour enregistrer son état.',
+    );
     const hasFinalQuote = booking.quotes.some((quote) => quote.kind === 'final');
     if (hasFinalQuote && next !== 'completed')
       throw new AppError(409, 'Le devis final est créé. Cette réservation est verrouillée.');
@@ -226,6 +251,18 @@ export class MovingService implements MovingUseCases {
       ['confirmed', 'in_progress'].includes(booking.status),
       'Cette réservation ne peut pas démarrer une course.',
     );
+    const openTrip = booking.trips?.find((trip) => !trip.finishedAt);
+    if (openTrip) {
+      requireValue(
+        !openTrip.loadingPhotos.length,
+        'Une course est déjà en cours et ses preuves de chargement sont enregistrées.',
+      );
+      requireValue(photos.length > 0, 'Ajoutez au moins une photo du chargement.');
+      await this.bookings.addTripLoadingPhotos(id, photos);
+      const updated = await this.bookings.find(id);
+      if (!updated) throw new AppError(404, messages.reservationIntrouvable);
+      return updated;
+    }
     if (driver) {
       const date = new Intl.DateTimeFormat('en-CA', {
         timeZone: 'Africa/Dakar',
@@ -252,6 +289,12 @@ export class MovingService implements MovingUseCases {
     await this.bookings.startTrip(id, photos);
     const updated = await this.bookings.find(id);
     if (!updated) throw new AppError(404, messages.reservationIntrouvable);
+    if (user.role === 'admin')
+      await this.notifyAssignedDriver(
+        updated,
+        'Course démarrée par l’administration',
+        `${updated.reference} : la course ${updated.trips?.at(-1)?.sequence ?? 1} est ouverte. Ajoutez les preuves de chargement depuis votre espace chauffeur.`,
+      );
     return updated;
   }
   async finishTrip(user: User, id: string, photos: string[]) {
@@ -277,6 +320,12 @@ export class MovingService implements MovingUseCases {
     await this.bookings.finishTrip(id, photos);
     const updated = await this.bookings.find(id);
     if (!updated) throw new AppError(404, messages.reservationIntrouvable);
+    if (user.role === 'admin')
+      await this.notifyAssignedDriver(
+        updated,
+        'Course terminée par l’administration',
+        `${updated.reference} : la course ${updated.trips?.at(-1)?.sequence ?? 1} est terminée. Consultez la suite de la mission dans votre espace chauffeur.`,
+      );
     return updated;
   }
   async finishDriverWork(user: User, id: string) {
@@ -317,7 +366,32 @@ export class MovingService implements MovingUseCases {
       },
       { roles: ['admin'] },
     );
+    if (user.role === 'admin')
+      await this.notifyAssignedDriver(
+        updated,
+        'Fin de mission signalée par l’administration',
+        `${updated.reference} : l’administration a signalé la fin des courses.`,
+      );
     return updated;
+  }
+  private async notifyAssignedDriver(booking: Booking, title: string, message: string) {
+    if (!booking.driverId) return;
+    const driver = await this.drivers.find(booking.driverId);
+    if (!driver?.userId) return;
+    try {
+      await this.notifications?.publish(
+        {
+          id: this.ids.next(),
+          title,
+          message,
+          createdAt: this.clock.now().toISOString(),
+          bookingId: booking.id,
+        },
+        { userIds: [driver.userId] },
+      );
+    } catch (error) {
+      console.error('Notification chauffeur non envoyée après une action de réservation :', error);
+    }
   }
   async schedule(user: User, id: string, date: string | null, timeSlot: string, version: number) {
     requireAdministrator(user);
@@ -331,7 +405,31 @@ export class MovingService implements MovingUseCases {
     );
     const { settings } = await this.catalogue.get();
     if (date) validateDate(date, this.clock.now(), { ...settings, maxAdvanceDays: 730 });
-    return this.bookings.update({ ...booking, date, timeSlot: date ? timeSlot : '' }, version);
+    const workPlan = booking.workPlan ?? [];
+    const firstTime = workPlan[0]?.time;
+    const startMinutes = (value: string) => {
+      const [hour, minute] = value.split(':').map(Number);
+      return (hour ?? 0) * 60 + (minute ?? 0);
+    };
+    const timeFor = (minutes: number) => {
+      const normalized = ((minutes % 1440) + 1440) % 1440;
+      return `${String(Math.floor(normalized / 60)).padStart(2, '0')}:${String(normalized % 60).padStart(2, '0')}`;
+    };
+    const delta = date && firstTime ? startMinutes(timeSlot) - startMinutes(firstTime) : 0;
+    return this.bookings.update(
+      {
+        ...booking,
+        date,
+        timeSlot: date ? timeSlot : '',
+        workPlan: delta
+          ? workPlan.map((step) => ({
+              ...step,
+              time: timeFor(startMinutes(step.time) + delta),
+            }))
+          : workPlan,
+      },
+      version,
+    );
   }
   async updateNotes(user: User, id: string, notes: string, version: number) {
     requireAdministrator(user);
@@ -347,6 +445,51 @@ export class MovingService implements MovingUseCases {
       messages.cetteReservationEstCloturee,
     );
     return this.bookings.update({ ...booking, notes: notes.trim() }, version);
+  }
+  async reviewWorkPlan(
+    user: User,
+    id: string,
+    stepId: string,
+    status: 'respected' | 'not_respected',
+    reason: string,
+    version: number,
+  ) {
+    requireActiveUser(user);
+    requireValue(
+      ['admin', 'driver'].includes(user.role),
+      'Action réservée à l’administration et au chauffeur.',
+    );
+    const booking = await this.bookings.find(id);
+    const driver = user.role === 'driver' ? await this.drivers.findByUserId(user.id) : null;
+    if (
+      !booking ||
+      (user.role === 'driver' && (!driver || booking.vehicle.id !== driver.vehicleId))
+    )
+      throw new AppError(404, messages.reservationIntrouvable);
+    if (booking.version !== version)
+      throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
+    const step = booking.workPlan?.find((entry) => entry.id === stepId);
+    if (!step) throw new AppError(404, 'Étape de planning introuvable.');
+    const cleanReason = reason.trim();
+    requireValue(
+      status !== 'not_respected' || cleanReason.length >= 3,
+      'Justifiez en quelques mots pourquoi cet horaire n’a pas été respecté.',
+    );
+    const review: WorkPlanReview = {
+      status,
+      reason: status === 'not_respected' ? cleanReason : '',
+      checkedAt: this.clock.now().toISOString(),
+      checkedBy: user.name,
+    };
+    return this.bookings.update(
+      {
+        ...booking,
+        workPlan: booking.workPlan?.map((entry) =>
+          entry.id === stepId ? { ...entry, review } : entry,
+        ),
+      },
+      version,
+    );
   }
   async updateRoute(user: User, id: string, from: Point, to: Point, version: number) {
     requireAdministrator(user);

@@ -16,6 +16,7 @@ export function AdminSettings() {
         <NavLink to={routes.administrationTollPoints}>Péages</NavLink>
         <NavLink to={routes.administrationBookingRules}>{messages.regles}</NavLink>
         <NavLink to={routes.administrationInvoicing}>{messages.facturation}</NavLink>
+        <NavLink to={routes.administrationQuestionnaire}>Questionnaire client</NavLink>
       </nav>
       <Outlet />
     </div>

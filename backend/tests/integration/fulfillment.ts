@@ -32,17 +32,29 @@ export async function runVehicleInspection(context: IntegrationContext) {
 
 export async function completeRecordedTrips(context: IntegrationContext, bookingId: string) {
   const driver = context.clients.driver;
-  for (let sequence = 0; sequence < 2; sequence++) {
-    const started = await driver
-      .post('/api/bookings/' + bookingId + '/trips/start')
-      .set(integrationHeader)
-      .send({ photos: [proof] });
-    assert.equal(started.status, 201, JSON.stringify(started.body));
+  let current = (await context.clients.admin.get('/api/bookings/' + bookingId)).body as {
+    trips: { finishedAt: string | null; loadingPhotos: string[] }[];
+  };
+  while (current.trips.filter((trip) => trip.finishedAt).length < 2) {
+    if (!current.trips.some((trip) => !trip.finishedAt)) {
+      const started = await driver
+        .post('/api/bookings/' + bookingId + '/trips/start')
+        .set(integrationHeader)
+        .send({ photos: [proof] });
+      assert.equal(started.status, 201, JSON.stringify(started.body));
+    } else if (!current.trips.at(-1)?.loadingPhotos.length) {
+      const proofAdded = await driver
+        .post('/api/bookings/' + bookingId + '/trips/start')
+        .set(integrationHeader)
+        .send({ photos: [proof] });
+      assert.equal(proofAdded.status, 201, JSON.stringify(proofAdded.body));
+    }
     const finished = await driver
       .post('/api/bookings/' + bookingId + '/trips/finish')
       .set(integrationHeader)
       .send({ photos: [proof] });
     assert.equal(finished.status, 200, JSON.stringify(finished.body));
+    current = finished.body;
   }
   const response = await driver
     .post('/api/bookings/' + bookingId + '/driver-finished')

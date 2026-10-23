@@ -161,6 +161,7 @@ model ParametreApplication {
   preavisAnnulationHeures   Int     @default(0) @map("cancellation_notice_hours")
   bornesDistance            Int[]   @default([15, 25, 35]) @map("distance_bounds")
   creneauxOuverts           Json    @map("enabled_slots")
+  questionnaire             Json    @default("[]") @map("client_questionnaire")
 
   @@map("settings")
   @@schema("demenag")
@@ -257,14 +258,14 @@ model LigneDevis {
 }
 
 model EcritureComptable {
-  id          String    @id @default(uuid()) @db.Uuid
-  type        String
-  categorie   String    @map("category")
-  libelle     String    @map("label")
-  montant     Int       @map("amount")
-  date        DateTime  @db.Date
-  creeLe      DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  annuleLe    DateTime? @map("voided_at") @db.Timestamptz
+  id        String    @id @default(uuid()) @db.Uuid
+  type      String
+  categorie String    @map("category")
+  libelle   String    @map("label")
+  montant   Int       @map("amount")
+  date      DateTime  @db.Date
+  creeLe    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  annuleLe  DateTime? @map("voided_at") @db.Timestamptz
 
   @@index([date, annuleLe])
   @@map("accounting_entries")

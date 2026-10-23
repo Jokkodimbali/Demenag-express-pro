@@ -39,6 +39,11 @@ const AdminBookingRules = lazy(() =>
 const AdminInvoicing = lazy(() =>
   import('../pages/AdminInvoicing').then((m) => ({ default: m.AdminInvoicing })),
 );
+const AdminQuestionnaireSettings = lazy(() =>
+  import('../pages/AdminQuestionnaireSettings').then((m) => ({
+    default: m.AdminQuestionnaireSettings,
+  })),
+);
 const AdminUsers = lazy(() =>
   import('../pages/AdminUsers').then((m) => ({ default: m.AdminUsers })),
 );
@@ -138,6 +143,7 @@ export function AppRoutes() {
               <Route path="peages" element={<AdminTollPoints />} />
               <Route path="reservations" element={<AdminBookingRules />} />
               <Route path="facturation" element={<AdminInvoicing />} />
+              <Route path="questionnaire" element={<AdminQuestionnaireSettings />} />
             </Route>
             <Route path="comptes" element={<AdminUsers />} />
             <Route path="clients" element={<AdminClients />} />

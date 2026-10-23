@@ -19,6 +19,29 @@ function notesForPdf(value: string): string {
   ].join('\n');
 }
 
+function addressNotesFrom(value: string): { from: string; to: string; remaining: string } {
+  let from = '';
+  let to = '';
+  const remaining = value
+    .split(/\r?\n/u)
+    .filter((line) => {
+      const departure = /^Repère départ\s*:\s*(.*)$/iu.exec(line);
+      if (departure) {
+        from = departure[1].trim();
+        return false;
+      }
+      const arrival = /^Repère arrivée\s*:\s*(.*)$/iu.exec(line);
+      if (arrival) {
+        to = arrival[1].trim();
+        return false;
+      }
+      return true;
+    })
+    .join('\n')
+    .trim();
+  return { from, to, remaining };
+}
+
 async function assetDataUrl(path: string): Promise<string> {
   const response = await fetch(path);
   if (!response.ok) throw new Error(`Impossible de charger ${path}`);
@@ -44,6 +67,9 @@ export async function downloadQuote(
   const documentQuote = quote ?? finalQuote;
   const doc = new jsPDF({ format: 'a4', unit: 'mm' });
   const price = documentQuote?.price || booking.estimate;
+  const addressNotes = addressNotesFrom(
+    notesForPdf(documentQuote ? documentQuote.notes : booking.notes),
+  );
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 16;
   const contentWidth = pageWidth - margin * 2;
@@ -140,7 +166,13 @@ export async function downloadQuote(
   paragraph('ADRESSES DU DÉMÉNAGEMENT', margin, y, contentWidth, 8, true, [96, 103, 110]);
   y += 6;
   y = paragraph(`Adresse de retrait : ${booking.fromAddress}`, margin, y, contentWidth, 10, true);
+  if (addressNotes.from) {
+    y = paragraph(`Repère départ : ${addressNotes.from}`, margin + 3, y, contentWidth - 3, 8.5);
+  }
   y = paragraph(`Adresse de dépôt : ${booking.toAddress}`, margin, y, contentWidth, 10, true);
+  if (addressNotes.to) {
+    y = paragraph(`Repère arrivée : ${addressNotes.to}`, margin + 3, y, contentWidth - 3, 8.5);
+  }
   const tierLine = price.lines.find((line) =>
     line.label.toLocaleLowerCase().includes(booking.vehicle.name.toLocaleLowerCase()),
   )?.label;
@@ -210,7 +242,7 @@ export async function downloadQuote(
       ? messages.montantEtabliSurLaBaseDuNombreReel
       : `Devis temporaire, calculé sur ${price.trips} aller(s)-retour(s) estimé(s). Le transport est facturé par aller-retour effectué ; le devis final, basé sur le nombre réel d'allers-retours, sera envoyé par Demenag Express à la fin du déménagement.`;
   y = paragraph(explanation, margin, y, contentWidth, 8.5, false, [92, 99, 106]);
-  const quoteNotes = notesForPdf(documentQuote ? documentQuote.notes : booking.notes);
+  const quoteNotes = addressNotes.remaining;
   if (quoteNotes) {
     y += 8;
     ensureSpace(12);
@@ -225,6 +257,24 @@ export async function downloadQuote(
       }
       for (const line of doc.splitTextToSize(clean(sourceLine), contentWidth) as string[]) {
         ensureSpace(6);
+        doc.text(line, margin, y);
+        y += 4.5;
+      }
+    }
+    y += 3;
+  }
+  const questionnaireAnswers = booking.questionnaireAnswers ?? [];
+  if (questionnaireAnswers.length) {
+    y += 3;
+    ensureSpace(12);
+    y = paragraph('QUESTIONNAIRE CLIENT', margin, y, contentWidth, 9, true);
+    for (const item of questionnaireAnswers) {
+      const answer = item.question + ' : ' + item.answer;
+      for (const line of doc.splitTextToSize(clean(answer), contentWidth) as string[]) {
+        ensureSpace(6);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.5);
+        doc.setTextColor(36, 40, 44);
         doc.text(line, margin, y);
         y += 4.5;
       }

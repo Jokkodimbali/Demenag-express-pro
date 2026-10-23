@@ -18,6 +18,25 @@ export const optionsSchema = z.object({
   wardrobe: z.number().int().min(0).max(20),
   bed: z.number().int().min(0).max(20),
 });
+const clientQuestionSchema = z.object({
+  id: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
+  group: z.string().trim().min(1).max(100),
+  label: z.string().trim().min(3).max(500),
+  answerType: z.enum(['text', 'yes_no']),
+  required: z.boolean(),
+  active: z.boolean(),
+});
+const questionnaireAnswersSchema = z
+  .array(
+    z.object({
+      questionId: z.string().min(1).max(64),
+      group: z.string().trim().min(1).max(100),
+      question: z.string().trim().min(3).max(500),
+      answer: z.string().trim().max(1000),
+    }),
+  )
+  .max(100)
+  .default([]);
 export const pointSchema = z.tuple([z.number().min(12).max(17), z.number().min(-18.5).max(-11)]);
 export const tollPointSchema = z
   .object({
@@ -56,11 +75,35 @@ export const bookingSchema = estimateSchema
       .transform((v) => v || null),
     timeSlot: z.union([z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/), z.literal('')]),
     notes: z.string().trim().max(2000).default(''),
+    questionnaireAnswers: questionnaireAnswersSchema.optional(),
+    workPlan: z
+      .array(
+        z.object({
+          id: z.string().regex(/^[a-zA-Z0-9_-]{1,80}$/),
+          time: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
+          title: z.string().trim().min(1).max(120),
+          detail: z.string().trim().max(500),
+          minutes: z.number().int().min(0).max(1440),
+        }),
+      )
+      .max(50)
+      .optional()
+      .default([]),
     requestId: z.uuid(),
   })
   .refine((booking) => !booking.date || Boolean(booking.timeSlot), {
     path: ['timeSlot'],
     message: messages.creneauInvalide,
+  });
+export const workPlanReviewSchema = z
+  .object({
+    status: z.enum(['respected', 'not_respected']),
+    reason: z.string().trim().max(1000).default(''),
+    version: z.number().int().positive(),
+  })
+  .refine((review) => review.status !== 'not_respected' || review.reason.length >= 3, {
+    path: ['reason'],
+    message: 'Justifiez en quelques mots pourquoi cet horaire n’a pas été respecté.',
   });
 export const loginSchema = z.object({
   phone: z.string().min(9).max(25),
@@ -218,5 +261,12 @@ export const catalogueSchema = z.object({
     invoiceLogo: imageSchema.nullable(),
     invoiceStamp: imageSchema.nullable(),
     invoiceSignature: imageSchema.nullable(),
+    questionnaire: z
+      .array(clientQuestionSchema)
+      .max(100)
+      .refine(
+        (questions) => new Set(questions.map((question) => question.id)).size === questions.length,
+      )
+      .default([]),
   }),
 });

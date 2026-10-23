@@ -19,6 +19,7 @@ export async function restoreConfiguration(
     data: {
       ...original.settings,
       creneauxOuverts: jsonInput(original.settings.creneauxOuverts),
+      questionnaire: jsonInput(original.settings.questionnaire),
     },
   });
 }

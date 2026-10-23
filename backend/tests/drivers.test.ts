@@ -72,6 +72,7 @@ test('Changer un chauffeur de véhicule libère automatiquement le chauffeur dé
       throw new Error('Non utilisé par ce test');
     },
     startTrip: async () => {},
+    addTripLoadingPhotos: async () => {},
     finishTrip: async () => {},
   };
   const service = new DriverService(
@@ -172,6 +173,7 @@ test('Un chauffeur ne voit que les réservations du véhicule qui lui est affect
     create: async (value) => value,
     update: async (value) => value,
     startTrip: async () => {},
+    addTripLoadingPhotos: async () => {},
     finishTrip: async () => {},
   };
   const service = new DriverService(

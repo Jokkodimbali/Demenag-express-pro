@@ -97,9 +97,9 @@ export async function advanceBookingToInProgress(
     409,
   );
   const started = await admin
-    .patch('/api/bookings/' + bookingId + '/status')
+    .post('/api/bookings/' + bookingId + '/trips/start')
     .set(integrationHeader)
-    .send({ status: 'in_progress', version: confirmed.body.version });
-  assert.equal(started.status, 200, JSON.stringify(started.body));
+    .send({ photos: [] });
+  assert.equal(started.status, 201, JSON.stringify(started.body));
   return { driver };
 }

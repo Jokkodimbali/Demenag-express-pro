@@ -47,6 +47,7 @@ export function DriverCourseActions({
   const trips = booking.trips ?? [];
   const openTrip = [...trips].reverse().find((trip) => !trip.finishedAt);
   const nextSequence = trips.length + 1;
+  const needsLoadingProof = Boolean(openTrip && !openTrip.loadingPhotos.length);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -63,9 +64,34 @@ export function DriverCourseActions({
       setPhotos([]);
       setMode(null);
     } catch (reason) {
-      setError(
-        reason instanceof Error ? reason.message : 'La preuve photo n’a pas pu être envoyée.',
-      );
+      try {
+        const refreshed = adminMode
+          ? await api.booking(booking.id)
+          : (await api.driverBookings()).find((entry) => entry.id === booking.id);
+        if (!refreshed) {
+          setError('La réservation n’est plus disponible.');
+        } else {
+          onChange(refreshed);
+          const savedTrip = refreshed.trips?.find((trip) => trip.id === openTrip?.id);
+          const operationAlreadyCompleted =
+            (mode === 'unloading' && Boolean(savedTrip?.finishedAt)) ||
+            (mode === 'loading' &&
+              (openTrip
+                ? Boolean(savedTrip?.loadingPhotos.length)
+                : (refreshed.trips?.length ?? 0) > trips.length));
+          setError(
+            operationAlreadyCompleted
+              ? ''
+              : reason instanceof Error
+                ? reason.message
+                : 'La preuve photo n’a pas pu être envoyée.',
+          );
+        }
+      } catch {
+        setError(
+          reason instanceof Error ? reason.message : 'La preuve photo n’a pas pu être envoyée.',
+        );
+      }
     } finally {
       setBusy(false);
     }
@@ -134,6 +160,18 @@ export function DriverCourseActions({
         >
           <Check size={16} /> Signaler la fin des courses à l’administration
         </button>
+      ) : openTrip && needsLoadingProof && !adminMode ? (
+        <button
+          className="button primary small"
+          type="button"
+          onClick={() => {
+            setPhotos([]);
+            setError('');
+            setMode('loading');
+          }}
+        >
+          <Check size={16} /> Ajouter les preuves de chargement · course {openTrip.sequence}
+        </button>
       ) : booking.status === 'confirmed' || (booking.status === 'in_progress' && !openTrip) ? (
         <button
           className="button primary small"
@@ -164,7 +202,7 @@ export function DriverCourseActions({
         <form className="driver-course-form" onSubmit={(event) => void submit(event)}>
           <h4>
             {mode === 'loading'
-              ? `Preuve de chargement · course ${nextSequence}`
+              ? `Preuve de chargement · course ${openTrip?.sequence ?? nextSequence}`
               : `Preuve de déchargement · course ${openTrip?.sequence}`}
           </h4>
           <p>

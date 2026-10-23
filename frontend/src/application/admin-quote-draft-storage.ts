@@ -23,7 +23,19 @@ export function readAdminQuoteDraft(): AdminQuoteDraft | null {
       sessionStorage.removeItem(STORAGE_KEY);
       return null;
     }
-    return parsed;
+    return {
+      ...parsed,
+      draft: {
+        ...parsed.draft,
+        fromNote: parsed.draft.fromNote ?? '',
+        toNote: parsed.draft.toNote ?? '',
+        inventory: {
+          ...parsed.draft.inventory,
+          dwellingType: parsed.draft.inventory.dwellingType ?? '',
+        },
+        questionnaireAnswers: parsed.draft.questionnaireAnswers ?? {},
+      },
+    };
   } catch {
     return null;
   }
@@ -58,6 +70,8 @@ function isAdminQuoteDraft(value: unknown): value is AdminQuoteDraft {
     typeof draft.customerPhone === 'string' &&
     typeof draft.fromAddress === 'string' &&
     typeof draft.toAddress === 'string' &&
+    (draft.fromNote === undefined || typeof draft.fromNote === 'string') &&
+    (draft.toNote === undefined || typeof draft.toNote === 'string') &&
     typeof draft.date === 'string' &&
     typeof draft.timeSlot === 'string' &&
     typeof draft.notes === 'string' &&
@@ -69,6 +83,12 @@ function isAdminQuoteDraft(value: unknown): value is AdminQuoteDraft {
     ) &&
     typeof draft.inventory === 'object' &&
     draft.inventory !== null &&
+    (draft.inventory.dwellingType === undefined ||
+      typeof draft.inventory.dwellingType === 'string') &&
+    (draft.questionnaireAnswers === undefined ||
+      (typeof draft.questionnaireAnswers === 'object' &&
+        draft.questionnaireAnswers !== null &&
+        Object.values(draft.questionnaireAnswers).every((answer) => typeof answer === 'string'))) &&
     typeof config === 'object' &&
     config !== null &&
     Number.isInteger(config.trips) &&

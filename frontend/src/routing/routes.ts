@@ -15,6 +15,7 @@ export const routes = {
   administrationTollPoints: '/admin/parametres/peages',
   administrationBookingRules: '/admin/parametres/reservations',
   administrationInvoicing: '/admin/parametres/facturation',
+  administrationQuestionnaire: '/admin/parametres/questionnaire',
   administrationUsers: '/admin/comptes',
   administrationClients: '/admin/clients',
   administrationVehicleReports: '/admin/vehicules/rapports',

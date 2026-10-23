@@ -5,6 +5,7 @@ import { messages } from '../../content/fr';
 import type { Booking, BookingStatus } from '../../domain/model';
 import { useApp } from '../context';
 import { errorMessage } from '../error-message';
+import { subscribeToBookingNotifications } from './booking-notification-refresh';
 export function useAdministration() {
   const { api } = useApp();
   const [params] = useSearchParams();
@@ -18,10 +19,8 @@ export function useAdministration() {
     [query, setQuery] = useState(() => params.get('q') ?? '');
   useEffect(() => setQuery(params.get('q') ?? ''), [params]);
   useEffect(() => {
-    const refreshOnNotification = () => setRetry((value) => value + 1);
-    window.addEventListener('demenag:notification', refreshOnNotification);
-    return () => window.removeEventListener('demenag:notification', refreshOnNotification);
-  }, []);
+    return subscribeToBookingNotifications(api, setBookings);
+  }, [api]);
   useEffect(() => {
     let active = true;
     setLoading(true);
