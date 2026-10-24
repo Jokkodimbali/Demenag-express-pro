@@ -2,11 +2,13 @@ import type {
   BookingSlot,
   ClientQuestion,
   Driver,
+  LabourPriceMatrix,
   Settings,
   UserCredentials,
   Vehicle,
 } from '../../../domain/model.js';
 import { defaultClientQuestions } from '../../../domain/questionnaire.js';
+import { vehicleCapacity } from '../../../domain/vehicle-capacity.js';
 import type {
   ParametreApplication,
   Utilisateur,
@@ -46,7 +48,7 @@ export const fromVehicle = (row: Vehicule): Vehicle => ({
   interior: row.interieur,
   prices: row.tarifs as [number, number, number],
   active: row.actif,
-  volume: row.volume,
+  volume: vehicleCapacity(row.longueur, row.hauteur, row.largeur, row.largeurPassageRoues),
   image: row.image,
 });
 export const toVehicle = (value: Vehicle) => ({
@@ -59,7 +61,7 @@ export const toVehicle = (value: Vehicle) => ({
   interieur: value.interior,
   tarifs: value.prices,
   actif: value.active,
-  volume: value.volume,
+  volume: vehicleCapacity(value.length, value.height, value.width, value.wheelWidth),
   image: value.image,
 });
 export const fromDriver = (row: Chauffeur): Driver => ({
@@ -83,6 +85,9 @@ export const toDriver = (value: Driver) => ({
 export const fromSettings = (row: ParametreApplication): Settings => ({
   distanceBounds: row.bornesDistance as [number, number, number],
   labourPrice: row.tarifManoeuvre,
+  labourFloorPrice: row.tarifEtageManoeuvre,
+  labourLiftPrice: row.tarifAscenseurManoeuvre,
+  labourMatrix: row.grillePrixManoeuvre as LabourPriceMatrix,
   assemblyPrice: row.tarifMontage,
   businessPhone: row.telephoneEntreprise,
   whatsappPhone: row.numeroWhatsapp || row.telephoneEntreprise,
@@ -110,6 +115,9 @@ export const fromSettings = (row: ParametreApplication): Settings => ({
 export const toSettings = (value: Settings) => ({
   bornesDistance: value.distanceBounds,
   tarifManoeuvre: value.labourPrice,
+  tarifEtageManoeuvre: value.labourFloorPrice ?? 500,
+  tarifAscenseurManoeuvre: value.labourLiftPrice ?? 500,
+  grillePrixManoeuvre: value.labourMatrix ?? {},
   tarifMontage: value.assemblyPrice,
   telephoneEntreprise: value.businessPhone,
   numeroWhatsapp: value.whatsappPhone,

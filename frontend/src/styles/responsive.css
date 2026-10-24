@@ -145,6 +145,17 @@
   .driver-management {
     padding: 16px;
   }
+  .fleet-card {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .fleet-card-content {
+    flex: 1 1 100%;
+    width: auto;
+  }
+  .fleet-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
   .driver-row {
     grid-template-columns: 46px minmax(0, 1fr);
     gap: 10px;
@@ -629,6 +640,39 @@
   }
   .toll-rate-controls select {
     width: 112px;
+  }
+}
+@media (max-width: 720px) {
+  .fleet-dimensions-section {
+    padding: 12px;
+  }
+  .fleet-dimension-images {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .fleet-dimension-interior {
+    width: min(100%, 320px);
+  }
+  .fleet-dimension-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .fleet-volume-breakdown {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .vehicle-editor-photos {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .vehicle-dimension-previews {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 420px) {
+  .fleet-dimension-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .fleet-wheel-width {
+    max-width: 75%;
+    white-space: normal;
+    text-align: center;
   }
 }
 @media (prefers-reduced-motion: reduce) {

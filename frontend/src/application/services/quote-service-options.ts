@@ -7,11 +7,23 @@ const serviceLabels: Record<keyof Options, string> = {
   bed: 'Menuisier · lit',
 };
 
+export function isQuotedServiceLine(label: string) {
+  return Object.values(serviceLabels).some(
+    (serviceLabel) =>
+      label === serviceLabel ||
+      (serviceLabel === serviceLabels.labour && label.startsWith(`${serviceLabel} (`)),
+  );
+}
+
 /** Read the saved quote lines, which are also the quantities printed in the PDF. */
 export function quotedServiceOptions(booking: Booking, quote: Quote | undefined): Options {
   const price = quote?.price ?? booking.estimate;
   const quantity = (label: string) =>
-    price.lines.find((line) => line.label === label)?.quantity ?? 0;
+    price.lines.find((line) =>
+      label === serviceLabels.labour
+        ? line.label === label || line.label.startsWith(`${label} (`)
+        : line.label === label,
+    )?.quantity ?? 0;
   return {
     labour: quantity(serviceLabels.labour),
     desk: quantity(serviceLabels.desk),

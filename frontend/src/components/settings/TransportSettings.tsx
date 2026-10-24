@@ -1,25 +1,19 @@
 import { messages } from '../../content/fr';
 import { tierLabels } from '../../domain/format';
 import type { Catalogue } from '../../domain/model';
+import { useState } from 'react';
+import { createLabourPriceMatrix, labourMatrixScenarios } from '../../domain/labour-price';
+
+const floors = ['RDC', '1er', '2e', '3e', '4e', '5e'];
+
 export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
+  const [scenario, setScenario] = useState('none');
+  const labourMatrix = createLabourPriceMatrix(catalogue.settings);
   return (
     <div className="panel">
       <h2>{messages.tarifsDeTransport}</h2>
       <p className="muted">{messages.prixEnFcfaParAllerRetourLesDevis}</p>
       <div className="field-pair">
-        <div>
-          <label htmlFor="labour">{messages.manUvrePersonneFcfa}</label>
-          <input
-            id="labour"
-            name="labour"
-            type="number"
-            min={0}
-            max={1000000}
-            step={1}
-            required
-            defaultValue={catalogue.settings.labourPrice}
-          />
-        </div>
         <div>
           <label htmlFor="assembly">{messages.menuisierMeubleFcfa}</label>
           <input
@@ -85,6 +79,68 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
           </div>
         ))}
       </div>
+      <section className="manoeuvre-price-grid" aria-labelledby="manoeuvre-grid-title">
+        <div>
+          <h3 id="manoeuvre-grid-title">Grille de prix des manœuvres</h3>
+          <p className="muted">
+            Saisissez directement chaque prix en FCFA par personne. Choisissez le scénario
+            d’ascenseur, modifiez les cases nécessaires puis enregistrez les paramètres.
+          </p>
+        </div>
+        <div className="manoeuvre-scenarios" role="group" aria-label="Ascenseurs disponibles">
+          {labourMatrixScenarios.map((item) => (
+            <button
+              className={scenario === item.id ? 'active' : ''}
+              key={item.id}
+              type="button"
+              aria-pressed={scenario === item.id}
+              onClick={() => setScenario(item.id)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+        {labourMatrixScenarios.map((item) => (
+          <div className="manoeuvre-grid-scroll" key={item.id} hidden={scenario !== item.id}>
+            <table>
+              <caption>
+                Prix en FCFA par personne · {item.label} · modifiez directement chaque case
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Départ ↓ · Arrivée →</th>
+                  {floors.map((floor) => (
+                    <th scope="col" key={floor}>
+                      {floor}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {floors.map((from, fromFloor) => (
+                  <tr key={from}>
+                    <th scope="row">{from}</th>
+                    {floors.map((to, toFloor) => (
+                      <td key={to}>
+                        <input
+                          aria-label={`Prix par manœuvre, départ ${from}, arrivée ${to}, ${item.label}`}
+                          name={`labourMatrix.${item.id}.${fromFloor}.${toFloor}`}
+                          type="number"
+                          min={0}
+                          max={1000000}
+                          step={1}
+                          required
+                          defaultValue={labourMatrix[item.id][fromFloor][toFloor]}
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ))}
+      </section>
     </div>
   );
 }

@@ -59,6 +59,9 @@ export type ClientQuestionAnswer = {
 export type Settings = BookingRules & {
   distanceBounds: [number, number, number];
   labourPrice: number;
+  labourFloorPrice?: number;
+  labourLiftPrice?: number;
+  labourMatrix?: LabourPriceMatrix;
   assemblyPrice: number;
   businessPhone: string;
   whatsappPhone: string;
@@ -73,6 +76,8 @@ export type Settings = BookingRules & {
   invoiceSignature: string | null;
   questionnaire?: ClientQuestion[];
 };
+export type LabourMatrixScenario = 'none' | 'from' | 'to' | 'both';
+export type LabourPriceMatrix = Record<LabourMatrixScenario, number[][]>;
 export type Catalogue = { vehicles: Vehicle[]; settings: Settings };
 export type TollPoint = {
   id: string;
@@ -86,6 +91,12 @@ export type TollPoint = {
 };
 export type TollPointInput = Omit<TollPoint, 'id'>;
 export type Options = { labour: number; desk: number; wardrobe: number; bed: number };
+export type WorkAccess = {
+  fromFloor: number;
+  toFloor: number;
+  fromLift: boolean;
+  toLift: boolean;
+};
 export type PriceLine = { label: string; quantity: number; unitPrice: number; total: number };
 export type Price = {
   lines: PriceLine[];
@@ -161,6 +172,7 @@ export type Booking = {
   date: string | null;
   timeSlot: string;
   options: Options;
+  workAccess?: WorkAccess;
   notes: string;
   questionnaireAnswers?: ClientQuestionAnswer[];
   status: BookingStatus;
@@ -183,6 +195,7 @@ export type BookingInput = {
   date: string | null;
   timeSlot: string;
   options: Options;
+  workAccess?: WorkAccess;
   notes: string;
   questionnaireAnswers?: ClientQuestionAnswer[];
   workPlan?: WorkPlanStepInput[];

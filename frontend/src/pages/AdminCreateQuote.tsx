@@ -13,6 +13,7 @@ import { ClientQuestionnaire } from '../components/booking/ClientQuestionnaire';
 import { TollRateSelector } from '../components/TollRateSelector';
 import { inventoryNote } from '../domain/inventory';
 import { money, today } from '../domain/format';
+import { labourUnitPrice } from '../domain/labour-price';
 import { estimateMovingWork, movingEstimateNote } from '../domain/moving-estimate';
 import { defaultClientQuestions } from '../domain/questionnaire';
 import { routes } from '../routing/routes';
@@ -70,6 +71,14 @@ export function AdminCreateQuote() {
     saveAdminQuoteDraft({ draft, quoteConfig, tollLines });
   }, [draft, quoteConfig, tollLines]);
   const inventoryText = inventoryNote(draft.inventory);
+  const labourPrice = catalogue
+    ? labourUnitPrice(catalogue.settings, {
+        fromFloor: draft.inventory.fromFloor,
+        toFloor: draft.inventory.toFloor,
+        fromLift: draft.inventory.fromLift,
+        toLift: draft.inventory.toLift,
+      })
+    : 0;
   const movingEstimate = selected
     ? estimateMovingWork(draft.inventory, selected, draft.route, {
         trips: quoteConfig.trips,
@@ -158,15 +167,10 @@ export function AdminCreateQuote() {
             .map(([key, label]) => ({
               label,
               quantity: draft.options[key],
-              unitPrice:
-                key === 'labour'
-                  ? (catalogue?.settings.labourPrice ?? 0)
-                  : (catalogue?.settings.assemblyPrice ?? 0),
+              unitPrice: key === 'labour' ? labourPrice : (catalogue?.settings.assemblyPrice ?? 0),
               total:
                 draft.options[key] *
-                (key === 'labour'
-                  ? (catalogue?.settings.labourPrice ?? 0)
-                  : (catalogue?.settings.assemblyPrice ?? 0)),
+                (key === 'labour' ? labourPrice : (catalogue?.settings.assemblyPrice ?? 0)),
             })),
           ...tollLines.map((line) => ({
             label: line.label,
@@ -423,12 +427,8 @@ export function AdminCreateQuote() {
                 <div>
                   <strong>{label}</strong>
                   <span>
-                    {money(
-                      key === 'labour'
-                        ? catalogue.settings.labourPrice
-                        : catalogue.settings.assemblyPrice,
-                    )}{' '}
-                    / unité
+                    {money(key === 'labour' ? labourPrice : catalogue.settings.assemblyPrice)} /
+                    unité
                   </span>
                 </div>
                 <div className="admin-quote-stepper">

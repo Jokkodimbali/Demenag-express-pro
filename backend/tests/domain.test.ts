@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { calculatePrice, tierOf } from '../src/domain/pricing.js';
+import { calculatePrice, labourUnitPrice, tierOf } from '../src/domain/pricing.js';
+import { vehicleCapacity } from '../src/domain/vehicle-capacity.js';
 import { validateDate, transition } from '../src/domain/booking.js';
 import { AuthService, normalizePhone } from '../src/application/services/auth.js';
 import { ScryptPasswords } from '../src/adapters/out/security/crypto.js';
@@ -19,6 +20,8 @@ const vehicle: Vehicle = {
 };
 const settings: Settings = {
   labourPrice: 6000,
+  labourFloorPrice: 500,
+  labourLiftPrice: 500,
   assemblyPrice: 15000,
   businessPhone: '+221775105104',
   whatsappPhone: '+221775105104',
@@ -82,6 +85,125 @@ test('Chaque ligne du devis conserve la quantité exacte de sa prestation', () =
       { label: 'Menuisier · armoire', quantity: 1 },
     ],
   );
+});
+test('Le tarif par manœuvre ajoute les étages sans ascenseur et le forfait ascenseur', () => {
+  const access = { fromFloor: 2, toFloor: 1, fromLift: false, toLift: true };
+  assert.equal(labourUnitPrice(settings, access), 7500);
+  const price = calculatePrice(
+    vehicle,
+    settings,
+    10,
+    { ...none, labour: 2 },
+    1,
+    null,
+    0,
+    [],
+    access,
+  );
+  assert.equal(price.lines[1].unitPrice, 7500);
+  assert.match(price.lines[1].label, /2e étage sans ascenseur → 1er étage avec ascenseur/);
+});
+test('Les prix saisis dans chaque matrice remplacent les anciens suppléments calculés', () => {
+  const labourMatrix = {
+    none: Array.from({ length: 6 }, (_, from) =>
+      Array.from({ length: 6 }, (_, to) => 1000 + from * 10 + to),
+    ),
+    from: Array.from({ length: 6 }, (_, from) =>
+      Array.from({ length: 6 }, (_, to) => 2000 + from * 10 + to),
+    ),
+    to: Array.from({ length: 6 }, (_, from) =>
+      Array.from({ length: 6 }, (_, to) => 3000 + from * 10 + to),
+    ),
+    both: Array.from({ length: 6 }, (_, from) =>
+      Array.from({ length: 6 }, (_, to) => 4000 + from * 10 + to),
+    ),
+  };
+  const matrixSettings = { ...settings, labourMatrix };
+  const cases = [
+    [{ fromFloor: 2, toFloor: 4, fromLift: false, toLift: false }, 1024],
+    [{ fromFloor: 2, toFloor: 4, fromLift: true, toLift: false }, 2024],
+    [{ fromFloor: 2, toFloor: 4, fromLift: false, toLift: true }, 3024],
+    [{ fromFloor: 2, toFloor: 4, fromLift: true, toLift: true }, 4024],
+  ] as const;
+  for (const [access, expected] of cases) {
+    const price = calculatePrice(
+      vehicle,
+      matrixSettings,
+      10,
+      { ...none, labour: 2 },
+      1,
+      null,
+      0,
+      [],
+      access,
+    );
+    const labourLine = price.lines.find((line) => line.label.startsWith('Manœuvre'));
+    assert.equal(labourLine?.unitPrice, expected);
+    assert.equal(labourLine?.total, expected * 2);
+  }
+});
+test('Les 144 cases de la matrice correspondent au tarif facturé selon étages et ascenseurs', () => {
+  for (let fromFloor = 0; fromFloor <= 5; fromFloor += 1) {
+    for (let toFloor = 0; toFloor <= 5; toFloor += 1) {
+      for (const fromLift of [false, true]) {
+        for (const toLift of [false, true]) {
+          const access = { fromFloor, toFloor, fromLift, toLift };
+          const expectedUnitPrice =
+            settings.labourPrice +
+            (fromFloor === 0
+              ? 0
+              : fromLift
+                ? settings.labourLiftPrice!
+                : fromFloor * settings.labourFloorPrice!) +
+            (toFloor === 0
+              ? 0
+              : toLift
+                ? settings.labourLiftPrice!
+                : toFloor * settings.labourFloorPrice!);
+          const price = calculatePrice(
+            vehicle,
+            settings,
+            10,
+            { ...none, labour: 3 },
+            1,
+            null,
+            0,
+            [],
+            access,
+          );
+          const labourLine = price.lines.find((line) => line.label.startsWith('Manœuvre'));
+          assert.equal(labourUnitPrice(settings, access), expectedUnitPrice);
+          assert.equal(labourLine?.unitPrice, expectedUnitPrice);
+          assert.equal(labourLine?.total, expectedUnitPrice * 3);
+        }
+      }
+    }
+  }
+});
+test('Un devis qui dépasserait la capacité des colonnes comptables est refusé avant stockage', () => {
+  const highTariffs = {
+    ...settings,
+    labourPrice: 1_000_000,
+    labourFloorPrice: 1_000_000,
+    labourLiftPrice: 1_000_000,
+  };
+  assert.throws(
+    () =>
+      calculatePrice(vehicle, highTariffs, 10, { ...none, labour: 20 }, 1, null, 0, [], {
+        fromFloor: 99,
+        toFloor: 99,
+        fromLift: false,
+        toLift: false,
+      }),
+    /limite de stockage/u,
+  );
+  assert.throws(
+    () => calculatePrice(vehicle, { ...settings, maxTrips: 10000 }, 10, none, 10000, 10000000),
+    /limite de stockage/u,
+  );
+});
+test('Le volume véhicule utilise les quatre dimensions et retire le volume des passages de roue', () => {
+  assert.equal(vehicleCapacity('4,30 m', '1,94 m', '1,78 m', '1,35 m'), '13,9 m³');
 });
 test('Un trajet de plus de 35 km reste sur devis, jamais à zéro', () => {
   assert.equal(calculatePrice(vehicle, settings, 50, none).total, null);

@@ -75,7 +75,20 @@ export function useBookingForm({
     const controller = new AbortController();
     setEstimating(true);
     api
-      .estimate(draft.vehicleId, draft.route.id, draft.options, controller.signal)
+      .estimate(
+        draft.vehicleId,
+        draft.route.id,
+        draft.options,
+        controller.signal,
+        administrativeQuote
+          ? {
+              fromFloor: draft.inventory.fromFloor,
+              toFloor: draft.inventory.toFloor,
+              fromLift: draft.inventory.fromLift,
+              toLift: draft.inventory.toLift,
+            }
+          : undefined,
+      )
       .then(setPrice)
       .catch((e: unknown) => {
         if (!controller.signal.aborted) setEstimateError(errorMessage(e));
@@ -84,7 +97,17 @@ export function useBookingForm({
         if (!controller.signal.aborted) setEstimating(false);
       });
     return () => controller.abort();
-  }, [api, draft.route, draft.vehicleId, draft.options]);
+  }, [
+    api,
+    administrativeQuote,
+    draft.inventory.fromFloor,
+    draft.inventory.toFloor,
+    draft.inventory.fromLift,
+    draft.inventory.toLift,
+    draft.route,
+    draft.vehicleId,
+    draft.options,
+  ]);
   useEffect(() => {
     if (!catalogue) return;
     setDraft((current) => {
@@ -203,6 +226,14 @@ export function useBookingForm({
         date: draft.date,
         timeSlot: draft.date ? draft.timeSlot : '',
         options: draft.options,
+        workAccess: administrativeQuote
+          ? {
+              fromFloor: draft.inventory.fromFloor,
+              toFloor: draft.inventory.toFloor,
+              fromLift: draft.inventory.fromLift,
+              toLift: draft.inventory.toLift,
+            }
+          : undefined,
         notes: bookingNotes,
         questionnaireAnswers: administrativeQuote
           ? [

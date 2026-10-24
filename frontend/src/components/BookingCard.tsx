@@ -22,6 +22,7 @@ import { TollRateSelector } from './TollRateSelector';
 import { quotedServiceOptions } from '../application/services/quote-service-options';
 import { messages } from '../content/fr';
 import { dateLabel, money, statuses } from '../domain/format';
+import { labourUnitPrice } from '../domain/labour-price';
 import type { Booking } from '../domain/model';
 export function BookingCard({
   booking: b,
@@ -801,7 +802,9 @@ export function BookingCard({
               ).map(([key, label, description]) => {
                 const price =
                   key === 'labour'
-                    ? (quoteSettings?.labourPrice ?? 0)
+                    ? quoteSettings
+                      ? labourUnitPrice(quoteSettings, b.workAccess)
+                      : 0
                     : (quoteSettings?.assemblyPrice ?? 0);
                 return (
                   <label key={key}>

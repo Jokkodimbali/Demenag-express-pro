@@ -1,5 +1,7 @@
 import type { Catalogue, Driver, QuoteInput, User, Vehicle } from '../../domain/model';
 import { messages } from '../../content/fr';
+import { vehicleCapacity } from '../../domain/vehicle-capacity';
+import { createLabourPriceMatrix, labourMatrixScenarios } from '../../domain/labour-price';
 import type { SettingsSection } from '../../pages/Settings';
 
 const role = (value: FormDataEntryValue | null): User['role'] =>
@@ -63,18 +65,27 @@ export async function driverFromForm(
 }
 
 export async function vehicleFromForm(data: FormData, existing: Vehicle): Promise<Vehicle> {
+  const length = String(data.get('length'));
+  const height = String(data.get('height'));
+  const width = String(data.get('width'));
+  const wheelWidth = String(data.get('wheelWidth'));
   return {
     ...existing,
     name: String(data.get('name')),
-    volume: String(data.get('volume')),
-    length: String(data.get('length')),
-    height: String(data.get('height')),
-    width: String(data.get('width')),
-    wheelWidth: String(data.get('wheelWidth')),
+    volume: vehicleCapacity(length, height, width, wheelWidth),
+    length,
+    height,
+    width,
+    wheelWidth,
     active: data.get('active') === 'on',
-    image: await dataUrl(data.get('image'), existing.image),
-    interior: await dataUrl(data.get('interior'), existing.interior),
+    image: await imageValue(data.get('image'), existing.image),
+    interior: await imageValue(data.get('interior'), existing.interior),
   };
+}
+
+async function imageValue(value: FormDataEntryValue | null, fallback: string) {
+  if (typeof value === 'string') return value || fallback;
+  return dataUrl(value, fallback);
 }
 
 export async function catalogueFromForm(
@@ -82,7 +93,14 @@ export async function catalogueFromForm(
   catalogue: Catalogue,
   section: SettingsSection,
 ): Promise<Catalogue> {
-  if (section === 'pricing')
+  if (section === 'pricing') {
+    const labourMatrix = createLabourPriceMatrix(catalogue.settings);
+    for (const scenario of labourMatrixScenarios)
+      for (let fromFloor = 0; fromFloor <= 5; fromFloor += 1)
+        for (let toFloor = 0; toFloor <= 5; toFloor += 1) {
+          const key = `labourMatrix.${scenario.id}.${fromFloor}.${toFloor}`;
+          if (data.has(key)) labourMatrix[scenario.id][fromFloor][toFloor] = integer(data.get(key));
+        }
     return {
       ...catalogue,
       vehicles: catalogue.vehicles.map((vehicle) => ({
@@ -92,10 +110,12 @@ export async function catalogueFromForm(
       settings: {
         ...catalogue.settings,
         distanceBounds: tuple([0, 1, 2].map((index) => integer(data.get(`distance-${index}`)))),
-        labourPrice: integer(data.get('labour')),
+        labourPrice: labourMatrix.none[0][0],
+        labourMatrix,
         assemblyPrice: integer(data.get('assembly')),
       },
     };
+  }
   if (section === 'booking-rules')
     return {
       ...catalogue,

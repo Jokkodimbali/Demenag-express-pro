@@ -18,6 +18,13 @@ export const optionsSchema = z.object({
   wardrobe: z.number().int().min(0).max(20),
   bed: z.number().int().min(0).max(20),
 });
+const workAccessSchema = z.object({
+  fromFloor: z.number().int().min(0).max(5),
+  toFloor: z.number().int().min(0).max(5),
+  fromLift: z.boolean(),
+  toLift: z.boolean(),
+});
+const measurementValue = (value: string) => Number.parseFloat(value.replace(',', '.')) || 0;
 const clientQuestionSchema = z.object({
   id: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
   group: z.string().trim().min(1).max(100),
@@ -63,6 +70,7 @@ export const estimateSchema = z.object({
   vehicleId: z.string().min(1).max(30),
   routeId: z.uuid(),
   options: optionsSchema,
+  workAccess: workAccessSchema.optional(),
 });
 export const bookingSchema = estimateSchema
   .extend({
@@ -75,6 +83,7 @@ export const bookingSchema = estimateSchema
       .transform((v) => v || null),
     timeSlot: z.union([z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/), z.literal('')]),
     notes: z.string().trim().max(2000).default(''),
+    workAccess: workAccessSchema.optional(),
     questionnaireAnswers: questionnaireAnswersSchema.optional(),
     workPlan: z
       .array(
@@ -199,23 +208,44 @@ export const adminProfileSchema = z.object({
 export const catalogueSchema = z.object({
   vehicles: z
     .array(
-      z.object({
-        id: z.string().regex(/^[a-z0-9-]{1,30}$/),
-        volume: z.string().trim().min(1).max(30),
-        length: z.string().trim().min(1).max(30),
-        height: z.string().trim().min(1).max(30),
-        width: z.string().trim().min(1).max(30),
-        wheelWidth: z.string().trim().min(1).max(30),
-        image: imageSchema,
-        interior: imageSchema,
-        active: z.boolean().default(true),
-        name: z.string().trim().min(2).max(100),
-        prices: z.tuple([
-          z.number().int().positive().max(10000000),
-          z.number().int().positive().max(10000000),
-          z.number().int().positive().max(10000000),
-        ]),
-      }),
+      z
+        .object({
+          id: z.string().regex(/^[a-z0-9-]{1,30}$/),
+          volume: z.string().trim().min(1).max(30),
+          length: z.string().trim().min(1).max(30),
+          height: z.string().trim().min(1).max(30),
+          width: z.string().trim().min(1).max(30),
+          wheelWidth: z.string().trim().min(1).max(30),
+          image: imageSchema,
+          interior: imageSchema,
+          active: z.boolean().default(true),
+          name: z.string().trim().min(2).max(100),
+          prices: z.tuple([
+            z.number().int().positive().max(10000000),
+            z.number().int().positive().max(10000000),
+            z.number().int().positive().max(10000000),
+          ]),
+        })
+        .superRefine((vehicle, context) => {
+          const length = measurementValue(vehicle.length);
+          const height = measurementValue(vehicle.height);
+          const width = measurementValue(vehicle.width);
+          const wheelWidth = measurementValue(vehicle.wheelWidth);
+          if ([length, height, width, wheelWidth].some((value) => value <= 0)) {
+            context.addIssue({
+              code: 'custom',
+              message: 'Les quatre dimensions doivent être positives.',
+            });
+          }
+          if (wheelWidth > width) {
+            context.addIssue({
+              code: 'custom',
+              path: ['wheelWidth'],
+              message:
+                'La largeur entre les passages de roue ne peut pas dépasser la largeur utile.',
+            });
+          }
+        }),
     )
     .min(1)
     .max(100)
@@ -249,6 +279,16 @@ export const catalogueSchema = z.object({
       .max(24)
       .refine((v) => new Set(v.map((slot) => slot.label)).size === v.length),
     labourPrice: z.number().int().min(0).max(1000000),
+    labourFloorPrice: z.number().int().min(0).max(1000000).default(500),
+    labourLiftPrice: z.number().int().min(0).max(1000000).default(500),
+    labourMatrix: z
+      .object({
+        none: z.array(z.array(z.number().int().min(0).max(1000000)).length(6)).length(6),
+        from: z.array(z.array(z.number().int().min(0).max(1000000)).length(6)).length(6),
+        to: z.array(z.array(z.number().int().min(0).max(1000000)).length(6)).length(6),
+        both: z.array(z.array(z.number().int().min(0).max(1000000)).length(6)).length(6),
+      })
+      .optional(),
     assemblyPrice: z.number().int().min(0).max(1000000),
     businessPhone: z.string().regex(/^\+221[0-9]{9}$/),
     whatsappPhone: z.string().regex(/^\+[1-9][0-9]{7,14}$/),

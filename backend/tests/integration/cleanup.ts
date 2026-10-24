@@ -20,6 +20,7 @@ export async function restoreConfiguration(
       ...original.settings,
       creneauxOuverts: jsonInput(original.settings.creneauxOuverts),
       questionnaire: jsonInput(original.settings.questionnaire),
+      grillePrixManoeuvre: jsonInput(original.settings.grillePrixManoeuvre),
     },
   });
 }

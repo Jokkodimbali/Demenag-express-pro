@@ -424,7 +424,7 @@ export function CallInventory({
                     <button
                       type="button"
                       aria-label={`Augmenter l’étage ${side === 'from' ? 'de départ' : 'd’arrivée'}`}
-                      disabled={inventory[side === 'from' ? 'fromFloor' : 'toFloor'] >= 99}
+                      disabled={inventory[side === 'from' ? 'fromFloor' : 'toFloor'] >= 5}
                       onClick={() =>
                         update({
                           ...inventory,

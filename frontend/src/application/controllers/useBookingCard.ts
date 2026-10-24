@@ -8,7 +8,7 @@ import { quoteFromForm } from '../validation/forms';
 import { quoteNotificationUrl } from '../services/quote-notification';
 import { useMemo } from 'react';
 import { quoteTotal } from '../services/quote-total';
-import { quotedServiceOptions } from '../services/quote-service-options';
+import { isQuotedServiceLine, quotedServiceOptions } from '../services/quote-service-options';
 type ExtraLine = { id: string; label: string; quantity: number; unitPrice: number };
 export function useBookingCard({
   booking: b,
@@ -257,15 +257,9 @@ function extrasFromLast(
   tollPoints: TollPoint[],
 ): ExtraLine[] {
   if (!quote) return [];
-  const serviceLabels = [
-    'Manœuvre',
-    'Menuisier · bureau',
-    'Menuisier · armoire',
-    'Menuisier · lit',
-  ];
   return quote.price.lines
     .filter(
-      (line) => !serviceLabels.includes(line.label) && !line.label.includes(booking.vehicle.name),
+      (line) => !isQuotedServiceLine(line.label) && !line.label.includes(booking.vehicle.name),
     )
     .map((line) => ({
       id: tollPointForLine(line.label, tollPoints)?.id ?? crypto.randomUUID(),

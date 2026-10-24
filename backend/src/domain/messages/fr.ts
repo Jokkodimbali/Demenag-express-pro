@@ -91,6 +91,8 @@ export const messages = {
   menuisierArmoire: 'Menuisier · armoire',
   menuisierLit: 'Menuisier · lit',
   laRemiseDepasseLeMontantDuDevis: 'La remise dépasse le montant du devis.',
+  montantDuDevisDepasseLimiteDeStockage:
+    'Le montant dépasse la limite de stockage autorisée. Vérifiez les tarifs et le nombre de trajets.',
   connexionOuSchemaPostgresqlIndisponibleVerifiezBackendEnv:
     'Connexion ou schéma PostgreSQL indisponible. Vérifiez backend/.env puis exécutez npm run db:migrate et npm run db:seed.',
   labelConsultezbackendenvexample: '. Consultez backend/.env.example.',

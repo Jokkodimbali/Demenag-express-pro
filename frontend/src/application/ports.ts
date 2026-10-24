@@ -159,6 +159,7 @@ export interface PricingRepository {
     routeId: string,
     options: Options,
     signal?: AbortSignal,
+    workAccess?: import('../domain/model').WorkAccess,
   ): Promise<Price>;
 }
 export interface NotificationRepository {

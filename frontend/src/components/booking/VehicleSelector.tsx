@@ -67,12 +67,20 @@ export function VehicleSelector({
         ))}
       </div>
       <div className="vehicle-detail">
-        <img src={selected.image} alt={selected.name} loading="lazy" />
-        <img
-          src={selected.interior}
-          alt={messages.dimensionsInterieuresDu + selected.name}
-          loading="lazy"
-        />
+        <div className="vehicle-diagram vehicle-diagram-profile">
+          <img src={selected.image} alt={`Profil · ${selected.name}`} loading="lazy" />
+          <span>Longueur {selected.length}</span>
+        </div>
+        <div className="vehicle-diagram vehicle-diagram-interior">
+          <img
+            src={selected.interior}
+            alt={messages.dimensionsInterieuresDu + selected.name}
+            loading="lazy"
+          />
+          <span className="diagram-height">Hauteur {selected.height}</span>
+          <span className="diagram-width">Largeur {selected.width}</span>
+          <span className="diagram-wheel">Passages de roue {selected.wheelWidth}</span>
+        </div>
         <div className="vehicle-specifications">
           <span className="eyebrow">{messages.dimensionsUtiles}</span>
           <h4>{selected.name}</h4>
