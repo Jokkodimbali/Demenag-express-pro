@@ -112,6 +112,16 @@ export async function catalogueFromForm(
         distanceBounds: tuple([0, 1, 2].map((index) => integer(data.get(`distance-${index}`)))),
         labourPrice: labourMatrix.none[0][0],
         labourMatrix,
+        movingLaborPlanning: {
+          maxHandlingHours: Number(data.get('movingLaborPlanning.maxHandlingHours')),
+          maxDayHours: Number(data.get('movingLaborPlanning.maxDayHours')),
+          defaultStartHour: integer(data.get('movingLaborPlanning.defaultStartHour')),
+          maxMoversPerVehicle: integer(data.get('movingLaborPlanning.maxMoversPerVehicle')),
+          cubicMetersPerHourPerMover: Number(
+            data.get('movingLaborPlanning.cubicMetersPerHourPerMover'),
+          ),
+          pauseMinutes: integer(data.get('movingLaborPlanning.pauseMinutes')),
+        },
         assemblyPrice: integer(data.get('assembly')),
       },
     };

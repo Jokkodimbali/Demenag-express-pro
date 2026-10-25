@@ -1621,7 +1621,7 @@ div.driver-course-complete p {
 .fleet-dimension-images {
   display: grid;
   grid-template-columns: minmax(0, 1.7fr) minmax(240px, 0.9fr);
-  align-items: stretch;
+  align-items: start;
   gap: 10px;
 }
 .fleet-dimension-profile,
@@ -1679,6 +1679,10 @@ div.driver-course-complete p {
 .fleet-dimension-length::after {
   left: 100%;
 }
+.fleet-dimension-length.is-asset-annotated::before,
+.fleet-dimension-length.is-asset-annotated::after {
+  display: none;
+}
 .fleet-dimension-volume-chip {
   top: 6%;
   right: 1%;
@@ -1703,6 +1707,9 @@ div.driver-course-complete p {
   height: 100px;
   border-left: 2px solid var(--yellow);
   content: '';
+}
+.fleet-dimension-height.is-asset-annotated::after {
+  display: none;
 }
 .fleet-dimension-width {
   bottom: 9%;

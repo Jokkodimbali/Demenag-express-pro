@@ -277,26 +277,30 @@ const formatHints: Record<string, [string, string, string]> = {
   television: ['moins de 40 pouces', '40 à 55 pouces', 'plus de 55 pouces'],
   chaise: ['plastique empilable', 'bois ou métal', 'rembourrée'],
   buffet: ['moins de 1,20 m', '1,20 à 1,80 m', 'plus de 1,80 m'],
-  bibliotheque: ['basse', 'environ 1,80 m de haut', 'haute ou très large'],
-  vitrine: ['basse', 'environ 1,80 m de haut', 'haute ou très large'],
+  bibliotheque: ['basse', '~1,80 m de haut', 'haute ou très large'],
+  vitrine: ['basse', '~1,80 m de haut', 'haute ou très large'],
   tapis: ['descente de lit', 'salon moyen', 'grand tapis'],
   coiffeuse: ['sans miroir', 'avec miroir', 'grande avec rangements'],
   commode: ['3 tiroirs', '4–5 tiroirs', 'large, 6 tiroirs et plus'],
   chevet: ['petite', 'standard', 'grande'],
-  bureau: ['petit, sans tiroir', 'standard', 'd’angle / grand'],
-  frigo: ['bar / sous-plan', '1 ou 2 portes, environ 1,60 m', 'américain, environ 1,85 m'],
+  bureau: ['petit, sans tiroir', 'standard', "d'angle / grand"],
+  frigo: ['bar / sous-plan', '1 ou 2 portes, ~1,60 m', 'américain, ~1,85 m'],
   congelateur: ['petit coffre', 'coffre moyen', 'grand coffre / armoire'],
   cuisiniere: ['réchaud 2 feux', '4 feux avec four', '5–6 feux, grande'],
   'machine-laver': ['top, 5 kg', 'hublot, 7 kg', '10 kg et plus'],
   climatiseur: ['split mural', 'split + unité extérieure', 'armoire / colonne'],
-  carton: ['livres (environ 35 L)', 'standard (environ 55 L)', 'linge (environ 100 L)'],
+  carton: ['livres (~35 L)', 'standard (~55 L)', 'linge (~100 L)'],
   sac: ['bagage cabine', 'valise moyenne', 'grande valise / gros sac'],
   velo: ['enfant', 'adulte', 'électrique / VTT'],
   pot: ['petit pot', 'pot moyen', 'grand bac / arbuste'],
 };
 export function inventoryFormatHint(key: string, format: InventoryFormat = 'medium'): string {
   const index = inventoryFormats.findIndex((option) => option.value === format);
-  return formatHints[key]?.[index] ?? '';
+  return (
+    formatHints[key]?.[index] ??
+    ['plus petit que la moyenne', 'taille courante', 'plus grand que la moyenne'][index] ??
+    ''
+  );
 }
 
 export const inventoryFlags = [
@@ -315,6 +319,7 @@ export type InventoryEntry = {
 };
 export type Inventory = {
   dwellingType: string;
+  annexOn?: boolean;
   fromFloor: number;
   toFloor: number;
   fromLift: boolean;
@@ -329,7 +334,15 @@ export type Inventory = {
     dismantle: boolean;
   }[];
   flags: Record<string, boolean>;
-  custom: { id: string; label: string; quantity: number; format?: InventoryFormat }[];
+  ready?: 'oui' | 'non' | '';
+  stairs?: 'oui' | 'non' | 'verif' | '';
+  custom: {
+    id: string;
+    label: string;
+    quantity: number;
+    format?: InventoryFormat;
+    dismantle?: boolean;
+  }[];
   crew?: number;
 };
 
@@ -367,7 +380,7 @@ export function inventoryNote(inventory: Inventory): string {
         const format =
           inventoryFormats.find((option) => option.value === (item.format ?? 'medium'))?.label ??
           'Moyen';
-        return `${item.quantity} ${item.label} · ${format.toLowerCase()} format`;
+        return `${item.quantity} ${item.label} · ${format.toLowerCase()} format${item.dismantle ? ' · démontage/montage' : ''}`;
       }),
   );
   const flags = inventoryFlags
@@ -378,7 +391,22 @@ export function inventoryNote(inventory: Inventory): string {
   return [
     `FICHE D'APPEL · INVENTAIRE`,
     ...(inventory.dwellingType ? [`Type de logement : ${inventory.dwellingType}`] : []),
+    ...(inventory.dwellingType && inventory.annexOn === false
+      ? ['Effets annexes du logement non inclus dans l’estimation.']
+      : []),
     `Accès : A · ${access(inventory.fromFloor, inventory.fromLift)} ; B · ${access(inventory.toFloor, inventory.toLift)}`,
+    ...(inventory.ready === 'oui'
+      ? ['Le matériel est prêt à être chargé.']
+      : inventory.ready === 'non'
+        ? ['Le matériel n’est pas prêt : emballage à prévoir par l’équipe.']
+        : []),
+    ...(inventory.stairs === 'oui'
+      ? ['Tout le matériel passe dans les escaliers.']
+      : inventory.stairs === 'non'
+        ? ['Certains objets ne passent pas dans les escaliers.']
+        : inventory.stairs === 'verif'
+          ? ['Passage des escaliers à vérifier.']
+          : []),
     ...selected.map((line) => `- ${line}`),
     ...(flags.length ? [`À noter : ${flags.join(', ')}`] : []),
   ].join('\n');

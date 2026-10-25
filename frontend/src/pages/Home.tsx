@@ -105,6 +105,9 @@ function VehicleShowcase({
 }
 
 export function Home() {
+  const [mobileBookingStep, setMobileBookingStep] = useState(1);
+  const [mobileBookingError, setMobileBookingError] = useState('');
+  const [isMobileBooking, setIsMobileBooking] = useState(false);
   const [vehicleTransition, setVehicleTransition] = useState<VehicleTransition | null>(null);
   const transitionTimer = useRef<number | null>(null);
   const transitionSequence = useRef(0);
@@ -114,6 +117,13 @@ export function Home() {
     },
     [],
   );
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 600px)');
+    const update = () => setIsMobileBooking(query.matches);
+    update();
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
 
   const startVehicleTransition = (fromVehicleId: string, toVehicleId: string) => {
     if (transitionTimer.current !== null) window.clearTimeout(transitionTimer.current);
@@ -222,62 +232,94 @@ export function Home() {
               </button>
             </div>
           ) : catalogue && selected ? (
-            <form id="booking-form" onSubmit={submit} className="booking-layout">
+            <form
+              id="booking-form"
+              onSubmit={submit}
+              className="booking-layout"
+              data-mobile-step={mobileBookingStep}
+            >
+              <div className="booking-mobile-progress" aria-live="polite">
+                <span>ÉTAPE {mobileBookingStep} / 4</span>
+                <strong>
+                  {
+                    [
+                      'Choisissez le véhicule',
+                      'Placez le trajet',
+                      'Date et options',
+                      'Vos coordonnées',
+                    ][mobileBookingStep - 1]
+                  }
+                </strong>
+                <div>
+                  <span style={{ width: `${mobileBookingStep * 25}%` }} />
+                </div>
+                {mobileBookingError && <small role="alert">{mobileBookingError}</small>}
+              </div>
               <div className="booking-fields">
-                <VehicleSelector
+                <div className="booking-mobile-step" data-booking-step="1">
+                  <VehicleSelector
+                    catalogue={catalogue}
+                    selected={selected}
+                    draft={draft}
+                    setDraft={setDraft}
+                    tiers={tiers}
+                    transition={vehicleTransition}
+                    onVehicleTransition={startVehicleTransition}
+                  />
+                </div>
+                <div className="booking-mobile-step" data-booking-step="2">
+                  <section className="panel">
+                    <div className="step-title">
+                      <span>{messages.text2}</span>
+                      <div>
+                        <h3>{messages.trajet}</h3>
+                        <p>{messages.recherchezVosAdressesOuPlacezLesReperesSur}</p>
+                      </div>
+                    </div>
+                    <Suspense
+                      fallback={<div className="map loading">{messages.chargementDeLaCarte}</div>}
+                    >
+                      <RouteMap />
+                    </Suspense>
+                  </section>
+                </div>
+                <div className="booking-mobile-step" data-booking-step="3">
+                  <ScheduleOptions
+                    catalogue={catalogue}
+                    draft={draft}
+                    setDraft={setDraft}
+                    extras={extras}
+                    option={option}
+                  />
+                </div>
+                <div className="booking-mobile-step" data-booking-step="4">
+                  <CustomerDetails
+                    draft={draft}
+                    setDraft={setDraft}
+                    recognition={
+                      clientRecognition &&
+                      clientRecognition.phone === normalizedClientPhone(draft.customerPhone)
+                        ? clientRecognition
+                        : null
+                    }
+                    recognizingClient={recognizingClient}
+                  />
+                </div>
+              </div>
+              <div className="booking-mobile-step booking-mobile-summary" data-booking-step="5">
+                <BookingSummary
                   catalogue={catalogue}
                   selected={selected}
                   draft={draft}
-                  setDraft={setDraft}
+                  price={price}
                   tiers={tiers}
-                  transition={vehicleTransition}
-                  onVehicleTransition={startVehicleTransition}
-                />
-                <section className="panel">
-                  <div className="step-title">
-                    <span>{messages.text2}</span>
-                    <div>
-                      <h3>{messages.trajet}</h3>
-                      <p>{messages.recherchezVosAdressesOuPlacezLesReperesSur}</p>
-                    </div>
-                  </div>
-                  <Suspense
-                    fallback={<div className="map loading">{messages.chargementDeLaCarte}</div>}
-                  >
-                    <RouteMap />
-                  </Suspense>
-                </section>
-                <ScheduleOptions
-                  catalogue={catalogue}
-                  draft={draft}
-                  setDraft={setDraft}
-                  extras={extras}
-                  option={option}
-                />
-                <CustomerDetails
-                  draft={draft}
-                  setDraft={setDraft}
-                  recognition={
-                    clientRecognition &&
-                    clientRecognition.phone === normalizedClientPhone(draft.customerPhone)
-                      ? clientRecognition
-                      : null
-                  }
-                  recognizingClient={recognizingClient}
+                  estimating={estimating}
+                  estimateError={estimateError}
+                  submitError={submitError}
+                  submitting={submitting}
+                  user={user}
                 />
               </div>
-              <BookingSummary
-                catalogue={catalogue}
-                selected={selected}
-                draft={draft}
-                price={price}
-                tiers={tiers}
-                estimating={estimating}
-                estimateError={estimateError}
-                submitError={submitError}
-                submitting={submitting}
-                user={user}
-              />
             </form>
           ) : null}
         </div>
@@ -288,19 +330,61 @@ export function Home() {
             <small>{messages.estimation}</small>
             <strong>{price ? money(price.total) : messages.aCalculer}</strong>
           </div>
-          <button
-            form="booking-form"
-            className="button primary"
-            disabled={
-              !price ||
-              submitting ||
-              estimating ||
-              selected?.active === false ||
-              catalogue.settings.bookingsEnabled === false
-            }
-          >
-            {user ? 'Envoyer' : messages.reserver3}
-          </button>
+          {isMobileBooking && mobileBookingStep > 1 && (
+            <button
+              type="button"
+              className="button secondary"
+              onClick={() => {
+                setMobileBookingError('');
+                setMobileBookingStep((step) => step - 1);
+              }}
+            >
+              Retour
+            </button>
+          )}
+          {isMobileBooking && mobileBookingStep < 4 ? (
+            <button
+              type="button"
+              className="button primary"
+              onClick={() => {
+                if (mobileBookingStep === 3) {
+                  const dateInput = document.getElementById(
+                    'booking-date',
+                  ) as HTMLInputElement | null;
+                  const timeInput = document.getElementById(
+                    'booking-slot',
+                  ) as HTMLInputElement | null;
+                  if (dateInput && !dateInput.checkValidity()) {
+                    dateInput.reportValidity();
+                    return;
+                  }
+                  if (timeInput && !timeInput.checkValidity()) {
+                    timeInput.reportValidity();
+                    return;
+                  }
+                }
+                setMobileBookingError('');
+                setMobileBookingStep((step) => step + 1);
+                window.scrollTo({ top: document.getElementById('reserver')?.offsetTop ?? 0 });
+              }}
+            >
+              Continuer <ArrowRight size={16} />
+            </button>
+          ) : (
+            <button
+              form="booking-form"
+              className="button primary"
+              disabled={
+                !price ||
+                submitting ||
+                estimating ||
+                selected?.active === false ||
+                catalogue.settings.bookingsEnabled === false
+              }
+            >
+              {user ? 'Envoyer' : messages.reserver3}
+            </button>
+          )}
         </div>
       )}
     </>

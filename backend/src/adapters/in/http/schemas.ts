@@ -24,6 +24,45 @@ const workAccessSchema = z.object({
   fromLift: z.boolean(),
   toLift: z.boolean(),
 });
+const inventorySnapshotSchema = z.object({
+  dwellingType: z.string().max(80),
+  annexIncluded: z.boolean(),
+  annexVolumeM3: z.number().finite().min(0).max(10000),
+  fromFloor: z.number().int().min(0).max(20),
+  toFloor: z.number().int().min(0).max(20),
+  fromLift: z.boolean(),
+  toLift: z.boolean(),
+  ready: z.enum(['oui', 'non', '']),
+  stairs: z.enum(['oui', 'non', 'verif', '']),
+  flags: z.array(z.string().trim().min(1).max(120)).max(30),
+  items: z
+    .array(
+      z.object({
+        section: z.string().trim().min(1).max(100),
+        label: z.string().trim().min(1).max(120),
+        quantity: z.number().int().min(1).max(999),
+        details: z.string().max(250),
+        volumeM3: z.number().finite().min(0).max(10000),
+      }),
+    )
+    .max(500),
+  itemCount: z.number().int().min(0).max(100000),
+  totalVolumeM3: z.number().finite().min(0).max(100000),
+  vehicleCapacityM3: z.number().finite().min(0).max(10000),
+  fillRate: z.number().finite().min(0).max(1),
+  estimatedTrips: z.number().int().min(0).max(10000),
+  moverCount: z.number().int().min(0).max(100),
+  carpenterCount: z.number().int().min(0).max(100),
+  loadingMinutes: z.number().finite().min(0).max(100000),
+  unloadingMinutes: z.number().finite().min(0).max(100000),
+  packingMinutes: z.number().finite().min(0).max(100000),
+  travelMinutes: z.number().finite().min(0).max(100000),
+  totalMinutes: z.number().finite().min(0).max(100000),
+  lowDurationMinutes: z.number().finite().min(0).max(100000),
+  highDurationMinutes: z.number().finite().min(0).max(100000),
+  startTime: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
+  endTime: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
+});
 const measurementValue = (value: string) => Number.parseFloat(value.replace(',', '.')) || 0;
 const clientQuestionSchema = z.object({
   id: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
@@ -98,6 +137,7 @@ export const bookingSchema = estimateSchema
       .max(50)
       .optional()
       .default([]),
+    inventorySnapshot: inventorySnapshotSchema.optional(),
     requestId: z.uuid(),
   })
   .refine((booking) => !booking.date || Boolean(booking.timeSlot), {
@@ -289,6 +329,23 @@ export const catalogueSchema = z.object({
         both: z.array(z.array(z.number().int().min(0).max(1000000)).length(6)).length(6),
       })
       .optional(),
+    movingLaborPlanning: z
+      .object({
+        maxHandlingHours: z.number().min(0.5).max(12),
+        maxDayHours: z.number().min(1).max(16),
+        defaultStartHour: z.number().int().min(0).max(23),
+        maxMoversPerVehicle: z.number().int().min(2).max(20),
+        cubicMetersPerHourPerMover: z.number().min(0.1).max(50),
+        pauseMinutes: z.number().int().min(0).max(180),
+      })
+      .default({
+        maxHandlingHours: 3,
+        maxDayHours: 8,
+        defaultStartHour: 8,
+        maxMoversPerVehicle: 6,
+        cubicMetersPerHourPerMover: 2.5,
+        pauseMinutes: 30,
+      }),
     assemblyPrice: z.number().int().min(0).max(1000000),
     businessPhone: z.string().regex(/^\+221[0-9]{9}$/),
     whatsappPhone: z.string().regex(/^\+[1-9][0-9]{7,14}$/),

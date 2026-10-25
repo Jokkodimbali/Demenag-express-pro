@@ -8,6 +8,48 @@ type Dimensions = Pick<Vehicle, 'length' | 'height' | 'width' | 'wheelWidth'>;
 const numeric = (value: string) => Number.parseFloat(value.replace(',', '.')) || 0;
 const shown = (value: number) => value.toFixed(2).replace('.', ',');
 const inputValue = (value: string) => String(numeric(value)).replace('.', ',');
+const assetRatio = (source: string, fallback: string) => {
+  const filename = source.split('/').pop()?.split('?')[0] ?? '';
+  if (filename === 'trafic-profil.png') return '960 / 365';
+  if (filename === 'trafic-interieur.png') return '590 / 342';
+  return fallback;
+};
+const vehicleOverlays: Record<
+  string,
+  {
+    profile: [number, number, number, number];
+    height: [number, number];
+    wheel: [number, number, number, number];
+    width: [number, number];
+  }
+> = {
+  sprinter: {
+    profile: [347.5, 56.5, 187, 39],
+    height: [280.5, 220.5],
+    wheel: [264.5, 326, 229, 28],
+    width: [265, 392.5],
+  },
+  trafic: {
+    profile: [297.5, 59.5, 185, 39],
+    height: [296, 151.5],
+    wheel: [283, 224, 228, 26],
+    width: [291.5, 319.5],
+  },
+  master: {
+    profile: [333.5, 43.5, 183, 39],
+    height: [294.5, 224.5],
+    wheel: [276, 308, 232, 26],
+    width: [276.5, 364.5],
+  },
+};
+const overlayStyle = (position: number[], width: number, height: number) => ({
+  left: `${(position[0] / width) * 100}%`,
+  top: `${(position[1] / height) * 100}%`,
+  width: `${(position[2] / width) * 100}%`,
+  minWidth: 0,
+  textAlign: 'center' as const,
+  transform: 'translate(-50%, -50%)',
+});
 
 export function FleetVehicleDimensions({
   vehicle,
@@ -42,6 +84,9 @@ export function FleetVehicleDimensions({
     const field = key as keyof Dimensions;
     return numeric(dimensions[field]) !== numeric(vehicle[field]);
   });
+  const overlays = vehicleOverlays[vehicle.id];
+  const profileDimensions: [number, number] = vehicle.id === 'trafic' ? [960, 365] : [960, 355];
+  const interiorDimensions: [number, number] = vehicle.id === 'trafic' ? [590, 342] : [560, 500];
 
   async function saveDimensions() {
     if (invalid || !dirty || disabled) return;
@@ -64,23 +109,68 @@ export function FleetVehicleDimensions({
     <article className="fleet-dimension-card">
       <h4>{vehicle.name}</h4>
       <div className="fleet-dimension-images">
-        <div className="fleet-dimension-profile">
+        <div
+          className="fleet-dimension-profile"
+          style={{ aspectRatio: assetRatio(vehicle.image, '960 / 355') }}
+        >
           <img src={vehicle.image} alt={`Profil du ${vehicle.name}`} />
-          <span className="fleet-dimension-length">
+          <span
+            className={`fleet-dimension-length${overlays ? ' is-asset-annotated' : ''}`}
+            style={
+              overlays
+                ? overlayStyle(overlays.profile, profileDimensions[0], profileDimensions[1])
+                : undefined
+            }
+          >
             LONGUEUR <strong>{dimensions.length} m</strong>
           </span>
           <span className="fleet-dimension-volume-chip">VOLUME ~{volume}</span>
         </div>
-        <div className="fleet-dimension-interior">
+        <div
+          className="fleet-dimension-interior"
+          style={{ aspectRatio: assetRatio(vehicle.interior, '560 / 500') }}
+        >
           <img src={vehicle.interior} alt={`Intérieur du ${vehicle.name}`} />
-          <span className="fleet-interior-view-label">VUE INTÉRIEURE</span>
-          <span className="fleet-dimension-height">
+          {!overlays && <span className="fleet-interior-view-label">VUE INTÉRIEURE</span>}
+          <span
+            className={`fleet-dimension-height${overlays ? ' is-asset-annotated' : ''}`}
+            style={
+              overlays
+                ? overlayStyle(
+                    [overlays.height[0], overlays.height[1], 171, 39],
+                    ...interiorDimensions,
+                  )
+                : undefined
+            }
+          >
             HAUTEUR <strong>{dimensions.height} m</strong>
           </span>
-          <span className="fleet-dimension-width">
+          <span
+            className="fleet-dimension-width"
+            style={
+              overlays
+                ? overlayStyle(
+                    [overlays.width[0], overlays.width[1], 169, 39],
+                    ...interiorDimensions,
+                  )
+                : undefined
+            }
+          >
             LARGEUR <strong>{dimensions.width} m</strong>
           </span>
-          <span className="fleet-wheel-width">
+          <span
+            className="fleet-wheel-width"
+            style={
+              overlays
+                ? {
+                    ...overlayStyle(overlays.wheel, ...interiorDimensions),
+                    background: '#17191de8',
+                    color: '#fff',
+                    whiteSpace: 'nowrap',
+                  }
+                : undefined
+            }
+          >
             {dimensions.wheelWidth} m entre passages de roue
           </span>
         </div>

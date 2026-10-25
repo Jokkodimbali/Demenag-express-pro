@@ -142,6 +142,7 @@ model ParametreApplication {
   tarifEtageManoeuvre     Int     @default(500) @map("labour_floor_price")
   tarifAscenseurManoeuvre Int     @default(500) @map("labour_lift_price")
   grillePrixManoeuvre     Json    @default("{}") @map("labour_price_matrix")
+  planificationManoeuvre  Json    @default("{}") @map("moving_labor_planning")
   tarifMontage            Int     @map("assembly_price")
   telephoneEntreprise     String  @map("business_phone")
   numeroWhatsapp          String  @default("+221775105104") @map("whatsapp_phone")

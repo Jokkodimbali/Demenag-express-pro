@@ -9,6 +9,15 @@ const floors = ['RDC', '1er', '2e', '3e', '4e', '5e'];
 export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
   const [scenario, setScenario] = useState('none');
   const labourMatrix = createLabourPriceMatrix(catalogue.settings);
+  const planning = {
+    maxHandlingHours: 3,
+    maxDayHours: 8,
+    defaultStartHour: 8,
+    maxMoversPerVehicle: 6,
+    cubicMetersPerHourPerMover: 2.5,
+    pauseMinutes: 30,
+    ...catalogue.settings.movingLaborPlanning,
+  };
   return (
     <div className="panel">
       <h2>{messages.tarifsDeTransport}</h2>
@@ -140,6 +149,89 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
             </table>
           </div>
         ))}
+      </section>
+      <section className="manoeuvre-price-grid" aria-labelledby="moving-plan-settings-title">
+        <div>
+          <h3 id="moving-plan-settings-title">Paramètres du planning de déménagement</h3>
+          <p className="muted">
+            Ces paramètres pilotent l’estimation du nombre de manœuvres, du temps de manutention et
+            de la durée. Ils ne changent pas le prix des réservations déjà enregistrées.
+          </p>
+        </div>
+        <div className="field-pair">
+          <label>
+            Plafond chargement + déchargement (heures)
+            <input
+              name="movingLaborPlanning.maxHandlingHours"
+              type="number"
+              min="0.5"
+              max="12"
+              step="0.5"
+              required
+              defaultValue={planning.maxHandlingHours}
+            />
+          </label>
+          <label>
+            Plafond de la journée (heures)
+            <input
+              name="movingLaborPlanning.maxDayHours"
+              type="number"
+              min="1"
+              max="16"
+              step="0.5"
+              required
+              defaultValue={planning.maxDayHours}
+            />
+          </label>
+          <label>
+            Heure de début par défaut
+            <input
+              name="movingLaborPlanning.defaultStartHour"
+              type="number"
+              min="0"
+              max="23"
+              step="1"
+              required
+              defaultValue={planning.defaultStartHour}
+            />
+          </label>
+          <label>
+            Manœuvres maximum par véhicule
+            <input
+              name="movingLaborPlanning.maxMoversPerVehicle"
+              type="number"
+              min="2"
+              max="20"
+              step="1"
+              required
+              defaultValue={planning.maxMoversPerVehicle}
+            />
+          </label>
+          <label>
+            Cadence au RDC (m³ / heure / manœuvre)
+            <input
+              name="movingLaborPlanning.cubicMetersPerHourPerMover"
+              type="number"
+              min="0.1"
+              max="50"
+              step="0.1"
+              required
+              defaultValue={planning.cubicMetersPerHourPerMover}
+            />
+          </label>
+          <label>
+            Pause si la journée dépasse 5 h (minutes)
+            <input
+              name="movingLaborPlanning.pauseMinutes"
+              type="number"
+              min="0"
+              max="180"
+              step="5"
+              required
+              defaultValue={planning.pauseMinutes}
+            />
+          </label>
+        </div>
       </section>
     </div>
   );

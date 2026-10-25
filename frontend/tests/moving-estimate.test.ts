@@ -1,0 +1,131 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { blankInventory, inventoryFormatHint } from '../src/domain/inventory.ts';
+import {
+  bookingInventorySnapshot,
+  estimateMovingWork,
+  estimatedInventoryItemVolume,
+} from '../src/domain/moving-estimate.ts';
+import type { Vehicle } from '../src/domain/model.ts';
+
+const vehicle: Vehicle = {
+  id: 'sprinter',
+  name: 'Mercedes Sprinter',
+  volume: '13,9 m³',
+  length: '4,30 m',
+  height: '1,94 m',
+  width: '1,78 m',
+  wheelWidth: '1,35 m',
+  image: '/assets/sprinter-profil.png',
+  interior: '/assets/sprinter-interieur.png',
+  prices: [30000, 37000, 44000],
+};
+
+test('l’estimation affichée sous un objet reprend le volume utilisé par le devis', () => {
+  assert.equal(estimatedInventoryItemVolume('meuble-tv', 1, false, 'medium'), 0.6);
+  assert.ok(Math.abs(estimatedInventoryItemVolume('armoire', 3, true) - 1.44) < 0.001);
+  assert.equal(estimatedInventoryItemVolume('custom', 1, false, 'large'), 0.8);
+  assert.equal(estimatedInventoryItemVolume('salon', 5, false), 3.75);
+  assert.equal(inventoryFormatHint('table-basse', 'medium'), 'standard');
+  assert.equal(inventoryFormatHint('custom', 'large'), 'plus grand que la moyenne');
+});
+
+test('le démontage d’un objet personnalisé réduit son volume comme dans la maquette', () => {
+  const inventory = blankInventory();
+  inventory.custom = [
+    { id: 'armoire-custom', label: 'Armoire ancienne', quantity: 1, format: 'medium' },
+  ];
+  const assembled = estimateMovingWork(inventory, vehicle, null, { trips: 1 });
+  inventory.custom[0].dismantle = true;
+  const dismantled = estimateMovingWork(inventory, vehicle, null, { trips: 1 });
+
+  assert.equal(assembled.volume, 0.5);
+  assert.equal(dismantled.volume, 0.4);
+});
+
+test('une réponse « pas prêt » ajoute le temps d’emballage au planning', () => {
+  const inventory = blankInventory();
+  inventory.custom = [{ id: 'objet', label: 'Objet', quantity: 1, format: 'medium' }];
+  const ready = estimateMovingWork(inventory, vehicle, null, { trips: 1, crew: 2 });
+  inventory.ready = 'non';
+  const notReady = estimateMovingWork(inventory, vehicle, null, { trips: 1, crew: 2 });
+
+  assert.equal(ready.packingMinutes, 0);
+  assert.equal(notReady.packingMinutes, 1.5);
+});
+
+test('le trajet utilise la correction de circulation et le facteur du véhicule du modèle', () => {
+  const inventory = blankInventory();
+  inventory.custom = [{ id: 'objet', label: 'Objet', quantity: 1, format: 'medium' }];
+  const estimate = estimateMovingWork(
+    inventory,
+    vehicle,
+    { distanceKm: 20, durationMinutes: 35 },
+    { trips: 1 },
+  );
+
+  assert.ok(Math.abs(estimate.travelMinutes - 58.86632769355671) < 0.001);
+});
+
+test('l’heure et les cadences de planning peuvent être réglées dans les paramètres admin', () => {
+  const inventory = blankInventory();
+  inventory.custom = [{ id: 'objet', label: 'Objet', quantity: 1, format: 'medium' }];
+  const standard = estimateMovingWork(inventory, vehicle, null, { trips: 1 });
+  const configured = estimateMovingWork(inventory, vehicle, null, {
+    trips: 1,
+    laborPlanning: {
+      maxHandlingHours: 3,
+      maxDayHours: 8,
+      defaultStartHour: 10,
+      maxMoversPerVehicle: 6,
+      cubicMetersPerHourPerMover: 1,
+      pauseMinutes: 30,
+    },
+  });
+
+  assert.equal(standard.startTime, '08:00');
+  assert.equal(configured.startTime, '10:00');
+  assert.ok(configured.loadingMinutes > standard.loadingMinutes);
+});
+
+test('le nombre de manœuvres se recalcule automatiquement quand l’inventaire change', () => {
+  const inventory = blankInventory();
+  inventory.custom = [{ id: 'cartons', label: 'Cartons', quantity: 1, format: 'medium' }];
+  const smallInventory = estimateMovingWork(inventory, vehicle, null, { trips: 1 });
+
+  inventory.custom[0].quantity = 24;
+  const largerInventory = estimateMovingWork(inventory, vehicle, null, { trips: 1 });
+
+  assert.equal(smallInventory.recommendedCrew, 2);
+  assert.equal(largerInventory.recommendedCrew, 3);
+  assert.equal(largerInventory.crew, largerInventory.recommendedCrew);
+});
+
+test('le choix manuel est conservé et reste comparé à la recommandation automatique', () => {
+  const inventory = blankInventory();
+  inventory.custom = [{ id: 'cartons', label: 'Cartons', quantity: 24, format: 'medium' }];
+  const estimate = estimateMovingWork(inventory, vehicle, null, { trips: 1, crew: 2 });
+
+  assert.equal(estimate.recommendedCrew, 3);
+  assert.equal(estimate.crew, 2);
+  assert.ok(estimate.warnings.some((warning) => warning.includes('avec 2 manœuvres')));
+});
+
+test('l’instantané de facture reprend les objets, accès et volumes du devis', () => {
+  const inventory = blankInventory();
+  inventory.dwellingType = 'F2';
+  inventory.fromFloor = 2;
+  inventory.fromLift = true;
+  inventory.entries.carton = { quantity: 2, size: 1, format: 'medium', dismantle: false };
+  const estimate = estimateMovingWork(inventory, vehicle, null, { trips: 1 });
+  const snapshot = bookingInventorySnapshot(inventory, estimate);
+
+  assert.equal(snapshot.itemCount, 2);
+  assert.equal(snapshot.items[0]?.label, 'Carton');
+  assert.equal(snapshot.items[0]?.volumeM3, 0.14);
+  assert.equal(snapshot.fromFloor, 2);
+  assert.equal(snapshot.fromLift, true);
+  assert.equal(snapshot.annexVolumeM3, 2.36);
+  assert.equal(snapshot.totalVolumeM3, estimate.volume);
+  assert.equal(snapshot.moverCount, estimate.crew);
+});

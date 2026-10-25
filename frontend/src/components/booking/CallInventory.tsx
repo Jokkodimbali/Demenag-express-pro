@@ -1,11 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import type { Draft } from '../../application/booking-draft';
 import {
   readInventoryIllustration,
   saveInventoryIllustration,
 } from '../../application/inventory-illustrations';
 import { MovingPlanningPanel } from './MovingPlanningPanel';
-import type { Vehicle } from '../../domain/model';
+import type { MovingLaborPlanningSettings, Vehicle } from '../../domain/model';
+import {
+  estimatedInventoryItemVolume,
+  inventoryDismantleFactor,
+} from '../../domain/moving-estimate';
 import {
   inventoryFlags,
   inventoryItems,
@@ -18,6 +22,35 @@ import {
 } from '../../domain/inventory';
 
 const sections = [...new Set(inventoryItems.map((item) => item.section))];
+
+function inventoryItemEstimate(
+  item: (typeof inventoryItems)[number],
+  size: number,
+  format: InventoryFormat,
+  dismantle: boolean,
+  quantity: number,
+): string {
+  const sizeDescription = item.sizeLabel
+    ? `${size} ${size === 1 ? item.sizeLabel.replace(/s$/u, '') : item.sizeLabel}${item.sizeName ? ` · ${item.sizeName(size)}` : ''}`
+    : item.hasFormat
+      ? inventoryFormatHint(item.key, format) ||
+        inventoryFormats.find((option) => option.value === format)?.label.toLowerCase() ||
+        'standard'
+      : '';
+  const volume = estimatedInventoryItemVolume(item.key, size, dismantle, format);
+  const unitLabel = volume.toFixed(2).replace('.', ',');
+  const totalLabel = (volume * Math.max(1, quantity)).toFixed(2).replace('.', ',');
+  return `${sizeDescription ? `${sizeDescription} · ` : ''}${quantity > 0 ? `${quantity} × ≈ ${unitLabel} = ≈ ${totalLabel} m³` : `≈ ${unitLabel} m³ / unité`}`;
+}
+
+function InventoryItemLabel({ label, estimate }: { label: ReactNode; estimate: string }) {
+  return (
+    <div className="inventory-item-copy">
+      {label}
+      <small className="inventory-item-estimate">{estimate}</small>
+    </div>
+  );
+}
 
 function InventorySizeStepper({
   itemLabel,
@@ -116,26 +149,10 @@ function InventoryHoverCard({
         hint: item.sizeName?.(value) ?? `${value} ${item.sizeLabel}`,
       }))
     : [];
-  const selectedFormatIndex = inventoryFormats.findIndex((option) => option.value === format);
-  const sizeVolumePerUnit: Record<string, number> = {
-    salon: 0.6,
-    lit: 0.5,
-    matelas: 0.25,
-    armoire: 0.8,
-    'table-manger': 0.17,
-  };
-  const dismantleFactor: Record<string, number> = {
-    lit: 0.6,
-    armoire: 0.6,
-    'table-manger': 0.6,
-    bureau: 0.7,
-  };
-  const currentVolume =
-    (item.sizeLabel
-      ? (sizeVolumePerUnit[item.key] ?? 0.5) * size
-      : (item.volumeByFormat?.[selectedFormatIndex] ?? 0.5)) *
-    (dismantle ? (dismantleFactor[item.key] ?? (item.canDismantle ? 0.8 : 1)) : 1);
-  const dismantlePercent = Math.round((1 - (dismantleFactor[item.key] ?? 0.8)) * 100);
+  const hasDismantleVolumeReduction = item.key !== 'climatiseur';
+  const canDismantle = item.canDismantle || item.key === 'custom';
+  const currentVolume = estimatedInventoryItemVolume(item.key, size, dismantle, format);
+  const dismantlePercent = Math.round((1 - inventoryDismantleFactor(item.key)) * 100);
   const volumeLabel = (volume: number) => `≈ ${volume.toFixed(2).replace('.', ',')} m³`;
   const scope = imageScope ?? item.key;
   useEffect(() => {
@@ -214,7 +231,11 @@ function InventoryHoverCard({
           ? `${size} ${item.sizeLabel}`
           : (inventoryFormats.find((option) => option.value === format)?.label.toLowerCase() ??
             'standard')}
-        {dismantle && item.canDismantle && <small>Démontable · −{dismantlePercent} %</small>}
+        {dismantle && canDismantle && (
+          <small>
+            {hasDismantleVolumeReduction ? `Démontable · −${dismantlePercent} %` : 'Démontable'}
+          </small>
+        )}
       </strong>
       {(formatOptions.length > 0 || sizeOptions.length > 0) && (
         <div className="inventory-hover-variants">
@@ -288,6 +309,8 @@ export function CallInventory({
   quoteTrips,
   maxTrips,
   onApplyEstimate,
+  laborPlanning,
+  estimateInventory,
 }: {
   draft: Draft;
   setDraft: React.Dispatch<React.SetStateAction<Draft>>;
@@ -297,12 +320,14 @@ export function CallInventory({
   quoteTrips: number;
   maxTrips: number;
   onApplyEstimate: (vehicleId: string, trips: number) => void;
+  laborPlanning?: MovingLaborPlanningSettings;
+  estimateInventory?: Inventory;
 }) {
   const [customLabel, setCustomLabel] = useState('');
   const [inventoryError, setInventoryError] = useState('');
   const [open, setOpen] = useState(true);
   const [activeWidget, setActiveWidget] = useState<string | null>(null);
-  const dwellingTypes = ['Studio', 'F2', 'F3', 'F4', 'F5 et plus', 'Villa', 'Autre'];
+  const dwellingTypes = ['Studio', 'F2', 'F3', 'F4', 'F5 et plus', 'Villa'];
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(sections.map((section) => [section, true])),
   );
@@ -479,6 +504,17 @@ export function CallInventory({
                 </button>
               ))}
             </div>
+            {inventory.dwellingType && (
+              <label className="inventory-check">
+                <input
+                  type="checkbox"
+                  checked={inventory.annexOn !== false}
+                  onChange={(event) => update({ ...inventory, annexOn: event.target.checked })}
+                />
+                Ajouter les effets annexes estimés : sacs d’habits, vaisselle, linge et petits
+                objets. Les cartons et sacs comptés sont déduits du forfait.
+              </label>
+            )}
           </div>
           {sections.map((section) => (
             <details
@@ -526,17 +562,30 @@ export function CallInventory({
                                 }
                               />
                             </label>
-                            <button
-                              type="button"
-                              className="inventory-item-name"
-                              aria-expanded={activeWidget === item.key}
-                              aria-label={`Voir les formats de ${item.label}`}
-                              onClick={() =>
-                                setActiveWidget((value) => (value === item.key ? null : item.key))
+                            <InventoryItemLabel
+                              estimate={inventoryItemEstimate(
+                                item,
+                                entry.size || item.defaultSize || 1,
+                                entry.format ?? 'medium',
+                                entry.dismantle,
+                                entry.quantity,
+                              )}
+                              label={
+                                <button
+                                  type="button"
+                                  className="inventory-item-name"
+                                  aria-expanded={activeWidget === item.key}
+                                  aria-label={`Voir les formats de ${item.label}`}
+                                  onClick={() =>
+                                    setActiveWidget((value) =>
+                                      value === item.key ? null : item.key,
+                                    )
+                                  }
+                                >
+                                  {item.label}
+                                </button>
                               }
-                            >
-                              {item.label}
-                            </button>
+                            />
                             {activeWidget === item.key && (
                               <InventoryHoverCard
                                 item={item}
@@ -637,18 +686,29 @@ export function CallInventory({
                                   setActiveWidget((value) => (value === variant.id ? null : value))
                                 }
                               >
-                                <button
-                                  type="button"
-                                  className="inventory-item-name"
-                                  aria-expanded={activeWidget === variant.id}
-                                  onClick={() =>
-                                    setActiveWidget((value) =>
-                                      value === variant.id ? null : variant.id,
-                                    )
+                                <InventoryItemLabel
+                                  estimate={inventoryItemEstimate(
+                                    item,
+                                    variant.size,
+                                    variant.format ?? 'medium',
+                                    variant.dismantle,
+                                    variant.quantity,
+                                  )}
+                                  label={
+                                    <button
+                                      type="button"
+                                      className="inventory-item-name"
+                                      aria-expanded={activeWidget === variant.id}
+                                      onClick={() =>
+                                        setActiveWidget((value) =>
+                                          value === variant.id ? null : variant.id,
+                                        )
+                                      }
+                                    >
+                                      {item.label}
+                                    </button>
                                   }
-                                >
-                                  {item.label}
-                                </button>
+                                />
                                 {activeWidget === variant.id && (
                                   <InventoryHoverCard
                                     item={item}
@@ -784,7 +844,13 @@ export function CallInventory({
                   ...inventory,
                   custom: [
                     ...inventory.custom,
-                    { id: crypto.randomUUID(), label, quantity: 1, format: 'medium' },
+                    {
+                      id: crypto.randomUUID(),
+                      label,
+                      quantity: 1,
+                      format: 'medium',
+                      dismantle: false,
+                    },
                   ],
                 });
                 setCustomLabel('');
@@ -800,14 +866,33 @@ export function CallInventory({
                 onMouseEnter={() => setActiveWidget(item.id)}
                 onMouseLeave={() => setActiveWidget((value) => (value === item.id ? null : value))}
               >
-                <button
-                  type="button"
-                  className="inventory-item-name"
-                  aria-expanded={activeWidget === item.id}
-                  onClick={() => setActiveWidget((value) => (value === item.id ? null : item.id))}
-                >
-                  {item.label}
-                </button>
+                <InventoryItemLabel
+                  estimate={inventoryItemEstimate(
+                    {
+                      key: 'custom',
+                      label: item.label,
+                      plural: item.label,
+                      section: 'Autres objets',
+                      hasFormat: true,
+                    },
+                    1,
+                    item.format ?? 'medium',
+                    Boolean(item.dismantle),
+                    item.quantity,
+                  )}
+                  label={
+                    <button
+                      type="button"
+                      className="inventory-item-name"
+                      aria-expanded={activeWidget === item.id}
+                      onClick={() =>
+                        setActiveWidget((value) => (value === item.id ? null : item.id))
+                      }
+                    >
+                      {item.label}
+                    </button>
+                  }
+                />
                 {activeWidget === item.id && (
                   <InventoryHoverCard
                     item={{
@@ -816,13 +901,14 @@ export function CallInventory({
                       plural: item.label,
                       section: 'Autres objets',
                       hasFormat: true,
+                      canDismantle: true,
                       volumeByFormat: [0.3, 0.5, 0.8],
                     }}
                     imageScope={`custom:${item.id}`}
                     format={item.format ?? 'medium'}
                     size={1}
                     quantity={item.quantity}
-                    dismantle={false}
+                    dismantle={Boolean(item.dismantle)}
                     onSelectFormat={(format) =>
                       update({
                         ...inventory,
@@ -848,6 +934,21 @@ export function CallInventory({
                   })
                 }
               />
+              <label className="inventory-check">
+                <input
+                  type="checkbox"
+                  checked={Boolean(item.dismantle)}
+                  onChange={(event) =>
+                    update({
+                      ...inventory,
+                      custom: inventory.custom.map((line) =>
+                        line.id === item.id ? { ...line, dismantle: event.target.checked } : line,
+                      ),
+                    })
+                  }
+                />
+                Démontage / montage
+              </label>
               <div className="inventory-quantity">
                 <button
                   type="button"
@@ -928,6 +1029,8 @@ export function CallInventory({
             trips={quoteTrips}
             maxTrips={maxTrips}
             onApply={onApplyEstimate}
+            laborPlanning={laborPlanning}
+            estimateInventory={estimateInventory}
           />
           <div className="inventory-footer">
             <span>Les lits, armoires et bureaux cochés « Démontage / montage » sont facturés.</span>

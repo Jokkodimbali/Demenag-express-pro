@@ -75,6 +75,15 @@ export type Settings = BookingRules & {
   invoiceStamp: string | null;
   invoiceSignature: string | null;
   questionnaire?: ClientQuestion[];
+  movingLaborPlanning?: MovingLaborPlanningSettings;
+};
+export type MovingLaborPlanningSettings = {
+  maxHandlingHours: number;
+  maxDayHours: number;
+  defaultStartHour: number;
+  maxMoversPerVehicle: number;
+  cubicMetersPerHourPerMover: number;
+  pauseMinutes: number;
 };
 export type LabourMatrixScenario = 'none' | 'from' | 'to' | 'both';
 export type LabourPriceMatrix = Record<LabourMatrixScenario, number[][]>;
@@ -139,6 +148,42 @@ export type WorkPlanStep = {
   review: WorkPlanReview;
 };
 export type WorkPlanStepInput = Pick<WorkPlanStep, 'id' | 'time' | 'title' | 'detail' | 'minutes'>;
+export type InventorySnapshotItem = {
+  section: string;
+  label: string;
+  quantity: number;
+  details: string;
+  volumeM3: number;
+};
+export type BookingInventorySnapshot = {
+  dwellingType: string;
+  annexIncluded: boolean;
+  annexVolumeM3: number;
+  fromFloor: number;
+  toFloor: number;
+  fromLift: boolean;
+  toLift: boolean;
+  ready: 'oui' | 'non' | '';
+  stairs: 'oui' | 'non' | 'verif' | '';
+  flags: string[];
+  items: InventorySnapshotItem[];
+  itemCount: number;
+  totalVolumeM3: number;
+  vehicleCapacityM3: number;
+  fillRate: number;
+  estimatedTrips: number;
+  moverCount: number;
+  carpenterCount: number;
+  loadingMinutes: number;
+  unloadingMinutes: number;
+  packingMinutes: number;
+  travelMinutes: number;
+  totalMinutes: number;
+  lowDurationMinutes: number;
+  highDurationMinutes: number;
+  startTime: string;
+  endTime: string;
+};
 export type VehicleInspectionPhotos = {
   engineOil: string;
   coolant: string;
@@ -181,6 +226,7 @@ export type Booking = {
   quotes: Quote[];
   trips?: BookingTrip[];
   workPlan?: WorkPlanStep[];
+  inventorySnapshot?: BookingInventorySnapshot;
   driverFinishedAt?: string | null;
   createdAt: string;
   version: number;
@@ -199,6 +245,7 @@ export type BookingInput = {
   notes: string;
   questionnaireAnswers?: ClientQuestionAnswer[];
   workPlan?: WorkPlanStepInput[];
+  inventorySnapshot?: BookingInventorySnapshot;
   requestId: string;
 };
 export type QuoteInput = {

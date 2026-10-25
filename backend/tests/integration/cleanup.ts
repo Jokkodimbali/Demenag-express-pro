@@ -21,6 +21,7 @@ export async function restoreConfiguration(
       creneauxOuverts: jsonInput(original.settings.creneauxOuverts),
       questionnaire: jsonInput(original.settings.questionnaire),
       grillePrixManoeuvre: jsonInput(original.settings.grillePrixManoeuvre),
+      planificationManoeuvre: jsonInput(original.settings.planificationManoeuvre),
     },
   });
 }

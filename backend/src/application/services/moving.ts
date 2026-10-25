@@ -123,6 +123,7 @@ export class MovingService implements MovingUseCases {
         workAccess: user.role === 'admin' ? input.workAccess : undefined,
         notes: input.notes,
         questionnaireAnswers: user.role === 'admin' ? (input.questionnaireAnswers ?? []) : [],
+        inventorySnapshot: user.role === 'admin' ? input.inventorySnapshot : undefined,
         workPlan:
           user.role === 'admin'
             ? (input.workPlan ?? []).map((step) => {

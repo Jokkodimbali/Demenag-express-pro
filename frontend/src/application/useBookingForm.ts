@@ -2,7 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { messages } from '../content/fr';
 import { tierLabels } from '../domain/format';
-import type { Booking, BookingInput, Options, Price } from '../domain/model';
+import type {
+  Booking,
+  BookingInput,
+  BookingInventorySnapshot,
+  Options,
+  Price,
+} from '../domain/model';
 import { inventoryNote } from '../domain/inventory';
 import { tollPrice } from '../domain/toll-prices';
 import { normalizedClientPhone } from './services/client-summary';
@@ -183,6 +189,8 @@ export function useBookingForm({
     e: React.FormEvent,
     quoteWorkSummary = '',
     workPlan: NonNullable<BookingInput['workPlan']> = [],
+    inventorySnapshot?: BookingInventorySnapshot,
+    quoteOptions?: Options,
   ) {
     e.preventDefault();
     if (submitLock.current) return;
@@ -197,7 +205,7 @@ export function useBookingForm({
       return;
     }
     const bookingNotes = [
-      administrativeQuote ? inventoryNote(draft.inventory) : '',
+      administrativeQuote && !inventorySnapshot ? inventoryNote(draft.inventory) : '',
       administrativeQuote && draft.fromNote.trim()
         ? `Repère départ : ${draft.fromNote.trim()}`
         : '',
@@ -225,7 +233,7 @@ export function useBookingForm({
         toAddress: draft.toAddress,
         date: draft.date,
         timeSlot: draft.date ? draft.timeSlot : '',
-        options: draft.options,
+        options: administrativeQuote && quoteOptions ? quoteOptions : draft.options,
         workAccess: administrativeQuote
           ? {
               fromFloor: draft.inventory.fromFloor,
@@ -264,6 +272,7 @@ export function useBookingForm({
             ]
           : [],
         workPlan: administrativeQuote ? workPlan : [],
+        inventorySnapshot: administrativeQuote ? inventorySnapshot : undefined,
         requestId: draft.requestId,
       });
       if (administrativeQuote) clearAdminQuoteDraft();
@@ -282,7 +291,7 @@ export function useBookingForm({
               quantity,
               unitPrice,
             })),
-            options: draft.options,
+            options: administrativeQuote && quoteOptions ? quoteOptions : draft.options,
             version: booking.version,
           });
           navigate(`${routes.administrationBookings}?q=${booking.reference}&detail=${booking.id}`);
