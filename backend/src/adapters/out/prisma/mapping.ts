@@ -16,6 +16,34 @@ import type {
   Vehicule,
   Chauffeur,
 } from '../../../generated/prisma/client.js';
+
+function labourPriceMatrix(value: unknown): LabourPriceMatrix | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const matrix = value as Record<string, unknown>;
+  const scenarios: LabourPriceMatrix['none'][] = [];
+  for (const scenario of ['none', 'from', 'to', 'both'] as const) {
+    const rows = matrix[scenario];
+    if (
+      !Array.isArray(rows) ||
+      rows.length !== 6 ||
+      rows.some(
+        (row) =>
+          !Array.isArray(row) ||
+          row.length !== 6 ||
+          row.some((price) => !Number.isInteger(price) || price < 0 || price > 1_000_000),
+      )
+    )
+      return undefined;
+    scenarios.push(rows as LabourPriceMatrix['none']);
+  }
+  return {
+    none: scenarios[0],
+    from: scenarios[1],
+    to: scenarios[2],
+    both: scenarios[3],
+  };
+}
+
 export const fromUser = (row: Utilisateur): UserCredentials => ({
   id: row.id,
   name: row.nom,
@@ -88,7 +116,7 @@ export const fromSettings = (row: ParametreApplication): Settings => ({
   labourPrice: row.tarifManoeuvre,
   labourFloorPrice: row.tarifEtageManoeuvre,
   labourLiftPrice: row.tarifAscenseurManoeuvre,
-  labourMatrix: row.grillePrixManoeuvre as LabourPriceMatrix,
+  labourMatrix: labourPriceMatrix(row.grillePrixManoeuvre),
   movingLaborPlanning: {
     maxHandlingHours: 3,
     maxDayHours: 8,
