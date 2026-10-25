@@ -408,6 +408,49 @@
   width: 100%;
   border-radius: 7px;
 }
+.vehicle-diagram {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 7px;
+  background: #222428;
+}
+.vehicle-diagram > span {
+  position: absolute;
+  border-radius: 5px;
+  padding: 3px 5px;
+  background: #1e2023e8;
+  color: var(--yellow);
+  font-size: 8px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.vehicle-diagram-profile > span {
+  right: 8%;
+  bottom: 14%;
+  left: 8%;
+  border-top: 1px solid var(--yellow);
+  text-align: center;
+}
+.vehicle-diagram-interior .diagram-height {
+  top: 8%;
+  right: 5%;
+  bottom: 34%;
+  writing-mode: vertical-rl;
+  border-right: 1px solid var(--yellow);
+}
+.vehicle-diagram-interior .diagram-width {
+  right: 10%;
+  bottom: 20%;
+  left: 10%;
+  border-top: 1px solid var(--yellow);
+  text-align: center;
+}
+.vehicle-diagram-interior .diagram-wheel {
+  bottom: 3%;
+  left: 50%;
+  transform: translateX(-50%);
+}
 .vehicle-detail .eyebrow {
   font-size: 8px;
 }

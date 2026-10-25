@@ -1,7 +1,12 @@
 import type { Dispatch, SetStateAction } from 'react';
 import type { Draft } from '../../application/booking-draft';
-import { estimateMovingWork, formatDuration } from '../../domain/moving-estimate';
-import type { Vehicle } from '../../domain/model';
+import {
+  defaultMovingLaborPlanning,
+  estimateMovingWork,
+  formatDuration,
+} from '../../domain/moving-estimate';
+import type { MovingLaborPlanningSettings, Vehicle } from '../../domain/model';
+import type { Inventory } from '../../domain/inventory';
 
 export function MovingPlanningPanel({
   draft,
@@ -11,6 +16,8 @@ export function MovingPlanningPanel({
   trips,
   maxTrips,
   onApply,
+  laborPlanning,
+  estimateInventory,
 }: {
   draft: Draft;
   setDraft: Dispatch<SetStateAction<Draft>>;
@@ -19,21 +26,28 @@ export function MovingPlanningPanel({
   trips: number;
   maxTrips: number;
   onApply: (vehicleId: string, trips: number) => void;
+  laborPlanning?: MovingLaborPlanningSettings;
+  estimateInventory?: Inventory;
 }) {
+  const inventory = estimateInventory ?? draft.inventory;
+  const dayLimitMinutes =
+    (laborPlanning?.maxDayHours ?? defaultMovingLaborPlanning.maxDayHours) * 60;
   const selectedVehicle = vehicles.find((vehicle) => vehicle.id === selectedVehicleId);
   const current = selectedVehicle
-    ? estimateMovingWork(draft.inventory, selectedVehicle, draft.route, {
+    ? estimateMovingWork(inventory, selectedVehicle, draft.route, {
         trips,
-        crew: draft.inventory.crew,
+        crew: inventory.crew,
         startTime: draft.timeSlot,
+        laborPlanning,
       })
     : null;
   const comparisons = vehicles
     .filter((vehicle) => vehicle.active !== false)
     .map((vehicle) => ({
       vehicle,
-      estimate: estimateMovingWork(draft.inventory, vehicle, draft.route, {
+      estimate: estimateMovingWork(inventory, vehicle, draft.route, {
         startTime: draft.timeSlot,
+        laborPlanning,
       }),
     }));
   const volume = comparisons[0]?.estimate.volume ?? 0;
@@ -77,6 +91,18 @@ export function MovingPlanningPanel({
                     )}{' '}
                     % de remplissage
                   </span>
+                  {estimate.trips > 1 && (
+                    <span className="moving-vehicle-fill">
+                      Dernier voyage : ≈{' '}
+                      {Math.round(
+                        ((estimate.volume -
+                          (estimate.trips - 1) * estimate.capacity * estimate.fillRate) /
+                          (estimate.capacity * estimate.fillRate)) *
+                          100,
+                      )}
+                      % du chargement conseillé
+                    </span>
+                  )}
                   {!!estimate.warnings.length && (
                     <span className="moving-vehicle-warning">
                       À vérifier : {estimate.warnings[0]}
@@ -110,8 +136,8 @@ export function MovingPlanningPanel({
         <div className="moving-labor-card">
           <header className="moving-labor-heading">
             <h3>MAIN-D’ŒUVRE ET DURÉE</h3>
-            <strong className={current.warnings.length ? 'warning' : 'success'}>
-              {current.warnings.length
+            <strong className={current.totalMinutes > dayLimitMinutes ? 'warning' : 'success'}>
+              {current.totalMinutes > dayLimitMinutes
                 ? `À organiser · ${formatDuration(current.totalMinutes)}`
                 : `✓ Tient dans la journée · ${formatDuration(current.totalMinutes)}`}
             </strong>
@@ -128,6 +154,7 @@ export function MovingPlanningPanel({
                     setDraft((value) => ({
                       ...value,
                       inventory: { ...value.inventory, crew: Math.max(1, current.crew - 1) },
+                      options: { ...value.options, labour: Math.max(1, current.crew - 1) },
                     }))
                   }
                 >
@@ -142,6 +169,7 @@ export function MovingPlanningPanel({
                     setDraft((value) => ({
                       ...value,
                       inventory: { ...value.inventory, crew: Math.min(20, current.crew + 1) },
+                      options: { ...value.options, labour: Math.min(20, current.crew + 1) },
                     }))
                   }
                 >
@@ -149,7 +177,8 @@ export function MovingPlanningPanel({
                 </button>
               </div>
               <small>
-                Recommandé : {current.recommendedCrew} · chargement et déchargement ≈{' '}
+                {draft.inventory.crew ? 'Ajustement manuel' : 'Calcul automatique'} · recommandé :{' '}
+                {current.recommendedCrew} · chargement et déchargement ≈{' '}
                 {formatDuration(current.loadingMinutes + current.unloadingMinutes)}
               </small>
               {draft.inventory.crew ? (
@@ -160,6 +189,7 @@ export function MovingPlanningPanel({
                     setDraft((value) => ({
                       ...value,
                       inventory: { ...value.inventory, crew: 0 },
+                      options: { ...value.options, labour: current.recommendedCrew },
                     }))
                   }
                 >
@@ -214,9 +244,8 @@ export function MovingPlanningPanel({
               <span>Durée totale</span>
               <strong>≈ {formatDuration(current.totalMinutes)}</strong>
               <small>
-                {current.minimumDays > 1
-                  ? `${current.minimumDays} jours minimum`
-                  : 'Journée estimée'}
+                Entre {formatDuration(current.lowDurationMinutes)} et{' '}
+                {formatDuration(current.highDurationMinutes)} selon circulation et accès
               </small>
             </div>
           </div>
@@ -248,26 +277,13 @@ export function MovingPlanningPanel({
             <summary>Méthode de calcul</summary>
             <p>
               Cadences par catégorie d’objets, étage et ascenseur ; démontage estimé en parallèle ;
-              emballage selon l’option sélectionnée ; trajets chargés et retours à vide selon la
-              distance et la durée calculées sur la carte. Une pause de 30 minutes est ajoutée
-              au-delà de 5 heures de travail.
+              emballage selon l’option ou la réponse du client ; trajets chargés et retours à vide
+              selon la distance, la durée calculée sur la carte et le véhicule. La pause configurée
+              dans les paramètres est ajoutée au-delà de 5 heures de travail.
             </p>
           </details>
         </div>
       )}
     </section>
   );
-}
-
-export function movingEstimateNote(estimate: ReturnType<typeof estimateMovingWork>): string {
-  return [
-    `Estimation des allers-retours : ${estimate.volume.toFixed(1).replace('.', ',')} m³, ${estimate.plannedTrips} aller-retour${estimate.plannedTrips > 1 ? 's' : ''}.`,
-    `Main-d’œuvre : ${estimate.crew} manœuvres recommandées, chargement ≈ ${formatDuration(estimate.loadingMinutes)}, déchargement ≈ ${formatDuration(estimate.unloadingMinutes)}${estimate.carpenterCount ? `, ${estimate.carpenterCount} menuisier(s)` : ''}.`,
-    `Planning prévisionnel : ${estimate.startTime}–${estimate.endTime}, durée ≈ ${formatDuration(estimate.totalMinutes)}.`,
-    ...estimate.planning.map(
-      (step) =>
-        `${step.time} · ${step.title} · ${formatDuration(step.minutes)}${step.detail ? ` (${step.detail})` : ''}`,
-    ),
-    ...estimate.warnings.map((warning) => `À vérifier : ${warning}`),
-  ].join('\n');
 }

@@ -5,6 +5,7 @@ import type {
   Catalogue,
   Driver,
   Options,
+  WorkAccess,
   Point,
   Price,
   QuoteInput,
@@ -39,7 +40,12 @@ export interface MovingUseCases {
   route(from: Point, to: Point): Promise<RouteTicket>;
   search(query: string): Promise<{ label: string; point: Point }[]>;
   reverse(point: Point): Promise<string>;
-  estimate(vehicleId: string, routeId: string, options: Options): Promise<Price>;
+  estimate(
+    vehicleId: string,
+    routeId: string,
+    options: Options,
+    workAccess?: WorkAccess,
+  ): Promise<Price>;
   create(user: User, input: BookingInput): Promise<Booking>;
   list(user: User): Promise<Booking[]>;
   get(user: User, id: string): Promise<Booking>;

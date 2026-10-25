@@ -449,6 +449,88 @@ div.driver-course-complete p {
   align-items: center;
   margin-top: 12px;
 }
+.manoeuvre-price-grid {
+  display: grid;
+  gap: 14px;
+  margin-top: 22px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: clamp(14px, 3vw, 22px);
+  background: #272a2e;
+}
+.manoeuvre-price-grid h3 {
+  margin: 0 0 5px;
+}
+.manoeuvre-price-grid p {
+  max-width: 900px;
+  margin: 0;
+}
+.manoeuvre-scenarios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.manoeuvre-scenarios button {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 12px;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+.manoeuvre-scenarios button.active {
+  border-color: var(--yellow);
+  background: var(--yellow);
+  color: #1e2023;
+}
+.manoeuvre-grid-scroll {
+  overflow-x: auto;
+}
+.manoeuvre-grid-scroll table {
+  width: 100%;
+  min-width: 650px;
+  border-collapse: separate;
+  border-spacing: 4px;
+}
+.manoeuvre-grid-scroll caption {
+  padding: 0 0 6px;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: left;
+}
+.manoeuvre-grid-scroll th,
+.manoeuvre-grid-scroll td {
+  padding: 8px 6px;
+  border-radius: 7px;
+  background: #1e2023;
+  font-size: 12px;
+  text-align: center;
+  white-space: nowrap;
+}
+.manoeuvre-grid-scroll th {
+  color: var(--yellow);
+}
+.manoeuvre-grid-scroll td {
+  min-width: 88px;
+  padding: 4px;
+}
+.manoeuvre-grid-scroll td input {
+  width: 100%;
+  min-width: 76px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 5px;
+  background: #272a2e;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  text-align: center;
+}
+.manoeuvre-grid-scroll td input:focus {
+  border-color: var(--yellow);
+  outline: 2px solid rgb(246 215 60 / 24%);
+}
 .booking-close-hint {
   margin-top: 4px;
 }
@@ -1229,12 +1311,244 @@ div.driver-course-complete p {
   width: 100%;
   border-radius: 7px;
 }
-.vehicle-image-preview {
-  min-height: 140px;
-  margin-bottom: 18px;
+.vehicle-dimension-previews {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 10px;
+  margin: 14px 0;
+}
+.vehicle-dimension-view {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: #1e2023 center / cover no-repeat;
+  background-color: #222428;
+  background-image:
+    linear-gradient(45deg, #292c30 25%, transparent 25%),
+    linear-gradient(-45deg, #292c30 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #292c30 75%),
+    linear-gradient(-45deg, transparent 75%, #292c30 75%);
+  background-size: 16px 16px;
+  background-position:
+    0 0,
+    0 8px,
+    8px -8px,
+    -8px 0;
+}
+.vehicle-dimension-view img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.vehicle-dimension-view > span {
+  position: absolute;
+  z-index: 1;
+  border-radius: 6px;
+  padding: 4px 7px;
+  background: #1e2023e8;
+  color: var(--yellow);
+  font-size: 10px;
+  font-weight: 800;
+}
+.vehicle-profile-view .vehicle-profile-measure {
+  right: 8%;
+  bottom: 12%;
+  left: 8%;
+  text-align: center;
+  border-top: 2px solid var(--yellow);
+}
+.vehicle-interior-view .dimension-height {
+  top: 12%;
+  right: 8%;
+  bottom: 25%;
+  writing-mode: vertical-rl;
+  border-right: 2px solid var(--yellow);
+}
+.vehicle-interior-view .dimension-width {
+  right: 12%;
+  bottom: 18%;
+  left: 12%;
+  text-align: center;
+  border-top: 2px solid var(--yellow);
+}
+.vehicle-interior-view .dimension-wheel {
+  bottom: 4%;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.vehicle-dimension-view .vehicle-photo-placeholder {
+  position: static;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  background: #222428;
+  color: var(--muted);
+  text-align: center;
+}
+.vehicle-editor-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 20px 0;
+  padding: clamp(14px, 3vw, 22px);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #272a2e;
+}
+.vehicle-editor-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.vehicle-editor-heading h2 {
+  margin: 0 0 6px;
+}
+.vehicle-editor-heading p {
+  margin: 0;
+}
+.vehicle-editor-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+.vehicle-editor-photos {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  gap: 14px;
+  margin: 16px 0;
+}
+.vehicle-photo-hint {
+  margin: 0;
+  font-size: 12px;
+}
+.vehicle-editor-dialog {
+  box-sizing: border-box;
+  width: min(96vw, 1400px);
+  max-width: none;
+  max-height: 94dvh;
+  padding: 24px;
+  overflow-y: auto;
+}
+.vehicle-editor-dialog form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.vehicle-volume-field,
+.vehicle-photo-editor {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+}
+.vehicle-volume-field {
+  margin: 10px 0;
+}
+.vehicle-volume-field input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 10px 12px;
+  background: #1e2023;
+  color: var(--yellow);
+  font-weight: 800;
+}
+.vehicle-photo-upload-overlay {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 10px;
+  cursor: pointer;
+}
+.vehicle-photo-upload-overlay input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.vehicle-photo-upload-overlay > span {
+  border: 1px solid #4a5057;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: #1e2023e8;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  pointer-events: none;
+}
+.vehicle-photo-preview {
+  display: grid;
+  width: 100%;
+  min-height: 0;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background-color: #222428;
+  background-image:
+    linear-gradient(45deg, #292c30 25%, transparent 25%),
+    linear-gradient(-45deg, #292c30 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #292c30 75%),
+    linear-gradient(-45deg, transparent 75%, #292c30 75%);
+  background-size: 16px 16px;
+  background-position:
+    0 0,
+    0 8px,
+    8px -8px,
+    -8px 0;
+}
+.vehicle-photo-preview img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.vehicle-photo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.vehicle-cutout-dialog {
+  width: min(900px, 94vw);
+}
+.vehicle-cutout-canvas {
+  position: relative;
+  display: grid;
+  max-height: 65vh;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #27292d;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+.vehicle-cutout-canvas img {
+  display: block;
+  width: 100%;
+  max-height: 65vh;
+  object-fit: contain;
+  pointer-events: none;
+}
+.vehicle-cutout-canvas svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 .tariff-card h3 {
   font-size: 13px;
@@ -1263,16 +1577,309 @@ div.driver-course-complete p {
   color: var(--muted);
   font-size: 12px;
 }
+.fleet-dimensions-section {
+  display: grid;
+  gap: 14px;
+  margin: 0 0 22px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #292c30;
+}
+.fleet-dimensions-intro h3,
+.fleet-dimensions-intro p {
+  margin: 0;
+}
+.fleet-dimensions-intro h3 {
+  font-size: 15px;
+}
+.fleet-dimensions-intro p {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.fleet-dimensions-list {
+  display: grid;
+  gap: 12px;
+}
+.fleet-dimension-card {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: #222428;
+}
+.fleet-dimension-card h4 {
+  margin: 0;
+  color: var(--yellow);
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.fleet-dimension-images {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(240px, 0.9fr);
+  align-items: start;
+  gap: 10px;
+}
+.fleet-dimension-profile,
+.fleet-dimension-interior {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #292c30;
+}
+.fleet-dimension-profile img,
+.fleet-dimension-interior img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.fleet-dimension-profile {
+  aspect-ratio: 960 / 355;
+}
+.fleet-dimension-interior {
+  width: min(100%, 320px);
+  aspect-ratio: 560 / 500;
+}
+.fleet-dimension-profile > span,
+.fleet-dimension-interior > span {
+  position: absolute;
+  z-index: 1;
+  border-radius: 6px;
+  padding: 5px 8px;
+  background: var(--yellow);
+  color: #202226;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.2;
+  box-shadow: 0 2px 6px #0005;
+}
+.fleet-dimension-length {
+  top: 13%;
+  left: 6%;
+  min-width: 50%;
+  text-align: center;
+}
+.fleet-dimension-length::before,
+.fleet-dimension-length::after {
+  position: absolute;
+  top: 50%;
+  width: 8%;
+  border-top: 2px solid var(--yellow);
+  content: '';
+}
+.fleet-dimension-length::before {
+  right: 100%;
+}
+.fleet-dimension-length::after {
+  left: 100%;
+}
+.fleet-dimension-length.is-asset-annotated::before,
+.fleet-dimension-length.is-asset-annotated::after {
+  display: none;
+}
+.fleet-dimension-volume-chip {
+  top: 6%;
+  right: 1%;
+}
+.fleet-interior-view-label {
+  top: 5%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #17191de8 !important;
+  color: #fff !important;
+  font-size: 8px !important;
+  white-space: nowrap;
+}
+.fleet-dimension-height {
+  top: 18%;
+  right: 16%;
+}
+.fleet-dimension-height::after {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  height: 100px;
+  border-left: 2px solid var(--yellow);
+  content: '';
+}
+.fleet-dimension-height.is-asset-annotated::after {
+  display: none;
+}
+.fleet-dimension-width {
+  bottom: 9%;
+  left: 25%;
+}
+.fleet-wheel-width {
+  bottom: 26%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #17191de8 !important;
+  color: #fff !important;
+  font-size: 8px !important;
+  white-space: nowrap;
+}
+.fleet-dimension-fields {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.fleet-dimension-fields label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.fleet-dimension-fields input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #292c30;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 800;
+}
+.fleet-volume-breakdown {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.35fr) minmax(0, 1.65fr);
+  align-items: center;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid var(--yellow);
+  border-radius: 12px;
+  background: #292c30;
+}
+.fleet-volume-breakdown > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+.fleet-volume-breakdown strong {
+  color: var(--muted);
+  font-size: 12px;
+}
+.fleet-volume-breakdown b {
+  color: var(--yellow);
+  font-size: 26px;
+  line-height: 1;
+}
+.fleet-volume-steps {
+  display: grid;
+  gap: 4px;
+  color: #c5c8cc;
+  font-size: 12px;
+}
+.fleet-dimension-save-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  color: #78c998;
+  font-size: 12px;
+}
+.fleet-dimension-management {
+  display: grid;
+  gap: 10px;
+  padding-top: 11px;
+  border-top: 1px solid var(--line);
+}
+.fleet-dimension-management .fleet-card-main-row {
+  justify-content: space-between;
+}
+.fleet-dimension-management .fleet-row-details {
+  margin: 0;
+}
+.fleet-list {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+.fleet-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px;
+  border-radius: 12px;
+  background: #1e2023;
+}
+.fleet-card-photos {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+.fleet-card-photos img {
+  display: block;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #222428;
+}
+.fleet-card-photos .fleet-profile-photo {
+  width: 130px;
+  aspect-ratio: 960 / 355;
+}
+.fleet-card-photos .fleet-interior-photo {
+  width: 62px;
+  aspect-ratio: 560 / 500;
+}
+.fleet-card-content {
+  flex: 1 1 600px;
+  min-width: 0;
+}
+.fleet-card-main-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.fleet-card-main-row h3 {
+  flex: 1 1 140px;
+  min-width: 0;
+  margin: 0;
+  font-size: 15px;
+}
+.fleet-status {
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 11px;
+  font-weight: 800;
+}
+.fleet-status.available {
+  background: #0b6b3533;
+  color: #58d68d;
+}
+.fleet-status.unavailable {
+  background: #ff8a8f22;
+  color: #ff8a8f;
+}
+.fleet-card-dimensions {
+  margin: 5px 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
 .fleet-metrics {
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  margin: 14px 0;
+  margin: 10px 0;
 }
 .fleet-metrics > div {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  justify-content: start;
   padding-top: 8px;
   border-top: 1px solid var(--line);
 }
@@ -1288,15 +1895,37 @@ div.driver-course-complete p {
 .fleet-actions {
   display: flex;
   flex-wrap: wrap;
+  flex: 0 1 auto;
   gap: 8px;
-  margin-top: 14px;
+  margin: 0;
 }
 .fleet-actions .button {
-  flex: 1 1 130px;
+  flex: 0 0 auto;
   min-width: 0;
-  padding: 11px 12px;
-  font-size: 11px;
+  min-height: 40px;
+  padding: 0 12px;
+  font-size: 13px;
   line-height: 1.25;
+  white-space: nowrap;
+}
+.fleet-row-details {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.fleet-row-details summary {
+  width: fit-content;
+  cursor: pointer;
+}
+.fleet-row-detail-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+.fleet-row-detail-heading .button {
+  min-height: 36px;
 }
 .fleet-action-toggle {
   border-style: dashed;

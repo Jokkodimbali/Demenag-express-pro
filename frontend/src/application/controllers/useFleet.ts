@@ -57,6 +57,11 @@ export function useFleet() {
     e.preventDefault();
     if (!catalogue || !editing || busy) return;
     const data = new FormData(e.currentTarget);
+    const isNewVehicle = !catalogue.vehicles.some((vehicle) => vehicle.id === editing.id);
+    if (isNewVehicle && (!String(data.get('image') ?? '') || !String(data.get('interior') ?? ''))) {
+      setError('Importez une photo de profil et une photo intérieure pour ce véhicule.');
+      return;
+    }
     setBusy(true);
     setError('');
     try {
@@ -102,6 +107,20 @@ export function useFleet() {
       );
     } catch (reason) {
       setError(errorMessage(reason));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveVehicleDimensions(vehicle: Vehicle) {
+    if (!catalogue || busy) return;
+    setBusy(true);
+    setError('');
+    try {
+      setCatalogue(await new CatalogueService(api).saveVehicle(catalogue, vehicle));
+    } catch (reason) {
+      setError(errorMessage(reason));
+      throw reason;
     } finally {
       setBusy(false);
     }
@@ -207,6 +226,7 @@ export function useFleet() {
     requestDeactivation,
     deactivate,
     setVehicleAvailability,
+    saveVehicleDimensions,
     setBookingsAvailability,
     drivers,
     selectedDriverId,

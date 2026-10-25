@@ -52,7 +52,18 @@
   min-width: 0;
   gap: clamp(18px, 2.5vw, 26px);
 }
+.booking-mobile-step {
+  display: contents;
+}
+.booking-mobile-progress {
+  display: none;
+}
 .booking-fields > .panel {
+  border: none;
+  padding: 0;
+  background: transparent;
+}
+.booking-fields > .booking-mobile-step > .panel {
   border: none;
   padding: 0;
   background: transparent;
@@ -322,7 +333,7 @@
 .inventory-item-hover-wrap {
   position: relative;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   flex: 1 1 160px;
   gap: 4px;
   min-width: 110px;
@@ -334,6 +345,18 @@
 }
 .inventory-item-hover-wrap .inventory-item {
   flex: 0 0 auto;
+}
+.inventory-item-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.inventory-item-estimate {
+  color: #aeb5bd;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.35;
+  white-space: normal;
 }
 .inventory-item-name {
   padding: 0;
@@ -832,6 +855,57 @@
     padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
     background: #1e2023;
     border-top: 1px solid #3b4046;
+  }
+  .booking-layout {
+    display: block;
+  }
+  .booking-fields {
+    display: block;
+  }
+  .booking-mobile-progress {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 16px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .booking-mobile-progress > span {
+    color: var(--yellow);
+    font-weight: 800;
+    letter-spacing: 0.1em;
+  }
+  .booking-mobile-progress > strong {
+    color: #fff;
+    font-size: 17px;
+  }
+  .booking-mobile-progress > div {
+    height: 4px;
+    border-radius: 99px;
+    background: #3b4046;
+    overflow: hidden;
+  }
+  .booking-mobile-progress > div > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--yellow);
+    transition: width 180ms ease;
+  }
+  .booking-mobile-step {
+    display: none;
+  }
+  .booking-layout[data-mobile-step='1'] [data-booking-step='1'],
+  .booking-layout[data-mobile-step='2'] [data-booking-step='2'],
+  .booking-layout[data-mobile-step='3'] [data-booking-step='3'],
+  .booking-layout[data-mobile-step='4'] [data-booking-step='4'],
+  .booking-layout[data-mobile-step='4'] [data-booking-step='5'] {
+    display: block;
+  }
+  .booking-layout[data-mobile-step='1'] .booking-mobile-progress,
+  .booking-layout[data-mobile-step='2'] .booking-mobile-progress,
+  .booking-layout[data-mobile-step='3'] .booking-mobile-progress,
+  .booking-layout[data-mobile-step='4'] .booking-mobile-progress {
+    display: grid;
   }
   .mobile-booking-bar > div {
     display: grid;

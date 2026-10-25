@@ -9,6 +9,7 @@ import type {
   Point,
   QuoteInput,
   User,
+  WorkAccess,
   WorkPlanReview,
 } from '../../domain/model.js';
 import {
@@ -57,7 +58,12 @@ export class MovingService implements MovingUseCases {
   reverse(point: Point) {
     return this.routing.reverse(point);
   }
-  private async priceInput(vehicleId: string, routeId: string, options: Options) {
+  private async priceInput(
+    vehicleId: string,
+    routeId: string,
+    options: Options,
+    workAccess?: WorkAccess,
+  ) {
     const [catalogue, route] = await Promise.all([this.catalogue.get(), this.routes.find(routeId)]);
     if (!route || +new Date(route.expiresAt) <= +this.clock.now())
       throw new AppError(400, messages.recalculezLeTrajetSonEstimationAExpire);
@@ -67,11 +73,21 @@ export class MovingService implements MovingUseCases {
       route,
       settings: catalogue.settings,
       vehicle,
-      estimate: calculatePrice(vehicle, catalogue.settings, route.distanceKm, options),
+      estimate: calculatePrice(
+        vehicle,
+        catalogue.settings,
+        route.distanceKm,
+        options,
+        1,
+        null,
+        0,
+        [],
+        workAccess,
+      ),
     };
   }
-  async estimate(vehicleId: string, routeId: string, options: Options) {
-    return (await this.priceInput(vehicleId, routeId, options)).estimate;
+  async estimate(vehicleId: string, routeId: string, options: Options, workAccess?: WorkAccess) {
+    return (await this.priceInput(vehicleId, routeId, options, workAccess)).estimate;
   }
   async create(user: User, input: BookingInput) {
     requireActiveUser(user);
@@ -79,6 +95,7 @@ export class MovingService implements MovingUseCases {
       input.vehicleId,
       input.routeId,
       input.options,
+      user.role === 'admin' ? input.workAccess : undefined,
     );
     if (user.role !== 'admin')
       requireValue(
@@ -103,8 +120,10 @@ export class MovingService implements MovingUseCases {
         date: input.date,
         timeSlot: input.timeSlot,
         options: input.options,
+        workAccess: user.role === 'admin' ? input.workAccess : undefined,
         notes: input.notes,
         questionnaireAnswers: user.role === 'admin' ? (input.questionnaireAnswers ?? []) : [],
+        inventorySnapshot: user.role === 'admin' ? input.inventorySnapshot : undefined,
         workPlan:
           user.role === 'admin'
             ? (input.workPlan ?? []).map((step) => {
@@ -515,6 +534,11 @@ export class MovingService implements MovingUseCases {
       booking.pricingSettings,
       route.distanceKm,
       booking.options,
+      1,
+      null,
+      0,
+      [],
+      booking.workAccess,
     );
     return this.bookings.update(
       {
@@ -608,6 +632,7 @@ export class MovingService implements MovingUseCases {
       input.customPrice,
       input.discount,
       input.extraLines,
+      booking.workAccess,
     );
     requireValue(
       input.kind !== 'final' || price.total !== null,

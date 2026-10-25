@@ -31,6 +31,12 @@ export function readAdminQuoteDraft(): AdminQuoteDraft | null {
         toNote: parsed.draft.toNote ?? '',
         inventory: {
           ...parsed.draft.inventory,
+          fromFloor: Number.isInteger(parsed.draft.inventory.fromFloor)
+            ? Math.min(5, Math.max(0, parsed.draft.inventory.fromFloor))
+            : 0,
+          toFloor: Number.isInteger(parsed.draft.inventory.toFloor)
+            ? Math.min(5, Math.max(0, parsed.draft.inventory.toFloor))
+            : 0,
           dwellingType: parsed.draft.inventory.dwellingType ?? '',
         },
         questionnaireAnswers: parsed.draft.questionnaireAnswers ?? {},

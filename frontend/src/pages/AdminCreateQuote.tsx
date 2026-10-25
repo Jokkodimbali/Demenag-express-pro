@@ -13,7 +13,13 @@ import { ClientQuestionnaire } from '../components/booking/ClientQuestionnaire';
 import { TollRateSelector } from '../components/TollRateSelector';
 import { inventoryNote } from '../domain/inventory';
 import { money, today } from '../domain/format';
-import { estimateMovingWork, movingEstimateNote } from '../domain/moving-estimate';
+import { labourUnitPrice } from '../domain/labour-price';
+import type { Options } from '../domain/model';
+import {
+  bookingInventorySnapshot,
+  estimateMovingWork,
+  movingEstimateNote,
+} from '../domain/moving-estimate';
 import { defaultClientQuestions } from '../domain/questionnaire';
 import { routes } from '../routing/routes';
 
@@ -51,6 +57,21 @@ export function AdminCreateQuote() {
     clientRecognition,
     recognizingClient,
   } = state;
+  const estimateInventory = {
+    ...draft.inventory,
+    ready: draft.questionnaireAnswers['key-ready']?.startsWith('Non')
+      ? ('non' as const)
+      : draft.questionnaireAnswers['key-ready']?.startsWith('Oui')
+        ? ('oui' as const)
+        : ('' as const),
+    stairs: draft.questionnaireAnswers['key-stairs']?.startsWith('Non')
+      ? ('non' as const)
+      : draft.questionnaireAnswers['key-stairs']?.startsWith('Oui')
+        ? ('oui' as const)
+        : draft.questionnaireAnswers['key-stairs']?.startsWith('À vérifier')
+          ? ('verif' as const)
+          : ('' as const),
+  };
   useEffect(() => {
     const saved = readAdminQuoteDraft();
     if (saved) {
@@ -69,14 +90,60 @@ export function AdminCreateQuote() {
     }
     saveAdminQuoteDraft({ draft, quoteConfig, tollLines });
   }, [draft, quoteConfig, tollLines]);
-  const inventoryText = inventoryNote(draft.inventory);
+  const inventoryText = inventoryNote(estimateInventory);
+  const labourPrice = catalogue
+    ? labourUnitPrice(catalogue.settings, {
+        fromFloor: draft.inventory.fromFloor,
+        toFloor: draft.inventory.toFloor,
+        fromLift: draft.inventory.fromLift,
+        toLift: draft.inventory.toLift,
+      })
+    : 0;
   const movingEstimate = selected
-    ? estimateMovingWork(draft.inventory, selected, draft.route, {
+    ? estimateMovingWork(estimateInventory, selected, draft.route, {
         trips: quoteConfig.trips,
         crew: draft.inventory.crew,
         startTime: draft.timeSlot,
+        laborPlanning: catalogue?.settings.movingLaborPlanning,
       })
     : null;
+  const selectedVehicleId = selected?.id ?? '';
+  const movingEstimateVolume = movingEstimate?.volume ?? 0;
+  const movingEstimateCrew = movingEstimate?.crew ?? 0;
+  const movingEstimateTrips = movingEstimate?.trips ?? 0;
+  const readyAnswer = draft.questionnaireAnswers['key-ready'];
+  const stairsAnswer = draft.questionnaireAnswers['key-stairs'];
+  const inventoryEstimateKey = JSON.stringify({
+    ...draft.inventory,
+    crew: undefined,
+    ready: estimateInventory.ready,
+    stairs: estimateInventory.stairs,
+  });
+  useEffect(() => {
+    if (!selectedVehicleId || movingEstimateVolume <= 0) return;
+    setDraft((current) => {
+      if (current.options.labour === movingEstimateCrew) return current;
+      return {
+        ...current,
+        options: { ...current.options, labour: movingEstimateCrew },
+      };
+    });
+  }, [
+    draft.inventory,
+    readyAnswer,
+    stairsAnswer,
+    draft.timeSlot,
+    selectedVehicleId,
+    movingEstimateCrew,
+    movingEstimateVolume,
+    setDraft,
+  ]);
+  useEffect(() => {
+    if (!selectedVehicleId || movingEstimateTrips <= 0) return;
+    setQuoteConfig((current) =>
+      current.trips === movingEstimateTrips ? current : { ...current, trips: movingEstimateTrips },
+    );
+  }, [inventoryEstimateKey, selectedVehicleId, movingEstimateTrips]);
   const questionnaire = (catalogue?.settings.questionnaire ?? defaultClientQuestions).map(
     (question) => {
       const legacyLabels: Record<string, string> = {
@@ -158,15 +225,10 @@ export function AdminCreateQuote() {
             .map(([key, label]) => ({
               label,
               quantity: draft.options[key],
-              unitPrice:
-                key === 'labour'
-                  ? (catalogue?.settings.labourPrice ?? 0)
-                  : (catalogue?.settings.assemblyPrice ?? 0),
+              unitPrice: key === 'labour' ? labourPrice : (catalogue?.settings.assemblyPrice ?? 0),
               total:
                 draft.options[key] *
-                (key === 'labour'
-                  ? (catalogue?.settings.labourPrice ?? 0)
-                  : (catalogue?.settings.assemblyPrice ?? 0)),
+                (key === 'labour' ? labourPrice : (catalogue?.settings.assemblyPrice ?? 0)),
             })),
           ...tollLines.map((line) => ({
             label: line.label,
@@ -190,6 +252,24 @@ export function AdminCreateQuote() {
         ? [...current.filter((existing) => existing.id !== line.id), line]
         : current.filter((existing) => existing.id !== line.id),
     );
+  const changeQuoteOption = (key: keyof Options, delta: number) => {
+    if (key !== 'labour') {
+      option(key, delta);
+      return;
+    }
+    setDraft((current) => {
+      const minimum = movingEstimate?.volume ? 1 : 0;
+      const labour = Math.max(
+        minimum,
+        Math.min(catalogue?.settings.maxOptions ?? 20, current.options.labour + delta),
+      );
+      return {
+        ...current,
+        options: { ...current.options, labour },
+        inventory: { ...current.inventory, crew: labour },
+      };
+    });
+  };
 
   if (loading)
     return (
@@ -232,6 +312,12 @@ export function AdminCreateQuote() {
               detail: step.detail,
               minutes: step.minutes,
             })),
+            movingEstimate?.volume
+              ? bookingInventorySnapshot(estimateInventory, movingEstimate)
+              : undefined,
+            movingEstimate?.volume
+              ? { ...draft.options, labour: movingEstimate.crew }
+              : draft.options,
           )
         }
         className="admin-quote-layout"
@@ -423,20 +509,21 @@ export function AdminCreateQuote() {
                 <div>
                   <strong>{label}</strong>
                   <span>
-                    {money(
-                      key === 'labour'
-                        ? catalogue.settings.labourPrice
-                        : catalogue.settings.assemblyPrice,
-                    )}{' '}
-                    / unité
+                    {money(key === 'labour' ? labourPrice : catalogue.settings.assemblyPrice)} /
+                    unité
                   </span>
                 </div>
                 <div className="admin-quote-stepper">
                   <button
                     type="button"
                     aria-label={`Retirer ${label}`}
-                    disabled={draft.options[key] === 0}
-                    onClick={() => option(key, -1)}
+                    disabled={
+                      draft.options[key] === 0 ||
+                      (key === 'labour' &&
+                        Boolean(movingEstimate?.volume) &&
+                        draft.options.labour <= 1)
+                    }
+                    onClick={() => changeQuoteOption(key, -1)}
                   >
                     <Minus size={17} />
                   </button>
@@ -445,7 +532,7 @@ export function AdminCreateQuote() {
                     type="button"
                     aria-label={`Ajouter ${label}`}
                     disabled={draft.options[key] >= catalogue.settings.maxOptions}
-                    onClick={() => option(key, 1)}
+                    onClick={() => changeQuoteOption(key, 1)}
                   >
                     <Plus size={17} />
                   </button>
@@ -491,6 +578,8 @@ export function AdminCreateQuote() {
             selectedVehicleId={draft.vehicleId}
             quoteTrips={quoteConfig.trips}
             maxTrips={catalogue.settings.maxTrips}
+            laborPlanning={catalogue.settings.movingLaborPlanning}
+            estimateInventory={estimateInventory}
             onApplyEstimate={(vehicleId, trips) => {
               setDraft((current) => ({ ...current, vehicleId }));
               setQuoteConfig((current) => ({ ...current, trips }));

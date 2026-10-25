@@ -1,5 +1,5 @@
 import { messages } from '../content/fr';
-import { dateLabel, money } from '../domain/format';
+import { dateLabel, money, tierLabels } from '../domain/format';
 import type { Booking, Quote, Settings } from '../domain/model';
 
 function notesForPdf(value: string): string {
@@ -42,6 +42,28 @@ function addressNotesFrom(value: string): { from: string; to: string; remaining:
   return { from, to, remaining };
 }
 
+function withoutInventoryBlock(value: string): string {
+  const lines = value.split(/\r?\n/u);
+  const start = lines.findIndex((line) =>
+    /^FICHE D['’]APPEL\s*·\s*INVENTAIRE$/iu.test(line.trim()),
+  );
+  if (start < 0) return value.trim();
+  const end = lines.findIndex(
+    (line, index) =>
+      index > start &&
+      (/^Estimation des allers-retours\s*:/iu.test(line.trim()) ||
+        /^Estimation\s*:/iu.test(line.trim())),
+  );
+  return [...lines.slice(0, start), ...(end >= 0 ? lines.slice(end) : [])].join('\n').trim();
+}
+
+function durationLabel(minutes: number): string {
+  const rounded = Math.max(0, Math.round(minutes / 5) * 5);
+  const hours = Math.floor(rounded / 60);
+  const rest = rounded % 60;
+  return hours ? `${hours} h${rest ? ` ${String(rest).padStart(2, '0')}` : ''}` : `${rest} min`;
+}
+
 async function assetDataUrl(path: string): Promise<string> {
   const response = await fetch(path);
   if (!response.ok) throw new Error(`Impossible de charger ${path}`);
@@ -67,8 +89,9 @@ export async function downloadQuote(
   const documentQuote = quote ?? finalQuote;
   const doc = new jsPDF({ format: 'a4', unit: 'mm' });
   const price = documentQuote?.price || booking.estimate;
+  const sourceNotes = notesForPdf(documentQuote ? documentQuote.notes : booking.notes);
   const addressNotes = addressNotesFrom(
-    notesForPdf(documentQuote ? documentQuote.notes : booking.notes),
+    booking.inventorySnapshot ? withoutInventoryBlock(sourceNotes) : sourceNotes,
   );
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 16;
@@ -77,6 +100,13 @@ export async function downloadQuote(
   const clean = (value: string) =>
     value
       .replace(/[\u202f\u00a0]/g, ' ')
+      .replace(/≈/g, '~')
+      .replace(/[·•]/g, '-')
+      .replace(/[’‘]/g, "'")
+      .replace(/[“”«»]/g, '"')
+      .replace(/×/g, 'x')
+      .replace(/[−]/g, '-')
+      .replace(/→/g, '>')
       .replace(/[–—]/g, '-')
       .replace(/œ/g, 'oe');
   const pdfMoney = (value: number | null) => clean(money(value));
@@ -125,7 +155,7 @@ export async function downloadQuote(
     8,
   );
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
+  doc.setFontSize(18);
   doc.setTextColor(35, 37, 40);
   doc.text(documentQuote?.kind === 'final' ? 'DEVIS FINAL' : 'DEVIS PROVISOIRE', right, y + 2, {
     align: 'right',
@@ -163,35 +193,29 @@ export async function downloadQuote(
   paragraph(booking.vehicle.name, 105, y + 13, 88, 9);
 
   y = 73;
-  paragraph('ADRESSES DU DÉMÉNAGEMENT', margin, y, contentWidth, 8, true, [96, 103, 110]);
+  paragraph('TRAJET', margin, y, contentWidth, 8, true, [96, 103, 110]);
   y += 6;
-  y = paragraph(`Adresse de retrait : ${booking.fromAddress}`, margin, y, contentWidth, 10, true);
-  if (addressNotes.from) {
-    y = paragraph(`Repère départ : ${addressNotes.from}`, margin + 3, y, contentWidth - 3, 8.5);
-  }
-  y = paragraph(`Adresse de dépôt : ${booking.toAddress}`, margin, y, contentWidth, 10, true);
-  if (addressNotes.to) {
-    y = paragraph(`Repère arrivée : ${addressNotes.to}`, margin + 3, y, contentWidth - 3, 8.5);
-  }
-  const tierLine = price.lines.find((line) =>
-    line.label.toLocaleLowerCase().includes(booking.vehicle.name.toLocaleLowerCase()),
-  )?.label;
-  paragraph(
-    `${booking.distanceKm.toLocaleString('fr-FR')} km par la route  ·  ${tierLine || `Trajet ${booking.vehicle.name}`}`,
+  y = paragraph(`A  ${booking.fromAddress}`, margin, y, contentWidth, 10, true);
+  y = paragraph(`B  ${booking.toAddress}`, margin, y, contentWidth, 10, true);
+  const bounds = settings.distanceBounds ?? [15, 25, 35];
+  y = paragraph(
+    `${booking.distanceKm.toLocaleString('fr-FR')} km par la route  ·  Tranche : ${tierLabels(bounds)[price.tier]}`,
     margin,
     y + 1,
     contentWidth,
     9,
   );
-  y += 10;
+  y += 8;
 
   // Tableau des lignes : désignation, quantité, prix unitaire et montant.
   const qtyX = 120;
-  const unitX = 142;
+  const unitX = 136;
   const amountX = right;
   paragraph('DÉSIGNATION', margin, y, 96, 8, true);
   paragraph('QTÉ', qtyX - 3, y, 15, 8, true);
-  paragraph('P.U.', unitX, y, 22, 8, true);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('P.U.', unitX + 20, y, { align: 'right' });
   doc.text('MONTANT', amountX, y, { align: 'right' });
   y += 3;
   doc.setDrawColor(35, 38, 41);
@@ -200,12 +224,14 @@ export async function downloadQuote(
   y += 2;
   doc.setLineWidth(0.18);
   doc.setDrawColor(211, 216, 220);
-  for (const line of price.lines) {
-    const labelLines = doc.splitTextToSize(clean(line.label), 96) as string[];
+  for (const [index, line] of price.lines.entries()) {
+    const label =
+      index === 0 && documentQuote?.kind !== 'final' ? `${line.label} - estimé` : line.label;
+    const labelLines = doc.splitTextToSize(clean(label), 96) as string[];
     const rowHeight = Math.max(12, labelLines.length * 4.5 + 5);
     ensureSpace(rowHeight + 35);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
+    doc.setFontSize(10);
     doc.setTextColor(39, 42, 45);
     doc.text(labelLines, margin, y + 4);
     doc.text(String(line.quantity), qtyX + 5, y + 4, { align: 'center' });
@@ -223,17 +249,16 @@ export async function downloadQuote(
   }
   y += 8;
   ensureSpace(67);
-  doc.setFillColor(246, 215, 60);
+  const isFinal = documentQuote?.kind === 'final';
+  const totalBackground: [number, number, number] = isFinal ? [30, 32, 35] : [246, 215, 60];
+  const totalForeground: [number, number, number] = isFinal ? [255, 255, 255] : [35, 37, 40];
+  doc.setFillColor(...totalBackground);
   doc.roundedRect(margin, y, contentWidth, 16, 2.5, 2.5, 'F');
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(35, 37, 40);
+  doc.setTextColor(...totalForeground);
   doc.setFontSize(11);
-  doc.text(
-    documentQuote?.kind === 'final' ? 'MONTANT DÉFINITIF' : 'ESTIMATION PROVISOIRE',
-    margin + 5,
-    y + 10,
-  );
-  doc.setFontSize(14);
+  doc.text(isFinal ? 'TOTAL À PAYER' : 'ESTIMATION PROVISOIRE', margin + 5, y + 10);
+  doc.setFontSize(17);
   doc.text(pdfMoney(price.total), right - 5, y + 10, { align: 'right' });
   y += 25;
 
@@ -242,15 +267,40 @@ export async function downloadQuote(
       ? messages.montantEtabliSurLaBaseDuNombreReel
       : `Devis temporaire, calculé sur ${price.trips} aller(s)-retour(s) estimé(s). Le transport est facturé par aller-retour effectué ; le devis final, basé sur le nombre réel d'allers-retours, sera envoyé par Demenag Express à la fin du déménagement.`;
   y = paragraph(explanation, margin, y, contentWidth, 8.5, false, [92, 99, 106]);
-  const quoteNotes = addressNotes.remaining;
+  const inventory = booking.inventorySnapshot;
+  const inventorySummary = inventory
+    ? [
+        ...(addressNotes.from ? [`Repère départ : ${addressNotes.from}`] : []),
+        ...(addressNotes.to ? [`Repère arrivée : ${addressNotes.to}`] : []),
+        `Estimation : ${inventory.estimatedTrips} aller${inventory.estimatedTrips > 1 ? 's' : ''}-retour${inventory.estimatedTrips > 1 ? 's' : ''} en ${booking.vehicle.name} (${inventory.vehicleCapacityM3.toFixed(1).replace('.', ',')} m³, chargement à ${Math.round(inventory.fillRate * 100)} %).`,
+        `Main-d’œuvre estimée : ${inventory.moverCount} manœuvre${inventory.moverCount > 1 ? 's' : ''}${inventory.carpenterCount ? ` + ${inventory.carpenterCount} menuisier${inventory.carpenterCount > 1 ? 's' : ''}` : ''}, chargement + déchargement ≈ ${durationLabel(inventory.loadingMinutes + inventory.unloadingMinutes)}.`,
+        ...(inventory.packingMinutes > 0
+          ? [
+              `Emballage ≈ ${durationLabel(inventory.packingMinutes)}${inventory.packingMinutes > 90 ? ', à prévoir la veille.' : ', le jour même avant le chargement.'}`,
+            ]
+          : []),
+        ...(inventory.flags.length ? [`À noter : ${inventory.flags.join(', ')}.`] : []),
+        ...(addressNotes.remaining ? [addressNotes.remaining] : []),
+        'Inventaire détaillé en page suivante.',
+      ].join('\n')
+    : '';
+  const quoteNotes = [
+    inventorySummary,
+    ...(!inventory ? [addressNotes.from ? `Repère départ : ${addressNotes.from}` : ''] : []),
+    ...(!inventory ? [addressNotes.to ? `Repère arrivée : ${addressNotes.to}` : ''] : []),
+    ...(!inventory ? [addressNotes.remaining] : []),
+  ]
+    .filter(Boolean)
+    .join('\n');
   if (quoteNotes) {
     y += 8;
     ensureSpace(12);
-    y = paragraph('FICHE D’APPEL ET PRÉCISIONS', margin, y, contentWidth, 9, true);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(36, 40, 44);
-    for (const sourceLine of quoteNotes.split(/\r?\n/)) {
+    const sourceLines = quoteNotes.split(/\r?\n/);
+    sourceLines[0] = `Note : ${sourceLines[0]}`;
+    for (const sourceLine of sourceLines) {
       if (!sourceLine) {
         y += 3;
         continue;
@@ -263,31 +313,13 @@ export async function downloadQuote(
     }
     y += 3;
   }
-  const questionnaireAnswers = booking.questionnaireAnswers ?? [];
-  if (questionnaireAnswers.length) {
-    y += 3;
-    ensureSpace(12);
-    y = paragraph('QUESTIONNAIRE CLIENT', margin, y, contentWidth, 9, true);
-    for (const item of questionnaireAnswers) {
-      const answer = item.question + ' : ' + item.answer;
-      for (const line of doc.splitTextToSize(clean(answer), contentWidth) as string[]) {
-        ensureSpace(6);
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8.5);
-        doc.setTextColor(36, 40, 44);
-        doc.text(line, margin, y);
-        y += 4.5;
-      }
-    }
-    y += 3;
-  }
   ensureSpace(12);
   if (settings.invoiceFooter)
     y = paragraph(settings.invoiceFooter, margin, y + 2, contentWidth, 8, false, [92, 99, 106]);
 
   // Espaces de signature et cachet comme sur le document de référence.
-  let signatureY = Math.max(y + 17, 181);
-  if (signatureY + 52 > 278) {
+  let signatureY = Math.max(y + 16, 181);
+  if (signatureY + 46 > 287) {
     doc.addPage();
     signatureY = 30;
   }
@@ -314,6 +346,266 @@ export async function downloadQuote(
   }
   addContainedImage(stamp, right - 40, signatureY + 5, 38, 38);
   addContainedImage(signature, right - 58, signatureY + 23, 31, 18);
+
+  if (inventory) {
+    doc.addPage();
+    y = 18;
+    paragraph('Inventaire', margin, y, 110, 14, true);
+    paragraph(
+      `${booking.customerName}${booking.phone ? `  ·  ${booking.phone}` : ''}`,
+      margin,
+      y + 8,
+      110,
+      9,
+      false,
+      [94, 101, 108],
+    );
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(94, 101, 108);
+    doc.text(`Réf. ${documentQuote?.reference || booking.reference}`, right, y + 8, {
+      align: 'right',
+    });
+    y += 18;
+    doc.setDrawColor(35, 38, 41);
+    doc.setLineWidth(0.3);
+    doc.line(margin, y, right, y);
+    y += 7;
+    const halfWidth = contentWidth / 2 - 5;
+    const accessLine = (
+      x: number,
+      label: string,
+      address: string,
+      floor: number,
+      lift: boolean,
+      reference: string,
+    ): number => {
+      let nextY = paragraph(label, x, y, halfWidth, 8, true, [96, 103, 110]);
+      nextY = paragraph(address, x, nextY, halfWidth, 9.5, true);
+      const floorName =
+        floor === 0 ? 'Rez-de-chaussée' : floor === 1 ? '1er étage' : `${floor}e étage`;
+      nextY = paragraph(
+        `${floorName}${lift ? ' · avec ascenseur' : ' · sans ascenseur'}`,
+        x,
+        nextY,
+        halfWidth,
+        8.5,
+      );
+      if (reference.trim())
+        nextY = paragraph(`Repère : ${reference.trim()}`, x, nextY, halfWidth, 8.5);
+      return nextY;
+    };
+    y =
+      Math.max(
+        accessLine(
+          margin,
+          'DÉPART (A)',
+          booking.fromAddress,
+          inventory.fromFloor,
+          inventory.fromLift,
+          addressNotes.from,
+        ),
+        accessLine(
+          right - halfWidth,
+          'ARRIVÉE (B)',
+          booking.toAddress,
+          inventory.toFloor,
+          inventory.toLift,
+          addressNotes.to,
+        ),
+      ) + 5;
+    if (inventory.dwellingType) {
+      y = paragraph(
+        `Logement : ${inventory.dwellingType}${inventory.annexIncluded ? ` · effets annexes ≈ ${inventory.annexVolumeM3.toFixed(2).replace('.', ',')} m³` : ' · effets annexes non inclus'}`,
+        margin,
+        y,
+        contentWidth,
+        9,
+        true,
+      );
+    }
+    if (inventory.ready) {
+      y = paragraph(
+        inventory.ready === 'oui'
+          ? 'Matériel prêt à être chargé.'
+          : 'Matériel non prêt : emballage à prévoir par l’équipe.',
+        margin,
+        y,
+        contentWidth,
+        8.5,
+      );
+    }
+    if (inventory.stairs) {
+      y = paragraph(
+        inventory.stairs === 'oui'
+          ? 'Tout le matériel passe dans les escaliers.'
+          : inventory.stairs === 'non'
+            ? 'Certains objets ne passent pas dans les escaliers.'
+            : 'Passage des objets dans les escaliers à vérifier.',
+        margin,
+        y,
+        contentWidth,
+        8.5,
+      );
+    }
+    if (booking.questionnaireAnswers?.length) {
+      y += 2;
+      y = paragraph('Questionnaire client', margin, y, contentWidth, 9, true);
+      for (const answer of booking.questionnaireAnswers) {
+        y = paragraph(`${answer.question} : ${answer.answer}`, margin, y, contentWidth, 8.5);
+      }
+      y += 2;
+    }
+    const columns = { item: margin, quantity: right - 88, details: right - 77, volume: right };
+    const tableHeader = () => {
+      ensureSpace(12);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(42, 45, 48);
+      doc.text('OBJET', columns.item, y);
+      doc.text('QTÉ', columns.quantity, y, { align: 'right' });
+      doc.text('DÉTAIL', columns.details, y);
+      doc.text('VOLUME', columns.volume, y, { align: 'right' });
+      y += 3;
+      doc.setDrawColor(35, 38, 41);
+      doc.setLineWidth(0.35);
+      doc.line(margin, y, right, y);
+      y += 5;
+    };
+    tableHeader();
+    const sections = [...new Set(inventory.items.map((item) => item.section))];
+    sections.forEach((section) => {
+      const sectionItems = inventory.items.filter((item) => item.section === section);
+      if (y + 10 > 278) {
+        doc.addPage();
+        y = 20;
+        tableHeader();
+      }
+      y = paragraph(
+        section.toLocaleUpperCase('fr-FR'),
+        margin,
+        y,
+        contentWidth,
+        8,
+        true,
+        [94, 101, 108],
+      );
+      sectionItems.forEach((item) => {
+        const detailLines = doc.splitTextToSize(
+          clean(item.details),
+          columns.volume - columns.details - 20,
+        ) as string[];
+        const labelLines = doc.splitTextToSize(
+          clean(item.label),
+          columns.quantity - columns.item - 8,
+        ) as string[];
+        const height = Math.max(7, Math.max(detailLines.length, labelLines.length) * 4 + 2);
+        if (y + height > 276) {
+          doc.addPage();
+          y = 20;
+          tableHeader();
+        }
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.5);
+        doc.setTextColor(36, 40, 44);
+        doc.text(labelLines, columns.item, y);
+        doc.text(String(item.quantity), columns.quantity, y, { align: 'right' });
+        doc.setTextColor(94, 101, 108);
+        doc.text(detailLines, columns.details, y);
+        doc.setTextColor(36, 40, 44);
+        doc.text(`${item.volumeM3.toFixed(2).replace('.', ',')} m³`, columns.volume, y, {
+          align: 'right',
+        });
+        y += height;
+        doc.setDrawColor(225, 228, 231);
+        doc.setLineWidth(0.15);
+        doc.line(margin, y, right, y);
+        y += 3;
+      });
+    });
+    if (inventory.annexVolumeM3 > 0) {
+      if (y + 11 > 278) {
+        doc.addPage();
+        y = 20;
+        tableHeader();
+      }
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(36, 40, 44);
+      doc.text('Effets annexes', columns.item, y);
+      doc.text('Forfait logement, cartons déduits', columns.details, y);
+      doc.text(`${inventory.annexVolumeM3.toFixed(2).replace('.', ',')} m³`, columns.volume, y, {
+        align: 'right',
+      });
+      y += 8;
+    }
+    ensureSpace(52);
+    doc.setDrawColor(35, 38, 41);
+    doc.line(margin, y, right, y);
+    y += 6;
+    y = paragraph(
+      `Volume total · ${inventory.itemCount} objet${inventory.itemCount > 1 ? 's' : ''} : ${inventory.totalVolumeM3.toFixed(1).replace('.', ',')} m³`,
+      margin,
+      y,
+      contentWidth,
+      10,
+      true,
+    );
+    y = paragraph(
+      `Estimation : ${inventory.estimatedTrips} aller-retour${inventory.estimatedTrips > 1 ? 's' : ''} en ${booking.vehicle.name} (${inventory.vehicleCapacityM3.toFixed(1).replace('.', ',')} m³, chargement à ${Math.round(inventory.fillRate * 100)} %).`,
+      margin,
+      y,
+      contentWidth,
+      8.5,
+    );
+    y = paragraph(
+      `Main-d’œuvre estimée : ${inventory.moverCount} manœuvre${inventory.moverCount > 1 ? 's' : ''}${inventory.carpenterCount ? ` + ${inventory.carpenterCount} menuisier${inventory.carpenterCount > 1 ? 's' : ''}` : ''} · chargement ≈ ${durationLabel(inventory.loadingMinutes)} · déchargement ≈ ${durationLabel(inventory.unloadingMinutes)}.`,
+      margin,
+      y,
+      contentWidth,
+      8.5,
+    );
+    const quotedMovers = documentQuote?.options?.labour;
+    if (quotedMovers !== undefined && quotedMovers !== inventory.moverCount) {
+      y = paragraph(
+        `Effectif facturé selon les lignes du devis : ${quotedMovers} manœuvre${quotedMovers > 1 ? 's' : ''}.`,
+        margin,
+        y,
+        contentWidth,
+        8.5,
+      );
+    }
+    if (inventory.packingMinutes > 0) {
+      y = paragraph(
+        `Emballage : ≈ ${durationLabel(inventory.packingMinutes)}${inventory.packingMinutes > 90 ? ', à prévoir la veille.' : ', le jour même avant le chargement.'}`,
+        margin,
+        y,
+        contentWidth,
+        8.5,
+      );
+    }
+    y = paragraph(
+      `Trajets : ≈ ${durationLabel(inventory.travelMinutes)} · durée totale : ${durationLabel(inventory.totalMinutes)} (de ${inventory.startTime} à ${inventory.endTime}, entre ${durationLabel(inventory.lowDurationMinutes)} et ${durationLabel(inventory.highDurationMinutes)}).`,
+      margin,
+      y,
+      contentWidth,
+      8.5,
+    );
+    if (inventory.flags.length) {
+      y = paragraph(`À noter : ${inventory.flags.join(', ')}.`, margin, y, contentWidth, 8.5);
+    }
+    const plan = booking.workPlan ?? [];
+    if (plan.length) {
+      y += 3;
+      ensureSpace(12);
+      y = paragraph('PLANNING PRÉVISIONNEL', margin, y, contentWidth, 9, true);
+      plan.forEach((step) => {
+        const row = `${step.time} · ${step.title} · ${durationLabel(step.minutes)}${step.detail ? ` (${step.detail})` : ''}`;
+        ensureSpace(7);
+        y = paragraph(row, margin, y, contentWidth, 8);
+      });
+    }
+  }
 
   const blob = doc.output('blob');
   return blob;

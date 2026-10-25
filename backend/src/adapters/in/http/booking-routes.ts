@@ -40,7 +40,7 @@ export function registerBookingRoutes(
   };
   app.post(apiRoutes.estimates, async (req, res) => {
     const p = estimateSchema.parse(req.body);
-    res.json(await deps.moving.estimate(p.vehicleId, p.routeId, p.options));
+    res.json(await deps.moving.estimate(p.vehicleId, p.routeId, p.options, p.workAccess));
   });
   app.get(apiRoutes.bookings, authenticate, async (_req, res) =>
     res.json(await deps.moving.list(getActor(res))),
