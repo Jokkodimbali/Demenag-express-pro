@@ -1,6 +1,6 @@
 export const routes = {
   home: '/',
-  booking: '/#reserver',
+  booking: '/reservation',
   login: '/connexion',
   account: '/mon-espace',
   administration: '/admin',

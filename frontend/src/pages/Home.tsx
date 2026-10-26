@@ -1,390 +1,123 @@
-import { ArrowRight, CheckCircle2 } from 'lucide-react';
-import { Suspense, lazy, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useBookingForm } from '../application/useBookingForm';
-import { BookingSummary } from '../components/booking/BookingSummary';
-import { CustomerDetails } from '../components/booking/CustomerDetails';
-import { normalizedClientPhone } from '../application/services/client-summary';
-import { ScheduleOptions } from '../components/booking/ScheduleOptions';
-import { VehicleSelector } from '../components/booking/VehicleSelector';
-import { messages } from '../content/fr';
+import { Link, useNavigate } from 'react-router-dom';
+import { useApp } from '../application/context';
+import { money, tierLabels } from '../domain/format';
 import { routes } from '../routing/routes';
-import { money } from '../domain/format';
-import type { Vehicle } from '../domain/model';
-import type { VehicleTransition } from '../domain/vehicle-transition';
-const RouteMap = lazy(() => import('../components/RouteMap'));
-
-const simulatedVehicleViews: Record<string, string[]> = {
-  'sprinter-profil.png': ['/assets/sprinter-3d-angle.png', '/assets/sprinter-3d-rear.png'],
-  'trafic-profil.png': ['/assets/trafic-3d-angle.png', '/assets/trafic-3d-rear.png'],
-  'master-profil.png': ['/assets/master-3d-angle.png', '/assets/master-3d-rear.png'],
-};
-const vehicleAnnouncementImages: Record<string, string> = {
-  trafic: '/assets/annonce-trafic.png',
-  master: '/assets/annonce-master.png',
-  sprinter: '/assets/annonce-sprinter.png',
-};
-
-function VehicleShowcase({
-  vehicle,
-  outgoingVehicle,
-  transitionSequence,
-  announcementImage,
-}: {
-  vehicle: Vehicle;
-  outgoingVehicle: Vehicle | undefined;
-  transitionSequence: number | null;
-  announcementImage: string | undefined;
-}) {
-  const [rotation, setRotation] = useState({ vehicleId: vehicle.id, index: 0 });
-  const filename = vehicle.image.split('/').pop()?.split('?')[0] ?? '';
-  const views = [vehicle.image, ...(simulatedVehicleViews[filename] ?? [])];
-  const activeView = rotation.vehicleId === vehicle.id ? rotation.index : 0;
-
-  useEffect(() => {
-    setRotation({ vehicleId: vehicle.id, index: 0 });
-    if (views.length < 2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      return;
-    }
-
-    const timer = window.setInterval(
-      () =>
-        setRotation((current) => ({
-          vehicleId: vehicle.id,
-          index: ((current.vehicleId === vehicle.id ? current.index : 0) + 1) % views.length,
-        })),
-      2300,
-    );
-    return () => window.clearInterval(timer);
-  }, [vehicle.id, vehicle.image, views.length]);
-
-  return (
-    <div className="hero-visual">
-      <div className="hero-vehicle-display">
-        {outgoingVehicle && transitionSequence !== null && (
-          <img
-            key={transitionSequence}
-            className="hero-vehicle-leaving"
-            src={outgoingVehicle.image}
-            alt=""
-            aria-hidden="true"
-          />
-        )}
-        <div
-          className={`hero-vehicle-stage${transitionSequence !== null ? ' rolling-in' : ''}`}
-          role="img"
-          aria-label={vehicle.name}
-        >
-          {views.map((src, index) => (
-            <img
-              key={src}
-              className={index === activeView ? 'active' : ''}
-              data-view={index}
-              src={src}
-              alt={index === 0 ? vehicle.name : ''}
-              aria-hidden={index !== 0}
-              loading={index === 0 ? 'eager' : 'lazy'}
-              fetchPriority={index === 0 ? 'high' : 'auto'}
-            />
-          ))}
-        </div>
-      </div>
-      {announcementImage && (
-        <a
-          className="hero-announcement-preview"
-          href={announcementImage}
-          target="_blank"
-          rel="noreferrer"
-          aria-label={`Ouvrir l'annonce complète du ${vehicle.name}`}
-        >
-          <img src={announcementImage} alt={`Annonce du ${vehicle.name}`} loading="lazy" />
-        </a>
-      )}
-    </div>
-  );
-}
 
 export function Home() {
-  const [mobileBookingStep, setMobileBookingStep] = useState(1);
-  const [mobileBookingError, setMobileBookingError] = useState('');
-  const [isMobileBooking, setIsMobileBooking] = useState(false);
-  const [vehicleTransition, setVehicleTransition] = useState<VehicleTransition | null>(null);
-  const transitionTimer = useRef<number | null>(null);
-  const transitionSequence = useRef(0);
-  useEffect(
-    () => () => {
-      if (transitionTimer.current !== null) window.clearTimeout(transitionTimer.current);
-    },
-    [],
-  );
-  useEffect(() => {
-    const query = window.matchMedia('(max-width: 600px)');
-    const update = () => setIsMobileBooking(query.matches);
-    update();
-    query.addEventListener('change', update);
-    return () => query.removeEventListener('change', update);
-  }, []);
+  const { catalogue, draft, setDraft, loading, error, reload } = useApp();
+  const navigate = useNavigate();
+  const vehicle = catalogue?.vehicles.find((item) => item.id === draft.vehicleId);
+  const tiers = tierLabels(catalogue?.settings.distanceBounds);
 
-  const startVehicleTransition = (fromVehicleId: string, toVehicleId: string) => {
-    if (transitionTimer.current !== null) window.clearTimeout(transitionTimer.current);
-    const sequence = ++transitionSequence.current;
-    setVehicleTransition({ fromVehicleId, toVehicleId, sequence });
-    transitionTimer.current = window.setTimeout(() => {
-      setVehicleTransition(null);
-      transitionTimer.current = null;
-    }, 720);
-  };
-
-  const state = useBookingForm();
-  const {
-    catalogue,
-    loading,
-    error,
-    reload,
-    user,
-    draft,
-    setDraft,
-    price,
-    estimating,
-    estimateError,
-    submitError,
-    submitting,
-    done,
-    setDone,
-    tiers,
-    selected,
-    submit,
-    option,
-    extras,
-    clientRecognition,
-    recognizingClient,
-  } = state;
-  const bookingsClosed = catalogue?.settings.bookingsEnabled === false;
   return (
     <>
-      <section className="hero container">
-        <div className="hero-copy">
-          <p className="eyebrow">{messages.proMthDakarSenegal}</p>
+      <section className="reference-hero" aria-label="Accueil">
+        <div className="reference-hero-copy">
+          <span>DAKAR · SÉNÉGAL</span>
           <h1>
-            {messages.demenagement}
+            DÉMÉNAGEMENT
             <br />
-            <span>{messages.rapide}</span>
+            <em>RAPIDE</em>
           </h1>
-          <p className="hero-description">
-            {messages.choisissezVotreVehiculeIndiquezLeTrajetEtRecevez}
+          <p>
+            Choisissez votre véhicule, indiquez le trajet et recevez une estimation immédiate.
+            Réservation en moins de deux minutes.
           </p>
         </div>
-        {selected && (
-          <VehicleShowcase
-            vehicle={selected}
-            outgoingVehicle={
-              vehicleTransition?.toVehicleId === selected.id
-                ? catalogue?.vehicles.find(
-                    (vehicle) => vehicle.id === vehicleTransition.fromVehicleId,
-                  )
-                : undefined
-            }
-            transitionSequence={
-              vehicleTransition?.toVehicleId === selected.id ? vehicleTransition.sequence : null
-            }
-            announcementImage={vehicleAnnouncementImages[selected.id]}
-          />
-        )}
+        <img src="/assets/sprinter-profil.png" alt="Mercedes Sprinter" />
       </section>
-      <section id="reserver" className="booking-section">
-        <div className="container">
-          <div className="section-heading">
-            <h2>{messages.reserver2}</h2>
-          </div>
+      <section id="reserver" className="reference-booking" aria-label="Réservation">
+        <div className="reference-booking-inner">
+          <h2>RÉSERVER</h2>
           {loading ? (
-            <div className="panel loading" role="status">
-              {messages.chargementDesVehiculesEtDesTarifs}
-            </div>
+            <p role="status">Chargement des véhicules et des tarifs…</p>
           ) : error ? (
             <div className="alert error" role="alert">
               <p>{error}</p>
-              <button className="button secondary" onClick={reload}>
-                {messages.reessayer}
+              <button type="button" className="button secondary" onClick={reload}>
+                Réessayer
               </button>
             </div>
-          ) : bookingsClosed ? (
-            <section className="booking-closed" role="status" aria-live="polite">
-              <p className="eyebrow">{messages.formulaireDeReservation}</p>
-              <h3>{messages.reservationsTemporairementFermees}</h3>
-              <p>{messages.lesReservationsSontTemporairementFermeesContactezNousPour}</p>
-            </section>
-          ) : done ? (
-            <div className="success-panel">
-              <CheckCircle2 size={44} />
-              <p className="eyebrow">{messages.demandeEnregistree}</p>
-              <h2>{messages.onPrepareLaSuite}</h2>
-              <p>
-                {messages.votreDemande}
-                <strong>{done.reference}</strong>
-                {messages.estEnregistreeLEquipeConfirmeraLaDisponibiliteDu}
-              </p>
-              <Link className="button primary" to={routes.account}>
-                {messages.suivreMaReservation}
-                <ArrowRight size={18} />
-              </Link>
-              <button className="button secondary" onClick={() => setDone(null)}>
-                {messages.nouvelleDemande}
-              </button>
-            </div>
-          ) : catalogue && selected ? (
-            <form
-              id="booking-form"
-              onSubmit={submit}
-              className="booking-layout"
-              data-mobile-step={mobileBookingStep}
-            >
-              <div className="booking-mobile-progress" aria-live="polite">
-                <span>ÉTAPE {mobileBookingStep} / 4</span>
-                <strong>
-                  {
-                    [
-                      'Choisissez le véhicule',
-                      'Placez le trajet',
-                      'Date et options',
-                      'Vos coordonnées',
-                    ][mobileBookingStep - 1]
-                  }
-                </strong>
-                <div>
-                  <span style={{ width: `${mobileBookingStep * 25}%` }} />
-                </div>
-                {mobileBookingError && <small role="alert">{mobileBookingError}</small>}
-              </div>
-              <div className="booking-fields">
-                <div className="booking-mobile-step" data-booking-step="1">
-                  <VehicleSelector
-                    catalogue={catalogue}
-                    selected={selected}
-                    draft={draft}
-                    setDraft={setDraft}
-                    tiers={tiers}
-                    transition={vehicleTransition}
-                    onVehicleTransition={startVehicleTransition}
-                  />
-                </div>
-                <div className="booking-mobile-step" data-booking-step="2">
-                  <section className="panel">
-                    <div className="step-title">
-                      <span>{messages.text2}</span>
-                      <div>
-                        <h3>{messages.trajet}</h3>
-                        <p>{messages.recherchezVosAdressesOuPlacezLesReperesSur}</p>
-                      </div>
-                    </div>
-                    <Suspense
-                      fallback={<div className="map loading">{messages.chargementDeLaCarte}</div>}
+          ) : catalogue?.settings.bookingsEnabled === false ? (
+            <p role="status">Les réservations sont temporairement fermées.</p>
+          ) : catalogue && vehicle ? (
+            <>
+              <div className="reference-vehicle-heading">1 · VÉHICULE</div>
+              <div className="reference-vehicle-list">
+                {catalogue.vehicles
+                  .filter((item) => item.active !== false)
+                  .map((item) => (
+                    <button
+                      type="button"
+                      key={item.id}
+                      aria-pressed={item.id === vehicle.id}
+                      className={item.id === vehicle.id ? 'selected' : ''}
+                      onClick={() => setDraft((current) => ({ ...current, vehicleId: item.id }))}
                     >
-                      <RouteMap />
-                    </Suspense>
-                  </section>
+                      <img src={item.image} alt="" />
+                      <span>
+                        <strong>{item.name}</strong>
+                        <small>
+                          {item.volume} · dès {money(item.prices[0])}
+                        </small>
+                      </span>
+                    </button>
+                  ))}
+              </div>
+              <div className="reference-vehicle-detail">
+                <div className="reference-vehicle-images">
+                  <img src={vehicle.image} alt={`Profil du ${vehicle.name}`} />
+                  <img src={vehicle.interior} alt={`Intérieur du ${vehicle.name}`} />
                 </div>
-                <div className="booking-mobile-step" data-booking-step="3">
-                  <ScheduleOptions
-                    catalogue={catalogue}
-                    draft={draft}
-                    setDraft={setDraft}
-                    extras={extras}
-                    option={option}
-                  />
+                <strong>{vehicle.name.toUpperCase()}</strong>
+                <div className="reference-vehicle-facts">
+                  <span className="volume">{vehicle.volume}</span>
+                  <span>Longueur {vehicle.length}</span>
+                  <span>Hauteur {vehicle.height}</span>
+                  <span>Largeur {vehicle.width}</span>
+                  <span>Passages de roue {vehicle.wheelWidth}</span>
                 </div>
-                <div className="booking-mobile-step" data-booking-step="4">
-                  <CustomerDetails
-                    draft={draft}
-                    setDraft={setDraft}
-                    recognition={
-                      clientRecognition &&
-                      clientRecognition.phone === normalizedClientPhone(draft.customerPhone)
-                        ? clientRecognition
-                        : null
-                    }
-                    recognizingClient={recognizingClient}
-                  />
+                <div className="reference-prices">
+                  {vehicle.prices.map((price, index) => (
+                    <span key={index}>
+                      {tiers[index]} : <strong>{money(price)}</strong>
+                    </span>
+                  ))}
+                  <span>
+                    Manœuvre : <strong>{money(catalogue.settings.labourPrice)}</strong> / pers.
+                  </span>
+                  <span>
+                    Menuisier : <strong>{money(catalogue.settings.assemblyPrice)}</strong> / meuble
+                  </span>
                 </div>
               </div>
-              <div className="booking-mobile-step booking-mobile-summary" data-booking-step="5">
-                <BookingSummary
-                  catalogue={catalogue}
-                  selected={selected}
-                  draft={draft}
-                  price={price}
-                  tiers={tiers}
-                  estimating={estimating}
-                  estimateError={estimateError}
-                  submitError={submitError}
-                  submitting={submitting}
-                  user={user}
-                />
+              <div className="reference-continue">
+                <div>
+                  <strong>2 · Trajet, inventaire et devis</strong>
+                  <p>
+                    Indiquez vos adresses et ce que vous déménagez : le devis provisoire se calcule
+                    en direct. Demenag Express le confirme ensuite.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="button primary"
+                  onClick={() => navigate(routes.booking)}
+                >
+                  Continuer ma réservation
+                </button>
               </div>
-            </form>
-          ) : null}
+            </>
+          ) : (
+            <p role="status">Aucun véhicule disponible.</p>
+          )}
         </div>
       </section>
-      {!done && catalogue && !bookingsClosed && (
-        <div className="mobile-booking-bar">
-          <div>
-            <small>{messages.estimation}</small>
-            <strong>{price ? money(price.total) : messages.aCalculer}</strong>
-          </div>
-          {isMobileBooking && mobileBookingStep > 1 && (
-            <button
-              type="button"
-              className="button secondary"
-              onClick={() => {
-                setMobileBookingError('');
-                setMobileBookingStep((step) => step - 1);
-              }}
-            >
-              Retour
-            </button>
-          )}
-          {isMobileBooking && mobileBookingStep < 4 ? (
-            <button
-              type="button"
-              className="button primary"
-              onClick={() => {
-                if (mobileBookingStep === 3) {
-                  const dateInput = document.getElementById(
-                    'booking-date',
-                  ) as HTMLInputElement | null;
-                  const timeInput = document.getElementById(
-                    'booking-slot',
-                  ) as HTMLInputElement | null;
-                  if (dateInput && !dateInput.checkValidity()) {
-                    dateInput.reportValidity();
-                    return;
-                  }
-                  if (timeInput && !timeInput.checkValidity()) {
-                    timeInput.reportValidity();
-                    return;
-                  }
-                }
-                setMobileBookingError('');
-                setMobileBookingStep((step) => step + 1);
-                window.scrollTo({ top: document.getElementById('reserver')?.offsetTop ?? 0 });
-              }}
-            >
-              Continuer <ArrowRight size={16} />
-            </button>
-          ) : (
-            <button
-              form="booking-form"
-              className="button primary"
-              disabled={
-                !price ||
-                submitting ||
-                estimating ||
-                selected?.active === false ||
-                catalogue.settings.bookingsEnabled === false
-              }
-            >
-              {user ? 'Envoyer' : messages.reserver3}
-            </button>
-          )}
+      {catalogue?.settings.bookingsEnabled !== false && vehicle && (
+        <div className="reference-mobile-action">
+          <Link className="button primary" to={routes.booking}>
+            Continuer ma réservation
+          </Link>
         </div>
       )}
     </>

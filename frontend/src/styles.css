@@ -7,6 +7,7 @@
 @import './styles/responsive.css';
 @import './styles/prototype.css';
 @import './styles/admin-quote.css';
+@import './styles/reference-home.css';
 /* Journal comptable de l'administration */
 .accounting-page {
   display: grid;

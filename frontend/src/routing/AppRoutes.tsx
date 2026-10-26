@@ -5,6 +5,7 @@ import { Layout } from '../components/Layout';
 import { messages } from '../content/fr';
 import { Auth } from '../pages/Auth';
 import { Home } from '../pages/Home';
+import { BookingPage } from '../pages/BookingPage';
 import { Guard } from './Guard';
 import { routes } from './routes';
 const Account = lazy(() => import('../pages/Account').then((m) => ({ default: m.Account })));
@@ -89,6 +90,7 @@ export function AppRoutes() {
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<Home />} />
+          <Route path={routes.booking.slice(1)} element={<BookingPage />} />
           <Route path={routes.login.slice(1)} element={<Auth />} />
           <Route
             path={routes.account.slice(1)}
