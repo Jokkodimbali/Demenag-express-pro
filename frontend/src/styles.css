@@ -8,6 +8,8 @@
 @import './styles/prototype.css';
 @import './styles/admin-quote.css';
 @import './styles/reference-home.css';
+@import './styles/booking-confirmation.css';
+@import './styles/reference-shell.css';
 /* Journal comptable de l'administration */
 .accounting-page {
   display: grid;

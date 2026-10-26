@@ -1,0 +1,105 @@
+.booking-section.sent-screen {
+  padding: 0;
+  background: #1e2023;
+  border: 0;
+}
+.booking-confirmation {
+  width: min(720px, 100%);
+  margin: 0 auto;
+  padding: clamp(28px, 8vw, 72px) 0;
+}
+.booking-confirmation-card {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: clamp(18px, 5vw, 34px);
+  background: #272a2e;
+  border: 1px solid #3b4046;
+  border-radius: clamp(14px, 4vw, 22px);
+}
+.booking-confirmation-check {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #0e9f4a;
+  color: #fff;
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1;
+}
+.booking-confirmation-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.booking-confirmation-heading > span {
+  color: #3ddc84;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+.booking-confirmation-heading h2 {
+  margin: 0;
+  font-size: clamp(30px, 8vw, 46px);
+  line-height: 1.05;
+}
+.booking-confirmation-heading p {
+  margin: 0;
+  color: #d5d9de;
+  font-size: 15px;
+  line-height: 1.6;
+}
+.booking-confirmation-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: 10px;
+}
+.booking-confirmation-facts > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding: 12px 14px;
+  background: #1e2023;
+  border-radius: 12px;
+}
+.booking-confirmation-facts span {
+  color: #aeb4bb;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.booking-confirmation-facts strong {
+  font-size: 15px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.booking-confirmation-facts strong.reference {
+  color: #f6d73c;
+  font-size: 18px;
+  font-weight: 800;
+}
+.booking-confirmation-facts strong.status {
+  color: #ffd23f;
+  font-size: 16px;
+  font-weight: 800;
+}
+.booking-confirmation-facts .route {
+  grid-column: 1 / -1;
+}
+.booking-confirmation-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.booking-confirmation-actions .button {
+  padding: 14px 20px;
+  border-radius: 12px;
+  font-size: 15px;
+}
+.booking-confirmation-actions .whatsapp {
+  background: #0e9f4a;
+  color: #fff;
+}

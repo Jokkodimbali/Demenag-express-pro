@@ -1,15 +1,14 @@
-import { ArrowRight, CheckCircle2 } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useBookingForm } from '../application/useBookingForm';
 import { BookingSummary } from '../components/booking/BookingSummary';
+import { BookingConfirmation } from '../components/booking/BookingConfirmation';
 import { CallInventory } from '../components/booking/CallInventory';
 import { CustomerDetails } from '../components/booking/CustomerDetails';
 import { normalizedClientPhone } from '../application/services/client-summary';
 import { ScheduleOptions } from '../components/booking/ScheduleOptions';
 import { VehicleSelector } from '../components/booking/VehicleSelector';
 import { messages } from '../content/fr';
-import { routes } from '../routing/routes';
 import { money } from '../domain/format';
 import { bookingInventorySnapshot, estimateMovingWork } from '../domain/moving-estimate';
 import type { VehicleTransition } from '../domain/vehicle-transition';
@@ -60,7 +59,6 @@ export function BookingPage() {
     submitError,
     submitting,
     done,
-    setDone,
     tiers,
     selected,
     submit,
@@ -93,11 +91,13 @@ export function BookingPage() {
     );
   return (
     <>
-      <section id="reserver" className="booking-section">
+      <section id="reserver" className={done ? 'booking-section sent-screen' : 'booking-section'}>
         <div className="container">
-          <div className="section-heading">
-            <h2>{messages.reserver2}</h2>
-          </div>
+          {!done && (
+            <div className="section-heading">
+              <h2>{messages.reserver2}</h2>
+            </div>
+          )}
           {loading ? (
             <div className="panel loading" role="status">
               {messages.chargementDesVehiculesEtDesTarifs}
@@ -115,24 +115,12 @@ export function BookingPage() {
               <h3>{messages.reservationsTemporairementFermees}</h3>
               <p>{messages.lesReservationsSontTemporairementFermeesContactezNousPour}</p>
             </section>
-          ) : done ? (
-            <div className="success-panel">
-              <CheckCircle2 size={44} />
-              <p className="eyebrow">{messages.demandeEnregistree}</p>
-              <h2>{messages.onPrepareLaSuite}</h2>
-              <p>
-                {messages.votreDemande}
-                <strong>{done.reference}</strong>
-                {messages.estEnregistreeLEquipeConfirmeraLaDisponibiliteDu}
-              </p>
-              <Link className="button primary" to={routes.account}>
-                {messages.suivreMaReservation}
-                <ArrowRight size={18} />
-              </Link>
-              <button className="button secondary" onClick={() => setDone(null)}>
-                {messages.nouvelleDemande}
-              </button>
-            </div>
+          ) : done && catalogue ? (
+            <BookingConfirmation
+              booking={done}
+              settings={catalogue.settings}
+              isClient={user?.role === 'client'}
+            />
           ) : catalogue && selected ? (
             <form
               id="booking-form"

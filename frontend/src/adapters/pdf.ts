@@ -328,9 +328,8 @@ export async function downloadQuote(
   doc.setTextColor(42, 45, 48);
   doc.text('Signature client', margin, signatureY);
   doc.text('Cachet et signature Demenag Express', right, signatureY, { align: 'right' });
-  const stamp = settings.invoiceStamp || (await assetDataUrl('/assets/invoice-stamp.png'));
-  const signature =
-    settings.invoiceSignature || (await assetDataUrl('/assets/invoice-signature.png'));
+  const stamp = settings.invoiceStamp || (await assetDataUrl('/assets/cachet.png'));
+  const signature = settings.invoiceSignature || (await assetDataUrl('/assets/signature.png'));
   function addContainedImage(
     data: string,
     x: number,

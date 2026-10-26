@@ -24,7 +24,13 @@ export function Home() {
             Réservation en moins de deux minutes.
           </p>
         </div>
-        <img src="/assets/sprinter-profil.png" alt="Mercedes Sprinter" />
+        <div className="reference-hero-vehicle">
+          <img src="/assets/sprinter-profil.png" alt="Mercedes Sprinter" />
+          <div className="reference-hero-length">
+            <span>LONGUEUR</span>
+            <strong>4,30 m</strong>
+          </div>
+        </div>
       </section>
       <section id="reserver" className="reference-booking" aria-label="Réservation">
         <div className="reference-booking-inner">

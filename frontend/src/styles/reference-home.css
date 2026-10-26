@@ -35,10 +35,44 @@
   font-size: clamp(15px, 4vw, 18px);
   line-height: 1.55;
 }
-.reference-hero > img {
+.reference-hero-vehicle {
+  position: relative;
+  align-self: start;
+  container-type: inline-size;
+}
+.reference-hero-vehicle > img {
   display: block;
   width: 100%;
   border-radius: clamp(14px, 4vw, 20px);
+}
+.reference-hero-length {
+  position: absolute;
+  left: 36.2%;
+  top: 15.92%;
+  width: 19.48%;
+  height: 10.99%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.63cqw;
+  padding: 0 3px;
+  border-radius: 0.94cqw;
+  background: #f6d73c;
+  color: #1e2023;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  white-space: nowrap;
+  line-height: 1;
+  pointer-events: none;
+}
+.reference-hero-length span {
+  font-size: clamp(5px, 1.25cqw, 13px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.reference-hero-length strong {
+  font-size: clamp(6px, 1.4cqw, 15px);
+  font-weight: 800;
 }
 .reference-booking {
   background: #272a2e;
@@ -186,8 +220,50 @@
 .reference-mobile-action {
   display: none;
 }
+.reference-footer {
+  background: #0e9f4a;
+}
+.reference-footer-inner {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: clamp(24px, 6vw, 40px) 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(14px, 4vw, 24px);
+  flex-wrap: wrap;
+}
+.reference-footer-inner > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.reference-footer-inner > div:first-child span {
+  color: #cde8d6;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+.reference-footer-inner > div:first-child a {
+  color: #fff;
+  font-family: Anton, sans-serif;
+  font-size: clamp(30px, 8vw, 44px);
+  line-height: 1;
+}
+.reference-footer-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.reference-footer-actions a {
+  padding: 12px 22px;
+  border-radius: 999px;
+  background: #fff;
+  color: #0e9f4a;
+  font-weight: 800;
+}
 @media (max-width: 760px) {
-  .reference-hero > img {
+  .reference-hero-vehicle {
     display: none;
   }
   .reference-vehicle-images {
