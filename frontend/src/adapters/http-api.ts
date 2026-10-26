@@ -117,6 +117,8 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
     booking: (id) => request(`${httpRoutes.bookings}/${id}`),
     deleteBooking: (id) => request(`${httpRoutes.bookings}/${id}`, 'DELETE'),
     createBooking: (input) => request(httpRoutes.bookings, 'POST', input),
+    updateClientBooking: (id, input, version) =>
+      request(httpRoutes.bookingClientRequest(id), 'PATCH', { ...input, version }),
     status: (id, status, version) =>
       request(`${httpRoutes.bookings}/${id}/status`, 'PATCH', { status, version }),
     startBookingTrip: (id, photos) =>

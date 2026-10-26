@@ -60,6 +60,17 @@ export function registerBookingRoutes(
     );
     res.status(201).json(booking);
   });
+  app.patch(apiRoutes.clientBookingRequest, authenticate, async (req, res) => {
+    const p = bookingSchema.extend({ version: z.number().int().positive() }).parse(req.body);
+    res.json(
+      await deps.moving.updateClientRequest(
+        getActor(res),
+        z.uuid().parse(req.params.id),
+        p,
+        p.version,
+      ),
+    );
+  });
   app.get(`${apiRoutes.bookings}/:id`, authenticate, async (req, res) =>
     res.json(await deps.moving.get(getActor(res), z.uuid().parse(req.params.id))),
   );

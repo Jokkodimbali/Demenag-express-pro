@@ -1,9 +1,8 @@
-import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useBookingCard } from '../application/controllers/useBookingCard';
-import { useApp } from '../application/context';
-import { errorMessage } from '../application/error-message';
 import { money } from '../domain/format';
 import type { Booking } from '../domain/model';
+import { routes } from '../routing/routes';
 import { BookingRouteMap } from './BookingRouteMap';
 
 export function ClientBookingCard({
@@ -13,41 +12,7 @@ export function ClientBookingCard({
   booking: Booking;
   onChange: (booking: Booking) => void;
 }) {
-  const { api } = useApp();
   const { pdf, busy, error } = useBookingCard({ booking, onChange });
-  const [editing, setEditing] = useState(false);
-  const [date, setDate] = useState(booking.date ?? '');
-  const [timeSlot, setTimeSlot] = useState(booking.timeSlot);
-  const [notes, setNotes] = useState(booking.notes);
-  const [editBusy, setEditBusy] = useState(false);
-  const [editError, setEditError] = useState('');
-  async function saveChanges(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (editBusy) return;
-    setEditBusy(true);
-    setEditError('');
-    let current = booking;
-    try {
-      if (date !== (current.date ?? '') || (date ? timeSlot : '') !== current.timeSlot) {
-        current = await api.schedule(
-          current.id,
-          date || null,
-          date ? timeSlot : '',
-          current.version,
-        );
-        onChange(current);
-      }
-      if (notes.trim() !== current.notes) {
-        current = await api.updateBookingNotes(current.id, notes.trim(), current.version);
-        onChange(current);
-      }
-      setEditing(false);
-    } catch (reason) {
-      setEditError(errorMessage(reason));
-    } finally {
-      setEditBusy(false);
-    }
-  }
   const provisionalQuote = booking.quotes.filter((quote) => quote.kind === 'provisional').at(-1);
   const finalQuote = booking.quotes.filter((quote) => quote.kind === 'final').at(-1);
   const displayedEstimate =
@@ -79,54 +44,19 @@ export function ClientBookingCard({
           </strong>
         </div>
         <div className="reference-client-actions">
-          {!finalQuote && ['pending', 'confirmed'].includes(booking.status) && (
-            <button
-              type="button"
+          {!finalQuote && ['pending', 'confirmed', 'cancelled'].includes(booking.status) && (
+            <Link
               className="reference-client-edit"
-              onClick={() => setEditing((current) => !current)}
+              to={`${routes.booking}?modifier=${encodeURIComponent(booking.id)}`}
             >
               Modifier ma demande
-            </button>
+            </Link>
           )}
           <span className={`reference-client-status ${finalQuote ? 'completed' : 'pending'}`}>
             {finalQuote ? 'Final' : 'Provisoire'}
           </span>
         </div>
       </div>
-      {editing && (
-        <form className="reference-client-editor" onSubmit={(event) => void saveChanges(event)}>
-          <label>
-            Date{' '}
-            <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
-          </label>
-          <label>
-            Créneau{' '}
-            <input
-              type="time"
-              value={timeSlot}
-              required={Boolean(date)}
-              onChange={(event) => setTimeSlot(event.target.value)}
-            />
-          </label>
-          <label className="reference-client-editor-notes">
-            Précisions
-            <textarea
-              value={notes}
-              maxLength={2000}
-              rows={3}
-              onChange={(event) => setNotes(event.target.value)}
-            />
-          </label>
-          {editError && (
-            <p role="alert" className="reference-client-error">
-              {editError}
-            </p>
-          )}
-          <button type="submit" disabled={busy || editBusy}>
-            Enregistrer
-          </button>
-        </form>
-      )}
       <div className="reference-client-map">
         <BookingRouteMap booking={booking} />
         <div className="reference-client-map-overlay">

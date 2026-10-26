@@ -1,5 +1,6 @@
 import { ArrowRight } from 'lucide-react';
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useBookingForm } from '../application/useBookingForm';
 import { BookingSummary } from '../components/booking/BookingSummary';
 import { BookingConfirmation } from '../components/booking/BookingConfirmation';
@@ -10,6 +11,7 @@ import { ScheduleOptions } from '../components/booking/ScheduleOptions';
 import { VehicleSelector } from '../components/booking/VehicleSelector';
 import { messages } from '../content/fr';
 import { money } from '../domain/format';
+import { routes } from '../routing/routes';
 import { bookingInventorySnapshot, estimateMovingWork } from '../domain/moving-estimate';
 import type { VehicleTransition } from '../domain/vehicle-transition';
 const RouteMap = lazy(() => import('../components/RouteMap'));
@@ -66,8 +68,11 @@ export function BookingPage() {
     extras,
     clientRecognition,
     recognizingClient,
+    editingBooking,
+    editLoading,
+    editError,
   } = state;
-  const bookingsClosed = catalogue?.settings.bookingsEnabled === false;
+  const bookingsClosed = catalogue?.settings.bookingsEnabled === false && !editingBooking;
   const quoteTrips = Math.max(
     1,
     Math.min(catalogue?.settings.maxTrips ?? 20, draft.estimatedTrips),
@@ -95,12 +100,28 @@ export function BookingPage() {
         <div className="container">
           {!done && (
             <div className="section-heading">
-              <h2>{messages.reserver2}</h2>
+              <h2>
+                {editingBooking
+                  ? `VOS INFORMATIONS · ${editingBooking.reference}`
+                  : messages.reserver2}
+              </h2>
+              {editingBooking && (
+                <Link className="button secondary small" to={routes.account}>
+                  Retour à mon espace
+                </Link>
+              )}
             </div>
           )}
-          {loading ? (
+          {loading || editLoading ? (
             <div className="panel loading" role="status">
               {messages.chargementDesVehiculesEtDesTarifs}
+            </div>
+          ) : editError ? (
+            <div className="alert error" role="alert">
+              <p>{editError}</p>
+              <Link className="button secondary" to={routes.account}>
+                Retour à mon espace
+              </Link>
             </div>
           ) : error ? (
             <div className="alert error" role="alert">
@@ -132,12 +153,19 @@ export function BookingPage() {
                 <span>ÉTAPE {mobileBookingStep} / 4</span>
                 <strong>
                   {
-                    [
-                      'Choisissez le véhicule',
-                      'Placez le trajet',
-                      'Inventaire, date et options',
-                      'Vos coordonnées',
-                    ][mobileBookingStep - 1]
+                    (editingBooking
+                      ? [
+                          'Choisissez le véhicule',
+                          'Placez le trajet',
+                          'Date et options',
+                          'Vos informations',
+                        ]
+                      : [
+                          'Choisissez le véhicule',
+                          'Placez le trajet',
+                          'Inventaire, date et options',
+                          'Vos coordonnées',
+                        ])[mobileBookingStep - 1]
                   }
                 </strong>
                 <div>
@@ -147,6 +175,12 @@ export function BookingPage() {
               </div>
               <div className="booking-fields">
                 <div className="booking-mobile-step" data-booking-step="1">
+                  {editingBooking && selected.active === false && (
+                    <p className="alert error" role="status">
+                      Ce véhicule n’est plus disponible. Choisissez un autre véhicule avant
+                      d’envoyer votre demande.
+                    </p>
+                  )}
                   <VehicleSelector
                     catalogue={catalogue}
                     selected={selected}
@@ -162,8 +196,10 @@ export function BookingPage() {
                     <div className="step-title">
                       <span>{messages.text2}</span>
                       <div>
-                        <h3>{messages.trajet}</h3>
-                        <p>{messages.recherchezVosAdressesOuPlacezLesReperesSur}</p>
+                        <h3>{editingBooking ? 'TRAJET · CARTE' : messages.trajet}</h3>
+                        {!editingBooking && (
+                          <p>{messages.recherchezVosAdressesOuPlacezLesReperesSur}</p>
+                        )}
                       </div>
                     </div>
                     <Suspense
@@ -174,71 +210,76 @@ export function BookingPage() {
                   </section>
                 </div>
                 <div className="booking-mobile-step" data-booking-step="3">
-                  <CallInventory
-                    audience="client"
-                    draft={draft}
-                    setDraft={setDraft}
-                    maxOptions={catalogue.settings.maxOptions}
-                    vehicles={catalogue.vehicles}
-                    selectedVehicleId={draft.vehicleId}
-                    quoteTrips={quoteTrips}
-                    maxTrips={catalogue.settings.maxTrips}
-                    laborPlanning={catalogue.settings.movingLaborPlanning}
-                    onApplyEstimate={(vehicleId, trips) => {
-                      setDraft((current) => ({ ...current, vehicleId, estimatedTrips: trips }));
-                    }}
-                  />
-                  <section className="panel booking-trip-count">
-                    <div>
-                      <h3>Nombre d’allers-retours estimés</h3>
-                      <p className="muted">
-                        Le transport est facturé par aller-retour. L’équipe confirmera le nombre
-                        réel pour le devis final.
-                      </p>
-                    </div>
-                    <div
-                      className="stepper"
-                      role="group"
-                      aria-label="Nombre d’allers-retours estimés"
-                    >
-                      <button
-                        type="button"
-                        aria-label="Retirer un aller-retour"
-                        disabled={quoteTrips <= 1}
-                        onClick={() =>
-                          setDraft((current) => ({
-                            ...current,
-                            estimatedTrips: Math.max(1, current.estimatedTrips - 1),
-                          }))
-                        }
+                  {!editingBooking && (
+                    <CallInventory
+                      audience="client"
+                      draft={draft}
+                      setDraft={setDraft}
+                      maxOptions={catalogue.settings.maxOptions}
+                      vehicles={catalogue.vehicles}
+                      selectedVehicleId={draft.vehicleId}
+                      quoteTrips={quoteTrips}
+                      maxTrips={catalogue.settings.maxTrips}
+                      laborPlanning={catalogue.settings.movingLaborPlanning}
+                      onApplyEstimate={(vehicleId, trips) => {
+                        setDraft((current) => ({ ...current, vehicleId, estimatedTrips: trips }));
+                      }}
+                    />
+                  )}
+                  {!editingBooking && (
+                    <section className="panel booking-trip-count">
+                      <div>
+                        <h3>Nombre d’allers-retours estimés</h3>
+                        <p className="muted">
+                          Le transport est facturé par aller-retour. L’équipe confirmera le nombre
+                          réel pour le devis final.
+                        </p>
+                      </div>
+                      <div
+                        className="stepper"
+                        role="group"
+                        aria-label="Nombre d’allers-retours estimés"
                       >
-                        −
-                      </button>
-                      <output>{quoteTrips}</output>
-                      <button
-                        type="button"
-                        aria-label="Ajouter un aller-retour"
-                        disabled={quoteTrips >= catalogue.settings.maxTrips}
-                        onClick={() =>
-                          setDraft((current) => ({
-                            ...current,
-                            estimatedTrips: Math.min(
-                              catalogue.settings.maxTrips,
-                              current.estimatedTrips + 1,
-                            ),
-                          }))
-                        }
-                      >
-                        +
-                      </button>
-                    </div>
-                  </section>
+                        <button
+                          type="button"
+                          aria-label="Retirer un aller-retour"
+                          disabled={quoteTrips <= 1}
+                          onClick={() =>
+                            setDraft((current) => ({
+                              ...current,
+                              estimatedTrips: Math.max(1, current.estimatedTrips - 1),
+                            }))
+                          }
+                        >
+                          −
+                        </button>
+                        <output>{quoteTrips}</output>
+                        <button
+                          type="button"
+                          aria-label="Ajouter un aller-retour"
+                          disabled={quoteTrips >= catalogue.settings.maxTrips}
+                          onClick={() =>
+                            setDraft((current) => ({
+                              ...current,
+                              estimatedTrips: Math.min(
+                                catalogue.settings.maxTrips,
+                                current.estimatedTrips + 1,
+                              ),
+                            }))
+                          }
+                        >
+                          +
+                        </button>
+                      </div>
+                    </section>
+                  )}
                   <ScheduleOptions
                     catalogue={catalogue}
                     draft={draft}
                     setDraft={setDraft}
                     extras={extras}
                     option={option}
+                    referenceMode={Boolean(editingBooking)}
                   />
                 </div>
                 <div className="booking-mobile-step" data-booking-step="4">
@@ -252,6 +293,7 @@ export function BookingPage() {
                         : null
                     }
                     recognizingClient={recognizingClient}
+                    referenceMode={Boolean(editingBooking)}
                   />
                 </div>
               </div>
@@ -267,6 +309,7 @@ export function BookingPage() {
                   submitError={submitError}
                   submitting={submitting}
                   user={user}
+                  isEditing={Boolean(editingBooking)}
                 />
               </div>
             </form>
@@ -328,10 +371,10 @@ export function BookingPage() {
                 submitting ||
                 estimating ||
                 selected?.active === false ||
-                catalogue.settings.bookingsEnabled === false
+                (catalogue.settings.bookingsEnabled === false && !editingBooking)
               }
             >
-              {user ? 'Envoyer' : messages.reserver3}
+              {editingBooking ? 'Envoyer ma demande' : user ? 'Envoyer' : messages.reserver3}
             </button>
           )}
         </div>

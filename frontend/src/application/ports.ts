@@ -54,6 +54,7 @@ export interface BookingRepository {
   booking(id: string): Promise<Booking>;
   deleteBooking(id: string): Promise<void>;
   createBooking(input: BookingInput): Promise<Booking>;
+  updateClientBooking(id: string, input: BookingInput, version: number): Promise<Booking>;
   status(id: string, status: BookingStatus, version: number): Promise<Booking>;
   startBookingTrip(id: string, photos: string[]): Promise<Booking>;
   finishBookingTrip(id: string, photos: string[]): Promise<Booking>;

@@ -18,6 +18,7 @@ export function BookingSummary({
   user,
   selectedTolls = [],
   allowWhenBookingsClosed = false,
+  isEditing = false,
 }: Pick<
   BookingViewState,
   | 'catalogue'
@@ -35,6 +36,7 @@ export function BookingSummary({
   selected: Vehicle;
   selectedTolls?: { label: string; quantity: number; unitPrice: number }[];
   allowWhenBookingsClosed?: boolean;
+  isEditing?: boolean;
 }) {
   return (
     <aside className="summary">
@@ -143,16 +145,18 @@ export function BookingSummary({
           estimating ||
           !price ||
           selected.active === false ||
-          (catalogue.settings.bookingsEnabled === false && !allowWhenBookingsClosed)
+          (catalogue.settings.bookingsEnabled === false && !allowWhenBookingsClosed && !isEditing)
         }
       >
         {submitting
           ? messages.enregistrement
-          : allowWhenBookingsClosed
-            ? 'Créer le devis'
-            : user
-              ? 'Envoyer ma demande'
-              : messages.meConnecterEtReserver}
+          : isEditing
+            ? 'Envoyer ma demande'
+            : allowWhenBookingsClosed
+              ? 'Créer le devis'
+              : user
+                ? 'Envoyer ma demande'
+                : messages.meConnecterEtReserver}
         <ArrowRight size={18} />
       </button>
       <p className="summary-note">

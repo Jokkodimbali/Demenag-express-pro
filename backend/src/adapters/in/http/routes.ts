@@ -11,6 +11,7 @@ export const apiRoutes = {
     logout: '/api/auth/logout',
   },
   bookings: '/api/bookings',
+  clientBookingRequest: '/api/bookings/:id/client-request',
   estimates: '/api/estimates',
   maps: {
     base: '/api/maps',

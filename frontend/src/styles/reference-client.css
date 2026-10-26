@@ -243,6 +243,12 @@
 .reference-client-error {
   color: #ffb2b2;
 }
+.reference-edit-options-title {
+  margin: 0 0 14px;
+  color: #f6d73c;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+}
 .reference-client-actions {
   display: flex;
   align-items: center;
@@ -250,6 +256,8 @@
   flex-wrap: wrap;
 }
 .reference-client-edit {
+  display: inline-flex;
+  align-items: center;
   white-space: nowrap;
   background: transparent;
   color: #f6d73c;
@@ -259,46 +267,5 @@
   font-size: 13px;
   font-weight: 800;
   cursor: pointer;
-}
-.reference-client-editor {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: end;
-  padding: 14px;
-  border-radius: 12px;
-  background: #1e2023;
-}
-.reference-client-editor label {
-  display: grid;
-  gap: 6px;
-  color: #d5d9de;
-  font-size: 13px;
-  font-weight: 700;
-}
-.reference-client-editor input,
-.reference-client-editor textarea {
-  min-height: 42px;
-  border: 1px solid #4a5057;
-  border-radius: 8px;
-  background: #272a2e;
-  color: #fff;
-  padding: 8px 10px;
-}
-.reference-client-editor-notes {
-  flex-basis: 100%;
-}
-.reference-client-editor textarea {
-  width: min(100%, 640px);
-  resize: vertical;
-}
-.reference-client-editor button {
-  min-height: 42px;
-  border: 0;
-  border-radius: 8px;
-  background: #f6d73c;
-  color: #1e2023;
-  padding: 8px 14px;
-  font-weight: 800;
-  cursor: pointer;
+  text-decoration: none;
 }

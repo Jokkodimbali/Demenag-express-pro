@@ -14,6 +14,7 @@ export const httpRoutes = {
     register: '/auth/register',
   },
   bookings: '/bookings',
+  bookingClientRequest: (id: string) => `/bookings/${id}/client-request`,
   bookingTrips: (id: string) => `/bookings/${id}/trips`,
   bookingWorkPlanReview: (id: string, stepId: string) =>
     `/bookings/${id}/work-plan/${stepId}/review`,

@@ -22,9 +22,14 @@ export function useBookingForm({
   mode = 'booking',
   quoteConfig,
 }: { mode?: 'booking' | 'admin-quote'; quoteConfig?: AdminQuoteConfig } = {}) {
-  const { catalogue, tollPoints, loading, error, reload, api, user, draft, setDraft } = useApp();
+  const { catalogue, tollPoints, loading, error, reload, api, user, authLoading, draft, setDraft } =
+    useApp();
   const navigate = useNavigate();
   const location = useLocation();
+  const editId = new URLSearchParams(location.search).get('modifier');
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  const [editLoading, setEditLoading] = useState(Boolean(editId));
+  const [editError, setEditError] = useState('');
   const [tollLines, setTollLines] = useState<TollExtraLine[]>([]);
   const [price, setPrice] = useState<Price | null>(null),
     [estimating, setEstimating] = useState(false),
@@ -46,6 +51,74 @@ export function useBookingForm({
   const tiers = tierLabels(catalogue?.settings.distanceBounds);
   const selected = catalogue?.vehicles.find((v) => v.id === draft.vehicleId);
   const administrativeQuote = mode === 'admin-quote' && user?.role === 'admin';
+  useEffect(() => {
+    if (!editId) {
+      setEditingBooking(null);
+      setEditLoading(false);
+      setEditError('');
+      return;
+    }
+    if (!user) {
+      if (!authLoading) {
+        setEditError('Connectez-vous à votre compte client pour modifier cette demande.');
+        setEditLoading(false);
+      }
+      return;
+    }
+    if (user.role !== 'client') {
+      setEditError('Cette demande ne peut être modifiée que depuis un compte client.');
+      setEditLoading(false);
+      return;
+    }
+    let active = true;
+    setEditLoading(true);
+    setEditError('');
+    void api
+      .booking(editId)
+      .then(async (booking) => {
+        if (!['pending', 'confirmed', 'cancelled'].includes(booking.status))
+          throw new Error('Cette réservation ne peut plus être modifiée.');
+        if (booking.quotes.some((quote) => quote.kind === 'final'))
+          throw new Error('Cette réservation ne peut plus être modifiée.');
+        const route = await api.route(booking.from, booking.to);
+        if (!active) return;
+        const base = blankDraft();
+        const workAccess = booking.workAccess;
+        setDraft({
+          ...base,
+          vehicleId: booking.vehicle.id,
+          customerName: booking.customerName,
+          customerPhone: booking.phone,
+          fromAddress: booking.fromAddress,
+          toAddress: booking.toAddress,
+          from: booking.from,
+          to: booking.to,
+          route,
+          date: booking.date ?? '',
+          timeSlot: booking.timeSlot,
+          estimatedTrips: Math.max(1, booking.estimate.trips),
+          options: booking.options,
+          notes: booking.notes,
+          inventory: {
+            ...base.inventory,
+            fromFloor: workAccess?.fromFloor ?? 0,
+            toFloor: workAccess?.toFloor ?? 0,
+            fromLift: workAccess?.fromLift ?? false,
+            toLift: workAccess?.toLift ?? false,
+          },
+        });
+        setEditingBooking(booking);
+      })
+      .catch((cause: unknown) => {
+        if (active) setEditError(errorMessage(cause));
+      })
+      .finally(() => {
+        if (active) setEditLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [api, authLoading, editId, setDraft, user]);
   useEffect(() => {
     setTollLines((current) => {
       let changed = false;
@@ -118,6 +191,7 @@ export function useBookingForm({
   useEffect(() => {
     if (!catalogue) return;
     setDraft((current) => {
+      if (editingBooking?.vehicle.id === current.vehicleId) return current;
       const vehicleId = catalogue.vehicles.some(
         (v) => v.id === current.vehicleId && v.active !== false,
       )
@@ -125,7 +199,7 @@ export function useBookingForm({
         : (catalogue.vehicles.find((v) => v.active !== false)?.id ?? current.vehicleId);
       return vehicleId === current.vehicleId ? current : { ...current, vehicleId };
     });
-  }, [catalogue, setDraft]);
+  }, [catalogue, editingBooking, setDraft]);
   useEffect(() => {
     const phone = normalizedClientPhone(draft.customerPhone);
     lookupPhone.current = phone;
@@ -206,7 +280,7 @@ export function useBookingForm({
       return;
     }
     const bookingNotes = [
-      !inventorySnapshot ? inventoryNote(draft.inventory) : '',
+      !inventorySnapshot && !editingBooking ? inventoryNote(draft.inventory) : '',
       administrativeQuote && draft.fromNote.trim()
         ? `Repère départ : ${draft.fromNote.trim()}`
         : '',
@@ -225,7 +299,7 @@ export function useBookingForm({
     submitLock.current = true;
     setSubmitting(true);
     try {
-      const booking = await api.createBooking({
+      const input: BookingInput = {
         vehicleId: draft.vehicleId,
         routeId: draft.route.id,
         trips: administrativeQuote ? (quoteConfig?.trips ?? 1) : draft.estimatedTrips,
@@ -272,12 +346,19 @@ export function useBookingForm({
             ]
           : [],
         workPlan: administrativeQuote ? workPlan : [],
-        inventorySnapshot,
+        inventorySnapshot: editingBooking ? undefined : inventorySnapshot,
         requestId: draft.requestId,
-      });
+      };
+      const booking = editingBooking
+        ? await api.updateClientBooking(editingBooking.id, input, editingBooking.version)
+        : await api.createBooking(input);
       if (administrativeQuote) clearAdminQuoteDraft();
       bookingLookup.current = null;
       setDraft(blankDraft());
+      if (editingBooking) {
+        navigate(routes.account);
+        return;
+      }
       if (administrativeQuote) {
         try {
           await api.quote(booking.id, {
@@ -403,6 +484,9 @@ export function useBookingForm({
     setTollLines,
     clientRecognition,
     recognizingClient,
+    editingBooking,
+    editLoading,
+    editError,
     recognizeClient,
   };
 }

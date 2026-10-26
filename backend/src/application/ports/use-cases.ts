@@ -48,6 +48,12 @@ export interface MovingUseCases {
     trips?: number,
   ): Promise<Price>;
   create(user: User, input: BookingInput): Promise<Booking>;
+  updateClientRequest(
+    user: User,
+    id: string,
+    input: BookingInput,
+    version: number,
+  ): Promise<Booking>;
   list(user: User): Promise<Booking[]>;
   get(user: User, id: string): Promise<Booking>;
   status(user: User, id: string, next: BookingStatus, version: number): Promise<Booking>;

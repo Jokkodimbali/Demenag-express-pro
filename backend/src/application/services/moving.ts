@@ -169,6 +169,65 @@ export class MovingService implements MovingUseCases {
       input.requestId,
     );
   }
+  async updateClientRequest(user: User, id: string, input: BookingInput, version: number) {
+    requireActiveUser(user);
+    requireValue(user.role === 'client', 'Action réservée au client de la réservation.');
+    const booking = await this.get(user, id);
+    if (booking.version !== version)
+      throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
+    requireValue(
+      ['pending', 'confirmed', 'cancelled'].includes(booking.status) &&
+        !booking.quotes.some((quote) => quote.kind === 'final'),
+      'Cette réservation ne peut plus être modifiée.',
+    );
+    requireValue(
+      !booking.driverId || input.vehicleId === booking.vehicle.id,
+      'Le véhicule ne peut plus être changé après l’affectation d’un chauffeur.',
+    );
+    const { route, vehicle, estimate, settings } = await this.priceInput(
+      input.vehicleId,
+      input.routeId,
+      input.options,
+      input.workAccess,
+      input.trips ?? 1,
+    );
+    if (input.date && input.date !== booking.date)
+      validateDate(input.date, this.clock.now(), settings);
+    const provisional = booking.quotes.filter((quote) => quote.kind === 'provisional').at(-1);
+    const nextQuote = {
+      id: provisional?.id ?? this.ids.next(),
+      reference:
+        provisional?.reference ??
+        `DV-${this.clock.now().getUTCFullYear()}-${this.ids.next().slice(0, 8).toUpperCase()}`,
+      kind: 'provisional' as const,
+      createdAt: provisional?.createdAt ?? this.clock.now().toISOString(),
+      price: estimate,
+      notes: input.notes,
+      options: input.options,
+    };
+    return this.bookings.update(
+      {
+        ...booking,
+        status: booking.status === 'cancelled' ? 'pending' : booking.status,
+        customerName: input.customerName,
+        phone: input.customerPhone,
+        vehicle,
+        from: route.from,
+        to: route.to,
+        distanceKm: route.distanceKm,
+        fromAddress: input.fromAddress,
+        toAddress: input.toAddress,
+        date: input.date || null,
+        timeSlot: input.date ? input.timeSlot : '',
+        options: input.options,
+        workAccess: input.workAccess ?? booking.workAccess,
+        notes: input.notes,
+        estimate,
+        quotes: [...booking.quotes.filter((quote) => quote.kind !== 'provisional'), nextQuote],
+      },
+      version,
+    );
+  }
   list(user: User) {
     requireActiveUser(user);
     return this.bookings.list(user.role === 'admin' ? undefined : user.id);

@@ -227,12 +227,26 @@ export class PrismaBookings implements BookingRepository {
         });
         if (!result.count)
           throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
-        for (const quote of next.quotes)
+        for (const quote of next.quotes) {
+          const previous = booking.quotes.find((item) => item.id === quote.id);
+          if (previous && JSON.stringify(previous) === JSON.stringify(quote)) continue;
+          const data = quoteData(quote);
           await tx.devis.upsert({
             where: { id: quote.id },
-            update: {},
-            create: { ...quoteData(quote), reservationId: next.id },
+            update: {
+              reference: data.reference,
+              nature: data.nature,
+              montantTotal: data.montantTotal,
+              remise: data.remise,
+              nombreTrajets: data.nombreTrajets,
+              tranche: data.tranche,
+              notes: data.notes,
+              creeLe: data.creeLe,
+              lignes: { deleteMany: {}, create: data.lignes.create },
+            },
+            create: { ...data, reservationId: next.id },
           });
+        }
         return next;
       });
     } catch (error) {
