@@ -1,10 +1,30 @@
 import type { BookingRepository } from '../../../application/ports/index.js';
 import { AppError } from '../../../domain/errors.js';
 import { messages } from '../../../domain/messages/fr.js';
-import type { Booking, WorkPlanReview } from '../../../domain/model.js';
+import type { Booking, Quote, WorkPlanReview } from '../../../domain/model.js';
 import { type PrismaClient } from '../../../generated/prisma/client.js';
 import { conflict, json } from './helpers.js';
 import { toStatus } from './mapping.js';
+const quoteData = (quote: Quote) => ({
+  id: quote.id,
+  reference: quote.reference,
+  nature: quote.kind === 'final' ? 'definitif' : 'provisoire',
+  montantTotal: quote.price.total,
+  remise: quote.price.discount,
+  nombreTrajets: quote.price.trips,
+  tranche: quote.price.tier,
+  notes: quote.notes,
+  creeLe: new Date(quote.createdAt),
+  lignes: {
+    create: quote.price.lines.map((line, position) => ({
+      libelle: line.label,
+      quantite: line.quantity,
+      prixUnitaire: line.unitPrice,
+      montant: line.total,
+      position,
+    })),
+  },
+});
 export class PrismaBookings implements BookingRepository {
   constructor(private db: PrismaClient) {}
   private withTrips(row: {
@@ -184,6 +204,7 @@ export class PrismaBookings implements BookingRepository {
           creneau: booking.timeSlot,
           statut: toStatus[booking.status],
           donnees: json(booking),
+          devis: { create: booking.quotes.map(quoteData) },
         },
       });
       return row.donnees as unknown as Booking;
@@ -210,27 +231,7 @@ export class PrismaBookings implements BookingRepository {
           await tx.devis.upsert({
             where: { id: quote.id },
             update: {},
-            create: {
-              id: quote.id,
-              reservationId: next.id,
-              reference: quote.reference,
-              nature: quote.kind === 'final' ? 'definitif' : 'provisoire',
-              montantTotal: quote.price.total,
-              remise: quote.price.discount,
-              nombreTrajets: quote.price.trips,
-              tranche: quote.price.tier,
-              notes: quote.notes,
-              creeLe: new Date(quote.createdAt),
-              lignes: {
-                create: quote.price.lines.map((line, position) => ({
-                  libelle: line.label,
-                  quantite: line.quantity,
-                  prixUnitaire: line.unitPrice,
-                  montant: line.total,
-                  position,
-                })),
-              },
-            },
+            create: { ...quoteData(quote), reservationId: next.id },
           });
         return next;
       });

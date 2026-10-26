@@ -112,6 +112,21 @@ export class MovingService implements MovingUseCases {
       );
     if (input.date) validateDate(input.date, this.clock.now(), settings);
     const id = this.ids.next();
+    const provisionalQuote =
+      user.role === 'client'
+        ? (() => {
+            const quoteId = this.ids.next();
+            return {
+              id: quoteId,
+              reference: `DV-${this.clock.now().getUTCFullYear()}-${quoteId.slice(0, 8).toUpperCase()}`,
+              kind: 'provisional' as const,
+              createdAt: this.clock.now().toISOString(),
+              price: estimate,
+              notes: input.notes,
+              options: input.options,
+            };
+          })()
+        : null;
     return this.bookings.create(
       {
         id,
@@ -146,7 +161,7 @@ export class MovingService implements MovingUseCases {
             : [],
         pricingSettings: settings,
         estimate,
-        quotes: [],
+        quotes: provisionalQuote ? [provisionalQuote] : [],
         status: 'pending',
         createdAt: this.clock.now().toISOString(),
         version: 1,
