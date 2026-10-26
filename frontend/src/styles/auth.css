@@ -31,6 +31,17 @@
   font-size: 32px;
   line-height: 1.25;
 }
+.auth-spaces {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 18px 0;
+}
+.auth-spaces button {
+  min-width: 0;
+  padding-inline: 4px;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
 .auth-card > .muted {
   font-size: 12px;
 }

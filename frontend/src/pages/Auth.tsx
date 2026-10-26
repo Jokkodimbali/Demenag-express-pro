@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight, Eye, EyeOff, LockKeyhole } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useAuthentication } from '../application/controllers/useAuthentication';
+import { useAuthentication, type LoginSpace } from '../application/controllers/useAuthentication';
 import { messages } from '../content/fr';
 import { routes } from '../routing/routes';
 export function Auth() {
   const [showPassword, setShowPassword] = useState(false);
-  const { register, setRegister, busy, error, setError, submit } = useAuthentication();
+  const [space, setSpace] = useState<LoginSpace>('client');
+  const { register, setRegister, busy, error, setError, submit } = useAuthentication(space);
 
   return (
     <div className="auth-page container">
@@ -15,32 +16,54 @@ export function Auth() {
         {messages.retourALAccueil}
       </Link>
       <div className="auth-card panel">
-        <span className="auth-icon">
-          <LockKeyhole />
-        </span>
-        <p className="eyebrow">{messages.votreEspacePersonnel}</p>
-        <h1>{register ? messages.bienvenueABord : messages.heureuxDeVousRevoir}</h1>
-        <p className="muted">{messages.reservationsSuiviEtDevisToutEstAuMeme}</p>
-        <div className="tabs">
-          <button
-            className={!register ? 'active' : ''}
-            onClick={() => {
-              setRegister(false);
-              setError('');
-            }}
-          >
-            {messages.connexion}
-          </button>
-          <button
-            className={register ? 'active' : ''}
-            onClick={() => {
-              setRegister(true);
-              setError('');
-            }}
-          >
-            {messages.creerUnCompte}
-          </button>
+        <h1>MON COMPTE</h1>
+        <div className="tabs auth-spaces" aria-label="Choisir un espace de connexion">
+          {(
+            [
+              ['client', 'Client'],
+              ['driver', 'Employé'],
+              ['admin', 'Administrateur'],
+            ] as const
+          ).map(([role, label]) => (
+            <button
+              type="button"
+              key={role}
+              className={space === role ? 'active' : ''}
+              aria-pressed={space === role}
+              onClick={() => {
+                setSpace(role);
+                setRegister(false);
+                setError('');
+              }}
+            >
+              {label}
+            </button>
+          ))}
         </div>
+        {space === 'client' && (
+          <div className="tabs">
+            <button
+              type="button"
+              className={!register ? 'active' : ''}
+              onClick={() => {
+                setRegister(false);
+                setError('');
+              }}
+            >
+              {messages.connexion}
+            </button>
+            <button
+              type="button"
+              className={register ? 'active' : ''}
+              onClick={() => {
+                setRegister(true);
+                setError('');
+              }}
+            >
+              {messages.creerUnCompte}
+            </button>
+          </div>
+        )}
         <form onSubmit={submit}>
           {register && (
             <>
@@ -67,6 +90,13 @@ export function Auth() {
             maxLength={25}
             placeholder="+221 77 123 45 67"
           />
+          <p className="caption">
+            {space === 'client'
+              ? 'Numéro donné lors de votre devis ou de votre réservation.'
+              : space === 'driver'
+                ? 'Numéro enregistré par l’administrateur.'
+                : 'Numéro du compte administrateur.'}
+          </p>
           <label htmlFor="auth-password">{messages.motDePasse}</label>
           <div className="auth-password-field">
             <input
@@ -103,11 +133,9 @@ export function Auth() {
             <ArrowRight size={18} />
           </button>
         </form>
-        <p className="caption">
-          {register
-            ? messages.utilisezVotreNumeroHabituelPourRetrouverVosDemandes
-            : messages.lAdministrationUtiliseCeMemeFormulaireDeConnexion}
-        </p>
+        {register && (
+          <p className="caption">{messages.utilisezVotreNumeroHabituelPourRetrouverVosDemandes}</p>
+        )}
       </div>
     </div>
   );
