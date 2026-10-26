@@ -234,6 +234,7 @@ export type Booking = {
 export type BookingInput = {
   vehicleId: string;
   routeId: string;
+  trips?: number;
   customerName: string;
   customerPhone: string;
   fromAddress: string;

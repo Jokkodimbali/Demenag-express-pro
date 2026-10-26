@@ -326,6 +326,7 @@ export function CallInventory({
   onApplyEstimate,
   laborPlanning,
   estimateInventory,
+  audience = 'admin',
 }: {
   draft: Draft;
   setDraft: React.Dispatch<React.SetStateAction<Draft>>;
@@ -337,6 +338,7 @@ export function CallInventory({
   onApplyEstimate: (vehicleId: string, trips: number) => void;
   laborPlanning?: MovingLaborPlanningSettings;
   estimateInventory?: Inventory;
+  audience?: 'admin' | 'client';
 }) {
   const [customLabel, setCustomLabel] = useState('');
   const [inventoryError, setInventoryError] = useState('');
@@ -404,8 +406,14 @@ export function CallInventory({
     <section className="panel call-inventory">
       <div className="inventory-heading">
         <div>
-          <strong>FICHE D’APPEL · INVENTAIRE</strong>
-          <span>Cochez et comptez pendant l’appel, le devis se remplit tout seul.</span>
+          <strong>
+            {audience === 'client' ? 'VOTRE INVENTAIRE' : 'FICHE D’APPEL · INVENTAIRE'}
+          </strong>
+          <span>
+            {audience === 'client'
+              ? 'Indiquez les objets à déménager pour estimer le volume et les allers-retours.'
+              : 'Cochez et comptez pendant l’appel, le devis se remplit tout seul.'}
+          </span>
         </div>
         <button
           type="button"
@@ -418,8 +426,9 @@ export function CallInventory({
       {open && (
         <div className="inventory-content">
           <p className="muted">
-            Cochez et comptez pendant l’appel. Les montages de lit, armoire et bureau sélectionnés
-            alimentent directement le devis.
+            {audience === 'client'
+              ? 'Les montages de lit, armoire et bureau sélectionnés alimentent directement votre estimation.'
+              : 'Cochez et comptez pendant l’appel. Les montages de lit, armoire et bureau sélectionnés alimentent directement le devis.'}
           </p>
           {inventoryError && (
             <p className="alert error" role="alert">

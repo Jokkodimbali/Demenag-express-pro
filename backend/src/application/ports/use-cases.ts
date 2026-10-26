@@ -45,6 +45,7 @@ export interface MovingUseCases {
     routeId: string,
     options: Options,
     workAccess?: WorkAccess,
+    trips?: number,
   ): Promise<Price>;
   create(user: User, input: BookingInput): Promise<Booking>;
   list(user: User): Promise<Booking[]>;

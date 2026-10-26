@@ -86,14 +86,13 @@ export function useBookingForm({
         draft.route.id,
         draft.options,
         controller.signal,
-        administrativeQuote
-          ? {
-              fromFloor: draft.inventory.fromFloor,
-              toFloor: draft.inventory.toFloor,
-              fromLift: draft.inventory.fromLift,
-              toLift: draft.inventory.toLift,
-            }
-          : undefined,
+        {
+          fromFloor: draft.inventory.fromFloor,
+          toFloor: draft.inventory.toFloor,
+          fromLift: draft.inventory.fromLift,
+          toLift: draft.inventory.toLift,
+        },
+        administrativeQuote ? (quoteConfig?.trips ?? 1) : draft.estimatedTrips,
       )
       .then(setPrice)
       .catch((e: unknown) => {
@@ -113,6 +112,8 @@ export function useBookingForm({
     draft.route,
     draft.vehicleId,
     draft.options,
+    quoteConfig?.trips,
+    draft.estimatedTrips,
   ]);
   useEffect(() => {
     if (!catalogue) return;
@@ -205,7 +206,7 @@ export function useBookingForm({
       return;
     }
     const bookingNotes = [
-      administrativeQuote && !inventorySnapshot ? inventoryNote(draft.inventory) : '',
+      !inventorySnapshot ? inventoryNote(draft.inventory) : '',
       administrativeQuote && draft.fromNote.trim()
         ? `Repère départ : ${draft.fromNote.trim()}`
         : '',
@@ -227,6 +228,7 @@ export function useBookingForm({
       const booking = await api.createBooking({
         vehicleId: draft.vehicleId,
         routeId: draft.route.id,
+        trips: administrativeQuote ? (quoteConfig?.trips ?? 1) : draft.estimatedTrips,
         customerName: draft.customerName,
         customerPhone: draft.customerPhone,
         fromAddress: draft.fromAddress,
@@ -234,14 +236,12 @@ export function useBookingForm({
         date: draft.date,
         timeSlot: draft.date ? draft.timeSlot : '',
         options: administrativeQuote && quoteOptions ? quoteOptions : draft.options,
-        workAccess: administrativeQuote
-          ? {
-              fromFloor: draft.inventory.fromFloor,
-              toFloor: draft.inventory.toFloor,
-              fromLift: draft.inventory.fromLift,
-              toLift: draft.inventory.toLift,
-            }
-          : undefined,
+        workAccess: {
+          fromFloor: draft.inventory.fromFloor,
+          toFloor: draft.inventory.toFloor,
+          fromLift: draft.inventory.fromLift,
+          toLift: draft.inventory.toLift,
+        },
         notes: bookingNotes,
         questionnaireAnswers: administrativeQuote
           ? [
@@ -272,7 +272,7 @@ export function useBookingForm({
             ]
           : [],
         workPlan: administrativeQuote ? workPlan : [],
-        inventorySnapshot: administrativeQuote ? inventorySnapshot : undefined,
+        inventorySnapshot,
         requestId: draft.requestId,
       });
       if (administrativeQuote) clearAdminQuoteDraft();

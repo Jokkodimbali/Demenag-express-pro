@@ -109,6 +109,7 @@ export const estimateSchema = z.object({
   vehicleId: z.string().min(1).max(30),
   routeId: z.uuid(),
   options: optionsSchema,
+  trips: z.number().int().min(1).max(20).optional(),
   workAccess: workAccessSchema.optional(),
 });
 export const bookingSchema = estimateSchema

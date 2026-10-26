@@ -29,6 +29,10 @@ export function readAdminQuoteDraft(): AdminQuoteDraft | null {
         ...parsed.draft,
         fromNote: parsed.draft.fromNote ?? '',
         toNote: parsed.draft.toNote ?? '',
+        estimatedTrips:
+          Number.isInteger(parsed.draft.estimatedTrips) && parsed.draft.estimatedTrips > 0
+            ? parsed.draft.estimatedTrips
+            : 1,
         inventory: {
           ...parsed.draft.inventory,
           fromFloor: Number.isInteger(parsed.draft.inventory.fromFloor)

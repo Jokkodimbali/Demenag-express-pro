@@ -13,6 +13,7 @@ export type Draft = {
   route: RouteTicket | null;
   date: string;
   timeSlot: string;
+  estimatedTrips: number;
   options: Options;
   notes: string;
   inventory: Inventory;
@@ -32,6 +33,7 @@ export const blankDraft = (catalogue?: Catalogue): Draft => ({
   route: null,
   date: '',
   timeSlot: '',
+  estimatedTrips: 1,
   options: { labour: 0, desk: 0, wardrobe: 0, bed: 0 },
   notes: '',
   inventory: blankInventory(),

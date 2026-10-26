@@ -138,7 +138,12 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
     route: (from, to) => request(httpRoutes.maps.route, 'POST', { from, to }),
     search: (query) => request(`${httpRoutes.maps.search}?q=${encodeURIComponent(query)}`),
     reverse: (point) => request(`${httpRoutes.maps.reverse}?lat=${point[0]}&lon=${point[1]}`),
-    estimate: (vehicleId, routeId, options, signal, workAccess) =>
-      request(httpRoutes.estimates, 'POST', { vehicleId, routeId, options, workAccess }, signal),
+    estimate: (vehicleId, routeId, options, signal, workAccess, trips) =>
+      request(
+        httpRoutes.estimates,
+        'POST',
+        { vehicleId, routeId, options, workAccess, trips },
+        signal,
+      ),
   };
 }

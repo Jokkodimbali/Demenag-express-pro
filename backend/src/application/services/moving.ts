@@ -63,6 +63,7 @@ export class MovingService implements MovingUseCases {
     routeId: string,
     options: Options,
     workAccess?: WorkAccess,
+    trips = 1,
   ) {
     const [catalogue, route] = await Promise.all([this.catalogue.get(), this.routes.find(routeId)]);
     if (!route || +new Date(route.expiresAt) <= +this.clock.now())
@@ -78,7 +79,7 @@ export class MovingService implements MovingUseCases {
         catalogue.settings,
         route.distanceKm,
         options,
-        1,
+        trips,
         null,
         0,
         [],
@@ -86,8 +87,14 @@ export class MovingService implements MovingUseCases {
       ),
     };
   }
-  async estimate(vehicleId: string, routeId: string, options: Options, workAccess?: WorkAccess) {
-    return (await this.priceInput(vehicleId, routeId, options, workAccess)).estimate;
+  async estimate(
+    vehicleId: string,
+    routeId: string,
+    options: Options,
+    workAccess?: WorkAccess,
+    trips = 1,
+  ) {
+    return (await this.priceInput(vehicleId, routeId, options, workAccess, trips)).estimate;
   }
   async create(user: User, input: BookingInput) {
     requireActiveUser(user);
@@ -95,7 +102,8 @@ export class MovingService implements MovingUseCases {
       input.vehicleId,
       input.routeId,
       input.options,
-      user.role === 'admin' ? input.workAccess : undefined,
+      input.workAccess,
+      input.trips ?? 1,
     );
     if (user.role !== 'admin')
       requireValue(
@@ -120,10 +128,10 @@ export class MovingService implements MovingUseCases {
         date: input.date,
         timeSlot: input.timeSlot,
         options: input.options,
-        workAccess: user.role === 'admin' ? input.workAccess : undefined,
+        workAccess: input.workAccess,
         notes: input.notes,
         questionnaireAnswers: user.role === 'admin' ? (input.questionnaireAnswers ?? []) : [],
-        inventorySnapshot: user.role === 'admin' ? input.inventorySnapshot : undefined,
+        inventorySnapshot: input.inventorySnapshot,
         workPlan:
           user.role === 'admin'
             ? (input.workPlan ?? []).map((step) => {

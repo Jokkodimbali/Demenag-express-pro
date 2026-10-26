@@ -3,6 +3,7 @@ import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useBookingForm } from '../application/useBookingForm';
 import { BookingSummary } from '../components/booking/BookingSummary';
+import { CallInventory } from '../components/booking/CallInventory';
 import { CustomerDetails } from '../components/booking/CustomerDetails';
 import { normalizedClientPhone } from '../application/services/client-summary';
 import { ScheduleOptions } from '../components/booking/ScheduleOptions';
@@ -10,6 +11,7 @@ import { VehicleSelector } from '../components/booking/VehicleSelector';
 import { messages } from '../content/fr';
 import { routes } from '../routing/routes';
 import { money } from '../domain/format';
+import { bookingInventorySnapshot, estimateMovingWork } from '../domain/moving-estimate';
 import type { VehicleTransition } from '../domain/vehicle-transition';
 const RouteMap = lazy(() => import('../components/RouteMap'));
 export function BookingPage() {
@@ -68,6 +70,27 @@ export function BookingPage() {
     recognizingClient,
   } = state;
   const bookingsClosed = catalogue?.settings.bookingsEnabled === false;
+  const quoteTrips = Math.max(
+    1,
+    Math.min(catalogue?.settings.maxTrips ?? 20, draft.estimatedTrips),
+  );
+  const movingEstimate = selected
+    ? estimateMovingWork(draft.inventory, selected, draft.route, {
+        trips: quoteTrips,
+        crew: draft.inventory.crew,
+        startTime: draft.timeSlot,
+        laborPlanning: catalogue?.settings.movingLaborPlanning,
+      })
+    : null;
+  const submitBooking = (event: React.FormEvent<HTMLFormElement>) =>
+    void submit(
+      event,
+      '',
+      [],
+      movingEstimate?.volume
+        ? bookingInventorySnapshot(draft.inventory, movingEstimate)
+        : undefined,
+    );
   return (
     <>
       <section id="reserver" className="booking-section">
@@ -113,7 +136,7 @@ export function BookingPage() {
           ) : catalogue && selected ? (
             <form
               id="booking-form"
-              onSubmit={submit}
+              onSubmit={submitBooking}
               className="booking-layout"
               data-mobile-step={mobileBookingStep}
             >
@@ -124,7 +147,7 @@ export function BookingPage() {
                     [
                       'Choisissez le véhicule',
                       'Placez le trajet',
-                      'Date et options',
+                      'Inventaire, date et options',
                       'Vos coordonnées',
                     ][mobileBookingStep - 1]
                   }
@@ -163,6 +186,65 @@ export function BookingPage() {
                   </section>
                 </div>
                 <div className="booking-mobile-step" data-booking-step="3">
+                  <CallInventory
+                    audience="client"
+                    draft={draft}
+                    setDraft={setDraft}
+                    maxOptions={catalogue.settings.maxOptions}
+                    vehicles={catalogue.vehicles}
+                    selectedVehicleId={draft.vehicleId}
+                    quoteTrips={quoteTrips}
+                    maxTrips={catalogue.settings.maxTrips}
+                    laborPlanning={catalogue.settings.movingLaborPlanning}
+                    onApplyEstimate={(vehicleId, trips) => {
+                      setDraft((current) => ({ ...current, vehicleId, estimatedTrips: trips }));
+                    }}
+                  />
+                  <section className="panel booking-trip-count">
+                    <div>
+                      <h3>Nombre d’allers-retours estimés</h3>
+                      <p className="muted">
+                        Le transport est facturé par aller-retour. L’équipe confirmera le nombre
+                        réel pour le devis final.
+                      </p>
+                    </div>
+                    <div
+                      className="stepper"
+                      role="group"
+                      aria-label="Nombre d’allers-retours estimés"
+                    >
+                      <button
+                        type="button"
+                        aria-label="Retirer un aller-retour"
+                        disabled={quoteTrips <= 1}
+                        onClick={() =>
+                          setDraft((current) => ({
+                            ...current,
+                            estimatedTrips: Math.max(1, current.estimatedTrips - 1),
+                          }))
+                        }
+                      >
+                        −
+                      </button>
+                      <output>{quoteTrips}</output>
+                      <button
+                        type="button"
+                        aria-label="Ajouter un aller-retour"
+                        disabled={quoteTrips >= catalogue.settings.maxTrips}
+                        onClick={() =>
+                          setDraft((current) => ({
+                            ...current,
+                            estimatedTrips: Math.min(
+                              catalogue.settings.maxTrips,
+                              current.estimatedTrips + 1,
+                            ),
+                          }))
+                        }
+                      >
+                        +
+                      </button>
+                    </div>
+                  </section>
                   <ScheduleOptions
                     catalogue={catalogue}
                     draft={draft}
