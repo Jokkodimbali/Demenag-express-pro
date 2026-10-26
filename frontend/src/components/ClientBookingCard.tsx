@@ -14,7 +14,7 @@ export function ClientBookingCard({
   onChange: (booking: Booking) => void;
 }) {
   const { api } = useApp();
-  const { pdf, busy, error, finalQuote } = useBookingCard({ booking, onChange });
+  const { pdf, busy, error } = useBookingCard({ booking, onChange });
   const [editing, setEditing] = useState(false);
   const [date, setDate] = useState(booking.date ?? '');
   const [timeSlot, setTimeSlot] = useState(booking.timeSlot);
@@ -49,6 +49,9 @@ export function ClientBookingCard({
     }
   }
   const provisionalQuote = booking.quotes.filter((quote) => quote.kind === 'provisional').at(-1);
+  const finalQuote = booking.quotes.filter((quote) => quote.kind === 'final').at(-1);
+  const displayedEstimate =
+    finalQuote?.price.total ?? provisionalQuote?.price.total ?? booking.estimate.total;
   const referenceDate = booking.date ? booking.date.split('-').reverse().join('/') : '—';
   const distanceTier =
     booking.distanceKm < 15
@@ -156,7 +159,7 @@ export function ClientBookingCard({
         </div>
         <div>
           <span>ESTIMATION</span>
-          <strong>{money(booking.estimate.total)}</strong>
+          <strong>{money(displayedEstimate)}</strong>
         </div>
       </div>
       <button
