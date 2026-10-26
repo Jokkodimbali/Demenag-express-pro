@@ -219,6 +219,25 @@ test('client can change only the schedule of their own open reservation', async 
   );
 });
 
+test('client can update their own open reservation notes only', async () => {
+  const { service, getBooking, addFinalQuote } = harness();
+  const changed = await service.updateNotes(client, 'booking-1', 'Précisions client', 1);
+  assert.equal(changed.notes, 'Précisions client');
+  await assert.rejects(
+    service.updateNotes(
+      { ...client, id: 'another-client' },
+      'booking-1',
+      'Refusé',
+      getBooking().version,
+    ),
+  );
+  await assert.rejects(
+    service.updateNotes(driverUser, 'booking-1', 'Refusé', getBooking().version),
+  );
+  addFinalQuote();
+  await assert.rejects(service.updateNotes(client, 'booking-1', 'Refusé', getBooking().version));
+});
+
 test('driver and admin update one shared schedule check and missed times require a reason', async () => {
   const { service, getBooking } = harness();
   await assert.rejects(

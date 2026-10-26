@@ -479,8 +479,13 @@ export class MovingService implements MovingUseCases {
     );
   }
   async updateNotes(user: User, id: string, notes: string, version: number) {
-    requireAdministrator(user);
+    requireActiveUser(user);
     const booking = await this.get(user, id);
+    requireValue(
+      user.role === 'admin' ||
+        (user.role === 'client' && ['pending', 'confirmed'].includes(booking.status)),
+      'Cette réservation ne peut plus être modifiée.',
+    );
     if (booking.version !== version)
       throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
     requireValue(

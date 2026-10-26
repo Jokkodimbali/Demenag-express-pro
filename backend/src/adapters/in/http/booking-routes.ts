@@ -134,7 +134,7 @@ export function registerBookingRoutes(
       ),
     );
   });
-  app.patch(`${apiRoutes.bookings}/:id/notes`, authenticate, admin, async (req, res) => {
+  app.patch(`${apiRoutes.bookings}/:id/notes`, authenticate, async (req, res) => {
     const p = z
       .object({ notes: z.string().trim().max(2000), version: z.number().int().positive() })
       .parse(req.body);

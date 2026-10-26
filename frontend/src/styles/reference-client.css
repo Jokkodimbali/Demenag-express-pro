@@ -276,13 +276,21 @@
   font-size: 13px;
   font-weight: 700;
 }
-.reference-client-editor input {
+.reference-client-editor input,
+.reference-client-editor textarea {
   min-height: 42px;
   border: 1px solid #4a5057;
   border-radius: 8px;
   background: #272a2e;
   color: #fff;
   padding: 8px 10px;
+}
+.reference-client-editor-notes {
+  flex-basis: 100%;
+}
+.reference-client-editor textarea {
+  width: min(100%, 640px);
+  resize: vertical;
 }
 .reference-client-editor button {
   min-height: 42px;
