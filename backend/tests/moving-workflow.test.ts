@@ -196,6 +196,29 @@ test('driver can refresh only bookings assigned to their vehicle', async () => {
   await assert.rejects(service.get({ ...driverUser, id: 'other-driver' }, 'booking-1'));
 });
 
+test('client can change only the schedule of their own open reservation', async () => {
+  const { service, getBooking, addFinalQuote } = harness();
+  const changed = await service.schedule(client, 'booking-1', '2026-10-25', '09:00', 1);
+  assert.equal(changed.date, '2026-10-25');
+  assert.equal(changed.timeSlot, '09:00');
+  await assert.rejects(
+    service.schedule(
+      { ...client, id: 'another-client' },
+      'booking-1',
+      '2026-10-26',
+      '10:00',
+      getBooking().version,
+    ),
+  );
+  await assert.rejects(
+    service.schedule(driverUser, 'booking-1', '2026-10-26', '10:00', getBooking().version),
+  );
+  addFinalQuote();
+  await assert.rejects(
+    service.schedule(client, 'booking-1', '2026-10-26', '10:00', getBooking().version),
+  );
+});
+
 test('driver and admin update one shared schedule check and missed times require a reason', async () => {
   const { service, getBooking } = harness();
   await assert.rejects(

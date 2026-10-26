@@ -10,6 +10,7 @@
 @import './styles/reference-home.css';
 @import './styles/booking-confirmation.css';
 @import './styles/reference-shell.css';
+@import './styles/reference-client.css';
 /* Journal comptable de l'administration */
 .accounting-page {
   display: grid;

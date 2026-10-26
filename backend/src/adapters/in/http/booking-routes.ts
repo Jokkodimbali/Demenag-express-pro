@@ -112,7 +112,7 @@ export function registerBookingRoutes(
   app.post(`${apiRoutes.bookings}/:id/driver-finished`, authenticate, async (req, res) => {
     res.json(await deps.moving.finishDriverWork(getActor(res), z.uuid().parse(req.params.id)));
   });
-  app.patch(`${apiRoutes.bookings}/:id/schedule`, authenticate, admin, async (req, res) => {
+  app.patch(`${apiRoutes.bookings}/:id/schedule`, authenticate, async (req, res) => {
     const p = z
       .object({
         date: z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal(''), z.null()]),
