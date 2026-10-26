@@ -187,6 +187,7 @@ export type MovingEstimate = {
   endTime: string;
   planning: PlanningStep[];
   warnings: string[];
+  vehicleWarnings: string[];
   warning: string | null;
 };
 type EstimateOptions = {
@@ -412,6 +413,8 @@ export function estimateMovingWork(
   const totalMinutes = planning.reduce((sum, step) => sum + step.minutes, 0);
   const endAt = cursor;
   const warnings: string[] = [];
+  const dimensionsWarnings = vehicleWarnings(inventory, vehicle);
+  warnings.push(...dimensionsWarnings);
   const itemCount = (key: string) =>
     (inventory.entries[key]?.quantity ?? 0) +
     inventory.variants
@@ -443,8 +446,6 @@ export function estimateMovingWork(
     warnings.push('Certains objets ne passent pas dans les escaliers : prévoir un accès adapté.');
   if (inventory.stairs === 'verif')
     warnings.push('Le passage des objets dans les escaliers reste à vérifier.');
-  const dimensionsWarnings = vehicleWarnings(inventory, vehicle);
-  warnings.push(...dimensionsWarnings);
   const carpenterCount = recommendedCarpenters;
   return {
     vehicleName: vehicle.name,
@@ -468,6 +469,7 @@ export function estimateMovingWork(
     endTime: formatTime(endAt),
     planning,
     warnings,
+    vehicleWarnings: dimensionsWarnings,
     warning:
       volume === 0
         ? 'Renseignez les objets ou le type de logement pour calculer une estimation.'
@@ -582,25 +584,29 @@ function vehicleWarnings(inventory: Inventory, vehicle: Vehicle): string[] {
       const itemHeight = [0.85, 1.6, 1.85][formatIndexes[item.format ?? 'medium']];
       if (height && itemHeight > height)
         warnings.push(
-          `Frigo debout ≈ ${itemHeight.toFixed(2)} m, hauteur utile ${height.toFixed(2)} m.`,
+          `Frigo debout ≈ ${itemHeight.toFixed(2)} m : dépasse la hauteur utile de ${height.toFixed(2)} m.`,
         );
     }
     if (key === 'vitrine' && item.format !== 'small' && height && height < 1.8)
-      warnings.push('Vitrine debout ≈ 1,80 m : vérifier la hauteur utile du véhicule.');
+      warnings.push(
+        `Vitrine debout ≈ 1,80 m : dépasse la hauteur utile de ${height.toFixed(2)} m.`,
+      );
     if (key === 'armoire' && !item.dismantle && height && height < 2)
-      warnings.push('Armoire montée ≈ 2 m de haut : à coucher ou démonter.');
+      warnings.push(
+        `Armoire montée ≈ 2 m : ne rentre pas debout dans ce véhicule (${height.toFixed(2)} m utiles). À coucher ou démonter.`,
+      );
     if (key === 'salon' && !item.dismantle && length) {
       const itemLength = item.size >= 6 ? 2.6 : item.size >= 3 ? 2.1 : 1.6;
       if (itemLength > length)
         warnings.push(
-          `Salon ≈ ${itemLength.toFixed(1)} m de long, plancher utile ${length.toFixed(1)} m.`,
+          `Salon ≈ ${itemLength.toFixed(1)} m : dépasse la longueur utile du plancher (${length.toFixed(1)} m).`,
         );
     }
     if (key === 'table-manger' && !item.dismantle && length) {
       const itemLength = item.size >= 8 ? 2.2 : item.size >= 6 ? 1.8 : 1.2;
       if (itemLength > length)
         warnings.push(
-          `Table ≈ ${itemLength.toFixed(1)} m de long, plancher utile ${length.toFixed(1)} m.`,
+          `Table ≈ ${itemLength.toFixed(1)} m : dépasse la longueur utile du plancher (${length.toFixed(1)} m).`,
         );
     }
   });

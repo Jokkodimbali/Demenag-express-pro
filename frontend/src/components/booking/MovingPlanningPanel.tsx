@@ -103,11 +103,11 @@ export function MovingPlanningPanel({
                       % du chargement conseillé
                     </span>
                   )}
-                  {!!estimate.warnings.length && (
-                    <span className="moving-vehicle-warning">
-                      À vérifier : {estimate.warnings[0]}
+                  {estimate.vehicleWarnings.map((warning) => (
+                    <span className="moving-vehicle-warning" key={warning} role="status">
+                      ⚠ Objet hors gabarit : {warning}
                     </span>
-                  )}
+                  ))}
                   <span className="moving-vehicle-current">
                     {selected ? 'Véhicule du devis' : ' '}
                   </span>

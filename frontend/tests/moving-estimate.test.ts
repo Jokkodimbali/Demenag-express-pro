@@ -30,6 +30,29 @@ test('l’estimation affichée sous un objet reprend le volume utilisé par le d
   assert.equal(inventoryFormatHint('custom', 'large'), 'plus grand que la moyenne');
 });
 
+test('les objets qui dépassent le gabarit sont signalés séparément pour chaque véhicule', () => {
+  const inventory = blankInventory();
+  inventory.entries.frigo = {
+    quantity: 1,
+    size: 1,
+    format: 'large',
+    dismantle: false,
+  };
+  inventory.entries.salon = {
+    quantity: 1,
+    size: 5,
+    format: 'medium',
+    dismantle: false,
+  };
+  const compactVehicle = { ...vehicle, height: '1,70 m', length: '1,80 m' };
+  const estimate = estimateMovingWork(inventory, compactVehicle);
+
+  assert.equal(estimate.vehicleWarnings.length, 2);
+  assert.ok(estimate.vehicleWarnings.some((warning) => warning.includes('Frigo debout')));
+  assert.ok(estimate.vehicleWarnings.some((warning) => warning.includes('Salon')));
+  assert.ok(estimate.warnings.includes(estimate.vehicleWarnings[0]!));
+});
+
 test('le démontage d’un objet personnalisé réduit son volume comme dans la maquette', () => {
   const inventory = blankInventory();
   inventory.custom = [

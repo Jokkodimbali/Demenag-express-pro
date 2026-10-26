@@ -23,6 +23,21 @@ import {
 
 const sections = [...new Set(inventoryItems.map((item) => item.section))];
 
+function assemblyCount(inventory: Inventory, key: 'desk' | 'wardrobe' | 'bed'): number {
+  return inventoryItems
+    .filter((item) => item.assembly === key)
+    .reduce((sum, item) => {
+      const line = inventory.entries[item.key];
+      return (
+        sum +
+        (line?.dismantle ? line.quantity : 0) +
+        inventory.variants
+          .filter((variant) => variant.itemKey === item.key && variant.dismantle)
+          .reduce((count, variant) => count + variant.quantity, 0)
+      );
+    }, 0);
+}
+
 function inventoryItemEstimate(
   item: (typeof inventoryItems)[number],
   size: number,
@@ -333,19 +348,6 @@ export function CallInventory({
   );
   const inventory = draft.inventory;
   const update = (next: Inventory) => {
-    const assemblyCount = (value: Inventory, key: 'desk' | 'wardrobe' | 'bed') =>
-      inventoryItems
-        .filter((item) => item.assembly === key)
-        .reduce((sum, item) => {
-          const line = value.entries[item.key];
-          return (
-            sum +
-            (line?.dismantle ? line.quantity : 0) +
-            value.variants
-              .filter((variant) => variant.itemKey === item.key && variant.dismantle)
-              .reduce((count, variant) => count + variant.quantity, 0)
-          );
-        }, 0);
     if (
       ['desk', 'wardrobe', 'bed'].some((key) => {
         const optionKey = key as 'desk' | 'wardrobe' | 'bed';
@@ -369,6 +371,18 @@ export function CallInventory({
         options[key] = Math.max(0, Math.min(maxOptions, options[key] + difference));
       }
       return { ...current, inventory: next, options };
+    });
+  };
+  const clearInventory = () => {
+    setInventoryError('');
+    setCustomLabel('');
+    setActiveWidget(null);
+    setDraft((current) => {
+      const options = { ...current.options };
+      for (const key of ['desk', 'wardrobe', 'bed'] as const) {
+        options[key] = Math.max(0, options[key] - assemblyCount(current.inventory, key));
+      }
+      return { ...current, inventory: blankInventory(), options };
     });
   };
   const setEntry = (key: string, patch: Partial<Inventory['entries'][string]>) => {
@@ -1034,13 +1048,7 @@ export function CallInventory({
           />
           <div className="inventory-footer">
             <span>Les lits, armoires et bureaux cochés « Démontage / montage » sont facturés.</span>
-            <button
-              type="button"
-              className="button secondary small"
-              onClick={() => {
-                if (window.confirm('Vider la fiche d’appel ?')) update(blankInventory());
-              }}
-            >
+            <button type="button" className="button secondary small" onClick={clearInventory}>
               Vider la fiche
             </button>
           </div>
