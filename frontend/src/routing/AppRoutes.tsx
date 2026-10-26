@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react';
-import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { Link, Navigate, Route, Routes } from 'react-router-dom';
 import { AdminLayout } from '../components/AdminLayout';
 import { Layout } from '../components/Layout';
 import { messages } from '../content/fr';
@@ -67,17 +67,6 @@ const DriverProfile = lazy(() =>
   import('../pages/DriverProfile').then((m) => ({ default: m.DriverProfile })),
 );
 
-function LegacyAdminBookingsRedirect() {
-  const location = useLocation();
-  return (
-    <Navigate
-      to={{ pathname: routes.administration, search: location.search }}
-      state={location.state as unknown}
-      replace
-    />
-  );
-}
-
 export function AppRoutes() {
   return (
     <Suspense
@@ -133,7 +122,6 @@ export function AppRoutes() {
             }
           >
             <Route index element={<Admin />} />
-            <Route path="reservations" element={<LegacyAdminBookingsRedirect />} />
             <Route path="creer-un-devis" element={<AdminCreateQuote />} />
             <Route path="planning" element={<AdminPlanning />} />
             <Route path="finances" element={<AdminFinance />} />
