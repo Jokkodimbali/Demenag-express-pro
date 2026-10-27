@@ -137,6 +137,9 @@ function harness() {
   return {
     service,
     getBooking: () => booking,
+    setWorkPlan: (workPlan: Booking['workPlan']) => {
+      booking = { ...booking, workPlan };
+    },
     addFinalQuote: () => {
       booking = {
         ...booking,
@@ -154,6 +157,27 @@ function harness() {
     },
   };
 }
+
+test('admin can review a reference fallback step when no work plan was saved', async () => {
+  const { service, getBooking, setWorkPlan } = harness();
+  setWorkPlan([]);
+  const updated = await service.reviewWorkPlan(
+    admin,
+    'booking-1',
+    'fallback-1',
+    'late',
+    'Retard au départ',
+    getBooking().version,
+    '08:20',
+  );
+  assert.equal(updated.workPlan?.length, 3);
+  assert.deepEqual(
+    updated.workPlan?.map((step) => step.title),
+    ['Arrivée au départ', 'Déménagement', 'Vérification finale'],
+  );
+  assert.equal(updated.workPlan?.[0]?.review.status, 'late');
+  assert.equal(updated.workPlan?.[0]?.review.actualTime, '08:20');
+});
 
 test('admin can start and finish courses without photos, then close with a final quote', async () => {
   const scenario = harness();
@@ -238,13 +262,8 @@ test('client can update their own open reservation notes only', async () => {
   await assert.rejects(service.updateNotes(client, 'booking-1', 'Refusé', getBooking().version));
 });
 
-test('driver and admin update one shared schedule check and missed times require a reason', async () => {
+test('driver and admin share schedule checks, including late status, time and proof', async () => {
   const { service, getBooking } = harness();
-  await assert.rejects(
-    service.reviewWorkPlan(admin, 'booking-1', 'plan-1', 'not_respected', '', 1),
-    /Justifiez/u,
-  );
-
   const driverChecked = await service.reviewWorkPlan(
     driverUser,
     'booking-1',
@@ -268,6 +287,43 @@ test('driver and admin update one shared schedule check and missed times require
   assert.equal(adminChecked.workPlan?.[0]?.review.status, 'respected');
   assert.equal(adminChecked.workPlan?.[0]?.review.reason, '');
   assert.equal(adminChecked.workPlan?.[0]?.review.checkedBy, admin.name);
+  const late = await service.reviewWorkPlan(
+    admin,
+    'booking-1',
+    'plan-1',
+    'late',
+    '',
+    getBooking().version,
+    '09:15',
+    'data:image/jpeg;base64,AA==',
+  );
+  assert.equal(late.workPlan?.[0]?.review.status, 'late');
+  assert.equal(late.workPlan?.[0]?.review.actualTime, '09:15');
+  assert.equal(late.workPlan?.[0]?.review.photo, 'data:image/jpeg;base64,AA==');
+  const qhse = await service.reviewWorkPlan(
+    admin,
+    'booking-1',
+    'plan-1',
+    'late',
+    'Circulation ralentie',
+    getBooking().version,
+    '09:15',
+    undefined,
+    { cause: 'Circulation', severity: 'maj', correctiveAction: 'Prévoir un départ plus tôt' },
+  );
+  assert.equal(qhse.workPlan?.[0]?.review.cause, 'Circulation');
+  assert.equal(qhse.workPlan?.[0]?.review.severity, 'maj');
+  assert.equal(qhse.workPlan?.[0]?.review.correctiveAction, 'Prévoir un départ plus tôt');
+  const pending = await service.reviewWorkPlan(
+    admin,
+    'booking-1',
+    'plan-1',
+    'pending',
+    '',
+    getBooking().version,
+  );
+  assert.equal(pending.workPlan?.[0]?.review.status, 'pending');
+  assert.equal(pending.workPlan?.[0]?.review.actualTime, '09:15');
   await assert.rejects(
     service.reviewWorkPlan(client, 'booking-1', 'plan-1', 'respected', '', getBooking().version),
     /réservée/u,

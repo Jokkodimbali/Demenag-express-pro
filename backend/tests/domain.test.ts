@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { calculatePrice, labourUnitPrice, tierOf } from '../src/domain/pricing.js';
+import {
+  assemblyUnitPrice,
+  calculatePrice,
+  labourUnitPrice,
+  tierOf,
+} from '../src/domain/pricing.js';
 import { vehicleCapacity } from '../src/domain/vehicle-capacity.js';
 import { validateDate, transition } from '../src/domain/booking.js';
 import { AuthService, normalizePhone } from '../src/application/services/auth.js';
@@ -103,7 +108,26 @@ test('Le tarif par manœuvre ajoute les étages sans ascenseur et le forfait asc
   assert.equal(price.lines[1].unitPrice, 7500);
   assert.match(price.lines[1].label, /2e étage sans ascenseur → 1er étage avec ascenseur/);
 });
-test('Les prix saisis dans chaque matrice remplacent les anciens suppléments calculés', () => {
+test('Le prix par manœuvre saisi sur le devis remplace la grille admin', () => {
+  const price = calculatePrice(
+    vehicle,
+    settings,
+    10,
+    { ...none, labour: 2 },
+    1,
+    null,
+    0,
+    [],
+    undefined,
+    8000,
+  );
+  assert.equal(price.lines.find((line) => line.label === 'Manœuvre')?.unitPrice, 8000);
+  assert.equal(price.total, 46000);
+  assert.throws(() =>
+    calculatePrice(vehicle, settings, 10, { ...none, labour: 2 }, 1, null, 0, [], undefined, -5),
+  );
+});
+test('Les suppléments suivent la formule de la référence, indépendamment des anciennes matrices', () => {
   const labourMatrix = {
     none: Array.from({ length: 6 }, (_, from) =>
       Array.from({ length: 6 }, (_, to) => 1000 + from * 10 + to),
@@ -120,10 +144,10 @@ test('Les prix saisis dans chaque matrice remplacent les anciens suppléments ca
   };
   const matrixSettings = { ...settings, labourMatrix };
   const cases = [
-    [{ fromFloor: 2, toFloor: 4, fromLift: false, toLift: false }, 1024],
-    [{ fromFloor: 2, toFloor: 4, fromLift: true, toLift: false }, 2024],
-    [{ fromFloor: 2, toFloor: 4, fromLift: false, toLift: true }, 3024],
-    [{ fromFloor: 2, toFloor: 4, fromLift: true, toLift: true }, 4024],
+    [{ fromFloor: 2, toFloor: 4, fromLift: false, toLift: false }, 9000],
+    [{ fromFloor: 2, toFloor: 4, fromLift: true, toLift: false }, 8500],
+    [{ fromFloor: 2, toFloor: 4, fromLift: false, toLift: true }, 7500],
+    [{ fromFloor: 2, toFloor: 4, fromLift: true, toLift: true }, 7000],
   ] as const;
   for (const [access, expected] of cases) {
     const price = calculatePrice(
@@ -211,9 +235,53 @@ test('Un trajet de plus de 35 km reste sur devis, jamais à zéro', () => {
 });
 test('Les montants et quantités invalides sont refusés', () => {
   assert.throws(() => calculatePrice(vehicle, settings, 10, none, 0));
-  assert.throws(() => calculatePrice(vehicle, settings, 10, none, 1, null, 31000));
+  assert.equal(calculatePrice(vehicle, settings, 10, none, 1, null, 31000).total, 0);
   assert.throws(() => calculatePrice(vehicle, settings, 10, { ...none, labour: -1 }));
   assert.throws(() => tierOf(NaN, settings.distanceBounds));
+});
+test('La remise suit le calcul FCFA et pourcentage du fichier de référence', () => {
+  const base = calculatePrice(vehicle, settings, 10, none);
+  assert.notEqual(base.total, null);
+  const subtotal = base.lines.reduce((sum, line) => sum + line.total, 0);
+  const percent = calculatePrice(
+    vehicle,
+    settings,
+    10,
+    none,
+    1,
+    null,
+    25,
+    [],
+    undefined,
+    null,
+    'pct',
+    'fidélité',
+  );
+  assert.equal(percent.discount, Math.round(subtotal * 0.25));
+  assert.equal(percent.total, subtotal - percent.discount);
+  assert.equal(percent.discountLabel, 'Remise (25 %) · fidélité');
+  assert.equal(
+    calculatePrice(vehicle, settings, 10, none, 1, null, 150, [], undefined, null, 'pct').total,
+    0,
+  );
+  assert.equal(calculatePrice(vehicle, settings, 10, none, 1, null, subtotal + 1).total, 0);
+});
+test('La matrice de menuiserie applique local, import et taille comme la référence', () => {
+  const configured = {
+    ...settings,
+    montageP: {
+      armoire: {
+        local: 12000,
+        import: 18000,
+        u: 1000,
+        sz: { '4': { local: 15000, import: 22000 } },
+      },
+    },
+  };
+  assert.equal(assemblyUnitPrice(configured, 'armoire'), 12000);
+  assert.equal(assemblyUnitPrice(configured, 'armoire', 'import'), 18000);
+  assert.equal(assemblyUnitPrice(configured, 'armoire', 'local', 4), 15000);
+  assert.equal(assemblyUnitPrice(configured, 'armoire', 'local', 5), 16000);
 });
 test('La date passée et la date invalide sont refusées, l’heure reste libre', () => {
   const now = new Date('2026-10-15T10:00:00Z');

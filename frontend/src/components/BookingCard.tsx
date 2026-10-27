@@ -92,8 +92,7 @@ export function BookingCard({
   }).format(new Date());
   const daysUntilMove = b.date
     ? Math.round(
-        (+new Date(`${b.date}T12:00:00Z`) - +new Date(`${reminderToday}T12:00:00Z`)) /
-          86400000,
+        (+new Date(`${b.date}T12:00:00Z`) - +new Date(`${reminderToday}T12:00:00Z`)) / 86400000,
       )
     : -1;
   const canSendReminder =
@@ -355,7 +354,7 @@ export function BookingCard({
                 ))}
                 {displayedPrice.discount > 0 && (
                   <tr>
-                    <td colSpan={3}>Remise</td>
+                    <td colSpan={3}>{displayedPrice.discountLabel ?? 'Remise'}</td>
                     <td>−{money(displayedPrice.discount)}</td>
                   </tr>
                 )}
@@ -371,20 +370,18 @@ export function BookingCard({
           {!!displayedQuote?.tolls?.length && (
             <div className="booking-toll-summary">
               <div className="booking-toll-heading">
-                <strong>PÉAGES · À LA CHARGE DU CLIENT</strong>
-                <span>Non inclus dans le total</span>
+                <strong>PÉAGES À VOTRE CHARGE</strong>
+                <span>NON INCLUS DANS LE TOTAL</span>
               </div>
               {displayedQuote.tolls.map((line, index) => (
                 <div className="booking-toll-line" key={`${line.tollPointId}-${index}`}>
                   <span>{line.label}</span>
-                  <span>
-                    {line.quantity} passage(s) × {money(line.unitPrice)}
-                  </span>
+                  <span>{line.quantity} passage(s)</span>
                   <strong>{money(line.quantity * line.unitPrice)}</strong>
                 </div>
               ))}
               <div className="booking-toll-total">
-                <strong>Total péages à régler par le client</strong>
+                <strong>Total péages</strong>
                 <strong>
                   {money(
                     displayedQuote.tolls.reduce(

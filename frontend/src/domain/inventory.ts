@@ -316,6 +316,7 @@ export type InventoryEntry = {
   size: number;
   format?: InventoryFormat;
   dismantle: boolean;
+  origin?: 'local' | 'import';
 };
 export type Inventory = {
   dwellingType: string;
@@ -332,6 +333,7 @@ export type Inventory = {
     size: number;
     format?: InventoryFormat;
     dismantle: boolean;
+    origin?: 'local' | 'import';
   }[];
   flags: Record<string, boolean>;
   ready?: 'oui' | 'non' | '';

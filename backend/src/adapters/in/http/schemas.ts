@@ -162,6 +162,20 @@ export const bookingSchema = estimateSchema
   .extend({
     customerName: z.string().trim().min(2).max(100),
     customerPhone: z.string().trim().min(9).max(25),
+    source: z
+      .enum([
+        '',
+        'Facebook',
+        'YouTube',
+        'Instagram',
+        'Snapchat',
+        'TikTok',
+        'Autre pub',
+        'Bouche-à-oreille',
+        'Client fidèle',
+        'Autre',
+      ])
+      .optional(),
     fromAddress: z.string().trim().min(3).max(300),
     toAddress: z.string().trim().min(3).max(300),
     date: z
@@ -194,16 +208,35 @@ export const bookingSchema = estimateSchema
     path: ['timeSlot'],
     message: messages.creneauInvalide,
   });
-export const workPlanReviewSchema = z
-  .object({
-    status: z.enum(['respected', 'not_respected']),
-    reason: z.string().trim().max(1000).default(''),
-    version: z.number().int().positive(),
-  })
-  .refine((review) => review.status !== 'not_respected' || review.reason.length >= 3, {
-    path: ['reason'],
-    message: 'Justifiez en quelques mots pourquoi cet horaire n’a pas été respecté.',
-  });
+export const workPlanReviewSchema = z.object({
+  status: z.enum(['pending', 'respected', 'late', 'not_respected']),
+  reason: z.string().max(1000),
+  actualTime: z.union([z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/), z.literal('')]).optional(),
+  photo: z
+    .union([
+      z
+        .string()
+        .regex(/^data:image\/(?:jpeg|png|webp);base64,/)
+        .max(5_500_000),
+      z.literal(''),
+    ])
+    .optional(),
+  cause: z
+    .enum([
+      '',
+      'Qualité',
+      'Sécurité',
+      'Environnement',
+      'Client',
+      'Véhicule',
+      'Équipe',
+      'Circulation',
+    ])
+    .optional(),
+  severity: z.enum(['', 'min', 'maj', 'cri']).optional(),
+  correctiveAction: z.string().max(1000).optional(),
+  version: z.number().int().positive(),
+});
 export const loginSchema = z.object({
   phone: z.string().min(9).max(25),
   password: z.string().min(1).max(128),
@@ -253,7 +286,10 @@ export const quoteSchema = z.object({
   kind: z.enum(['provisional', 'final']),
   trips: z.number().int().min(1).max(10000),
   customPrice: z.number().int().positive().max(10000000).nullable(),
+  labourUnitPriceOverride: z.number().int().positive().max(10000000).nullable().optional(),
   discount: z.number().int().min(0).max(10000000),
+  discountType: z.enum(['fcfa', 'pct']).optional(),
+  discountReason: z.string().trim().max(200).optional(),
   notes: z.string().trim().max(2000),
   extraLines: z
     .array(
@@ -465,6 +501,26 @@ export const catalogueSchema = z.object({
         pauseMinutes: 30,
       }),
     assemblyPrice: z.number().int().min(0).max(1000000),
+    montageP: z
+      .record(
+        z.string().min(1).max(60),
+        z.object({
+          local: z.number().int().min(0).max(10000000).optional(),
+          import: z.number().int().min(0).max(10000000).optional(),
+          u: z.number().int().min(0).max(10000000).optional(),
+          uI: z.number().int().min(0).max(10000000).optional(),
+          sz: z
+            .record(
+              z.string(),
+              z.object({
+                local: z.number().int().min(0).optional(),
+                import: z.number().int().min(0).optional(),
+              }),
+            )
+            .optional(),
+        }),
+      )
+      .default({}),
     businessPhone: z.string().regex(/^\+221[0-9]{9}$/),
     whatsappPhone: z.string().regex(/^\+[1-9][0-9]{7,14}$/),
     whatsappCountryCode: z

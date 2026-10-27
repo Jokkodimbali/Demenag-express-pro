@@ -672,40 +672,63 @@ div.driver-course-complete p {
   color: var(--yellow);
 }
 .booking-toll-summary {
-  margin-top: 12px;
-  padding: 12px 14px;
-  background: var(--surface);
-  border: 1.5px dashed var(--muted);
-  border-radius: 10px;
+  margin-top: 6px;
+  overflow: hidden;
+  border: 1px solid #3b4046;
+  border-radius: 12px;
 }
 .booking-toll-heading,
 .booking-toll-total {
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  align-items: baseline;
+  align-items: center;
+  flex-wrap: wrap;
 }
 .booking-toll-heading {
-  margin-bottom: 8px;
-  font-size: 11px;
+  padding: 9px 12px;
+  background: #1e2023;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
 }
 .booking-toll-heading span {
-  color: var(--muted);
+  padding: 3px 9px;
+  border: 1px solid #4a5057;
+  border-radius: 999px;
+  color: #aeb4bb;
+  font-size: 10.5px;
+  letter-spacing: 0;
 }
 .booking-toll-line {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 8px;
-  padding: 5px 0;
-  border-bottom: 1px solid var(--line);
-  font-size: 13px;
+  gap: 10px;
+  padding: 8px 12px;
+  border-top: 1px solid #30343a;
+  color: #d5d9de;
+  font-size: 13.5px;
+}
+.booking-toll-line > span:first-child {
+  overflow-wrap: anywhere;
 }
 .booking-toll-line > span:nth-child(2) {
-  color: var(--muted);
+  color: #aeb4bb;
+  white-space: nowrap;
+}
+.booking-toll-line > strong {
+  color: #fff;
+  white-space: nowrap;
 }
 .booking-toll-total {
-  padding-top: 8px;
-  font-size: 13px;
+  padding: 9px 12px;
+  border-top: 1px solid #30343a;
+  font-size: 14px;
+  font-weight: 800;
+}
+.booking-toll-total > strong:last-child {
+  color: #f6d73c;
+  white-space: nowrap;
 }
 .quote-form {
   margin-top: 20px;
@@ -1119,6 +1142,8 @@ div.driver-course-complete p {
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
+  margin-left: auto;
+  min-width: 0;
 }
 .admin-reference-reservation-filters > button {
   flex-shrink: 0;
@@ -1137,16 +1162,16 @@ div.driver-course-complete p {
   background: var(--yellow);
   color: #1e2023;
 }
-.admin-reference-period > div {
+.admin-reference-period-tabs {
   display: flex;
+  flex-shrink: 0;
   gap: 3px;
   padding: 3px;
   border: 1px solid #3b4046;
   border-radius: 999px;
   background: #1e2023;
 }
-.admin-reference-period > div button,
-.admin-reference-period > button {
+.admin-reference-period-tabs > button {
   border: 0;
   border-radius: 999px;
   padding: 6px 14px;
@@ -1157,30 +1182,44 @@ div.driver-course-complete p {
   white-space: nowrap;
   cursor: pointer;
 }
-.admin-reference-period > div button.active {
+.admin-reference-period-tabs > button.active {
   background: var(--yellow);
   color: #1e2023;
 }
-.admin-reference-period > button {
+.admin-reference-period-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+.admin-reference-period-controls > button {
+  flex-shrink: 0;
   width: 36px;
   height: 36px;
   border: 1px solid #3b4046;
   border-radius: 9px;
   padding: 0;
   background: #1e2023;
+  color: #fff;
   font-size: 18px;
+  font-weight: 800;
 }
-.admin-reference-period input[type='date'] {
+.admin-reference-period-controls input[type='date'] {
+  flex: 0 0 150px;
+  width: 150px;
+  min-width: 0;
   min-height: 36px;
   border: 1px solid #3b4046;
   border-radius: 9px;
-  padding: 6px 10px;
+  padding: 7px 10px;
   background: #1e2023;
   color: #fff;
   color-scheme: dark;
   font-size: 14px;
+  outline: none;
 }
-.admin-reference-period > span {
+.admin-reference-period-controls > span {
   color: #d5d9de;
   font-size: 13px;
   font-weight: 700;
@@ -1637,94 +1676,6 @@ div.driver-course-complete p {
   border-color: var(--yellow);
   color: var(--yellow);
   background: #f6d73c0b;
-}
-.admin-plan-follow-up {
-  display: grid;
-  gap: 16px;
-}
-.plan-follow-up-stat {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
-  padding: 16px;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
-}
-.plan-follow-up-stat strong {
-  margin: 0;
-  color: var(--text);
-  font-family: Anton, Impact, sans-serif;
-  font-size: 28px;
-  font-weight: 400;
-}
-.plan-follow-up-stat.success strong,
-.plan-follow-up-badge.respected {
-  color: #3ddc84;
-}
-.plan-follow-up-stat.warning strong,
-.plan-follow-up-badge.justified,
-.plan-follow-up-badge.todo {
-  color: var(--yellow);
-}
-.plan-follow-up-stat.danger strong,
-.plan-follow-up-badge.unjustified {
-  color: #ff5a5f;
-}
-.plan-follow-up-list {
-  display: grid;
-  gap: 12px;
-}
-.plan-follow-up-card {
-  overflow: hidden;
-  padding: 0;
-}
-.plan-follow-up-card-heading {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  width: 100%;
-  min-width: 0;
-  padding: 14px 16px;
-  border: 0;
-  background: transparent;
-  color: var(--text);
-  text-align: left;
-  cursor: pointer;
-}
-.plan-follow-up-card-title {
-  display: grid;
-  flex: 1 1 240px;
-  gap: 4px;
-  min-width: 0;
-}
-.plan-follow-up-card-title small {
-  overflow: hidden;
-  color: var(--muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.plan-follow-up-badge {
-  flex: 0 0 auto;
-  border: 1px solid currentColor;
-  border-radius: 999px;
-  padding: 5px 10px;
-  font-size: 12px;
-  font-weight: 800;
-  white-space: nowrap;
-}
-.plan-follow-up-detail {
-  display: grid;
-  gap: 12px;
-  border-top: 1px solid var(--line);
-  padding: 14px;
-}
-.plan-follow-up-detail > .button {
-  justify-self: start;
 }
 .search-field {
   display: flex;

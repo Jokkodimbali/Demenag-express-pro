@@ -156,6 +156,7 @@ model ParametreApplication {
   grillePrixManoeuvre     Json    @default("{}") @map("labour_price_matrix")
   planificationManoeuvre  Json    @default("{}") @map("moving_labor_planning")
   tarifMontage            Int     @map("assembly_price")
+  grillePrixMontage       Json    @default("{}") @map("assembly_price_matrix")
   telephoneEntreprise     String  @map("business_phone")
   numeroWhatsapp          String  @default("+221775105104") @map("whatsapp_phone")
   indicatifWhatsapp       String  @default("221") @map("whatsapp_country_code")

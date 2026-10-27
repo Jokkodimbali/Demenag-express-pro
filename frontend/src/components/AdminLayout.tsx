@@ -1,4 +1,5 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { useLayoutEffect, useRef } from 'react';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { messages } from '../content/fr';
 import { routes } from '../routing/routes';
 
@@ -15,6 +16,17 @@ const sections = [
   { to: routes.administrationPricing, label: 'Paramètres' },
 ];
 export function AdminLayout() {
+  const location = useLocation();
+  const tabsRef = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const tabs = tabsRef.current;
+    const active = tabs?.querySelector<HTMLElement>('a.active');
+    if (!tabs || !active || tabs.scrollWidth <= tabs.clientWidth) return;
+    const left = active.getBoundingClientRect().left - tabs.getBoundingClientRect().left;
+    if (left < 0) tabs.scrollLeft += left - 6;
+    else if (left + active.offsetWidth > tabs.clientWidth)
+      tabs.scrollLeft += left + active.offsetWidth - tabs.clientWidth + 6;
+  }, [location.pathname]);
   return (
     <section className="container workspace-page admin-workspace">
       <header className="admin-reference-heading">
@@ -22,14 +34,13 @@ export function AdminLayout() {
           <span>ADMINISTRATION</span>
           <h1>TABLEAU DE BORD</h1>
         </div>
-        <nav className="tabs admin-tabs" aria-label={messages.navigationAdministration}>
+        <nav
+          ref={tabsRef}
+          className="tabs admin-tabs"
+          aria-label={messages.navigationAdministration}
+        >
           {sections.map(({ to, label }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end
-              className={({ isActive }) => (isActive ? 'active' : '')}
-            >
+            <NavLink key={to} to={to} end className={({ isActive }) => (isActive ? 'active' : '')}>
               {label}
             </NavLink>
           ))}

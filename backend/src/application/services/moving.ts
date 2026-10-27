@@ -11,6 +11,8 @@ import type {
   User,
   WorkAccess,
   WorkPlanReview,
+  WorkPlanCompliance,
+  WorkPlanStep,
 } from '../../domain/model.js';
 import {
   canReadBooking,
@@ -30,6 +32,61 @@ import type {
   VehicleReportRepository,
 } from '../ports/index.js';
 import type { MovingUseCases } from '../ports/use-cases.js';
+
+function fallbackWorkPlan(booking: Booking): WorkPlanStep[] {
+  const slot = booking.timeSlot;
+  const afternoon = /apr/i.test(slot);
+  const morning = /matin/i.test(slot);
+  const slotStart = afternoon ? 13 * 60 : 8 * 60;
+  const slotEnd = morning ? 12 * 60 : afternoon ? 17 * 60 : 17 * 60;
+  const specified = /^(\d{1,2}):(\d{2})$/.exec(slot);
+  const start = booking.inventorySnapshot?.startTime
+    ? Number(booking.inventorySnapshot.startTime.slice(0, 2)) * 60 +
+      Number(booking.inventorySnapshot.startTime.slice(3, 5))
+    : specified
+      ? Number(specified[1]) * 60 + Number(specified[2])
+      : slotStart;
+  const estimatedEnd = booking.inventorySnapshot?.endTime
+    ? Number(booking.inventorySnapshot.endTime.slice(0, 2)) * 60 +
+      Number(booking.inventorySnapshot.endTime.slice(3, 5))
+    : slotEnd;
+  const end = Math.max(start + 60, estimatedEnd);
+  const time = (minutes: number) =>
+    `${String(Math.floor(minutes / 60) % 24).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+  const pending: WorkPlanReview = {
+    status: 'pending',
+    reason: '',
+    checkedAt: null,
+    checkedBy: null,
+  };
+  return [
+    {
+      id: 'fallback-1',
+      time: time(start),
+      title: 'Arrivée au départ',
+      detail: '',
+      minutes: 15,
+      review: pending,
+    },
+    {
+      id: 'fallback-2',
+      time: time(start + 15),
+      title: 'Déménagement',
+      detail: 'Fiche d’appel non remplie : durée du créneau',
+      minutes: end - start - 25,
+      review: pending,
+    },
+    {
+      id: 'fallback-3',
+      time: time(end - 10),
+      title: 'Vérification finale',
+      detail: '',
+      minutes: 10,
+      review: pending,
+    },
+  ];
+}
+
 export class MovingService implements MovingUseCases {
   constructor(
     private bookings: BookingRepository,
@@ -134,6 +191,7 @@ export class MovingService implements MovingUseCases {
         userId: user.id,
         customerName: input.customerName,
         phone: input.customerPhone,
+        source: user.role === 'admin' ? (input.source ?? '') : '',
         vehicle,
         fromAddress: input.fromAddress,
         toAddress: input.toAddress,
@@ -215,6 +273,7 @@ export class MovingService implements MovingUseCases {
         status: booking.status === 'cancelled' ? 'pending' : booking.status,
         customerName: input.customerName,
         phone: input.customerPhone,
+        source: booking.source ?? '',
         vehicle,
         from: route.from,
         to: route.to,
@@ -256,6 +315,7 @@ export class MovingService implements MovingUseCases {
         ...booking,
         customerName: input.customerName,
         phone: input.customerPhone,
+        source: input.source ?? booking.source ?? '',
         vehicle,
         from: route.from,
         to: route.to,
@@ -667,9 +727,12 @@ export class MovingService implements MovingUseCases {
     user: User,
     id: string,
     stepId: string,
-    status: 'respected' | 'not_respected',
+    status: WorkPlanCompliance,
     reason: string,
     version: number,
+    actualTime?: string,
+    photo?: string,
+    details?: Pick<WorkPlanReview, 'cause' | 'severity' | 'correctiveAction'>,
   ) {
     requireActiveUser(user);
     requireValue(
@@ -685,25 +748,25 @@ export class MovingService implements MovingUseCases {
       throw new AppError(404, messages.reservationIntrouvable);
     if (booking.version !== version)
       throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
-    const step = booking.workPlan?.find((entry) => entry.id === stepId);
+    const plan = booking.workPlan?.length ? booking.workPlan : fallbackWorkPlan(booking);
+    const step = plan.find((entry) => entry.id === stepId);
     if (!step) throw new AppError(404, 'Étape de planning introuvable.');
     const cleanReason = reason.trim();
-    requireValue(
-      status !== 'not_respected' || cleanReason.length >= 3,
-      'Justifiez en quelques mots pourquoi cet horaire n’a pas été respecté.',
-    );
     const review: WorkPlanReview = {
       status,
-      reason: status === 'not_respected' ? cleanReason : '',
+      reason: cleanReason,
+      actualTime: actualTime ?? step.review.actualTime ?? '',
+      photo: photo ?? step.review.photo ?? '',
+      cause: details?.cause ?? step.review.cause ?? '',
+      severity: details?.severity ?? step.review.severity ?? '',
+      correctiveAction: details?.correctiveAction ?? step.review.correctiveAction ?? '',
       checkedAt: this.clock.now().toISOString(),
       checkedBy: user.name,
     };
     return this.bookings.update(
       {
         ...booking,
-        workPlan: booking.workPlan?.map((entry) =>
-          entry.id === stepId ? { ...entry, review } : entry,
-        ),
+        workPlan: plan.map((entry) => (entry.id === stepId ? { ...entry, review } : entry)),
       },
       version,
     );
@@ -903,6 +966,9 @@ export class MovingService implements MovingUseCases {
       input.discount,
       input.extraLines,
       booking.workAccess,
+      input.labourUnitPriceOverride,
+      input.discountType,
+      input.discountReason,
     );
     requireValue(
       input.kind !== 'final' || price.total !== null,

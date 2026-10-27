@@ -29,7 +29,7 @@ export function BookingPage() {
     [],
   );
   useEffect(() => {
-    const query = window.matchMedia('(max-width: 600px)');
+    const query = window.matchMedia('(max-width: 759px)');
     const update = () => setIsMobileBooking(query.matches);
     update();
     query.addEventListener('change', update);
@@ -163,7 +163,7 @@ export function BookingPage() {
                       : [
                           'Choisissez le véhicule',
                           'Placez le trajet',
-                          'Inventaire, date et options',
+                          'Date et options',
                           'Vos coordonnées',
                         ])[mobileBookingStep - 1]
                   }
@@ -339,7 +339,15 @@ export function BookingPage() {
               type="button"
               className="button primary"
               onClick={() => {
+                if (mobileBookingStep === 2 && !draft.route) {
+                  setMobileBookingError("Placez le départ (A) et l'arrivée (B) sur la carte.");
+                  return;
+                }
                 if (mobileBookingStep === 3) {
+                  if (!draft.date) {
+                    setMobileBookingError('Choisissez une date.');
+                    return;
+                  }
                   const dateInput = document.getElementById(
                     'booking-date',
                   ) as HTMLInputElement | null;

@@ -80,6 +80,16 @@ export type Settings = BookingRules & {
   labourLiftPrice?: number;
   labourMatrix?: LabourPriceMatrix;
   assemblyPrice: number;
+  montageP?: Record<
+    string,
+    {
+      local?: number;
+      import?: number;
+      u?: number;
+      uI?: number;
+      sz?: Record<string, { local?: number; import?: number }>;
+    }
+  >;
   businessPhone: string;
   whatsappPhone: string;
   whatsappCountryCode?: string;
@@ -131,6 +141,10 @@ export type Price = {
   lines: PriceLine[];
   total: number | null;
   discount: number;
+  discountLabel?: string;
+  discountType?: 'fcfa' | 'pct';
+  discountValue?: number;
+  discountReason?: string;
   tier: number;
   trips: number;
   currency: 'XOF';
@@ -153,10 +167,15 @@ export type BookingTrip = {
   finishedAt: string | null;
 };
 export type BookingReminder = { at: string; daysBefore: number };
-export type WorkPlanCompliance = 'pending' | 'respected' | 'not_respected';
+export type WorkPlanCompliance = 'pending' | 'respected' | 'late' | 'not_respected';
 export type WorkPlanReview = {
   status: WorkPlanCompliance;
   reason: string;
+  actualTime?: string;
+  photo?: string;
+  cause?: string;
+  severity?: 'min' | 'maj' | 'cri' | '';
+  correctiveAction?: string;
   checkedAt: string | null;
   checkedBy: string | null;
 };
@@ -190,6 +209,7 @@ export type BookingInventorySource = {
       size: number;
       format?: 'small' | 'medium' | 'large';
       dismantle: boolean;
+      origin?: 'local' | 'import';
     }
   >;
   variants: {
@@ -199,6 +219,7 @@ export type BookingInventorySource = {
     size: number;
     format?: 'small' | 'medium' | 'large';
     dismantle: boolean;
+    origin?: 'local' | 'import';
   }[];
   flags: Record<string, boolean>;
   ready?: 'oui' | 'non' | '';
@@ -278,6 +299,7 @@ export type Booking = {
   crewMessages?: Record<string, string>;
   customerName: string;
   phone: string;
+  source?: string;
   vehicle: Vehicle;
   fromAddress: string;
   toAddress: string;
@@ -309,6 +331,7 @@ export type BookingInput = {
   trips?: number;
   customerName: string;
   customerPhone: string;
+  source?: string;
   fromAddress: string;
   toAddress: string;
   date: string | null;
@@ -326,7 +349,10 @@ export type QuoteInput = {
   kind: 'provisional' | 'final';
   trips: number;
   customPrice: number | null;
+  labourUnitPriceOverride?: number | null;
   discount: number;
+  discountType?: 'fcfa' | 'pct';
+  discountReason?: string;
   notes: string;
   extraLines: Array<{ label: string; quantity: number; unitPrice: number }>;
   tolls?: Array<{

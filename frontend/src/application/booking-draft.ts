@@ -4,6 +4,7 @@ export type Draft = {
   vehicleId: string;
   customerName: string;
   customerPhone: string;
+  source: string;
   fromAddress: string;
   toAddress: string;
   fromNote: string;
@@ -25,6 +26,7 @@ export const blankDraft = (catalogue?: Catalogue): Draft => ({
   vehicleId: catalogue?.vehicles.find((vehicle) => vehicle.active !== false)?.id ?? '',
   customerName: '',
   customerPhone: '',
+  source: '',
   fromAddress: '',
   toAddress: '',
   fromNote: '',

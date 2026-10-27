@@ -3,7 +3,10 @@ import type { Draft } from './booking-draft';
 export type AdminQuoteConfig = {
   trips: number;
   discount: number;
+  discountType: 'fcfa' | 'pct';
+  discountReason: string;
   customPrice: number | null;
+  labourUnitPriceOverride: number | null;
 };
 
 export type AdminQuoteDraft = {
@@ -25,10 +28,17 @@ export function readAdminQuoteDraft(): AdminQuoteDraft | null {
     }
     return {
       ...parsed,
+      quoteConfig: {
+        ...parsed.quoteConfig,
+        labourUnitPriceOverride: parsed.quoteConfig.labourUnitPriceOverride ?? null,
+        discountType: parsed.quoteConfig.discountType ?? 'fcfa',
+        discountReason: parsed.quoteConfig.discountReason ?? '',
+      },
       draft: {
         ...parsed.draft,
         fromNote: parsed.draft.fromNote ?? '',
         toNote: parsed.draft.toNote ?? '',
+        source: parsed.draft.source ?? '',
         estimatedTrips:
           Number.isInteger(parsed.draft.estimatedTrips) && parsed.draft.estimatedTrips > 0
             ? parsed.draft.estimatedTrips
@@ -105,8 +115,13 @@ function isAdminQuoteDraft(value: unknown): value is AdminQuoteDraft {
     config.trips >= 1 &&
     Number.isInteger(config.discount) &&
     config.discount >= 0 &&
+    (config.discountType === undefined || ['fcfa', 'pct'].includes(config.discountType)) &&
+    (config.discountReason === undefined || typeof config.discountReason === 'string') &&
     (config.customPrice === null ||
       (Number.isInteger(config.customPrice) && config.customPrice > 0)) &&
+    (config.labourUnitPriceOverride === undefined ||
+      config.labourUnitPriceOverride === null ||
+      (Number.isInteger(config.labourUnitPriceOverride) && config.labourUnitPriceOverride > 0)) &&
     Array.isArray(saved.tollLines) &&
     saved.tollLines.every(
       (line) =>

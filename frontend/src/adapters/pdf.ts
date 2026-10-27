@@ -243,7 +243,7 @@ export async function downloadQuote(
   }
   if (price.discount > 0) {
     y += 2;
-    paragraph('Remise', margin, y + 3, 100, 9);
+    paragraph(price.discountLabel ?? 'Remise', margin, y + 3, 100, 9);
     doc.text(`-${pdfMoney(price.discount)}`, amountX, y + 3, { align: 'right' });
     y += 10;
   }

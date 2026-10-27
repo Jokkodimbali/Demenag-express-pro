@@ -842,7 +842,7 @@
     position: static;
   }
 }
-@media (max-width: 600px) {
+@media (max-width: 759px) {
   .hero h1 {
     font-size: clamp(30px, 10vw, 46px);
     line-height: 1;

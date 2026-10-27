@@ -511,6 +511,21 @@
     padding: 11px 8px;
     gap: 6px;
   }
+  .admin-reference-period {
+    width: 100%;
+    margin-left: 0;
+  }
+  .admin-reference-period-controls {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr) 36px;
+    width: 100%;
+  }
+  .admin-reference-period-controls input[type='date'] {
+    width: 100%;
+  }
+  .admin-reference-period-controls > span {
+    grid-column: 1 / -1;
+  }
   .revenue-controls {
     align-items: stretch;
   }
@@ -749,19 +764,5 @@
   .admin-reference-heading {
     align-items: stretch;
     flex-direction: column;
-  }
-  .admin-plan-follow-up .section-heading {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-  .admin-plan-follow-up .stats-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .plan-follow-up-card-heading {
-    align-items: flex-start;
-    flex-wrap: wrap;
-  }
-  .plan-follow-up-card-heading > span:nth-child(2) {
-    margin-left: auto;
   }
 }

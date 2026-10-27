@@ -60,7 +60,6 @@ export function ScheduleOptions({
             id="booking-slot"
             type="time"
             step="60"
-            required={Boolean(draft.date)}
             value={draft.timeSlot}
             onChange={(e) => setDraft((d) => ({ ...d, timeSlot: e.target.value }))}
           />

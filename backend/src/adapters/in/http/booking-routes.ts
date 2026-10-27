@@ -189,6 +189,9 @@ export function registerBookingRoutes(
           p.status,
           p.reason,
           p.version,
+          p.actualTime,
+          p.photo,
+          { cause: p.cause, severity: p.severity, correctiveAction: p.correctiveAction },
         ),
       );
     },

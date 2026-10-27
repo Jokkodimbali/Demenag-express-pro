@@ -276,7 +276,7 @@ export function Admin() {
             ))}
           </div>
           <div className="admin-reference-period" aria-label="Période des réservations">
-            <div>
+            <div className="admin-reference-period-tabs">
               {(
                 [
                   ['all', 'Toutes dates'],
@@ -295,7 +295,7 @@ export function Admin() {
               ))}
             </div>
             {period !== 'all' && (
-              <>
+              <div className="admin-reference-period-controls">
                 <button
                   type="button"
                   aria-label="Précédent"
@@ -326,7 +326,7 @@ export function Admin() {
                       })
                     : `Semaine du ${referenceShortDate(weekStart(selectedDay))} au ${referenceShortDate(addDays(weekStart(selectedDay), 6))}`}
                 </span>
-              </>
+              </div>
             )}
           </div>
         </div>

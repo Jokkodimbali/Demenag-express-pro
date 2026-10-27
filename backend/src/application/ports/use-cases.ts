@@ -2,6 +2,8 @@ import type {
   Booking,
   BookingInput,
   BookingStatus,
+  WorkPlanCompliance,
+  WorkPlanReview,
   Catalogue,
   Driver,
   Options,
@@ -80,9 +82,12 @@ export interface MovingUseCases {
     user: User,
     id: string,
     stepId: string,
-    status: 'respected' | 'not_respected',
+    status: WorkPlanCompliance,
     reason: string,
     version: number,
+    actualTime?: string,
+    photo?: string,
+    details?: Pick<WorkPlanReview, 'cause' | 'severity' | 'correctiveAction'>,
   ): Promise<Booking>;
   updateRoute(user: User, id: string, from: Point, to: Point, version: number): Promise<Booking>;
   assignDriver(user: User, id: string, driverId: string | null, version: number): Promise<Booking>;

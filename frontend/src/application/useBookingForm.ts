@@ -11,13 +11,20 @@ import type {
 } from '../domain/model';
 import { inventoryNote } from '../domain/inventory';
 import { tollPrice } from '../domain/toll-prices';
+import { quoteTollsFromLines, type TollExtraLine } from '../domain/toll-selection';
 import { normalizedClientPhone } from './services/client-summary';
 import { blankDraft, useApp } from './context';
 import { errorMessage } from './error-message';
 import { routes } from '../routing/routes';
 import { clearAdminQuoteDraft } from './admin-quote-draft-storage';
-type TollExtraLine = { id: string; label: string; quantity: number; unitPrice: number };
-export type AdminQuoteConfig = { trips: number; discount: number; customPrice: number | null };
+export type AdminQuoteConfig = {
+  trips: number;
+  discount: number;
+  discountType: 'fcfa' | 'pct';
+  discountReason: string;
+  customPrice: number | null;
+  labourUnitPriceOverride?: number | null;
+};
 export function useBookingForm({
   mode = 'booking',
   quoteConfig,
@@ -89,6 +96,7 @@ export function useBookingForm({
           vehicleId: booking.vehicle.id,
           customerName: booking.customerName,
           customerPhone: booking.phone,
+          source: booking.source ?? '',
           fromAddress: booking.fromAddress,
           toAddress: booking.toAddress,
           from: booking.from,
@@ -321,6 +329,7 @@ export function useBookingForm({
         trips: administrativeQuote ? (quoteConfig?.trips ?? 1) : draft.estimatedTrips,
         customerName: draft.customerName,
         customerPhone: draft.customerPhone,
+        source: administrativeQuote ? draft.source : undefined,
         fromAddress: draft.fromAddress,
         toAddress: draft.toAddress,
         date: draft.date,
@@ -385,13 +394,13 @@ export function useBookingForm({
             kind: 'provisional',
             trips: quoteConfig?.trips ?? 1,
             customPrice: price.tier === 3 ? (quoteConfig?.customPrice ?? null) : null,
+            labourUnitPriceOverride: quoteConfig?.labourUnitPriceOverride ?? null,
             discount: quoteConfig?.discount ?? 0,
+            discountType: quoteConfig?.discountType ?? 'fcfa',
+            discountReason: quoteConfig?.discountReason ?? '',
             notes: bookingNotes,
-            extraLines: tollLines.map(({ label, quantity, unitPrice }) => ({
-              label,
-              quantity,
-              unitPrice,
-            })),
+            extraLines: [],
+            tolls: quoteTollsFromLines(tollLines),
             options: administrativeQuote && quoteOptions ? quoteOptions : draft.options,
             version: booking.version,
           });
@@ -433,12 +442,11 @@ export function useBookingForm({
     ['wardrobe', messages.montageDemontageDArmoire, messages.demontageEtRemontageSurPlace],
     ['bed', messages.montageDemontageDeLit, messages.litDeuxPlaces],
   ];
-  const tollTotal = tollLines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
   const transport = price?.lines[0];
   const trips = quoteConfig?.trips ?? 1;
   const transportUnit =
     price?.tier === 3 ? (quoteConfig?.customPrice ?? 0) : (transport?.unitPrice ?? 0);
-  const quoteLines =
+  const quoteLinesRaw =
     price?.tier === 3 && quoteConfig?.customPrice
       ? [
           {
@@ -454,28 +462,36 @@ export function useBookingForm({
             ? { ...line, quantity: trips, unitPrice: transportUnit, total: transportUnit * trips }
             : line,
         ) ?? []);
+  const quoteLines = quoteLinesRaw.map((line) =>
+    quoteConfig?.labourUnitPriceOverride && /^Manœuvre/u.test(line.label)
+      ? {
+          ...line,
+          unitPrice: quoteConfig.labourUnitPriceOverride,
+          total: line.quantity * quoteConfig.labourUnitPriceOverride,
+        }
+      : line,
+  );
   const baseTotal =
     price?.total === null && (price.tier !== 3 || quoteConfig?.customPrice == null)
       ? null
       : quoteLines.reduce((sum, line) => sum + line.total, 0);
-  const subtotal = baseTotal === null ? null : baseTotal + tollTotal;
-  const priceWithTolls = price
+  const rawDiscount = quoteConfig?.discount ?? 0;
+  const effectiveDiscount =
+    baseTotal === null
+      ? 0
+      : quoteConfig?.discountType === 'pct'
+        ? Math.round((baseTotal * Math.min(100, rawDiscount)) / 100)
+        : Math.min(baseTotal, rawDiscount);
+  const quotePreviewPrice = price
     ? {
         ...price,
-        lines: [
-          ...quoteLines,
-          ...tollLines.map((line) => ({
-            label: line.label,
-            quantity: line.quantity,
-            unitPrice: line.unitPrice,
-            total: line.quantity * line.unitPrice,
-          })),
-        ],
-        total:
-          subtotal === null || (quoteConfig?.discount ?? 0) > subtotal
-            ? null
-            : subtotal - (quoteConfig?.discount ?? 0),
-        discount: quoteConfig?.discount ?? 0,
+        lines: quoteLines,
+        total: baseTotal === null ? null : baseTotal - effectiveDiscount,
+        discount: effectiveDiscount,
+        discountLabel: `Remise${quoteConfig?.discountType === 'pct' && rawDiscount ? ` (${Math.min(100, rawDiscount)} %)` : ''}${quoteConfig?.discountReason?.trim() ? ` · ${quoteConfig.discountReason.trim()}` : ''}`,
+        discountType: quoteConfig?.discountType ?? 'fcfa',
+        discountValue: rawDiscount,
+        discountReason: quoteConfig?.discountReason?.trim() ?? '',
         trips,
       }
     : null;
@@ -487,7 +503,7 @@ export function useBookingForm({
     user,
     draft,
     setDraft,
-    price: priceWithTolls,
+    price: quotePreviewPrice,
     estimating,
     estimateError,
     submitError,

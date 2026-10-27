@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { TollPoint } from '../src/domain/model';
-import { tollLine, tollPointForLine } from '../src/domain/toll-selection';
+import { quoteTollsFromLines, tollLine, tollPointForLine } from '../src/domain/toll-selection';
 
 const point: TollPoint = {
   id: 'rufisque',
@@ -35,4 +35,13 @@ test('un devis enregistré retrouve le péage et conserve son tarif historique',
   assert.equal(tollPointForLine(saved.label, [point])?.id, point.id);
   assert.equal(saved.unitPrice, 800);
   assert.equal(saved.quantity * saved.unitPrice, 3200);
+});
+
+test('les péages du devis sont transmis séparément des lignes de prestation', () => {
+  const oneWay = tollLine(point, 'sprinter', 'one-way', 3);
+  const roundTrip = tollLine(point, 'sprinter', 'round-trip', 2);
+  assert.deepEqual(quoteTollsFromLines([oneWay, roundTrip]), [
+    { tollPointId: point.id, direction: 'one-way', quantity: 3 },
+    { tollPointId: point.id, direction: 'round-trip', quantity: 4 },
+  ]);
 });

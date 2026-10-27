@@ -8,12 +8,19 @@ type ReviewDraft = { status: WorkPlanCompliance; reason: string };
 
 function reviewLabel(review: WorkPlanReview): string {
   if (review.status === 'respected') return 'Respecté';
+  if (review.status === 'late') return 'En retard';
   if (review.status === 'not_respected') return 'Non respecté';
   return 'À vérifier';
 }
 
 function reviewTone(status: WorkPlanCompliance): string {
-  return status === 'respected' ? 'success' : status === 'not_respected' ? 'warning' : 'pending';
+  return status === 'respected'
+    ? 'success'
+    : status === 'late'
+      ? 'warning'
+      : status === 'not_respected'
+        ? 'danger'
+        : 'pending';
 }
 
 function reviewTime(review: WorkPlanReview): string {
@@ -65,18 +72,12 @@ function PlanStep({
   }, [step.review.status, step.review.reason, booking.version]);
 
   async function saveReview() {
-    if (!editable || draft.status === 'pending' || busy) return;
+    if (!editable || busy) return;
     setBusy(true);
     setError('');
     try {
       onChange(
-        await api.reviewWorkPlan(
-          booking.id,
-          step.id,
-          draft.status,
-          draft.status === 'not_respected' ? draft.reason : '',
-          booking.version,
-        ),
+        await api.reviewWorkPlan(booking.id, step.id, draft.status, draft.reason, booking.version),
       );
     } catch (reason) {
       setError(errorMessage(reason));
@@ -106,6 +107,14 @@ function PlanStep({
             <div role="group" aria-label={`Respect de l’horaire ${step.title}`}>
               <button
                 type="button"
+                className={draft.status === 'late' ? 'selected warning' : ''}
+                aria-pressed={draft.status === 'late'}
+                onClick={() => setDraft((current) => ({ ...current, status: 'late' }))}
+              >
+                <Clock3 size={15} /> En retard
+              </button>
+              <button
+                type="button"
                 className={draft.status === 'respected' ? 'selected success' : ''}
                 aria-pressed={draft.status === 'respected'}
                 onClick={() => setDraft({ status: 'respected', reason: '' })}
@@ -121,12 +130,10 @@ function PlanStep({
                 <TriangleAlert size={15} /> Non respecté
               </button>
             </div>
-            {draft.status === 'not_respected' && (
+            {(draft.status === 'late' || draft.status === 'not_respected') && (
               <label>
-                Justification obligatoire
+                Justificatif : raison de l’écart
                 <textarea
-                  required
-                  minLength={3}
                   maxLength={1000}
                   value={draft.reason}
                   onChange={(event) =>
@@ -139,11 +146,7 @@ function PlanStep({
             <button
               type="button"
               className="button secondary small"
-              disabled={
-                busy ||
-                draft.status === 'pending' ||
-                (draft.status === 'not_respected' && draft.reason.trim().length < 3)
-              }
+              disabled={busy}
               onClick={() => void saveReview()}
             >
               {busy ? 'Enregistrement…' : 'Enregistrer le contrôle'}

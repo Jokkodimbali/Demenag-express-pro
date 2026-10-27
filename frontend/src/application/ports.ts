@@ -16,6 +16,7 @@ import type {
   Driver,
   VehicleInspectionPhotos,
   WorkPlanCompliance,
+  WorkPlanReview,
 } from '../domain/model';
 export interface UserRepository {
   users(): Promise<User[]>;
@@ -68,9 +69,12 @@ export interface BookingRepository {
   reviewWorkPlan(
     id: string,
     stepId: string,
-    status: Exclude<WorkPlanCompliance, 'pending'>,
+    status: WorkPlanCompliance,
     reason: string,
     version: number,
+    actualTime?: string,
+    photo?: string,
+    details?: Pick<WorkPlanReview, 'cause' | 'severity' | 'correctiveAction'>,
   ): Promise<Booking>;
   updateBookingRoute(id: string, from: Point, to: Point, version: number): Promise<Booking>;
   quote(id: string, input: QuoteInput): Promise<Booking>;

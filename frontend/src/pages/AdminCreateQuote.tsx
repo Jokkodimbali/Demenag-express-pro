@@ -1,4 +1,4 @@
-import { ArrowLeft, Minus, Plus } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, Warehouse } from 'lucide-react';
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useBookingForm } from '../application/useBookingForm';
@@ -33,7 +33,10 @@ export function AdminCreateQuote() {
   const [quoteConfig, setQuoteConfig] = useState<AdminQuoteConfig>({
     trips: 1,
     discount: 0,
+    discountType: 'fcfa',
+    discountReason: '',
     customPrice: null,
+    labourUnitPriceOverride: null,
   });
   const [questionnaireOpen, setQuestionnaireOpen] = useState(false);
   const state = useBookingForm({ mode: 'admin-quote', quoteConfig });
@@ -105,13 +108,17 @@ export function AdminCreateQuote() {
     const quote = booking.quotes.at(-1);
     setQuoteConfig({
       trips: quote?.price.trips ?? booking.estimate.trips,
-      discount: quote?.price.discount ?? booking.estimate.discount,
+      discount: quote?.price.discountValue ?? quote?.price.discount ?? booking.estimate.discount,
+      discountType: quote?.price.discountType ?? 'fcfa',
+      discountReason: quote?.price.discountReason ?? '',
       customPrice:
         (quote?.price ?? booking.estimate).tier === 3
           ? ((quote?.price ?? booking.estimate).lines.find((line) =>
               line.label.startsWith('Transport'),
             )?.unitPrice ?? null)
           : null,
+      labourUnitPriceOverride:
+        quote?.price.lines.find((line) => line.label.startsWith('Manœuvre'))?.unitPrice ?? null,
     });
     setTollLines(
       (quote?.tolls ?? []).map((line) => ({
@@ -224,11 +231,6 @@ export function AdminCreateQuote() {
       .map(([id, label]) => `${label} : ${draft.questionnaireAnswers[id].trim()}`),
   ].join('\n');
   const totalTolls = tollLines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
-  const discountTooHigh = Boolean(
-    price &&
-    (price.tier !== 3 || quoteConfig.customPrice) &&
-    quoteConfig.discount > price.lines.reduce((sum, line) => sum + line.total, 0),
-  );
   const quoteDate = draft.date ? draft.date.split('-').reverse().join('/') : '—';
   const bounds = catalogue?.settings.distanceBounds ?? [15, 25, 35];
   const previewTier = !draft.route
@@ -257,27 +259,29 @@ export function AdminCreateQuote() {
             .map(([key, label]) => ({
               label,
               quantity: draft.options[key],
-              unitPrice: key === 'labour' ? labourPrice : (catalogue?.settings.assemblyPrice ?? 0),
+              unitPrice:
+                key === 'labour'
+                  ? quoteConfig.labourUnitPriceOverride || labourPrice
+                  : (catalogue?.settings.assemblyPrice ?? 0),
               total:
                 draft.options[key] *
-                (key === 'labour' ? labourPrice : (catalogue?.settings.assemblyPrice ?? 0)),
+                (key === 'labour'
+                  ? quoteConfig.labourUnitPriceOverride || labourPrice
+                  : (catalogue?.settings.assemblyPrice ?? 0)),
             })),
-          ...tollLines.map((line) => ({
-            label: line.label,
-            quantity: line.quantity,
-            unitPrice: line.unitPrice,
-            total: line.quantity * line.unitPrice,
-          })),
         ]
       : []);
   const previewSubtotal = previewLines.reduce((sum, line) => sum + line.total, 0);
+  const previewDiscount =
+    quoteConfig.discountType === 'pct'
+      ? Math.round((previewSubtotal * Math.min(100, quoteConfig.discount)) / 100)
+      : Math.min(previewSubtotal, quoteConfig.discount);
+  const previewDiscountLabel = `Remise${quoteConfig.discountType === 'pct' && quoteConfig.discount ? ` (${Math.min(100, quoteConfig.discount)} %)` : ''}${quoteConfig.discountReason.trim() ? ` · ${quoteConfig.discountReason.trim()}` : ''}`;
   const previewTotal = price
     ? price.total
     : previewTier === 3 && !quoteConfig.customPrice
       ? null
-      : previewSubtotal >= quoteConfig.discount
-        ? previewSubtotal - quoteConfig.discount
-        : null;
+      : previewSubtotal - previewDiscount;
   const onTollToggle = (line: (typeof tollLines)[number], checked: boolean) =>
     setTollLines((current) =>
       checked
@@ -403,6 +407,36 @@ export function AdminCreateQuote() {
                   placeholder="Téléphone"
                 />
               </label>
+              <div className="admin-quote-source">
+                <span>COMMENT LE CLIENT NOUS A CONNUS ?</span>
+                <div>
+                  {[
+                    'Facebook',
+                    'YouTube',
+                    'Instagram',
+                    'Snapchat',
+                    'TikTok',
+                    'Autre pub',
+                    'Bouche-à-oreille',
+                    'Client fidèle',
+                    'Autre',
+                  ].map((source) => {
+                    const selected = draft.source === source;
+                    return (
+                      <button
+                        type="button"
+                        key={source}
+                        className={selected ? 'selected' : ''}
+                        onClick={() =>
+                          setDraft((current) => ({ ...current, source: selected ? '' : source }))
+                        }
+                      >
+                        {source}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
               <label>
                 Date prévue
                 <input
@@ -604,9 +638,43 @@ export function AdminCreateQuote() {
                 </div>
               </div>
             ))}
+            <div className="admin-quote-labour-override">
+              <label htmlFor="admin-labour-unit-price">Prix par manœuvre (FCFA)</label>
+              <input
+                id="admin-labour-unit-price"
+                type="number"
+                min="0"
+                value={quoteConfig.labourUnitPriceOverride ?? ''}
+                placeholder={String(labourPrice)}
+                onChange={(event) =>
+                  setQuoteConfig((current) => ({
+                    ...current,
+                    labourUnitPriceOverride: event.target.value
+                      ? Math.max(0, Number(event.target.value)) || null
+                      : null,
+                  }))
+                }
+              />
+              <small>Vide = grille admin ({money(labourPrice)})</small>
+            </div>
             <div className="admin-quote-discount">
               <label>
-                Remise (FCFA)
+                Type de remise
+                <select
+                  value={quoteConfig.discountType}
+                  onChange={(event) =>
+                    setQuoteConfig((current) => ({
+                      ...current,
+                      discountType: event.target.value as 'fcfa' | 'pct',
+                    }))
+                  }
+                >
+                  <option value="fcfa">FCFA</option>
+                  <option value="pct">%</option>
+                </select>
+              </label>
+              <label>
+                Remise ({quoteConfig.discountType === 'pct' ? '%' : 'FCFA'})
                 <input
                   type="number"
                   min={0}
@@ -620,7 +688,20 @@ export function AdminCreateQuote() {
                   }
                 />
               </label>
-              <span>Remise appliquée sur le total.</span>
+              <label>
+                Motif de la remise
+                <input
+                  type="text"
+                  maxLength={200}
+                  value={quoteConfig.discountReason}
+                  onChange={(event) =>
+                    setQuoteConfig((current) => ({
+                      ...current,
+                      discountReason: event.target.value,
+                    }))
+                  }
+                />
+              </label>
             </div>
             <label>
               Remarque libre
@@ -748,8 +829,8 @@ export function AdminCreateQuote() {
               )}
               {quoteConfig.discount > 0 && (
                 <div className="admin-quote-paper-line">
-                  <span>Remise</span>
-                  <strong>− {money(quoteConfig.discount)}</strong>
+                  <span>{previewDiscountLabel}</span>
+                  <strong>− {money(previewDiscount)}</strong>
                 </div>
               )}
               <div className="admin-quote-paper-total">
@@ -757,6 +838,44 @@ export function AdminCreateQuote() {
                 <strong>{previewTotal === null ? 'À calculer' : money(previewTotal)}</strong>
               </div>
             </div>
+            {tollLines.length > 0 && (
+              <div className="admin-quote-paper-tolls">
+                <div className="admin-quote-paper-tolls-head">
+                  <span className="admin-quote-paper-tolls-icon">
+                    <Warehouse size={16} strokeWidth={2.2} />
+                  </span>
+                  <span>
+                    <strong>PÉAGES À LA CHARGE DU CLIENT</strong>
+                    <small>
+                      {tollLines.length} péage{tollLines.length > 1 ? 's' : ''} · à régler sur place
+                      par le client
+                    </small>
+                  </span>
+                  <b>NON INCLUS DANS LE TOTAL</b>
+                </div>
+                <div className="admin-quote-paper-tolls-grid">
+                  <span>PÉAGE</span>
+                  <span>PASSAGES</span>
+                  <span>PRIX UNIT.</span>
+                  <span>MONTANT</span>
+                  {tollLines.map((line) => (
+                    <div className="admin-quote-paper-tolls-row" key={line.id}>
+                      <span>
+                        <strong>{line.label}</strong>
+                        <small>{selected.name}</small>
+                      </span>
+                      <span>{line.quantity}</span>
+                      <span>{money(line.unitPrice)}</span>
+                      <strong>{money(line.quantity * line.unitPrice)}</strong>
+                    </div>
+                  ))}
+                </div>
+                <div className="admin-quote-paper-tolls-total">
+                  <span>Total péages à régler par le client</span>
+                  <strong>{money(totalTolls)}</strong>
+                </div>
+              </div>
+            )}
             {(inventoryText || estimateText || questionnaireText || draft.notes) && (
               <div className="admin-quote-paper-note">
                 {[inventoryText, estimateText, questionnaireText, draft.notes]
@@ -772,11 +891,6 @@ export function AdminCreateQuote() {
           {estimateError && (
             <p className="alert error" role="alert">
               {estimateError}
-            </p>
-          )}
-          {discountTooHigh && (
-            <p className="alert error" role="alert">
-              La remise dépasse le sous-total du devis.
             </p>
           )}
           {submitError && (

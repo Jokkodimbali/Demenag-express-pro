@@ -7,17 +7,29 @@ const MAX_DATABASE_INTEGER = 2_147_483_647;
 const accessLabel = (floor: number, lift: boolean) =>
   `${floor === 0 ? 'RDC' : floor === 1 ? '1er étage' : `${floor}e étage`}${floor > 0 ? (lift ? ' avec ascenseur' : ' sans ascenseur') : ''}`;
 
+export function assemblyUnitPrice(
+  settings: Settings,
+  key: string,
+  origin: 'local' | 'import' = 'local',
+  size?: number,
+) {
+  const configured = settings.montageP?.[key];
+  if (!configured) return settings.assemblyPrice;
+  const sized = size == null ? undefined : configured.sz?.[String(size)]?.[origin];
+  if (Number.isInteger(sized) && sized! >= 0) return sized!;
+  const base = configured[origin];
+  const fallback =
+    Number.isInteger(base) && base! >= 0
+      ? base!
+      : settings.assemblyPrice * (origin === 'import' ? 1.5 : 1);
+  const increment = origin === 'import' ? (configured.uI ?? configured.u) : configured.u;
+  return size != null && increment
+    ? Math.round(fallback + Math.max(0, size - 1) * increment)
+    : fallback;
+}
+
 export function labourUnitPrice(settings: Settings, access?: WorkAccess) {
-  if (!access) return settings.labourMatrix?.none?.[0]?.[0] ?? settings.labourPrice;
-  const scenario = access.fromLift
-    ? access.toLift
-      ? 'both'
-      : 'from'
-    : access.toLift
-      ? 'to'
-      : 'none';
-  const matrixPrice = settings.labourMatrix?.[scenario]?.[access.fromFloor]?.[access.toFloor];
-  if (Number.isInteger(matrixPrice) && matrixPrice! >= 0) return matrixPrice!;
+  if (!access) return settings.labourPrice;
   const surcharge = (floor: number, lift: boolean) =>
     floor <= 0
       ? 0
@@ -44,6 +56,9 @@ export function calculatePrice(
   discount = 0,
   extraLines: Array<{ label: string; quantity: number; unitPrice: number }> = [],
   workAccess?: WorkAccess,
+  labourUnitPriceOverride?: number | null,
+  discountType: 'fcfa' | 'pct' = 'fcfa',
+  discountReason = '',
 ): Price {
   requireValue(
     Number.isInteger(trips) && trips >= 1 && trips <= settings.maxTrips,
@@ -62,6 +77,13 @@ export function calculatePrice(
     customPrice === null ||
       (Number.isInteger(customPrice) && customPrice > 0 && customPrice <= 10000000),
     messages.prixPersonnaliseInvalide,
+  );
+  requireValue(
+    labourUnitPriceOverride == null ||
+      (Number.isInteger(labourUnitPriceOverride) &&
+        labourUnitPriceOverride > 0 &&
+        labourUnitPriceOverride <= 10000000),
+    'Prix par manœuvre invalide.',
   );
   const tier = tierOf(distance, settings.distanceBounds);
   const transport = customPrice ?? (tier === 3 ? null : vehicle.prices[tier]);
@@ -83,11 +105,13 @@ export function calculatePrice(
     [
       `${messages.manUvre}${accessDescription}`,
       options.labour,
-      labourUnitPrice(settings, workAccess),
+      labourUnitPriceOverride && labourUnitPriceOverride > 0
+        ? labourUnitPriceOverride
+        : labourUnitPrice(settings, workAccess),
     ],
-    [messages.menuisierBureau, options.desk, settings.assemblyPrice],
-    [messages.menuisierArmoire, options.wardrobe, settings.assemblyPrice],
-    [messages.menuisierLit, options.bed, settings.assemblyPrice],
+    [messages.menuisierBureau, options.desk, assemblyUnitPrice(settings, 'bureau')],
+    [messages.menuisierArmoire, options.wardrobe, assemblyUnitPrice(settings, 'armoire')],
+    [messages.menuisierLit, options.bed, assemblyUnitPrice(settings, 'lit')],
   ] as [string, number, number][])
     if (quantity) lines.push({ label, quantity, unitPrice, total: quantity * unitPrice });
   for (const line of extraLines) {
@@ -115,14 +139,20 @@ export function calculatePrice(
     Number.isSafeInteger(subtotal) && subtotal <= MAX_DATABASE_INTEGER,
     messages.montantDuDevisDepasseLimiteDeStockage,
   );
-  requireValue(
-    transport === null ? discount === 0 : discount <= subtotal,
-    messages.laRemiseDepasseLeMontantDuDevis,
-  );
+  requireValue(discountType === 'fcfa' || discountType === 'pct', messages.remiseInvalide);
+  const effectiveDiscount =
+    discountType === 'pct'
+      ? Math.round((subtotal * Math.min(100, discount)) / 100)
+      : Math.min(discount, subtotal);
+  const reason = discountReason.trim();
   return {
     lines,
-    total: transport === null ? null : subtotal - discount,
-    discount,
+    total: transport === null ? null : subtotal - effectiveDiscount,
+    discount: effectiveDiscount,
+    discountLabel: `Remise${discountType === 'pct' && discount ? ` (${Math.min(100, discount)} %)` : ''}${reason ? ` · ${reason}` : ''}`,
+    discountType,
+    discountValue: discount,
+    discountReason: reason,
     tier,
     trips,
     currency: 'XOF',
