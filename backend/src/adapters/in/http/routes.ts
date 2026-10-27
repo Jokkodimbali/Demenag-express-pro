@@ -7,6 +7,7 @@ export const apiRoutes = {
     register: '/api/auth/register',
     login: '/api/auth/login',
     password: '/api/auth/password',
+    passwordResetRequest: '/api/auth/password-reset-request',
     current: '/api/auth/me',
     logout: '/api/auth/logout',
   },
@@ -22,12 +23,14 @@ export const apiRoutes = {
   administration: {
     accounting: '/api/admin/accounting',
     users: '/api/admin/users',
+    userPasswordReset: '/api/admin/users/:id/password-reset',
     clients: '/api/admin/clients',
     drivers: '/api/admin/drivers',
     profile: '/api/admin/profile',
   },
   driver: {
     profile: '/api/driver/profile',
+    availability: '/api/driver/availability',
     bookings: '/api/driver/bookings',
     inspections: '/api/driver/vehicle-inspections',
     breakdowns: '/api/driver/breakdowns',

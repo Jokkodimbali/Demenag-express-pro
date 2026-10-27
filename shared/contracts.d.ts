@@ -6,6 +6,7 @@ export type User = {
   role: Role;
   active?: boolean;
   photo?: string | null;
+  passwordResetRequestedAt?: string | null;
 };
 export type UserCredentials = User & { passwordHash: string };
 export type Point = [number, number];
@@ -31,6 +32,12 @@ export type Driver = {
   photo: string | null;
   active: boolean;
   vehicleId: string | null;
+  availability?: DriverAvailabilityDay[];
+};
+export type DriverAvailabilityDay = {
+  available: boolean;
+  startTime: string;
+  endTime: string;
 };
 export type BookingRules = {
   bookingsEnabled: boolean;
@@ -65,6 +72,9 @@ export type Settings = BookingRules & {
   assemblyPrice: number;
   businessPhone: string;
   whatsappPhone: string;
+  whatsappCountryCode?: string;
+  whatsappMode?: 'api' | 'wame' | 'web' | 'app';
+  whatsappQuoteTemplate?: string;
   businessName: string;
   businessAddress: string;
   invoiceFooter: string;
@@ -132,6 +142,7 @@ export type BookingTrip = {
   startedAt: string;
   finishedAt: string | null;
 };
+export type BookingReminder = { at: string; daysBefore: number };
 export type WorkPlanCompliance = 'pending' | 'respected' | 'not_respected';
 export type WorkPlanReview = {
   status: WorkPlanCompliance;
@@ -200,6 +211,13 @@ export type Quote = {
   price: Price;
   notes: string;
   options?: Options;
+  tolls?: QuoteTollLine[];
+};
+export type QuoteTollLine = {
+  tollPointId: string;
+  label: string;
+  quantity: number;
+  unitPrice: number;
 };
 export type Booking = {
   id: string;
@@ -227,6 +245,7 @@ export type Booking = {
   trips?: BookingTrip[];
   workPlan?: WorkPlanStep[];
   inventorySnapshot?: BookingInventorySnapshot;
+  reminders?: BookingReminder[];
   driverFinishedAt?: string | null;
   createdAt: string;
   version: number;
@@ -256,6 +275,11 @@ export type QuoteInput = {
   discount: number;
   notes: string;
   extraLines: Array<{ label: string; quantity: number; unitPrice: number }>;
+  tolls?: Array<{
+    tollPointId: string;
+    direction: 'one-way' | 'round-trip';
+    quantity: number;
+  }>;
   options?: Options;
   version: number;
 };

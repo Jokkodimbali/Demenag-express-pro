@@ -31,7 +31,6 @@ export function ClientBookingCard({
   mapsUrl.searchParams.set('origin', booking.from.join(','));
   mapsUrl.searchParams.set('destination', booking.to.join(','));
   mapsUrl.searchParams.set('travelmode', 'driving');
-
   return (
     <article className="reference-client-card">
       <div className="reference-client-card-top">
@@ -52,9 +51,11 @@ export function ClientBookingCard({
               Modifier ma demande
             </Link>
           )}
-          <span className={`reference-client-status ${finalQuote ? 'completed' : 'pending'}`}>
-            {finalQuote ? 'Final' : 'Provisoire'}
-          </span>
+          <div className="reference-client-status-group">
+            <span className={`reference-client-status ${finalQuote ? 'completed' : 'pending'}`}>
+              {finalQuote ? 'Final' : 'Provisoire'}
+            </span>
+          </div>
         </div>
       </div>
       <div className="reference-client-map">

@@ -65,6 +65,20 @@ export class AdministrationService implements AdministrationUseCases {
       passwordHash: await this.passwords.hash(input.password),
     });
   }
+  async resetClientPassword(actor: User, userId: string, password: string) {
+    requireAdministrator(actor);
+    const passwordHash = await this.passwords.hash(password);
+    await this.repository.transaction(async (repository) => {
+      requireAdministrator(await repository.findUser(actor.id));
+      const target = await repository.findUser(userId);
+      if (!target || target.role !== 'client') throw new AppError(404, messages.compteIntrouvable);
+      if (!target.passwordResetRequestedAt)
+        throw new AppError(409, 'Aucune demande de réinitialisation en attente pour ce client.');
+      if (!repository.resetClientPassword)
+        throw new AppError(500, 'La réinitialisation des mots de passe est indisponible.');
+      await repository.resetClientPassword(userId, passwordHash);
+    });
+  }
   async updateProfile(actor: User, input: Pick<User, 'name' | 'phone' | 'photo'>) {
     requireAdministrator(actor);
     return this.users.updateProfile(

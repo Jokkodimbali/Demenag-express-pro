@@ -8,7 +8,13 @@ export class PrismaUsers implements UserRepository {
   async updatePassword(userId: string, passwordHash: string) {
     await this.db.utilisateur.update({
       where: { id: userId },
-      data: { empreinteMotDePasse: passwordHash },
+      data: { empreinteMotDePasse: passwordHash, demandeReinitialisationMotDePasse: null },
+    });
+  }
+  async requestPasswordReset(userId: string, requestedAt: Date) {
+    await this.db.utilisateur.update({
+      where: { id: userId },
+      data: { demandeReinitialisationMotDePasse: requestedAt },
     });
   }
   async updateProfile(userId: string, name: string, phone: string, photo?: string | null) {

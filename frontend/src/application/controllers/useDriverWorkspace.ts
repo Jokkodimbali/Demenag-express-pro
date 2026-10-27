@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { Booking, Driver } from '../../domain/model';
+import type { Booking, Driver, DriverAvailabilityDay } from '../../domain/model';
 import { useApp } from '../context';
 import { errorMessage } from '../error-message';
 import { dataUrl } from '../validation/forms';
@@ -12,6 +12,7 @@ export function useDriverWorkspace(loadBookings = true) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [availabilitySaving, setAvailabilitySaving] = useState(false);
   const [retry, setRetry] = useState(0);
   useEffect(() => {
     if (!loadBookings) return;
@@ -55,5 +56,29 @@ export function useDriverWorkspace(loadBookings = true) {
       setSaving(false);
     }
   }
-  return { profile, bookings, loading, error, saving, setRetry, save };
+  async function saveAvailability(availability: DriverAvailabilityDay[]) {
+    if (availabilitySaving) return false;
+    setAvailabilitySaving(true);
+    setError('');
+    try {
+      setProfile(await api.updateDriverAvailability(availability));
+      return true;
+    } catch (reason) {
+      setError(errorMessage(reason));
+      return false;
+    } finally {
+      setAvailabilitySaving(false);
+    }
+  }
+  return {
+    profile,
+    bookings,
+    loading,
+    error,
+    saving,
+    availabilitySaving,
+    setRetry,
+    save,
+    saveAvailability,
+  };
 }

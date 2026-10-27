@@ -21,6 +21,7 @@ export interface UserRepository {
   users(): Promise<User[]>;
   updateUser(user: User): Promise<User>;
   createUser(user: Omit<User, 'id'> & { password: string }): Promise<User>;
+  resetClientPassword(id: string, password: string): Promise<void>;
 }
 export interface AdminProfileRepository {
   adminProfile(): Promise<User>;
@@ -45,6 +46,7 @@ export interface AuthRepository {
   onSessionExpired?(listener: () => void): () => void;
   me(): Promise<User | null>;
   login(phone: string, password: string): Promise<User>;
+  requestPasswordReset(phone: string): Promise<void>;
   register(name: string, phone: string, password: string): Promise<User>;
   logout(): Promise<void>;
   changePassword(oldPassword: string, newPassword: string): Promise<User>;
@@ -55,6 +57,7 @@ export interface BookingRepository {
   deleteBooking(id: string): Promise<void>;
   createBooking(input: BookingInput): Promise<Booking>;
   updateClientBooking(id: string, input: BookingInput, version: number): Promise<Booking>;
+  recordBookingReminder(id: string): Promise<Booking>;
   status(id: string, status: BookingStatus, version: number): Promise<Booking>;
   startBookingTrip(id: string, photos: string[]): Promise<Booking>;
   finishBookingTrip(id: string, photos: string[]): Promise<Booking>;
@@ -136,6 +139,7 @@ export interface DriverRepository {
   updateDriver(driver: Omit<Driver, 'userId'>): Promise<Driver>;
   driverProfile(): Promise<Driver>;
   updateDriverProfile(input: Pick<Driver, 'name' | 'phone' | 'photo'>): Promise<Driver>;
+  updateDriverAvailability(availability: NonNullable<Driver['availability']>): Promise<Driver>;
   driverBookings(): Promise<Booking[]>;
   driverReports(): Promise<VehicleReports>;
   submitVehicleInspection(

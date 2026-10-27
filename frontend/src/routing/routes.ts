@@ -7,6 +7,7 @@ export const routes = {
   administrationBookings: '/admin',
   administrationCreateQuote: '/admin/creer-un-devis',
   administrationPlanning: '/admin/planning',
+  administrationPlanFollowUp: '/admin/suivi-planning',
   administrationFinance: '/admin/finances',
   administrationAccounting: '/admin/comptabilite',
   administrationFleet: '/admin/flotte',

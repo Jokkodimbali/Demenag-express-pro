@@ -42,9 +42,20 @@ export function useBookingCard({
     options: quotedServiceOptions(b, last),
   }));
   const quoteSettings = b.pricingSettings ?? catalogue?.settings;
+  const tollPointIds = new Set(tollPoints.map((point) => point.id));
+  const billableExtraLines = extraLines.filter((line) => !tollPointIds.has(line.id));
+  const quoteTolls = extraLines
+    .filter((line) => tollPointIds.has(line.id))
+    .map((line) => ({
+      tollPointId: line.id,
+      direction: line.label.endsWith(' · Aller-retour')
+        ? ('round-trip' as const)
+        : ('one-way' as const),
+      quantity: line.quantity,
+    }));
   const quotePreviewTotal = useMemo(
-    () => (quoteSettings ? quoteTotal(b, quoteSettings, quoteDraft, extraLines) : null),
-    [b, extraLines, quoteDraft, quoteSettings],
+    () => (quoteSettings ? quoteTotal(b, quoteSettings, quoteDraft, billableExtraLines) : null),
+    [b, billableExtraLines, quoteDraft, quoteSettings],
   );
   useEffect(() => {
     setQuoteDraft({
@@ -191,7 +202,10 @@ export function useBookingCard({
     form.set('notes', quoteNotes);
     try {
       onChange(
-        await api.quote(b.id, quoteFromForm(form, b.version, extraLines, quoteDraft.options)),
+        await api.quote(
+          b.id,
+          quoteFromForm(form, b.version, billableExtraLines, quoteDraft.options, quoteTolls),
+        ),
       );
       setEditing(false);
     } catch (e) {
@@ -200,9 +214,9 @@ export function useBookingCard({
       setBusy(false);
     }
   }
-  const wa = last ? quoteNotificationUrl(b, last) : '';
+  const wa = last ? quoteNotificationUrl(b, last, catalogue?.settings) : '';
   const finalQuote = b.quotes.filter((quote) => quote.kind === 'final').at(-1);
-  const finalWa = finalQuote ? quoteNotificationUrl(b, finalQuote) : '';
+  const finalWa = finalQuote ? quoteNotificationUrl(b, finalQuote, catalogue?.settings) : '';
   async function refresh() {
     setError('');
     try {
@@ -211,8 +225,21 @@ export function useBookingCard({
       setError(errorMessage(e));
     }
   }
+  async function recordReminder() {
+    if (busy) return;
+    setError('');
+    setBusy(true);
+    try {
+      onChange(await api.recordBookingReminder(b.id));
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
   return {
     refresh,
+    recordReminder,
     busy,
     error,
     setError,
@@ -257,14 +284,23 @@ function extrasFromLast(
   tollPoints: TollPoint[],
 ): ExtraLine[] {
   if (!quote) return [];
-  return quote.price.lines
-    .filter(
-      (line) => !isQuotedServiceLine(line.label) && !line.label.includes(booking.vehicle.name),
-    )
-    .map((line) => ({
-      id: tollPointForLine(line.label, tollPoints)?.id ?? crypto.randomUUID(),
-      label: line.label,
-      quantity: line.quantity,
-      unitPrice: line.unitPrice,
-    }));
+  const tollLines = (quote.tolls ?? []).map((line) => ({
+    id: line.tollPointId,
+    label: line.label,
+    quantity: line.quantity,
+    unitPrice: line.unitPrice,
+  }));
+  return [
+    ...tollLines,
+    ...quote.price.lines
+      .filter(
+        (line) => !isQuotedServiceLine(line.label) && !line.label.includes(booking.vehicle.name),
+      )
+      .map((line) => ({
+        id: tollPointForLine(line.label, tollPoints)?.id ?? crypto.randomUUID(),
+        label: line.label,
+        quantity: line.quantity,
+        unitPrice: line.unitPrice,
+      })),
+  ];
 }

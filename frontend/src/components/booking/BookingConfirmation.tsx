@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import type { Booking, Settings } from '../../domain/model';
 import { money } from '../../domain/format';
 import { routes } from '../../routing/routes';
+import { whatsappUrl } from '../../application/services/whatsapp';
 
 export function BookingConfirmation({
   booking,
@@ -17,8 +18,12 @@ export function BookingConfirmation({
     ? booking.date.split('-').reverse().join('/') +
       (booking.timeSlot ? ' · ' + booking.timeSlot : '')
     : 'Date à confirmer';
-  const phone = (settings.whatsappPhone || settings.businessPhone).replace(/\D/g, '');
-  const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent('Bonjour Demenag Express, je viens d’envoyer ma demande ' + booking.reference + '.')}`;
+  const businessWhatsapp = settings.whatsappPhone || settings.businessPhone;
+  const contactWhatsappUrl = whatsappUrl(
+    businessWhatsapp,
+    'Bonjour Demenag Express, je viens d’envoyer ma demande ' + booking.reference + '.',
+    settings,
+  );
 
   return (
     <section className="booking-confirmation" aria-label="Demande envoyée">
@@ -62,10 +67,10 @@ export function BookingConfirmation({
           <Link className="button primary" to={isClient ? routes.account : routes.administration}>
             {isClient ? 'Voir mon espace client' : 'Suivre ma demande (Mon compte)'}
           </Link>
-          {phone && (
+          {businessWhatsapp && (
             <a
               className="button whatsapp"
-              href={whatsappUrl}
+              href={contactWhatsappUrl}
               target="_blank"
               rel="noopener noreferrer"
             >

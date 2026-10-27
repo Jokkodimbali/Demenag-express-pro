@@ -11,7 +11,8 @@ export function useAuthentication(space: LoginSpace) {
   const [params] = useSearchParams();
   const [register, setRegister] = useState(false),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState('');
+    [error, setError] = useState(''),
+    [resetSent, setResetSent] = useState(false);
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (busy) return;
@@ -21,8 +22,15 @@ export function useAuthentication(space: LoginSpace) {
     try {
       const phone = String(f.get('phone')),
         password = String(f.get('password'));
-      if (register) await api.register(String(f.get('name')), phone, password);
-      else await api.login(phone, password);
+      if (register) {
+        if (password !== String(f.get('passwordConfirmation')))
+          throw new Error('Les deux mots de passe ne correspondent pas.');
+        if (password.length < 8 || !/[a-zA-Z]/.test(password) || !/\d/.test(password))
+          throw new Error(
+            'Mot de passe trop faible : 8 caractères minimum, avec au moins une lettre et un chiffre.',
+          );
+        await api.register(String(f.get('name')), phone, password);
+      } else await api.login(phone, password);
       const user = await api.me();
       if (!user) throw new Error(messages.sessionImpossibleAVerifierReconnectezVous);
       if (user.role !== space) {
@@ -46,5 +54,30 @@ export function useAuthentication(space: LoginSpace) {
       setBusy(false);
     }
   }
-  return { register, setRegister, busy, error, setError, submit };
+  async function requestPasswordReset(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (busy) return;
+    setError('');
+    setBusy(true);
+    try {
+      const form = new FormData(e.currentTarget);
+      await api.requestPasswordReset(String(form.get('phone')));
+      setResetSent(true);
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return {
+    register,
+    setRegister,
+    busy,
+    error,
+    setError,
+    submit,
+    requestPasswordReset,
+    resetSent,
+    setResetSent,
+  };
 }

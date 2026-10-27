@@ -75,6 +75,10 @@ export class DriverService implements DriverUseCases {
     await this.users.updateProfile(actor.id, updated.name, updated.phone);
     return updated;
   }
+  async updateAvailability(actor: User, availability: NonNullable<Driver['availability']>) {
+    const current = await this.requireProfile(actor);
+    return this.drivers.update({ ...current, availability });
+  }
   async bookings(actor: User) {
     const profile = await this.requireProfile(actor);
     if (!profile.vehicleId) return [];

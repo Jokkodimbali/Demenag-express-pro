@@ -1,55 +1,40 @@
-import {
-  CalendarDays,
-  ClipboardList,
-  ReceiptText,
-  Settings2,
-  Truck,
-  UsersRound,
-  ClipboardCheck,
-  Megaphone,
-  FilePlus2,
-  BookOpenText,
-} from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { messages } from '../content/fr';
 import { routes } from '../routing/routes';
 
 const sections = [
-  { to: routes.administration, label: messages.tableauDeBord, Icon: ClipboardList, end: true },
-  { to: routes.administrationCreateQuote, label: 'Devis', Icon: FilePlus2 },
-  { to: routes.administrationPlanning, label: messages.planning, Icon: CalendarDays },
-  { to: routes.administrationFinance, label: messages.devisEtFactures, Icon: ReceiptText },
-  { to: routes.administrationAccounting, label: 'Comptabilité', Icon: BookOpenText },
-  { to: routes.administrationFleet, label: messages.flotteEtChauffeurs, Icon: Truck },
-  { to: routes.administrationSettings, label: messages.tarifsEtParametres, Icon: Settings2 },
-  { to: routes.administrationUsers, label: messages.comptesEtAcces, Icon: UsersRound },
-  { to: routes.administrationClients, label: messages.clients, Icon: UsersRound },
-  { to: routes.administrationVehicleReports, label: 'Contrôles véhicules', Icon: ClipboardCheck },
-  { to: routes.administrationAnnouncements, label: 'Annonces chauffeurs', Icon: Megaphone },
+  { to: routes.administration, label: 'Réservations' },
+  { to: routes.administrationPlanning, label: 'Calendrier' },
+  { to: routes.administrationFleet, label: 'Équipes' },
+  { to: routes.administrationPlanFollowUp, label: 'Suivi planning' },
+  { to: routes.administrationClients, label: 'Clients' },
+  { to: routes.administrationCreateQuote, label: 'Créer un devis' },
+  { to: routes.administrationAccounting, label: 'Comptabilité' },
+  { to: routes.administrationVehicleReports, label: 'Contrôles' },
+  { to: routes.administrationTollPoints, label: 'Péages' },
+  { to: routes.administrationPricing, label: 'Paramètres' },
 ];
 export function AdminLayout() {
   return (
     <section className="container workspace-page admin-workspace">
-      <div className="section-heading">
+      <header className="admin-reference-heading">
         <div>
-          <p className="eyebrow">{messages.espaceAdministrateur}</p>
-          <h1>{messages.administration}</h1>
-          <p>{messages.gerezLesReservationsEtAccompagnezVosClients}</p>
+          <span>ADMINISTRATION</span>
+          <h1>TABLEAU DE BORD</h1>
         </div>
-      </div>
-      <nav className="tabs admin-tabs" aria-label={messages.navigationAdministration}>
-        {sections.map(({ to, label, Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === routes.administration}
-            className={({ isActive }) => (isActive ? 'active' : '')}
-          >
-            <Icon size={17} />
-            {label}
-          </NavLink>
-        ))}
-      </nav>
+        <nav className="tabs admin-tabs" aria-label={messages.navigationAdministration}>
+          {sections.map(({ to, label }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end
+              className={({ isActive }) => (isActive ? 'active' : '')}
+            >
+              {label}
+            </NavLink>
+          ))}
+        </nav>
+      </header>
       <Outlet />
     </section>
   );

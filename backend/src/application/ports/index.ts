@@ -63,6 +63,7 @@ export interface UserRepository {
   findByPhone(phone: string): Promise<UserCredentials | null>;
   create(user: UserCredentials): Promise<User>;
   updatePassword(userId: string, hash: string): Promise<void>;
+  requestPasswordReset?(userId: string, requestedAt: Date): Promise<void>;
   updateProfile(userId: string, name: string, phone: string, photo?: string | null): Promise<User>;
 }
 export interface SessionRepository {
@@ -163,4 +164,5 @@ export interface AdministrationTransaction {
   countActiveAdministrators(): Promise<number>;
   saveUser(user: User): Promise<User>;
   revokeSessions(userId: string): Promise<void>;
+  resetClientPassword?(userId: string, passwordHash: string): Promise<void>;
 }

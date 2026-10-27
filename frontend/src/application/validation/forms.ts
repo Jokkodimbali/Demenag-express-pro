@@ -1,4 +1,4 @@
-import type { Catalogue, Driver, QuoteInput, User, Vehicle } from '../../domain/model';
+import type { Catalogue, Driver, QuoteInput, Settings, User, Vehicle } from '../../domain/model';
 import { messages } from '../../content/fr';
 import { vehicleCapacity } from '../../domain/vehicle-capacity';
 import { createLabourPriceMatrix, labourMatrixScenarios } from '../../domain/labour-price';
@@ -23,6 +23,7 @@ export function quoteFromForm(
   version: number,
   extraLines: QuoteInput['extraLines'],
   options: NonNullable<QuoteInput['options']>,
+  tolls: NonNullable<QuoteInput['tolls']> = [],
 ): QuoteInput {
   return {
     kind: data.get('kind') === 'final' ? 'final' : 'provisional',
@@ -31,6 +32,7 @@ export function quoteFromForm(
     discount: integer(data.get('discount')),
     notes: String(data.get('notes')),
     extraLines,
+    tolls,
     options,
     version,
   };
@@ -150,6 +152,15 @@ export async function catalogueFromForm(
       ...catalogue.settings,
       businessPhone: String(data.get('phone')),
       whatsappPhone: String(data.get('whatsappPhone')),
+      whatsappCountryCode: String(
+        data.get('whatsappCountryCode') || catalogue.settings.whatsappCountryCode || '221',
+      ),
+      whatsappMode: String(
+        data.get('whatsappMode') || catalogue.settings.whatsappMode || 'api',
+      ) as Settings['whatsappMode'],
+      whatsappQuoteTemplate: String(
+        data.get('whatsappQuoteTemplate') || catalogue.settings.whatsappQuoteTemplate || '',
+      ),
       businessName: String(data.get('businessName')),
       businessAddress: String(data.get('businessAddress')),
       invoiceFooter: String(data.get('invoiceFooter')),

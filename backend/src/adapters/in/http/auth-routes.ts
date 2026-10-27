@@ -3,7 +3,12 @@ import { security } from '../../../config/security.js';
 import type { Access } from './access.js';
 import { getActor } from './actor.js';
 import type { Dependencies } from './dependencies.js';
-import { loginSchema, passwordSchema, registerSchema } from './validation/auth.js';
+import {
+  loginSchema,
+  passwordResetRequestSchema,
+  passwordSchema,
+  registerSchema,
+} from './validation/auth.js';
 import { apiRoutes } from './routes.js';
 import { readSessionCookie } from './session-cookie.js';
 export function registerAuthRoutes(
@@ -39,6 +44,11 @@ export function registerAuthRoutes(
     clearLegacySessionCookie(res)
       .cookie(security.session.cookieName, session.token, cookieOptions)
       .json(session.user);
+  });
+  app.post(apiRoutes.auth.passwordResetRequest, authLimiter, async (req, res) => {
+    const { phone } = passwordResetRequestSchema.parse(req.body);
+    await deps.auth.requestPasswordReset(phone);
+    res.status(204).end();
   });
   app.get(apiRoutes.auth.current, async (req, res) =>
     res.json(await deps.auth.current(readSessionCookie(req))),

@@ -244,6 +244,35 @@ export class MovingService implements MovingUseCases {
     }
     return booking;
   }
+  async recordClientReminder(user: User, id: string) {
+    requireActiveUser(user);
+    requireValue(user.role === 'client', 'Cette action est réservée au client.');
+    const booking = await this.get(user, id);
+    requireValue(
+      Boolean(booking.date) && !['completed', 'cancelled'].includes(booking.status),
+      'Aucun rappel WhatsApp n’est disponible pour cette réservation.',
+    );
+    let whatsappPhone = booking.phone.replace(/\D/g, '');
+    if (whatsappPhone.startsWith('00')) whatsappPhone = whatsappPhone.slice(2);
+    if (whatsappPhone.length <= 9) whatsappPhone = `221${whatsappPhone.replace(/^0+/, '')}`;
+    requireValue(
+      whatsappPhone.length >= 10,
+      'Le numéro du client ne permet pas de préparer un rappel WhatsApp.',
+    );
+    const now = this.clock.now();
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Dakar' }).format(now);
+    const daysBefore = Math.round(
+      (+new Date(`${booking.date}T12:00:00Z`) - +new Date(`${today}T12:00:00Z`)) / 86400000,
+    );
+    requireValue(daysBefore >= 0, 'La date de cette réservation est déjà passée.');
+    return this.bookings.update(
+      {
+        ...booking,
+        reminders: [...(booking.reminders ?? []), { at: now.toISOString(), daysBefore }],
+      },
+      booking.version,
+    );
+  }
   async status(user: User, id: string, next: BookingStatus, version: number) {
     requireActiveUser(user);
     const booking = await this.bookings.find(id);
@@ -714,6 +743,24 @@ export class MovingService implements MovingUseCases {
       input.kind === 'final'
         ? { ...pricingSettings, maxTrips: Math.max(pricingSettings.maxTrips, input.trips) }
         : pricingSettings;
+    const tollPoints = await this.catalogue.listTollPoints();
+    const tolls = (input.tolls ?? []).map((line) => {
+      const point = tollPoints.find((item) => item.id === line.tollPointId);
+      requireValue(point, 'Un péage sélectionné n’existe plus dans le catalogue.');
+      requireValue(
+        line.direction !== 'round-trip' || line.quantity % 2 === 0,
+        'Un aller-retour doit compter deux passages par trajet.',
+      );
+      const prefix = /^péage\b/i.test(point.name) ? point.name : `Péage ${point.name}`;
+      const unitPrice = point.vehiclePrices[booking.vehicle.id] ?? point.heavyPrice;
+      requireValue(Number.isSafeInteger(unitPrice) && unitPrice > 0, 'Tarif de péage invalide.');
+      return {
+        tollPointId: point.id,
+        label: `${prefix} · ${line.direction === 'round-trip' ? 'Aller-retour' : 'Aller simple'}`,
+        quantity: line.quantity,
+        unitPrice,
+      };
+    });
     // Les prix du transport sont ceux du véhicule au moment de la réservation.
     const price = calculatePrice(
       booking.vehicle,
@@ -739,6 +786,7 @@ export class MovingService implements MovingUseCases {
       price,
       notes: input.notes,
       options,
+      tolls,
     };
     return this.bookings.update(
       {

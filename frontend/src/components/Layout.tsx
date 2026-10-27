@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useLayout } from '../application/controllers/useLayout';
 import { routes } from '../routing/routes';
+import { whatsappUrl } from '../application/services/whatsapp';
 
 export function Layout() {
   const { user, catalogue, error, logout } = useLayout();
@@ -111,13 +112,11 @@ export function Layout() {
               <a href={'tel:' + catalogue.settings.businessPhone}>Appel</a>
               <a href={'sms:' + catalogue.settings.businessPhone}>SMS</a>
               <a
-                href={
-                  'https://wa.me/' +
-                  (catalogue.settings.whatsappPhone || catalogue.settings.businessPhone).replace(
-                    /\D/g,
-                    '',
-                  )
-                }
+                href={whatsappUrl(
+                  catalogue.settings.whatsappPhone || catalogue.settings.businessPhone,
+                  '',
+                  catalogue.settings,
+                )}
                 target="_blank"
                 rel="noopener noreferrer"
               >

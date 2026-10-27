@@ -2,6 +2,7 @@ import type {
   BookingSlot,
   ClientQuestion,
   Driver,
+  DriverAvailabilityDay,
   LabourPriceMatrix,
   MovingLaborPlanningSettings,
   Settings,
@@ -15,7 +16,31 @@ import type {
   Utilisateur,
   Vehicule,
   Chauffeur,
+  Prisma,
 } from '../../../generated/prisma/client.js';
+
+const defaultDriverAvailability = (): DriverAvailabilityDay[] =>
+  Array.from({ length: 7 }, (_, day) => ({
+    available: day < 6,
+    startTime: '08:00',
+    endTime: '18:00',
+  }));
+
+function mapDriverAvailability(value: unknown): DriverAvailabilityDay[] {
+  if (!Array.isArray(value) || value.length !== 7) return defaultDriverAvailability();
+  const valid = value.every((day: unknown) => {
+    if (!day || typeof day !== 'object' || Array.isArray(day)) return false;
+    const item = day as Record<string, unknown>;
+    return (
+      typeof item.available === 'boolean' &&
+      typeof item.startTime === 'string' &&
+      /^\d{2}:\d{2}$/.test(item.startTime) &&
+      typeof item.endTime === 'string' &&
+      /^\d{2}:\d{2}$/.test(item.endTime)
+    );
+  });
+  return valid ? (value as DriverAvailabilityDay[]) : defaultDriverAvailability();
+}
 
 function labourPriceMatrix(value: unknown): LabourPriceMatrix | undefined {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
@@ -52,6 +77,7 @@ export const fromUser = (row: Utilisateur): UserCredentials => ({
   active: row.actif,
   role: row.role === 'administrateur' ? 'admin' : row.role === 'chauffeur' ? 'driver' : 'client',
   photo: row.photo,
+  passwordResetRequestedAt: row.demandeReinitialisationMotDePasse?.toISOString() ?? null,
 });
 export const toUser = (value: UserCredentials) => ({
   id: value.id,
@@ -101,6 +127,7 @@ export const fromDriver = (row: Chauffeur): Driver => ({
   photo: row.photo,
   active: row.actif,
   vehicleId: row.vehiculeId,
+  availability: mapDriverAvailability(row.disponibilites),
 });
 export const toDriver = (value: Driver) => ({
   id: value.id,
@@ -110,6 +137,7 @@ export const toDriver = (value: Driver) => ({
   photo: value.photo,
   actif: value.active,
   vehiculeId: value.vehicleId,
+  ...(value.availability ? { disponibilites: value.availability as Prisma.InputJsonValue } : {}),
 });
 export const fromSettings = (row: ParametreApplication): Settings => ({
   distanceBounds: row.bornesDistance as [number, number, number],
@@ -129,6 +157,11 @@ export const fromSettings = (row: ParametreApplication): Settings => ({
   assemblyPrice: row.tarifMontage,
   businessPhone: row.telephoneEntreprise,
   whatsappPhone: row.numeroWhatsapp || row.telephoneEntreprise,
+  whatsappCountryCode: String(row.indicatifWhatsapp || '221'),
+  whatsappMode: ['api', 'wame', 'web', 'app'].includes(String(row.modeWhatsapp))
+    ? (String(row.modeWhatsapp) as Settings['whatsappMode'])
+    : 'api',
+  whatsappQuoteTemplate: String(row.modeleDevisWhatsapp ?? ''),
   businessName: row.nomEntreprise,
   businessAddress: row.adresseEntreprise,
   invoiceFooter: row.piedFacture,
@@ -167,6 +200,11 @@ export const toSettings = (value: Settings) => ({
   tarifMontage: value.assemblyPrice,
   telephoneEntreprise: value.businessPhone,
   numeroWhatsapp: value.whatsappPhone,
+  indicatifWhatsapp: value.whatsappCountryCode ?? '221',
+  modeWhatsapp: value.whatsappMode ?? 'api',
+  modeleDevisWhatsapp:
+    value.whatsappQuoteTemplate ??
+    'Bonjour {nom}, votre déménagement est terminé. Voici votre devis final Demenag Express {num} : {total} ({allers} aller(s)-retour(s), {vehicule}). Le PDF est disponible dans votre espace client. Merci !',
   nomEntreprise: value.businessName,
   adresseEntreprise: value.businessAddress,
   piedFacture: value.invoiceFooter,

@@ -75,6 +75,8 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
     },
     changePassword: (oldPassword, newPassword) =>
       request(httpRoutes.authentication.password, 'POST', { oldPassword, newPassword }),
+    requestPasswordReset: (phone) =>
+      request(httpRoutes.authentication.passwordResetRequest, 'POST', { phone }),
     users: () => request(httpRoutes.users),
     hiddenClients: () => request(`${httpRoutes.clients}/hidden`),
     updateClient: (phone, input) => request(`${httpRoutes.clients}/${phone}`, 'PATCH', input),
@@ -87,11 +89,15 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
     updateAdminProfile: (input) => request(httpRoutes.adminProfile, 'PUT', input),
     updateUser: (user) => request(`${httpRoutes.users}/${user.id}`, 'PUT', user),
     createUser: (user) => request(httpRoutes.users, 'POST', user),
+    resetClientPassword: (id, password) =>
+      request(httpRoutes.resetUserPassword(id), 'POST', { password }),
     drivers: () => request(httpRoutes.drivers),
     createDriver: (input) => request(httpRoutes.drivers, 'POST', input),
     updateDriver: (driver) => request(`${httpRoutes.drivers}/${driver.id}`, 'PUT', driver),
     driverProfile: () => request(httpRoutes.driver.profile),
     updateDriverProfile: (input) => request(httpRoutes.driver.profile, 'PUT', input),
+    updateDriverAvailability: (availability) =>
+      request(httpRoutes.driver.availability, 'PUT', availability),
     driverBookings: () => request(httpRoutes.driver.bookings),
     driverReports: () => request(httpRoutes.driver.inspections),
     submitVehicleInspection: (input) => request(httpRoutes.driver.inspections, 'POST', input),
@@ -119,6 +125,7 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
     createBooking: (input) => request(httpRoutes.bookings, 'POST', input),
     updateClientBooking: (id, input, version) =>
       request(httpRoutes.bookingClientRequest(id), 'PATCH', { ...input, version }),
+    recordBookingReminder: (id) => request(httpRoutes.bookingReminders(id), 'POST'),
     status: (id, status, version) =>
       request(`${httpRoutes.bookings}/${id}/status`, 'PATCH', { status, version }),
     startBookingTrip: (id, photos) =>

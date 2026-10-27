@@ -32,6 +32,7 @@ export type AuthSession = { user: User; token: string };
 export interface AuthUseCases {
   register(name: string, phone: string, password: string): Promise<AuthSession>;
   login(phone: string, password: string): Promise<AuthSession>;
+  requestPasswordReset(phone: string): Promise<void>;
   current(token?: string): Promise<User | null>;
   logout(token?: string): Promise<void>;
   changePassword(user: User, oldPassword: string, newPassword: string): Promise<AuthSession>;
@@ -56,6 +57,7 @@ export interface MovingUseCases {
   ): Promise<Booking>;
   list(user: User): Promise<Booking[]>;
   get(user: User, id: string): Promise<Booking>;
+  recordClientReminder(user: User, id: string): Promise<Booking>;
   status(user: User, id: string, next: BookingStatus, version: number): Promise<Booking>;
   startTrip(user: User, id: string, photos: string[]): Promise<Booking>;
   finishTrip(user: User, id: string, photos: string[]): Promise<Booking>;
@@ -88,6 +90,7 @@ export interface AdministrationUseCases {
   updateClient(actor: User, phone: string, name: string, nextPhone: string): Promise<void>;
   updateUser(actor: User, user: User): Promise<User>;
   createUser(actor: User, input: Omit<User, 'id'> & { password: string }): Promise<User>;
+  resetClientPassword(actor: User, userId: string, password: string): Promise<void>;
   updateProfile(actor: User, input: Pick<User, 'name' | 'phone' | 'photo'>): Promise<User>;
 }
 export interface CatalogueUseCases {
@@ -112,6 +115,10 @@ export interface DriverUseCases {
   update(actor: User, driver: DriverUpdate): Promise<Driver>;
   profile(actor: User): Promise<Driver>;
   updateProfile(actor: User, input: Pick<Driver, 'name' | 'phone' | 'photo'>): Promise<Driver>;
+  updateAvailability(
+    actor: User,
+    availability: NonNullable<Driver['availability']>,
+  ): Promise<Driver>;
   bookings(actor: User): Promise<Booking[]>;
 }
 export interface VehicleReportUseCases {

@@ -1,5 +1,6 @@
 export const httpRoutes = {
   users: '/admin/users',
+  resetUserPassword: (id: string) => `/admin/users/${id}/password-reset`,
   clients: '/admin/clients',
   adminProfile: '/admin/profile',
   accounting: '/admin/accounting',
@@ -11,10 +12,12 @@ export const httpRoutes = {
     login: '/auth/login',
     logout: '/auth/logout',
     password: '/auth/password',
+    passwordResetRequest: '/auth/password-reset-request',
     register: '/auth/register',
   },
   bookings: '/bookings',
   bookingClientRequest: (id: string) => `/bookings/${id}/client-request`,
+  bookingReminders: (id: string) => `/bookings/${id}/reminders`,
   bookingTrips: (id: string) => `/bookings/${id}/trips`,
   bookingWorkPlanReview: (id: string, stepId: string) =>
     `/bookings/${id}/work-plan/${stepId}/review`,
@@ -22,6 +25,7 @@ export const httpRoutes = {
   bookingRoute: (id: string) => `/bookings/${id}/route`,
   driver: {
     profile: '/driver/profile',
+    availability: '/driver/availability',
     bookings: '/driver/bookings',
     inspections: '/driver/vehicle-inspections',
     breakdowns: '/driver/breakdowns',

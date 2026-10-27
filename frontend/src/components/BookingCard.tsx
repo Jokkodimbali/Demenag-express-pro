@@ -1,5 +1,6 @@
 import {
   ArrowUpRight,
+  Bell,
   CalendarDays,
   CalendarClock,
   Check,
@@ -24,6 +25,8 @@ import { messages } from '../content/fr';
 import { dateLabel, money, statuses } from '../domain/format';
 import { labourUnitPrice } from '../domain/labour-price';
 import type { Booking } from '../domain/model';
+import { useApp } from '../application/context';
+import { whatsappNumber, whatsappUrl } from '../application/services/whatsapp';
 export function BookingCard({
   booking: b,
   onChange,
@@ -41,6 +44,7 @@ export function BookingCard({
   initialTollLines?: { id: string; label: string; quantity: number; unitPrice: number }[];
   onDeleted?: () => void;
 }) {
+  const { catalogue } = useApp();
   const {
     refresh,
     busy,
@@ -76,11 +80,54 @@ export function BookingCard({
     saveSchedule,
     shareQuote,
     saveBookingNotes,
+    recordReminder,
   } = useBookingCard({ booking: b, onChange, admin, editInitially, onDeleted });
   const trips = b.trips ?? [];
   const displayedQuote = finalQuote ?? last;
   const displayedPrice = displayedQuote?.price ?? b.estimate;
   const displayedOptions = quotedServiceOptions(b, displayedQuote);
+  const clientPhoneLink = b.phone.replace(/[^\d+]/g, '');
+  const reminderToday = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Dakar',
+  }).format(new Date());
+  const daysUntilMove = b.date
+    ? Math.round(
+        (+new Date(`${b.date}T12:00:00Z`) - +new Date(`${reminderToday}T12:00:00Z`)) /
+          86400000,
+      )
+    : -1;
+  const canSendReminder =
+    daysUntilMove >= 0 &&
+    !terminal &&
+    whatsappNumber(b.phone, catalogue?.settings.whatsappCountryCode ?? '221').length >= 10;
+  const reminderWhen =
+    daysUntilMove === 0
+      ? 'aujourd’hui'
+      : daysUntilMove === 1
+        ? 'demain'
+        : daysUntilMove % 7 === 0
+          ? `dans ${daysUntilMove / 7} semaine${daysUntilMove > 7 ? 's' : ''}`
+          : `dans ${daysUntilMove} jours`;
+  const reminderDate = b.date
+    ? new Date(`${b.date}T12:00:00Z`).toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        timeZone: 'Africa/Dakar',
+      })
+    : '';
+  const reminderMessage = `Bonjour ${b.customerName}, petit rappel de Demenag Express : votre déménagement (${b.reference}) est prévu ${reminderWhen}, le ${reminderDate}${b.timeSlot && b.timeSlot !== 'À définir' ? ` à ${b.timeSlot}` : ''}.\n${b.fromAddress ? `Départ : ${b.fromAddress}\n` : ''}${b.toAddress ? `Arrivée : ${b.toAddress}\n` : ''}Merci de préparer vos affaires pour le chargement. Pour toute question, contactez-nous au ${catalogue?.settings.businessPhone ?? ''}. À bientôt !`;
+  const reminderHref = whatsappUrl(b.phone, reminderMessage, catalogue?.settings);
+  const lastReminder = b.reminders?.at(-1);
+  const lastReminderLabel = lastReminder
+    ? `Dernier rappel : ${new Date(lastReminder.at).toLocaleString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Africa/Dakar',
+      })}`
+    : '';
   const incompleteTrips = trips.filter((trip) => !trip.finishedAt);
   const bookingClosureBlockers = [
     !finalQuote ? 'enregistrer le devis final' : '',
@@ -139,10 +186,15 @@ export function BookingCard({
       <div className="booking-card-main">
         <img src={b.vehicle.image} alt={messages.text} />
         <div>
-          <h3>{admin ? b.customerName : b.vehicle.name}</h3>
+          <h3>{admin || driverMode ? b.customerName : b.vehicle.name}</h3>
           {admin && (
             <p className="muted">
               {b.phone} · {b.vehicle.name}
+            </p>
+          )}
+          {driverMode && (
+            <p className="muted booking-driver-contact">
+              Client : <a href={`tel:${clientPhoneLink}`}>{b.phone}</a> · {b.vehicle.name}
             </p>
           )}
           <p>
@@ -316,6 +368,34 @@ export function BookingCard({
               </tfoot>
             </table>
           </div>
+          {!!displayedQuote?.tolls?.length && (
+            <div className="booking-toll-summary">
+              <div className="booking-toll-heading">
+                <strong>PÉAGES · À LA CHARGE DU CLIENT</strong>
+                <span>Non inclus dans le total</span>
+              </div>
+              {displayedQuote.tolls.map((line, index) => (
+                <div className="booking-toll-line" key={`${line.tollPointId}-${index}`}>
+                  <span>{line.label}</span>
+                  <span>
+                    {line.quantity} passage(s) × {money(line.unitPrice)}
+                  </span>
+                  <strong>{money(line.quantity * line.unitPrice)}</strong>
+                </div>
+              ))}
+              <div className="booking-toll-total">
+                <strong>Total péages à régler par le client</strong>
+                <strong>
+                  {money(
+                    displayedQuote.tolls.reduce(
+                      (sum, line) => sum + line.quantity * line.unitPrice,
+                      0,
+                    ),
+                  )}
+                </strong>
+              </div>
+            </div>
+          )}
         </div>
       </div>
       {!!b.questionnaireAnswers?.length && (
@@ -458,6 +538,31 @@ export function BookingCard({
             {messages.partagerLeDevisWhatsApp}
           </button>
         )}
+        {admin && canSendReminder && (
+          <a
+            className="button secondary small"
+            href={reminderHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={`Message : rendez-vous ${reminderWhen}`}
+            aria-disabled={busy}
+            onClick={(event) => {
+              if (busy) {
+                event.preventDefault();
+                return;
+              }
+              void recordReminder();
+            }}
+          >
+            <Bell size={16} />
+            Rappel ·{' '}
+            {daysUntilMove === 0
+              ? 'aujourd’hui'
+              : daysUntilMove === 1
+                ? 'demain'
+                : `J-${daysUntilMove}`}
+          </a>
+        )}
         {admin && finalQuote && (
           <button
             className="button primary small"
@@ -482,6 +587,11 @@ export function BookingCard({
           </button>
         )}
       </div>
+      {admin && lastReminderLabel && (
+        <p className="caption booking-reminder-status" role="status">
+          {lastReminderLabel}
+        </p>
+      )}
       {admin && b.status === 'in_progress' && !canCloseBooking && (
         <p className="caption booking-close-hint" role="status">
           Pour clôturer : {bookingClosureBlockers.join(' ; ')}.
@@ -843,6 +953,9 @@ export function BookingCard({
                 )
               }
             />
+            <p className="caption">
+              Les péages sont à la charge du client et exclus du total du devis.
+            </p>
             <div className="quote-live-total" aria-live="polite">
               <span>{messages.montantCalculeDuDevis}</span>
               <strong>

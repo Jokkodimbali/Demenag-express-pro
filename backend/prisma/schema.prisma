@@ -30,18 +30,19 @@ enum StatutReservation {
 }
 
 model Utilisateur {
-  id                  String             @id @default(uuid()) @db.Uuid
-  nom                 String             @map("name")
-  telephone           String             @unique @map("phone")
-  empreinteMotDePasse String             @map("password_hash")
-  role                RoleUtilisateur    @default(client)
-  photo               String?            @map("photo")
-  creeLe              DateTime           @default(now()) @map("created_at") @db.Timestamptz
-  actif               Boolean            @default(true) @map("active")
-  sessions            SessionConnexion[]
-  reservations        Reservation[]
-  profilChauffeur     Chauffeur?
-  notifications       Notification[]
+  id                                String             @id @default(uuid()) @db.Uuid
+  nom                               String             @map("name")
+  telephone                         String             @unique @map("phone")
+  empreinteMotDePasse               String             @map("password_hash")
+  demandeReinitialisationMotDePasse DateTime?          @map("password_reset_requested_at") @db.Timestamptz
+  role                              RoleUtilisateur    @default(client)
+  photo                             String?            @map("photo")
+  creeLe                            DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  actif                             Boolean            @default(true) @map("active")
+  sessions                          SessionConnexion[]
+  reservations                      Reservation[]
+  profilChauffeur                   Chauffeur?
+  notifications                     Notification[]
 
   @@map("users")
   @@schema("demenag")
@@ -88,6 +89,7 @@ model Chauffeur {
   photo             String?            @map("photo")
   actif             Boolean            @default(true) @map("active")
   vehiculeId        String?            @map("vehicle_id")
+  disponibilites    Json               @default("[]") @map("availability")
   vehicule          Vehicule?          @relation(fields: [vehiculeId], references: [id], onDelete: SetNull)
   reservations      Reservation[]
   controlesVehicule ControleVehicule[]
@@ -146,6 +148,9 @@ model ParametreApplication {
   tarifMontage            Int     @map("assembly_price")
   telephoneEntreprise     String  @map("business_phone")
   numeroWhatsapp          String  @default("+221775105104") @map("whatsapp_phone")
+  indicatifWhatsapp       String  @default("221") @map("whatsapp_country_code")
+  modeWhatsapp            String  @default("api") @map("whatsapp_mode")
+  modeleDevisWhatsapp     String  @default("Bonjour {nom}, votre déménagement est terminé. Voici votre devis final Demenag Express {num} : {total} ({allers} aller(s)-retour(s), {vehicule}). Le PDF est disponible dans votre espace client. Merci !") @map("whatsapp_quote_template")
   nomEntreprise           String  @default("Demenag Express") @map("business_name")
   adresseEntreprise       String  @default("Dakar, Sénégal") @map("business_address")
   piedFacture             String  @default("Merci pour votre confiance.") @map("invoice_footer")

@@ -16,6 +16,9 @@ const AdminCreateQuote = lazy(() =>
 const AdminPlanning = lazy(() =>
   import('../pages/AdminPlanning').then((m) => ({ default: m.AdminPlanning })),
 );
+const AdminPlanFollowUp = lazy(() =>
+  import('../pages/AdminPlanFollowUp').then((m) => ({ default: m.AdminPlanFollowUp })),
+);
 const AdminFinance = lazy(() =>
   import('../pages/AdminFinance').then((m) => ({ default: m.AdminFinance })),
 );
@@ -124,6 +127,7 @@ export function AppRoutes() {
             <Route index element={<Admin />} />
             <Route path="creer-un-devis" element={<AdminCreateQuote />} />
             <Route path="planning" element={<AdminPlanning />} />
+            <Route path="suivi-planning" element={<AdminPlanFollowUp />} />
             <Route path="finances" element={<AdminFinance />} />
             <Route path="comptabilite" element={<AdminAccounting />} />
             <Route path="flotte" element={<AdminFleet />} />

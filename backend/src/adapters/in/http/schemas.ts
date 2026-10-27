@@ -159,10 +159,22 @@ export const loginSchema = z.object({
   phone: z.string().min(9).max(25),
   password: z.string().min(1).max(128),
 });
-export const registerSchema = loginSchema.extend({
-  name: z.string().trim().min(2).max(100),
-  password: z.string().min(10, messages.utilisezAuMoins10Caracteres).max(128),
-});
+export const registerSchema = loginSchema
+  .extend({
+    name: z.string().trim().min(2).max(100),
+    password: z
+      .string()
+      .min(
+        8,
+        'Mot de passe trop faible : 8 caractères minimum, avec au moins une lettre et un chiffre.',
+      )
+      .max(128),
+  })
+  .refine((input) => /[a-zA-Z]/.test(input.password) && /\d/.test(input.password), {
+    path: ['password'],
+    message:
+      'Mot de passe trop faible : 8 caractères minimum, avec au moins une lettre et un chiffre.',
+  });
 export const statusSchema = z.object({
   status: z.enum(['confirmed', 'in_progress', 'completed', 'cancelled']),
   version: z.number().int().positive(),
@@ -191,6 +203,16 @@ export const quoteSchema = z.object({
     )
     .max(20)
     .default([]),
+  tolls: z
+    .array(
+      z.object({
+        tollPointId: z.string().trim().min(1).max(100),
+        direction: z.enum(['one-way', 'round-trip']),
+        quantity: z.number().int().min(1).max(100),
+      }),
+    )
+    .max(50)
+    .default([]),
   options: optionsSchema.optional(),
   version: z.number().int().positive(),
 });
@@ -206,6 +228,19 @@ export const createDriverSchema = driverSchema.extend({
   password: z.string().min(10, messages.utilisezAuMoins10Caracteres).max(128),
 });
 export const driverProfileSchema = driverSchema.pick({ name: true, phone: true, photo: true });
+export const driverAvailabilitySchema = z
+  .array(
+    z.object({
+      available: z.boolean(),
+      startTime: z.string().regex(/^\d{2}:\d{2}$/),
+      endTime: z.string().regex(/^\d{2}:\d{2}$/),
+    }),
+  )
+  .length(7)
+  .refine(
+    (days) => days.every((day) => !day.available || day.endTime > day.startTime),
+    'L’heure de fin doit être après l’heure de début.',
+  );
 export const vehicleInspectionSchema = z.object({
   levels: z.object({
     engineOil: z.enum(['good', 'low', 'empty']),
@@ -350,6 +385,19 @@ export const catalogueSchema = z.object({
     assemblyPrice: z.number().int().min(0).max(1000000),
     businessPhone: z.string().regex(/^\+221[0-9]{9}$/),
     whatsappPhone: z.string().regex(/^\+[1-9][0-9]{7,14}$/),
+    whatsappCountryCode: z
+      .string()
+      .regex(/^[1-9][0-9]{0,3}$/)
+      .default('221'),
+    whatsappMode: z.enum(['api', 'wame', 'web', 'app']).default('api'),
+    whatsappQuoteTemplate: z
+      .string()
+      .trim()
+      .min(1)
+      .max(1000)
+      .default(
+        'Bonjour {nom}, votre déménagement est terminé. Voici votre devis final Demenag Express {num} : {total} ({allers} aller(s)-retour(s), {vehicule}). Le PDF est disponible dans votre espace client. Merci !',
+      ),
     businessName: z.string().trim().min(2).max(100),
     businessAddress: z.string().trim().min(2).max(300),
     invoiceFooter: z.string().trim().min(2).max(500),

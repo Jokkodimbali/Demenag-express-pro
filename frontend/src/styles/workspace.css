@@ -3,6 +3,89 @@
   padding-bottom: 70px;
   min-height: 75vh;
 }
+.driver-reference-page {
+  max-width: 960px;
+  padding: clamp(24px, 6vw, 56px) 14px;
+}
+.driver-reference-page .section-heading {
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: 0;
+}
+.driver-reference-page .section-heading .eyebrow {
+  margin-bottom: 0;
+  color: #f6d73c;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+}
+.driver-reference-page .section-heading h1 {
+  font-size: clamp(30px, 8vw, 46px);
+  line-height: 1;
+}
+.driver-availability-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: clamp(14px, 4vw, 22px);
+  border-radius: clamp(14px, 4vw, 20px);
+}
+.driver-availability-card > .eyebrow {
+  margin: 0;
+  color: #f6d73c;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+}
+.driver-availability-days {
+  display: flex;
+  flex-direction: column;
+}
+.driver-availability-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid #30343a;
+}
+.driver-availability-row > strong {
+  width: 44px;
+  font-size: 14px;
+}
+.driver-availability-row > button {
+  flex-shrink: 0;
+  min-width: 96px;
+  min-height: 40px;
+  padding: 0 14px;
+  color: #aeb4bb;
+  background: transparent;
+  border: 1.5px solid #3b4046;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.driver-availability-row > button.available {
+  color: #1e2023;
+  background: #3ddc84;
+  border-color: #3ddc84;
+}
+.driver-availability-times {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.driver-availability-times input {
+  padding: 8px;
+  color: #fff;
+  color-scheme: dark;
+  background: #1e2023;
+  border: 1px solid #3b4046;
+  border-radius: 8px;
+  font-size: 15px;
+}
+.driver-availability-times > span {
+  color: #aeb4bb;
+}
 .admin-workspace {
   width: 100%;
   max-width: none;
@@ -41,7 +124,7 @@
 .account-profile-details dd {
   overflow-wrap: anywhere;
   margin: 0;
-  color: var(--text);
+  color: #fff;
   font-size: 14px;
   font-weight: 700;
 }
@@ -107,7 +190,7 @@
 }
 .pagination strong {
   min-width: 24px;
-  color: var(--text);
+  color: #fff;
   text-align: center;
 }
 .notification-center {
@@ -291,7 +374,7 @@
   border: 1px solid #16844866;
   border-radius: 10px;
   background: #16844818;
-  color: var(--text);
+  color: #fff;
   font-size: 13px;
 }
 div.driver-course-complete {
@@ -582,6 +665,42 @@ div.driver-course-complete p {
 }
 .booking-price-table tfoot th {
   color: var(--yellow);
+}
+.booking-toll-summary {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1.5px dashed var(--muted);
+  border-radius: 10px;
+}
+.booking-toll-heading,
+.booking-toll-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+.booking-toll-heading {
+  margin-bottom: 8px;
+  font-size: 11px;
+}
+.booking-toll-heading span {
+  color: var(--muted);
+}
+.booking-toll-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.booking-toll-line > span:nth-child(2) {
+  color: var(--muted);
+}
+.booking-toll-total {
+  padding-top: 8px;
+  font-size: 13px;
 }
 .quote-form {
   margin-top: 20px;
@@ -931,18 +1050,56 @@ div.driver-course-complete p {
   font-weight: 400;
   margin-top: 15px;
 }
+.admin-reference-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+  margin-bottom: 8px;
+}
+.admin-reference-heading > div > span {
+  color: var(--yellow);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+.admin-reference-heading h1 {
+  margin: 6px 0 0;
+  font-family: Anton, Impact, sans-serif;
+  font-size: clamp(30px, 8vw, 46px);
+  font-weight: 400;
+  line-height: 1;
+}
 .admin-tabs {
   display: flex;
-  flex-wrap: wrap;
-  margin: 28px 0 20px;
+  flex-wrap: nowrap;
+  gap: 4px;
   max-width: 100%;
+  overflow-x: auto;
+  padding: 5px;
+  border: 1px solid #3b4046;
+  border-radius: 12px;
+  background: #272a2e;
+  scrollbar-width: thin;
 }
 .admin-tabs a {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  flex: auto;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 9px;
+  color: #d5d9de;
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.admin-tabs a.active {
+  background: var(--yellow);
+  color: #1e2023;
 }
 .client-code {
   color: inherit;
@@ -1198,6 +1355,119 @@ div.driver-course-complete p {
   flex-wrap: wrap;
   margin: 0 0 22px;
 }
+.admin-booking-detail {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+}
+.admin-reservations-desktop {
+  overflow-x: auto;
+  background: #272a2e;
+  border: 1px solid #3b4046;
+  border-radius: 16px;
+}
+.admin-reservations-row {
+  display: grid;
+  grid-template-columns: 110px 1.2fr 1.6fr 1fr 1fr 1fr 170px;
+  align-items: center;
+  gap: 12px;
+  min-width: 920px;
+  padding: 16px 20px;
+  color: #fff;
+  border-bottom: 1px solid #30343a;
+  font-size: 14px;
+  text-decoration: none;
+}
+.admin-reservations-row:last-child {
+  border-bottom: 0;
+}
+.admin-reservations-row:not(.admin-reservations-header):hover {
+  background: #30343a;
+}
+.admin-reservations-header {
+  padding-top: 14px;
+  padding-bottom: 14px;
+  color: #aeb4bb;
+  border-color: #3b4046;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+.admin-reservations-row > strong:first-child {
+  color: #f6d73c;
+}
+.admin-reservations-client,
+.admin-reservations-date {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.admin-reservations-client small,
+.admin-reservations-date small {
+  color: #aeb4bb;
+  font-size: 12px;
+}
+.admin-reservations-row > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.admin-reservations-status {
+  display: inline-flex;
+  justify-self: start;
+  padding: 7px 12px;
+  color: #ffd23f;
+  background: #3a3420;
+  border: 1px solid #ffd23f;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 800;
+}
+.admin-reservations-status.confirmed,
+.admin-reservations-status.completed {
+  color: #3ddc84;
+  background: #0e3a22;
+  border-color: #3ddc84;
+}
+.admin-reservations-status.cancelled {
+  color: #ff8a8f;
+  background: #3a2022;
+  border-color: #ff6b6b;
+}
+.admin-reservations-status.in_progress {
+  color: #90c7ff;
+  background: #172b40;
+  border-color: #5aa9ff;
+}
+.admin-reservations-mobile {
+  display: none;
+}
+.admin-reservations-mobile-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  color: #fff;
+  background: #272a2e;
+  border: 1px solid #3b4046;
+  border-radius: 16px;
+  text-decoration: none;
+}
+.admin-reservations-mobile-card > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+.admin-reservations-mobile-card > div strong:first-child {
+  color: #f6d73c;
+}
+.admin-reservations-mobile-card > small {
+  color: #aeb4bb;
+}
+.admin-reservations-mobile-card > .admin-reservations-status {
+  align-self: flex-start;
+}
 .filter-buttons {
   display: flex;
   flex-wrap: wrap;
@@ -1216,6 +1486,94 @@ div.driver-course-complete p {
   border-color: var(--yellow);
   color: var(--yellow);
   background: #f6d73c0b;
+}
+.admin-plan-follow-up {
+  display: grid;
+  gap: 16px;
+}
+.plan-follow-up-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 16px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.plan-follow-up-stat strong {
+  margin: 0;
+  color: var(--text);
+  font-family: Anton, Impact, sans-serif;
+  font-size: 28px;
+  font-weight: 400;
+}
+.plan-follow-up-stat.success strong,
+.plan-follow-up-badge.respected {
+  color: #3ddc84;
+}
+.plan-follow-up-stat.warning strong,
+.plan-follow-up-badge.justified,
+.plan-follow-up-badge.todo {
+  color: var(--yellow);
+}
+.plan-follow-up-stat.danger strong,
+.plan-follow-up-badge.unjustified {
+  color: #ff5a5f;
+}
+.plan-follow-up-list {
+  display: grid;
+  gap: 12px;
+}
+.plan-follow-up-card {
+  overflow: hidden;
+  padding: 0;
+}
+.plan-follow-up-card-heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-width: 0;
+  padding: 14px 16px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.plan-follow-up-card-title {
+  display: grid;
+  flex: 1 1 240px;
+  gap: 4px;
+  min-width: 0;
+}
+.plan-follow-up-card-title small {
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plan-follow-up-badge {
+  flex: 0 0 auto;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.plan-follow-up-detail {
+  display: grid;
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  padding: 14px;
+}
+.plan-follow-up-detail > .button {
+  justify-self: start;
 }
 .search-field {
   display: flex;
@@ -1274,6 +1632,19 @@ div.driver-course-complete p {
 }
 .settings-form > .panel > .muted {
   font-size: 12px;
+}
+.whatsapp-template-preview {
+  padding: 12px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.whatsapp-test {
+  align-items: center;
 }
 .invoice-asset-preview {
   display: block;

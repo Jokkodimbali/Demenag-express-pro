@@ -35,7 +35,7 @@ export class AuthService implements AuthUseCases {
       phone: normalized,
       passwordHash: await this.passwords.hash(password),
       role: 'client',
-      active: false,
+      active: true,
     });
     return this.issue(user);
   }
@@ -49,6 +49,20 @@ export class AuthService implements AuthUseCases {
     if (!user || user.active === false || !valid)
       throw new AppError(401, messages.telephoneOuMotDePasseIncorrect);
     return this.issue({ id: user.id, name: user.name, phone: user.phone, role: user.role });
+  }
+  async requestPasswordReset(phone: string) {
+    let normalizedPhone: string;
+    try {
+      normalizedPhone = normalizePhone(phone);
+    } catch (error) {
+      if (error instanceof AppError) return;
+      throw error;
+    }
+    const account =
+      (await this.users.findByPhone(normalizedPhone)) ??
+      (await this.users.findByPhone(normalizedPhone.slice('+221'.length)));
+    if (account?.active !== false && account?.role === 'client')
+      await this.users.requestPasswordReset?.(account.id, this.clock.now());
   }
   async changePassword(
     user: { id: string; phone: string; name: string; role: 'client' | 'admin' | 'driver' },

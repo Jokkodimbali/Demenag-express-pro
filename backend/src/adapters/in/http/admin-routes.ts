@@ -11,6 +11,7 @@ import {
   tollPointSchema,
 } from './schemas.js';
 import { apiRoutes } from './routes.js';
+import { adminPasswordResetSchema } from './validation/auth.js';
 import { accountSchema, createAccountSchema, userIdSchema } from './validation/administration.js';
 import { z } from 'zod';
 const clientPhoneSchema = z.string().regex(/^\d{9}$/);
@@ -98,6 +99,15 @@ export function registerAdminRoutes(
       }),
     ),
   );
+  app.post(apiRoutes.administration.userPasswordReset, authenticate, admin, async (req, res) => {
+    const { password } = adminPasswordResetSchema.parse(req.body);
+    await deps.administration.resetClientPassword(
+      getActor(res),
+      userIdSchema.parse(req.params.id),
+      password,
+    );
+    res.status(204).end();
+  });
   app.put(apiRoutes.catalogue, authenticate, admin, async (req, res) => {
     const p = catalogueSchema.parse(req.body);
     await deps.catalogue.update(getActor(res), p.vehicles, p.settings);

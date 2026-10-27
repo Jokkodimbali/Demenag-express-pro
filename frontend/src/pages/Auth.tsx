@@ -1,21 +1,34 @@
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight, Eye, EyeOff } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useAuthentication, type LoginSpace } from '../application/controllers/useAuthentication';
 import { messages } from '../content/fr';
-import { routes } from '../routing/routes';
 export function Auth() {
   const [showPassword, setShowPassword] = useState(false);
+  const [registerPassword, setRegisterPassword] = useState('');
   const [space, setSpace] = useState<LoginSpace>('client');
-  const { register, setRegister, busy, error, setError, submit } = useAuthentication(space);
+  const [resetMode, setResetMode] = useState(false);
+  const {
+    register,
+    setRegister,
+    busy,
+    error,
+    setError,
+    submit,
+    requestPasswordReset,
+    resetSent,
+    setResetSent,
+  } = useAuthentication(space);
+  const passwordStrength = [
+    registerPassword.length >= 8,
+    /[a-zA-Z]/.test(registerPassword) && /\d/.test(registerPassword),
+    /[A-Z]/.test(registerPassword) && /[a-z]/.test(registerPassword),
+    /[^a-zA-Z0-9]/.test(registerPassword) || registerPassword.length >= 12,
+  ].filter(Boolean).length;
+  const passwordStrengthLabels = ['Trop faible', 'Faible', 'Moyen', 'Bon', 'Excellent'];
 
   return (
-    <div className="auth-page container">
-      <Link to={routes.home} className="back-link">
-        <ArrowLeft size={16} />
-        {messages.retourALAccueil}
-      </Link>
-      <div className="auth-card panel">
+    <div className="auth-page">
+      <div className="auth-card">
         <h1>MON COMPTE</h1>
         <div className="tabs auth-spaces" aria-label="Choisir un espace de connexion">
           {(
@@ -33,20 +46,25 @@ export function Auth() {
               onClick={() => {
                 setSpace(role);
                 setRegister(false);
+                setResetMode(false);
+                setRegisterPassword('');
                 setError('');
+                setResetSent(false);
               }}
             >
               {label}
             </button>
           ))}
         </div>
-        {space === 'client' && (
+        {space === 'client' && !resetMode && (
           <div className="tabs">
             <button
               type="button"
               className={!register ? 'active' : ''}
               onClick={() => {
                 setRegister(false);
+                setResetMode(false);
+                setRegisterPassword('');
                 setError('');
               }}
             >
@@ -57,6 +75,8 @@ export function Auth() {
               className={register ? 'active' : ''}
               onClick={() => {
                 setRegister(true);
+                setResetMode(false);
+                setRegisterPassword('');
                 setError('');
               }}
             >
@@ -64,10 +84,12 @@ export function Auth() {
             </button>
           </div>
         )}
-        <form onSubmit={submit}>
-          {register && (
+        <form onSubmit={resetMode ? requestPasswordReset : submit}>
+          {register && !resetMode && (
             <>
-              <label htmlFor="auth-name">{messages.nomComplet}</label>
+              <label htmlFor="auth-name">
+                <span>NOM COMPLET</span>
+              </label>
               <input
                 id="auth-name"
                 name="name"
@@ -79,7 +101,9 @@ export function Auth() {
               />
             </>
           )}
-          <label htmlFor="auth-phone">{messages.telephone}</label>
+          <label htmlFor="auth-phone">
+            <span>TÉLÉPHONE</span>
+          </label>
           <input
             id="auth-phone"
             name="phone"
@@ -97,28 +121,76 @@ export function Auth() {
                 ? 'Numéro enregistré par l’administrateur.'
                 : 'Numéro du compte administrateur.'}
           </p>
-          <label htmlFor="auth-password">{messages.motDePasse}</label>
-          <div className="auth-password-field">
-            <input
-              id="auth-password"
-              name="password"
-              type={showPassword ? 'text' : 'password'}
-              autoComplete={register ? 'new-password' : 'current-password'}
-              minLength={register ? 10 : 1}
-              maxLength={128}
-              required
-              placeholder={register ? messages.auMoins10Caracteres : messages.votreMotDePasse}
-            />
-            <button
-              className="auth-password-toggle"
-              type="button"
-              aria-label={showPassword ? messages.masquerMotDePasse : messages.afficherMotDePasse}
-              aria-pressed={showPassword}
-              onClick={() => setShowPassword((visible) => !visible)}
-            >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
-          </div>
+          {!resetMode && (
+            <>
+              <label htmlFor="auth-password">
+                <span>MOT DE PASSE</span>
+              </label>
+              <div className="auth-password-field">
+                <input
+                  id="auth-password"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete={register ? 'new-password' : 'current-password'}
+                  minLength={register ? 8 : 1}
+                  maxLength={128}
+                  required
+                  placeholder={register ? '8 caractères minimum' : messages.votreMotDePasse}
+                  onChange={(event) => setRegisterPassword(event.target.value)}
+                />
+                <button
+                  className="auth-password-toggle"
+                  type="button"
+                  aria-label={
+                    showPassword ? messages.masquerMotDePasse : messages.afficherMotDePasse
+                  }
+                  aria-pressed={showPassword}
+                  onClick={() => setShowPassword((visible) => !visible)}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              {register && (
+                <>
+                  <div className="auth-password-strength" aria-live="polite">
+                    <div aria-hidden="true">
+                      {passwordStrengthLabels.slice(1).map((_, index) => (
+                        <span
+                          key={index}
+                          className={index < passwordStrength ? `strength-${passwordStrength}` : ''}
+                        />
+                      ))}
+                    </div>
+                    <span>{passwordStrengthLabels[passwordStrength]}</span>
+                  </div>
+                  <label htmlFor="auth-password-confirm">
+                    <span>CONFIRMEZ LE MOT DE PASSE</span>
+                  </label>
+                  <input
+                    id="auth-password-confirm"
+                    name="passwordConfirmation"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    minLength={8}
+                    maxLength={128}
+                    required
+                    placeholder="••••••••"
+                  />
+                  <p className="auth-first-password-hint">
+                    Première connexion : créez votre mot de passe (8 caractères minimum, avec une
+                    lettre et un chiffre).
+                  </p>
+                </>
+              )}
+            </>
+          )}
+          {resetMode && (
+            <p className="caption" role={resetSent ? 'status' : undefined}>
+              {resetSent
+                ? 'Si un compte client correspond à ce numéro, la demande a été transmise à l’administration.'
+                : 'Après vérification de votre numéro, l’administration vous aidera à choisir un nouveau mot de passe.'}
+            </p>
+          )}
           {error && (
             <p className="alert error" role="alert">
               {error}
@@ -127,12 +199,40 @@ export function Auth() {
           <button className="button primary full-width" disabled={busy}>
             {busy
               ? messages.veuillezPatienter
-              : register
-                ? messages.creerMonCompte
-                : 'Me connecter'}
+              : resetMode
+                ? 'Envoyer la demande'
+                : register
+                  ? messages.creerMonCompte
+                  : 'Se connecter'}
             <ArrowRight size={18} />
           </button>
         </form>
+        {space === 'client' && !register && !resetMode && (
+          <button
+            className="auth-reset-link"
+            type="button"
+            onClick={() => {
+              setResetMode(true);
+              setResetSent(false);
+              setError('');
+            }}
+          >
+            Mot de passe oublié ?
+          </button>
+        )}
+        {resetMode && (
+          <button
+            className="auth-reset-link"
+            type="button"
+            onClick={() => {
+              setResetMode(false);
+              setResetSent(false);
+              setError('');
+            }}
+          >
+            Retour à la connexion
+          </button>
+        )}
         {register && (
           <p className="caption">{messages.utilisezVotreNumeroHabituelPourRetrouverVosDemandes}</p>
         )}

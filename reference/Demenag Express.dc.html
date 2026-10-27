@@ -811,8 +811,24 @@ select option{background:#272A2E;color:#fff}
                 </div>
               </sc-for>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding-top:14px">
-                <input type="number" min="0" name="d.remise" value="{{ d.remise }}" onChange="{{ onField }}" placeholder="Remise (FCFA)" style="background:#1E2023;border:1px solid #3B4046;border-radius:10px;padding:12px;color:#fff;font-size:16px;outline:none;min-width:0">
-                <span style="font-size:13px;color:#AEB4BB;align-self:center">Remise appliquée sur le total.</span>
+                <sc-if value="{{ aDevisAdm }}" hint-placeholder-val="{{ true }}">
+                  <div style="grid-column:1 / -1;display:flex;flex-direction:column;gap:10px;background:#1E2023;border:1px solid #3B4046;border-radius:12px;padding:12px">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+                      <span style="font-size:12px;font-weight:800;letter-spacing:0.08em;color:#F6D73C">REMISE</span>
+                      <sc-if value="{{ dHasRemise }}" hint-placeholder-val="{{ false }}"><span style="font-size:13px;font-weight:800;color:#3DDC84">− {{ dRemise }} sur {{ dSub }}</span></sc-if>
+                    </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                      <input type="number" min="0" name="d.remise" value="{{ d.remise }}" onChange="{{ onField }}" placeholder="{{ dRemPh }}" style="flex:1 1 140px;background:#272A2E;border:1px solid #3B4046;border-radius:10px;padding:12px;color:#fff;font-size:16px;outline:none;min-width:0">
+                      <div style="display:flex;gap:4px;background:#272A2E;border:1px solid #3B4046;border-radius:10px;padding:3px">
+                        <sc-for list="{{ dRemTypes }}" as="t" hint-placeholder-count="2"><button onClick="{{ t.pick }}" style="min-width:56px;min-height:40px;border:0;border-radius:8px;background:{{ t.bg }};color:{{ t.c }};font-size:14px;font-weight:800;cursor:pointer">{{ t.lbl }}</button></sc-for>
+                      </div>
+                    </div>
+                    <input name="d.remiseWhy" value="{{ d.remiseWhy }}" onChange="{{ onField }}" placeholder="Motif de la remise" style="background:#272A2E;border:1px solid #3B4046;border-radius:10px;padding:12px;color:#fff;font-size:16px;outline:none;min-width:0">
+                    <div style="display:flex;gap:6px;flex-wrap:wrap">
+                      <sc-for list="{{ dRemWhys }}" as="w" hint-placeholder-count="4"><button onClick="{{ w.pick }}" style="background:transparent;border:1px solid #3B4046;color:#D5D9DE;border-radius:999px;padding:6px 12px;font-size:12.5px;font-weight:700;cursor:pointer">{{ w.lbl }}</button></sc-for>
+                    </div>
+                  </div>
+                </sc-if>
                 <textarea name="d.notes" value="{{ d.notes }}" onChange="{{ onField }}" placeholder="Remarque libre (ajoutée sous l'inventaire de la fiche d'appel)" rows="3" style="grid-column:1 / -1;background:#1E2023;border:1px solid #3B4046;border-radius:10px;padding:12px;color:#fff;font-size:15px;line-height:1.5;outline:none;min-width:0;resize:vertical;font-family:inherit"></textarea>
               </div>
             </div></sc-if>
@@ -1110,7 +1126,7 @@ select option{background:#272A2E;color:#fff}
                 <sc-for list="{{ dLines }}" as="l" hint-placeholder-count="2">
                   <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;padding:10px 0;border-bottom:1px solid #E1E4E8;font-size:13px;align-items:center"><span style="display:flex;flex-direction:column;gap:2px"><span>{{ l.label }}</span><span style="font-size:12px;color:#5A6168">{{ l.qty }} × {{ l.pu }}</span></span><span style="font-weight:700;white-space:nowrap">{{ l.amount }}</span></div>
                 </sc-for>
-                <sc-if value="{{ dHasRemise }}"><div style="display:flex;justify-content:space-between;padding:10px 0;font-size:13px;border-bottom:1px solid #E1E4E8"><span>Remise</span><span style="font-weight:700">− {{ dRemise }}</span></div></sc-if>
+                <sc-if value="{{ dHasRemise }}"><div style="display:flex;justify-content:space-between;padding:10px 0;font-size:13px;border-bottom:1px solid #E1E4E8"><span>{{ dRemLbl }}</span><span style="font-weight:700">− {{ dRemise }}</span></div></sc-if>
                 <div style="display:flex;justify-content:space-between;align-items:baseline;padding:14px 0 0"><span style="font-size:14px;font-weight:800">{{ dTotLbl }}</span><span style="font-family:Anton,sans-serif;font-size:clamp(22px,6vw,32px)">{{ dTotal }}</span></div>
               </div>
               <sc-if value="{{ dHasTolls }}" hint-placeholder-val="{{ false }}">
@@ -1683,6 +1699,78 @@ select option{background:#272A2E;color:#fff}
               </tbody>
             </table>
           </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ aSuivi }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div style="background:#272A2E;border:1px solid #3B4046;border-radius:clamp(14px,4vw,20px);padding:clamp(14px,4vw,22px);display:flex;flex-direction:column;gap:14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+              <span style="font-size:13px;font-weight:800;letter-spacing:0.12em;color:#F6D73C">SUIVI DES PLANNINGS PRÉVISIONNELS</span>
+              <div style="display:flex;gap:4px;background:#1E2023;border:1px solid #3B4046;border-radius:12px;padding:3px">
+                <sc-for list="{{ plFlts }}" as="f" hint-placeholder-count="3"><button onClick="{{ f.pick }}" style="background:{{ f.bg }};color:{{ f.c }};border:0;border-radius:9px;padding:0 14px;min-height:36px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap">{{ f.lbl }}</button></sc-for>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px">
+              <sc-for list="{{ plStats }}" as="k" hint-placeholder-count="4">
+                <div style="background:#1E2023;border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px">
+                  <span style="font-family:Anton,sans-serif;font-size:26px;color:{{ k.c }}">{{ k.n }}</span>
+                  <span style="font-size:12px;font-weight:700;color:#AEB4BB">{{ k.l }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <sc-if value="{{ plEmpty }}" hint-placeholder-val="{{ false }}"><span style="color:#AEB4BB;font-size:14px;padding:0 4px">Aucun rendez-vous daté dans cette sélection.</span></sc-if>
+          <sc-for list="{{ plCards }}" as="c" hint-placeholder-count="2">
+            <div style="background:#272A2E;border:1px solid #3B4046;border-radius:16px;display:flex;flex-direction:column;min-width:0">
+              <div onClick="{{ c.tog }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;user-select:none;flex-wrap:wrap">
+                <span style="display:flex;transform:rotate({{ c.rot }});transition:transform .2s;color:#F6D73C"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></span>
+                <div style="display:flex;flex-direction:column;gap:2px;flex:1 1 220px;min-width:0">
+                  <span style="font-size:15px;font-weight:800">{{ c.date }} · {{ c.span }}</span>
+                  <span style="font-size:13px;color:#AEB4BB;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.ref }} · {{ c.name }} · {{ c.veh }}</span>
+                </div>
+                <span style="font-size:12.5px;font-weight:700;color:#AEB4BB">{{ c.prog }}</span>
+                <span style="font-size:12.5px;font-weight:800;color:{{ c.stC }};border:1.5px solid {{ c.stC }};border-radius:999px;padding:4px 10px;white-space:nowrap">{{ c.stL }}</span>
+              </div>
+              <sc-if value="{{ c.open }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;flex-direction:column;border-top:1px solid #30343A">
+                  <sc-for list="{{ c.rows }}" as="r" hint-placeholder-count="4">
+                    <div style="display:grid;grid-template-columns:minmax(96px,auto) minmax(0,1fr);gap:8px 14px;padding:12px 16px;border-bottom:1px solid #30343A">
+                      <div style="display:flex;align-items:flex-start;gap:8px">
+                        <span style="width:10px;height:10px;border-radius:50%;background:{{ r.dot }};margin-top:5px;flex-shrink:0"></span>
+                        <span style="font-size:14px;font-weight:800;white-space:nowrap">{{ r.hour }}</span>
+                      </div>
+                      <div style="display:flex;flex-direction:column;gap:8px;min-width:0">
+                        <div style="display:flex;flex-direction:column;gap:2px">
+                          <span style="font-size:14px;font-weight:700">{{ r.what }}</span>
+                          <sc-if value="{{ r.hasSub }}" hint-placeholder-val="{{ false }}"><span style="font-size:12.5px;color:#AEB4BB">{{ r.sub }}</span></sc-if>
+                        </div>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+                          <sc-for list="{{ r.btns }}" as="b" hint-placeholder-count="3"><button onClick="{{ b.pick }}" style="background:{{ b.bg }};color:{{ b.c }};border:1.5px solid {{ b.bd }};border-radius:999px;padding:0 12px;min-height:36px;font-size:12.5px;font-weight:800;cursor:pointer;white-space:nowrap">{{ b.lbl }}</button></sc-for>
+                          <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:#AEB4BB">Heure réelle <input type="time" value="{{ r.real }}" onChange="{{ r.onReal }}" style="background:#1E2023;border:1px solid #3B4046;border-radius:8px;padding:6px 8px;color:#fff;font-size:14px;outline:none;color-scheme:dark"></label>
+                        </div>
+                        <sc-if value="{{ r.needWhy }}" hint-placeholder-val="{{ false }}">
+                          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start">
+                            <textarea value="{{ r.why }}" onChange="{{ r.onWhy }}" rows="2" placeholder="Justificatif : raison de l’écart" style="flex:1 1 220px;min-width:0;background:#1E2023;border:1px solid #3B4046;border-radius:10px;padding:10px;color:#fff;font-size:14px;line-height:1.4;outline:none;resize:vertical;font-family:inherit"></textarea>
+                            <sc-if value="{{ r.noImg }}" hint-placeholder-val="{{ true }}">
+                              <label style="display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 14px;border:1.5px dashed #4A5057;border-radius:10px;color:#D5D9DE;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>Photo<input type="file" accept="image/*" onChange="{{ r.onImg }}" style="display:none"></label>
+                            </sc-if>
+                            <sc-if value="{{ r.hasImg }}" hint-placeholder-val="{{ false }}">
+                              <div style="position:relative;width:64px;height:64px;flex-shrink:0">
+                                <img src="{{ r.img }}" onClick="{{ r.viewImg }}" alt="Justificatif" style="width:64px;height:64px;object-fit:cover;border-radius:10px;cursor:zoom-in;display:block">
+                                <button onClick="{{ r.delImg }}" title="Retirer la photo" style="position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;border:0;background:#FF5A5F;color:#1E2023;font-size:13px;font-weight:800;cursor:pointer;line-height:1">×</button>
+                              </div>
+                            </sc-if>
+                          </div>
+                          <sc-if value="{{ r.miss }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;font-weight:700;color:#FF5A5F">Justificatif manquant</span></sc-if>
+                        </sc-if>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </div>
+          </sc-for>
         </div>
       </sc-if>
 
@@ -3081,16 +3169,23 @@ class Component extends DCLogic {
     return { s: st, e: Math.max(st + 60, mm ? st + (toM(b) - toM(a)) : toM(b)), real: false, over: false };
   }
   calViewVals(MO, STC, byDay, shiftCal, cal, today) {
-    const s = this.state, view = s.calView || 'mois', ZL = [28, 40, 56, 80, 112, 160], zi = s.calZoom ?? 2, hp = ZL[zi], H0 = 6, H1 = 22;
+    const s = this.state, view = s.calView || 'mois', ZL = [28, 40, 56, 80, 112, 160], zi = s.calZoom ?? 2, hp = ZL[zi];
+    let H0 = 6, H1 = 22;
     const CW = view === 'jour' ? [160, 200, 240, 360, 520, 760] : [70, 95, 120, 170, 240, 340], hzi = s.calHZoom ?? 2, cw = CW[hzi];
     const anchor = s.calAnchor || cal.sel || today, addD = (iso, n) => { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return this.iso(d); };
     const wk = this.weekKey(anchor), DN = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM'];
     const days = view === 'jour' ? [anchor] : view === 'semaine' ? DN.map((x, i) => addD(wk, i)) : [];
+    const full = x => (byDay[x] || []).filter(r => r.status !== 'annule').map(r => ({ r, sp: this.jobSpan(r) }));
+    const SEG = {}; days.forEach(iso => {
+      const cur = full(iso).map(x => ({ r: x.r, full: x.sp, cont: x.sp.e > 1440, prev: false, sp: { ...x.sp, e: Math.min(x.sp.e, 1440) } }));
+      const pv = full(addD(iso, -1)).filter(x => x.sp.e > 1440).map(x => ({ r: x.r, full: x.sp, prev: true, cont: false, sp: { ...x.sp, s: 0, e: x.sp.e - 1440 } }));
+      SEG[iso] = [...pv, ...cur].sort((a, b) => a.sp.s - b.sp.s);
+      SEG[iso].forEach(x => { H0 = Math.min(H0, Math.floor(x.sp.s / 60)); H1 = Math.min(24, Math.max(H1, Math.ceil(x.sp.e / 60))); }); });
     const setA = iso => { const d = new Date(iso + 'T12:00:00'); this.setState(st => ({ calAnchor: iso, cal: { ...st.cal, sel: iso, y: d.getFullYear(), m: d.getMonth() } })); };
     const px = m => ((m - H0 * 60) / 60 * hp).toFixed(1) + 'px', F = x => this.fDur(x);
     const now = new Date(), nowM = now.getHours() * 60 + now.getMinutes();
     const cols = days.map(iso => {
-      const d = new Date(iso + 'T12:00:00'), rs = (byDay[iso] || []).filter(r => r.status !== 'annule').map(r => ({ r, sp: this.jobSpan(r) })).sort((a, b) => a.sp.s - b.sp.s);
+      const d = new Date(iso + 'T12:00:00'), rs = SEG[iso];
       const VK = Object.keys(this.VEH), NV = VK.length;
       VK.forEach((vk, vi) => { const grp = rs.filter(x => (this.jobVeh(x.r) || x.r.vehicle) === vk || (vi === 0 && !VK.includes(this.jobVeh(x.r) || x.r.vehicle))), lanes = [];
         grp.forEach(x => { let li = lanes.findIndex(e => e <= x.sp.s); if (li < 0) { li = lanes.length; lanes.push(0); } lanes[li] = x.sp.e; x.sub = li; });
@@ -3098,10 +3193,10 @@ class Component extends DCLogic {
       rs.forEach(x => { const w = 1 / NV / (x.ns || 1); x.lane = 0; x.nl = 1; x.lp = ((x.vi || 0) / NV + (x.sub || 0) * w) * 100; x.wp = w * 100; });
       const evs = rs.map(x => { const r = x.r, c2 = STC[r.status] || STC.attente, s0 = Math.max(x.sp.s, H0 * 60), e0 = Math.min(Math.max(x.sp.e, s0 + 30), H1 * 60), hgt = (e0 - s0) / 60 * hp;
         return { t: px(s0), h: hgt.toFixed(1) + 'px', l: x.lp.toFixed(2) + '%', w: x.wp.toFixed(2) + '%', vImg: (this.vehOf(this.jobVeh(r) || r.vehicle) || {}).img || '', hasVImg: !!((this.vehOf(this.jobVeh(r) || r.vehicle) || {}).img), bg: c2[0], color: c2[1], bd: x.sp.real ? '#fff' : 'rgba(255,255,255,0.35)',
-          amt: (() => { const m = this.amtOf(r); return (m.fin ? 'Final · ' : 'Provisoire · ') + this.fmt(m.v); })(), range: this.fT(x.sp.s) + '–' + this.fT(x.sp.e), ref: r.ref.replace('DEM-', ''), name: (r.name || '').split(' ')[0], veh: (this.VEH[this.jobVeh(r)] || {}).tag || '', dur: F(x.sp.e - x.sp.s) + (x.sp.real ? '' : ' (estimé)'),
+          amt: (() => { const m = this.amtOf(r); return (m.fin ? 'Final · ' : 'Provisoire · ') + this.fmt(m.v); })(), range: this.fT(x.full.s) + '–' + this.fT(x.full.e) + (x.prev ? ' · suite de la veille' : x.cont ? ' · suite le lendemain' : ''), ref: r.ref.replace('DEM-', ''), name: (r.name || '').split(' ')[0], veh: (this.VEH[this.jobVeh(r)] || {}).tag || '', dur: F(x.sp.e - x.sp.s) + (x.sp.real ? '' : ' (estimé)'),
           route: (r.from || '-') + ' → ' + (r.to || '-'), showMore: hgt >= 64, over: x.sp.over && hgt >= 40,
           tip: r.ref + ' · ' + (r.name || '') + ' · ' + this.fT(x.sp.s) + '–' + this.fT(x.sp.e) + (x.sp.real ? ' (durée calculée par le devis)' : ' (créneau, durée non calculée)'), open: () => this.openDevis(r) }; });
-      let dP = 0, dF = 0; rs.forEach(x => { const m = this.amtOf(x.r); if (m.fin) dF += m.v; else dP += m.v; });
+      let dP = 0, dF = 0; rs.filter(x => !x.prev).forEach(x => { const m = this.amtOf(x.r); if (m.fin) dF += m.v; else dP += m.v; });
       const VK2 = Object.keys(this.VEH);
       return { vLanes: VK2.map(k => ({ img: (this.vehOf(k) || {}).img || '', tag: this.VEH[k].tag })), hasP: rs.length > 0, hasF: rs.length > 0, pAmt: 'Prov. ' + this.fmt(dP), fAmt: 'Final ' + this.fmt(dF), iso, dn: DN[(d.getDay() + 6) % 7], num: d.getDate(), c: iso === today ? '#3DDC84' : iso === anchor && view === 'semaine' ? '#FFD23F' : '#fff', bg: iso === today ? '#212428' : 'transparent',
         isToday: iso === today && nowM >= H0 * 60 && nowM <= H1 * 60, nowT: px(nowM), evs, pick: () => { setA(iso); this.setState({ calView: 'jour' }); } }; });
@@ -3125,6 +3220,37 @@ class Component extends DCLogic {
       c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); ok(c.toDataURL('image/jpeg', 0.7)); }; im.src = fr.result; }; fr.readAsDataURL(file); });
   }
   fAt(at) { return new Date(at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }); }
+  planVals() {
+    const s = this.state, data = s.data, today = this.iso(new Date()), flt = s.plFlt || 'venir', open = s.plOpen || {}, P = data.plan || {};
+    const setP = (rid, i, patch) => { const d0 = this.state.data, pl = { ...(d0.plan || {}) }, rr = { ...(pl[rid] || {}) }; rr[i] = { ...(rr[i] || {}), ...patch, at: new Date().toISOString() }; pl[rid] = rr; this.save({ ...d0, plan: pl }); };
+    const ST = { ok: ['Respecté', '#3DDC84'], late: ['En retard', '#FFD23F'], ko: ['Non respecté', '#FF5A5F'] };
+    const list = (data.res || []).filter(r => r.date && r.status !== 'annule' && (flt === 'tout' || (flt === 'venir' ? r.date >= today : r.date < today)))
+      .sort((a, b) => (a.date + (a.start || '')).localeCompare(b.date + (b.start || '')) * (flt === 'passe' ? -1 : 1));
+    let cOk = 0, cJus = 0, cMiss = 0, cTodo = 0;
+    const cards = list.map(r => {
+      const src = r.devis ? { ...r, ...r.devis, start: r.start || r.devis.start, time: r.time || r.devis.time } : r;
+      let le = null; try { le = src.inv ? this.laborEst(src) : null; } catch (e) {}
+      let steps;
+      if (le && le.rows) { let t = le.start; steps = le.rows.map(x => { const a = t; t += x.m; return { what: x.what, sub: x.sub || '', a, b: t }; }); }
+      else { const sp = this.jobSpan(r); steps = [{ what: 'Arrivée au départ', sub: '', a: sp.s, b: sp.s + 15 }, { what: 'Déménagement', sub: 'Fiche d’appel non remplie : durée du créneau', a: sp.s + 15, b: sp.e - 10 }, { what: 'Vérification finale', sub: '', a: sp.e - 10, b: sp.e }]; }
+      const rec = P[r.id] || {}; let nOk = 0, nDone = 0, nMiss = 0;
+      const rows = steps.map((x, i) => { const e = rec[i] || {}, st = e.st || '', bad = st === 'late' || st === 'ko', miss = bad && !(e.why || '').trim() && !e.img;
+        if (st) nDone++; if (st === 'ok') nOk++; if (miss) nMiss++;
+        return { hour: this.fT(x.a) + ' – ' + this.fT(x.b), what: x.what, sub: x.sub, hasSub: !!x.sub, dot: st ? ST[st][1] : '#4A5057', needWhy: bad, miss,
+          btns: Object.keys(ST).map(k => ({ lbl: ST[k][0], bg: st === k ? ST[k][1] : 'transparent', c: st === k ? '#1E2023' : '#D5D9DE', bd: st === k ? ST[k][1] : '#3B4046', pick: () => setP(r.id, i, { st: st === k ? '' : k }) })),
+          real: e.real || '', onReal: ev => setP(r.id, i, { real: ev.target.value }), why: e.why || '', onWhy: ev => setP(r.id, i, { why: ev.target.value }),
+          hasImg: !!e.img, noImg: !e.img, img: e.img || '', viewImg: () => this.setState({ viewImg: e.img, viewZ: 1 }), delImg: () => setP(r.id, i, { img: '' }),
+          onImg: async ev => { const f = ev.target.files && ev.target.files[0]; ev.target.value = ''; if (!f) return; try { setP(r.id, i, { img: await this.photoData(f, 1200) }); } catch (er) {} } }; });
+      const all = nDone === steps.length, [stL, stC] = nMiss ? ['Écart non justifié', '#FF5A5F'] : !nDone ? ['À vérifier', '#AEB4BB'] : !all ? ['En cours', '#FFD23F'] : nOk === steps.length ? ['Planning respecté', '#3DDC84'] : ['Écarts justifiés', '#FFD23F'];
+      if (nMiss) cMiss++; else if (!all) cTodo++; else if (nOk === steps.length) cOk++; else cJus++;
+      const op = !!open[r.id], d = new Date(r.date + 'T12:00:00');
+      return { id: r.id, date: d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/^./, c => c.toUpperCase()), isToday: r.date === today,
+        ref: r.ref, name: r.name || '', veh: (this.VEH[this.jobVeh(r)] || {}).tag || '', span: this.fT(steps[0].a) + ' – ' + this.fT(steps[steps.length - 1].b), real: !!le,
+        stL, stC, prog: nDone + ' / ' + steps.length, rows, open: op, rot: op ? '0deg' : '-90deg', tog: () => this.setState(st => ({ plOpen: { ...(st.plOpen || {}), [r.id]: !op } })) }; });
+    return { aSuivi: s.atab === 'suivi', plCards: cards, plEmpty: !cards.length, plHas: cards.length > 0,
+      plFlts: [['venir', 'À venir'], ['passe', 'Passés'], ['tout', 'Tout']].map(([k, lbl]) => ({ lbl, bg: flt === k ? '#F6D73C' : 'transparent', c: flt === k ? '#1E2023' : '#D5D9DE', pick: () => this.setState({ plFlt: k }) })),
+      plStats: [['Respectés', cOk, '#3DDC84'], ['Écarts justifiés', cJus, '#FFD23F'], ['Non justifiés', cMiss, '#FF5A5F'], ['À vérifier', cTodo, '#AEB4BB']].map(([l, n, c]) => ({ l, n, c })) };
+  }
   stVals() {
     const s = this.state, data = s.data, Y = '#F6D73C', D = '#1E2023', staff = data.staff || [], view = src => () => this.setState({ viewImg: src, viewZ: 1 });
     const RL = { chauffeur: 'CHAUFFEUR', menuisier: 'MENUISIER', manoeuvre: 'MANŒUVRE' }, vName = k => (this.VEH[k] || {}).tag || k || '-';
@@ -3571,7 +3697,7 @@ class Component extends DCLogic {
       invClear: () => { if (confirm('Vider la fiche d\'appel ?')) set(() => this.blankInv()); }
     };
   }
-  blankD() { return { resId: null, num: '', name: '', phone: '', date: '', vehicle: 'sprinter', from: '', to: '', fromLL: null, toLL: null, km: '', tier: 0, custom: '', trips: 1, man: 0, bureau: 0, armoire: 0, lit: 0, remise: '', notes: '' }; }
+  blankD() { return { resId: null, num: '', name: '', phone: '', date: '', vehicle: 'sprinter', from: '', to: '', fromLL: null, toLL: null, km: '', tier: 0, custom: '', trips: 1, man: 0, bureau: 0, armoire: 0, lit: 0, remise: '', remiseType: 'fcfa', remiseWhy: '', notes: '' }; }
   seed() {
     const tarifs = { sprinter: [30000, 37000, 44000], trafic: [20000, 25000, 30000], master: [25000, 31000, 37000], manoeuvre: 6000, montage: 15000 };
     const r1 = { id: 'r1', ref: 'DEM-4821', status: 'attente', name: 'Awa Ndiaye', phone: '77 000 00 01', vehicle: 'sprinter', from: 'Ouakam, Dakar', to: 'Almadies, Dakar', tier: 0, date: '2026-10-18', time: 'Matin (8h – 12h)', trips: 2, man: 2, bureau: 0, armoire: 1, lit: 1, notes: '3e étage sans ascenseur', devis: null };
@@ -3605,8 +3731,9 @@ class Component extends DCLogic {
     const tolls = []; pgs.forEach(pg => { const n = +((p.peages || {})[pg.id]) || 0; if (n) { const pu = this.pgPrice(pg, p.vehicle); tolls.push({ label: (/^péage/i.test(pg.name) ? pg.name : 'Péage · ' + pg.name) + ' (' + v.tag + ')', qty: n, pu, amount: n * pu }); } });
     lines.forEach(l => l.amount = l.qty * l.pu);
     const sub = lines.reduce((a, l) => a + l.amount, 0);
-    const remise = +p.remise || 0;
-    return { lines, tier, unit, total: Math.max(0, sub - remise), remise, tolls, tollTot: tolls.reduce((a, l) => a + l.amount, 0) };
+    const rv = Math.max(0, +p.remise || 0), pct = p.remiseType === 'pct', remise = pct ? Math.round(sub * Math.min(100, rv) / 100) : Math.min(rv, sub);
+    const remLbl = 'Remise' + (pct && rv ? ' (' + Math.min(100, rv) + ' %)' : '') + ((p.remiseWhy || '').trim() ? ' · ' + p.remiseWhy.trim() : '');
+    return { lines, tier, unit, total: Math.max(0, sub - remise), remise, sub, remLbl, tolls, tollTot: tolls.reduce((a, l) => a + l.amount, 0) };
   }
   fmtLines(c) { return c.lines.map(l => ({ label: l.label, qty: l.qty, pu: this.fmt(l.pu), amount: this.fmt(l.amount) })); }
   mapUrl(a, b) { return `https://maps.google.com/maps?saddr=${encodeURIComponent(a)}&daddr=${encodeURIComponent(b)}&output=embed`; }
@@ -3758,7 +3885,7 @@ class Component extends DCLogic {
     if (!d.num) d.num = 'DV-2026-' + String(108 + s.data.res.filter(r => r.devis).length).padStart(4, '0');
     const c = this.calc(d);
     let res = [...s.data.res];
-    const core = { trips: d.trips, remise: d.remise, custom: d.custom, name: d.name, phone: d.phone, vehicle: d.vehicle, from: d.from, to: d.to, fromLL: d.fromLL, toLL: d.toLL, km: d.km, tier: c.tier, date: d.date, noDate: !!d.noDate && !d.date, month: d.noDate ? d.month : (d.date || '').slice(0, 7), start: d.start, man: d.man, bureau: d.bureau, armoire: d.armoire, lit: d.lit, notes: d.notes, inv: d.inv, peages: d.peages, qc: d.qc };
+    const core = { trips: d.trips, remise: d.remise, remiseType: d.remiseType || 'fcfa', remiseWhy: d.remiseWhy || '', custom: d.custom, name: d.name, phone: d.phone, vehicle: d.vehicle, from: d.from, to: d.to, fromLL: d.fromLL, toLL: d.toLL, km: d.km, tier: c.tier, date: d.date, noDate: !!d.noDate && !d.date, month: d.noDate ? d.month : (d.date || '').slice(0, 7), start: d.start, man: d.man, bureau: d.bureau, armoire: d.armoire, lit: d.lit, notes: d.notes, inv: d.inv, peages: d.peages, qc: d.qc };
     const isNew = !d.resId;
     if (isNew) {
       const id = 'r' + Date.now();
@@ -3836,7 +3963,7 @@ class Component extends DCLogic {
     rowsL.forEach(l => { if (y > 255) { doc.addPage(); y = 24; } const lab = doc.splitTextToSize(T(l.label), cx[1] - M - 14); doc.text(lab, cx[0], y);
       doc.text(String(l.qty), cx[1], y, { align: 'right' }); doc.text(T(this.fmt(l.pu)), cx[2], y, { align: 'right' }); doc.setFont('helvetica', 'bold'); doc.text(T(this.fmt(l.amount)), cx[3], y, { align: 'right' }); doc.setFont('helvetica', 'normal');
       y += lab.length * 4.6 + 2; doc.line(M, y, W - M, y); y += 5.5; });
-    if (c.remise) { doc.text('Remise', cx[0], y); doc.text(T('- ' + this.fmt(c.remise)), cx[3], y, { align: 'right' }); y += 8; }
+    if (c.remise) { doc.text(T(c.remLbl || 'Remise'), cx[0], y); doc.text(T('- ' + this.fmt(c.remise)), cx[3], y, { align: 'right' }); y += 8; }
     if (y > 250) { doc.addPage(); y = 24; }
     y += 2; doc.setFillColor(final ? 30 : 246, final ? 32 : 215, final ? 35 : 60); doc.roundedRect(M, y, W - 2 * M, 16, 2, 2, 'F');
     doc.setTextColor(final ? 255 : 30, final ? 255 : 32, final ? 255 : 35); doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
@@ -4006,7 +4133,7 @@ class Component extends DCLogic {
     const shiftJ = k => () => this.setState(st => { const d0 = new Date(st.jm.y, st.jm.m + k, 1); return { jm: { y: d0.getFullYear(), m: d0.getMonth() }, jAll: false }; });
     const jt = s.j.type;
     const nBr = this.briefTodo(s.data).length;
-    const atabs = [['res', 'Réservations'], ['cal', 'Calendrier'], ['equipes', 'Équipes'], ['clients', 'Clients'], ['devis', 'Créer un devis'], ['compta', 'Comptabilité'], ['ctrl', 'Contrôles'], ['peages', 'Péages'], ['tarifs', 'Paramètres']].map(([k, label]) => {
+    const atabs = [['res', 'Réservations'], ['cal', 'Calendrier'], ['equipes', 'Équipes'], ['suivi', 'Suivi planning'], ['clients', 'Clients'], ['devis', 'Créer un devis'], ['compta', 'Comptabilité'], ['ctrl', 'Contrôles'], ['peages', 'Péages'], ['tarifs', 'Paramètres']].map(([k, label]) => {
       const sel = s.atab === k; return { label, bg: sel ? Y : 'transparent', color: sel ? D : '#D5D9DE',
         pick: () => { this.setState({ eqInfoO: {}, eqSec: {}, eqHrs: {} }); if (k === 'devis') { this.lastGeo.dfrom = this.lastGeo.dto = undefined; this.clearMap('d'); } if (k === 'devis') this.reset('d', this.blankD(), { atab: k, toast: '', pin: { ...s.pin, d: 'from' } }); else this.setState({ atab: k }); } }; });
 
@@ -4125,7 +4252,7 @@ class Component extends DCLogic {
       jCsv: () => { const rows = [['Date', 'Type', 'Catégorie', 'Libellé', 'Montant FCFA']].concat(jList.map(x => [x.date, x.type === 'charge' ? 'Charge' : 'Revenu', x.cat, x.label, (x.type === 'charge' ? -1 : 1) * x.amount]));
         const csv = '\ufeff' + rows.map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(';')).join('\n');
         const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = 'journal-' + (s.jAll ? 'complet' : jKey) + '.csv'; a.click(); },
-      aPeages: s.atab === 'peages', ...this.peageVals(d), ...this.dimVals(), ...this.cvVals(), ...this.labVals(), ...this.pmVals(), ...this.qVals(d), ...this.eqVals(), ...this.stVals(), ...this.emVals(), ...this.liveVals(d), ...(() => { const fin = (s.dMode || (d.resId && (s.data.res.find(r => r.id === d.resId) || {}).status === 'termine' ? 'final' : 'prov')) === 'final';
+      aPeages: s.atab === 'peages', ...this.peageVals(d), ...this.dimVals(), ...this.cvVals(), ...this.labVals(), ...this.pmVals(), ...this.qVals(d), ...this.eqVals(), ...this.stVals(), ...this.planVals(), ...this.emVals(), ...this.liveVals(d), ...(() => { const fin = (s.dMode || (d.resId && (s.data.res.find(r => r.id === d.resId) || {}).status === 'termine' ? 'final' : 'prov')) === 'final';
         const final = fin; return { dDocTitle: fin ? 'DEVIS FINAL' : 'DEVIS PROVISOIRE', dLegal: final ? "Devis final établi sur la base du nombre réel d'allers-retours effectués (" + d.trips + "), au tarif de la tranche de distance appliquée."
       : "Devis temporaire, calculé sur " + d.trips + " aller(s)-retour(s) estimé(s). Le transport est facturé par aller-retour effectué : le devis final, basé sur le nombre réel d'allers-retours, sera envoyé par Demenag Express à la fin du déménagement.", dTotLbl: fin ? 'TOTAL' : 'TOTAL ESTIMÉ',
           saveLbl: s.view === 'cdevis' ? 'Envoyer ma demande' : 'Enregistrer',
@@ -4151,7 +4278,9 @@ class Component extends DCLogic {
         return { calNoDate: L.map(r => ({ ref: r.ref.replace('DEM-', ''), name: r.name || '', route: (r.from || '—') + ' → ' + (r.to || '—'), amt: (r.status === 'termine' ? 'Final · ' : 'Provisoire · ') + this.fmt(this.liveTot(r)), open: () => this.openDevis(r) })), hasCalNoDate: L.length > 0, calNoDateTitle: 'SANS DATE · ' + this.fmonth(mk).toUpperCase() + ' · ' + L.length }; })(), stop: e => e.stopPropagation(),
       ...this.invVals(d), ...this.invEstVals(d), d, dTitle: s.view === 'cdevis' ? 'VOS INFORMATIONS' + (resRef ? ' · ' + resRef : '') : resRef ? 'DEVIS POUR ' + resRef : 'NOUVEAU DEVIS · CLIENT EN AGENCE',
       dVehicles, dSteps: mkSteps('d', d), dLines: this.fmtLines(dc), dTotal: this.fmt(dc.total), dHasTolls: dc.tolls.length > 0, dTolls: dc.tolls.map(l => ({ label: l.label, qty: l.qty, pu: this.fmt(l.pu), amount: this.fmt(l.amount) })), dTollTot: this.fmt(dc.tollTot),
-      dHasRemise: dc.remise > 0, dRemise: this.fmt(dc.remise), dHasNotes: !!this.fullNote(d), dFullNote: this.fullNote(d),
+      dHasRemise: dc.remise > 0, dRemise: this.fmt(dc.remise), dRemLbl: dc.remLbl || 'Remise', dSub: this.fmt(dc.sub || 0), dRemPh: d.remiseType === 'pct' ? 'Remise en %' : 'Remise en FCFA',
+      dRemTypes: [['fcfa', 'FCFA'], ['pct', '%']].map(([k, lbl]) => { const on = (d.remiseType || 'fcfa') === k; return { lbl, bg: on ? '#F6D73C' : 'transparent', c: on ? '#1E2023' : '#D5D9DE', pick: () => this.upd('d', { remiseType: k }) }; }),
+      dRemWhys: ['Client fidèle', 'Promotion', 'Geste commercial', 'Parrainage'].map(w => ({ lbl: w, pick: () => this.upd('d', { remiseWhy: w }) })), dHasNotes: !!this.fullNote(d), dFullNote: this.fullNote(d),
       dTierLabel: this.TIERS[dc.tier], dIsCustom: dc.tier === 3, dNum: d.num || 'Brouillon',
       dName: d.name || '—', dDate: this.fdate(d.date), dVehName: this.VEH[d.vehicle].short,
       dRoute: `${d.from || '—'} → ${d.to || '—'}`, dKmLabel: d.km ? `${d.km} km (relevé Google Maps)` : 'Distance à relever',

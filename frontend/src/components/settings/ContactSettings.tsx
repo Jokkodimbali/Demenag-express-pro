@@ -1,6 +1,37 @@
+import { useState } from 'react';
 import { messages } from '../../content/fr';
 import type { Catalogue } from '../../domain/model';
+import { whatsappUrl } from '../../application/services/whatsapp';
 export function ContactSettings({ catalogue }: { catalogue: Catalogue }) {
+  const [whatsappPhone, setWhatsappPhone] = useState(
+    catalogue.settings.whatsappPhone || catalogue.settings.businessPhone,
+  );
+  const [whatsappCountryCode, setWhatsappCountryCode] = useState(
+    catalogue.settings.whatsappCountryCode ?? '221',
+  );
+  const [whatsappMode, setWhatsappMode] = useState(catalogue.settings.whatsappMode ?? 'api');
+  const [whatsappQuoteTemplate, setWhatsappQuoteTemplate] = useState(
+    catalogue.settings.whatsappQuoteTemplate ??
+      'Bonjour {nom}, votre déménagement est terminé. Voici votre devis final Demenag Express {num} : {total} ({allers} aller(s)-retour(s), {vehicule}). Le PDF est disponible dans votre espace client. Merci !',
+  );
+  const previewText = whatsappQuoteTemplate.replace(
+    /\{(nom|ref|num|total|allers|vehicule|date|trajet)\}/g,
+    (token) =>
+      ({
+        '{nom}': 'Awa Ndiaye',
+        '{ref}': 'DE-2026-001',
+        '{num}': 'DEV-2026-001',
+        '{total}': '125 000 F CFA',
+        '{allers}': '2',
+        '{vehicule}': 'Renault Master',
+        '{date}': '26/10/2026',
+        '{trajet}': 'Plateau → Almadies',
+      })[token] ?? token,
+  );
+  const previewUrl = whatsappUrl(whatsappPhone, previewText, {
+    whatsappCountryCode,
+    whatsappMode,
+  });
   return (
     <div className="panel">
       <h2>{messages.identiteEtFacturation}</h2>
@@ -22,13 +53,73 @@ export function ContactSettings({ catalogue }: { catalogue: Catalogue }) {
         required
         pattern="\+[1-9][0-9]{7,14}"
         title="Saisissez le numéro au format international, par exemple +221771234567."
-        defaultValue={catalogue.settings.whatsappPhone || catalogue.settings.businessPhone}
+        value={whatsappPhone}
+        onChange={(event) => setWhatsappPhone(event.target.value)}
       />
       <p className="muted">
         Les boutons WhatsApp de contact de l’application ouvriront ce numéro. Saisissez le code pays
         et le numéro sans espace. Pour un message de devis adressé au client, WhatsApp utilise le
         compte connecté sur l’appareil.
       </p>
+      <div className="field-pair">
+        <div>
+          <label htmlFor="whatsapp-country-code">Indicatif pays WhatsApp</label>
+          <input
+            id="whatsapp-country-code"
+            name="whatsappCountryCode"
+            inputMode="numeric"
+            pattern="[1-9][0-9]{0,3}"
+            value={whatsappCountryCode}
+            onChange={(event) => setWhatsappCountryCode(event.target.value)}
+            required
+          />
+        </div>
+        <div>
+          <label htmlFor="whatsapp-mode">Ouvrir WhatsApp avec</label>
+          <select
+            id="whatsapp-mode"
+            name="whatsappMode"
+            value={whatsappMode}
+            onChange={(event) => setWhatsappMode(event.target.value as typeof whatsappMode)}
+          >
+            <option value="api">api.whatsapp.com (recommandé)</option>
+            <option value="wame">wa.me</option>
+            <option value="web">WhatsApp Web (ordinateur)</option>
+            <option value="app">Application WhatsApp (téléphone)</option>
+          </select>
+        </div>
+      </div>
+      <label htmlFor="whatsapp-quote-template">Message du devis final</label>
+      <textarea
+        id="whatsapp-quote-template"
+        name="whatsappQuoteTemplate"
+        rows={4}
+        maxLength={1000}
+        value={whatsappQuoteTemplate}
+        onChange={(event) => setWhatsappQuoteTemplate(event.target.value)}
+      />
+      <p className="muted">
+        Variables disponibles : {'{nom}'} {'{ref}'} {'{num}'} {'{total}'} {'{allers}'}{' '}
+        {'{vehicule}'} {'{date}'} {'{trajet}'}.
+      </p>
+      <div className="whatsapp-template-preview" aria-live="polite">
+        {previewText}
+      </div>
+      <div className="field-pair whatsapp-test">
+        <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="button">
+          Tester sur le numéro de l’entreprise
+        </a>
+        <span className="muted">
+          Ouvre : {whatsappPhone || 'aucun numéro'} ·{' '}
+          {whatsappMode === 'web'
+            ? 'WhatsApp Web'
+            : whatsappMode === 'app'
+              ? 'Application WhatsApp'
+              : whatsappMode === 'wame'
+                ? 'wa.me'
+                : 'api.whatsapp.com'}
+        </span>
+      </div>
       <h3>{messages.reseauxSociaux}</h3>
       <div className="social-settings">
         <div>

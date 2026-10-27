@@ -262,6 +262,41 @@ export async function downloadQuote(
   doc.text(pdfMoney(price.total), right - 5, y + 10, { align: 'right' });
   y += 25;
 
+  const tolls = documentQuote?.tolls ?? [];
+  if (tolls.length) {
+    ensureSpace(14);
+    y = paragraph(
+      'PÉAGES · À LA CHARGE DU CLIENT · NON INCLUS DANS LE TOTAL',
+      margin,
+      y,
+      contentWidth,
+      8.5,
+      true,
+    );
+    for (const toll of tolls) {
+      const row = `${toll.label} · ${toll.quantity} passage(s) × ${pdfMoney(toll.unitPrice)}`;
+      const rowLines = doc.splitTextToSize(clean(row), contentWidth - 30) as string[];
+      ensureSpace(Math.max(10, rowLines.length * 4.5 + 4));
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(39, 42, 45);
+      doc.text(rowLines, margin, y + 4);
+      doc.setFont('helvetica', 'bold');
+      doc.text(pdfMoney(toll.quantity * toll.unitPrice), right, y + 4, { align: 'right' });
+      y += Math.max(10, rowLines.length * 4.5 + 4);
+      doc.setDrawColor(225, 228, 232);
+      doc.line(margin, y, right, y);
+    }
+    const tollTotal = tolls.reduce((total, toll) => total + toll.quantity * toll.unitPrice, 0);
+    ensureSpace(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(39, 42, 45);
+    doc.text('Total péages à régler par le client', margin, y + 5);
+    doc.text(pdfMoney(tollTotal), right, y + 5, { align: 'right' });
+    y += 12;
+  }
+
   const explanation =
     documentQuote?.kind === 'final'
       ? messages.montantEtabliSurLaBaseDuNombreReel

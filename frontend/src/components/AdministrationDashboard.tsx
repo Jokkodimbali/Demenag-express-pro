@@ -11,6 +11,7 @@ import { clientIdentifier } from '../application/services/client-summary';
 import { messages } from '../content/fr';
 import { dateLabel, money } from '../domain/format';
 import type { Booking, Vehicle } from '../domain/model';
+import { useApp } from '../application/context';
 
 type DashboardProps = {
   bookings: Booking[];
@@ -447,6 +448,7 @@ export function DefinitiveQuotes({
   onSelect,
   onEdit,
 }: DashboardProps & { onEdit: (booking: Booking) => void }) {
+  const { catalogue } = useApp();
   const rows = bookings.filter(
     (booking) =>
       booking.status === 'in_progress' || booking.quotes.some((quote) => quote.kind === 'final'),
@@ -482,7 +484,7 @@ export function DefinitiveQuotes({
                     className="button primary small"
                     target="_blank"
                     rel="noreferrer"
-                    href={quoteNotificationUrl(booking, finalQuote)}
+                    href={quoteNotificationUrl(booking, finalQuote, catalogue?.settings)}
                   >
                     <MessageCircle size={16} />
                     {messages.envoyerLeDevisDefinitif}

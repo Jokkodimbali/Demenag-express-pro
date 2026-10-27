@@ -18,7 +18,12 @@ function transactionRepository(tx: Prisma.TransactionClient): AdministrationTran
   return {
     async findUser(id) {
       const row = await tx.utilisateur.findUnique({ where: { id } });
-      return row ? safeUser(fromUser(row)) : null;
+      return row
+        ? {
+            ...safeUser(fromUser(row)),
+            passwordResetRequestedAt: row.demandeReinitialisationMotDePasse?.toISOString() ?? null,
+          }
+        : null;
     },
     countActiveAdministrators: () =>
       tx.utilisateur.count({ where: { role: 'administrateur', actif: true } }),
@@ -35,6 +40,13 @@ function transactionRepository(tx: Prisma.TransactionClient): AdministrationTran
       return safeUser(fromUser(row));
     },
     async revokeSessions(userId) {
+      await tx.sessionConnexion.deleteMany({ where: { utilisateurId: userId } });
+    },
+    async resetClientPassword(userId, passwordHash) {
+      await tx.utilisateur.update({
+        where: { id: userId },
+        data: { empreinteMotDePasse: passwordHash, demandeReinitialisationMotDePasse: null },
+      });
       await tx.sessionConnexion.deleteMany({ where: { utilisateurId: userId } });
     },
   };
@@ -112,7 +124,10 @@ export class PrismaAdministration implements AdministrationRepository {
   }
   async listUsers() {
     const rows = await this.db.utilisateur.findMany({ orderBy: { creeLe: 'desc' } });
-    return rows.map((row) => safeUser(fromUser(row)));
+    return rows.map((row) => ({
+      ...safeUser(fromUser(row)),
+      passwordResetRequestedAt: row.demandeReinitialisationMotDePasse?.toISOString() ?? null,
+    }));
   }
   async transaction<T>(work: (repository: AdministrationTransaction) => Promise<T>): Promise<T> {
     try {
