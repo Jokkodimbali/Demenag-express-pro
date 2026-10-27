@@ -57,6 +57,7 @@ export interface BookingRepository {
   deleteBooking(id: string): Promise<void>;
   createBooking(input: BookingInput): Promise<Booking>;
   updateClientBooking(id: string, input: BookingInput, version: number): Promise<Booking>;
+  updateAdminBooking(id: string, input: BookingInput, version: number): Promise<Booking>;
   recordBookingReminder(id: string): Promise<Booking>;
   status(id: string, status: BookingStatus, version: number): Promise<Booking>;
   startBookingTrip(id: string, photos: string[]): Promise<Booking>;
@@ -74,6 +75,17 @@ export interface BookingRepository {
   updateBookingRoute(id: string, from: Point, to: Point, version: number): Promise<Booking>;
   quote(id: string, input: QuoteInput): Promise<Booking>;
   assignDriver(id: string, driverId: string | null, version: number): Promise<Booking>;
+  updateCrew(
+    id: string,
+    input: {
+      crew: NonNullable<Booking['crew']>;
+      crewBriefs: NonNullable<Booking['crewBriefs']>;
+      crewRefusedBy: NonNullable<Booking['crewRefusedBy']>;
+      crewReplies: NonNullable<Booking['crewReplies']>;
+      crewMessages: NonNullable<Booking['crewMessages']>;
+      version: number;
+    },
+  ): Promise<Booking>;
 }
 export type AccountingEntry = {
   id: string;
@@ -96,7 +108,7 @@ export interface AccountingRepository {
   createAccountingEntry(input: ManualAccountingInput): Promise<AccountingEntry>;
   voidAccountingEntry(id: string): Promise<void>;
 }
-export type DriverCreation = Omit<Driver, 'id' | 'userId' | 'active'> & { password: string };
+export type DriverCreation = Omit<Driver, 'id' | 'userId' | 'active'> & { password?: string };
 export type InspectionLevels = Record<string, 'good' | 'low' | 'empty'>;
 export type VehicleInspection = {
   id: string;
@@ -137,6 +149,7 @@ export interface DriverRepository {
   drivers(): Promise<Driver[]>;
   createDriver(input: DriverCreation): Promise<Driver>;
   updateDriver(driver: Omit<Driver, 'userId'>): Promise<Driver>;
+  deleteDriver(id: string): Promise<{ removed: boolean; employee: Driver }>;
   driverProfile(): Promise<Driver>;
   updateDriverProfile(input: Pick<Driver, 'name' | 'phone' | 'photo'>): Promise<Driver>;
   updateDriverAvailability(availability: NonNullable<Driver['availability']>): Promise<Driver>;

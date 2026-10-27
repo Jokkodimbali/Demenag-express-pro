@@ -7,6 +7,7 @@ import type {
   UserRepository,
 } from '../src/application/ports/index.js';
 import type { Booking, Driver, User } from '../src/domain/model.js';
+import { driverSchema } from '../src/adapters/in/http/schemas.js';
 
 const actor: User = {
   id: 'admin',
@@ -35,6 +36,33 @@ const second: Driver = {
   active: true,
   vehicleId: 'vehicle-b',
 };
+
+test('La validation administrateur conserve la disponibilité et refuse un horaire incohérent', () => {
+  const availability = Array.from({ length: 7 }, (_, index) => ({
+    available: index !== 6,
+    startTime: '08:00',
+    endTime: '18:00',
+  }));
+  const input = {
+    name: 'Awa',
+    phone: '+221770000001',
+    photo: null,
+    active: true,
+    vehicleId: null,
+    availability,
+  };
+
+  assert.deepEqual(driverSchema.parse(input).availability, availability);
+  assert.equal(
+    driverSchema.safeParse({
+      ...input,
+      availability: availability.map((day, index) =>
+        index === 0 ? { ...day, startTime: '18:00', endTime: '08:00' } : day,
+      ),
+    }).success,
+    false,
+  );
+});
 
 test('Changer un chauffeur de véhicule libère automatiquement le chauffeur déjà affecté', async () => {
   const values = [first, second];

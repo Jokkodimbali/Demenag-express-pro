@@ -141,6 +141,10 @@ export class MovingService implements MovingUseCases {
         to: route.to,
         distanceKm: route.distanceKm,
         date: input.date,
+        month: input.date
+          ? input.date.slice(0, 7)
+          : ((user.role === 'admin' ? input.month : undefined) ??
+            this.clock.now().toISOString().slice(0, 7)),
         timeSlot: input.timeSlot,
         options: input.options,
         workAccess: input.workAccess,
@@ -228,9 +232,82 @@ export class MovingService implements MovingUseCases {
       version,
     );
   }
+  async updateAdminRequest(user: User, id: string, input: BookingInput, version: number) {
+    requireAdministrator(user);
+    const booking = await this.get(user, id);
+    if (booking.version !== version)
+      throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
+    requireValue(
+      !['completed', 'cancelled'].includes(booking.status) &&
+        !booking.quotes.some((quote) => quote.kind === 'final'),
+      messages.cetteReservationEstCloturee,
+    );
+    const { route, vehicle, estimate, settings } = await this.priceInput(
+      input.vehicleId,
+      input.routeId,
+      input.options,
+      input.workAccess,
+      input.trips ?? 1,
+    );
+    if (input.date && input.date !== booking.date)
+      validateDate(input.date, this.clock.now(), { ...settings, maxAdvanceDays: 730 });
+    return this.bookings.update(
+      {
+        ...booking,
+        customerName: input.customerName,
+        phone: input.customerPhone,
+        vehicle,
+        from: route.from,
+        to: route.to,
+        distanceKm: route.distanceKm,
+        fromAddress: input.fromAddress,
+        toAddress: input.toAddress,
+        date: input.date || null,
+        month: input.date
+          ? input.date.slice(0, 7)
+          : (input.month ?? booking.month ?? booking.createdAt.slice(0, 7)),
+        timeSlot: input.date ? input.timeSlot : '',
+        options: input.options,
+        workAccess: input.workAccess ?? booking.workAccess,
+        notes: input.notes,
+        pricingSettings: settings,
+        questionnaireAnswers: input.questionnaireAnswers ?? booking.questionnaireAnswers,
+        workPlan:
+          input.workPlan !== undefined
+            ? input.workPlan.map((step) => ({
+                ...step,
+                review: (() => {
+                  const previous = booking.workPlan?.find((item) => item.id === step.id);
+                  if (
+                    previous &&
+                    previous.time === step.time &&
+                    previous.title === step.title &&
+                    previous.detail === step.detail &&
+                    previous.minutes === step.minutes
+                  )
+                    return previous.review;
+                  return {
+                    status: 'pending' as const,
+                    reason: '',
+                    checkedAt: null,
+                    checkedBy: null,
+                  };
+                })(),
+              }))
+            : booking.workPlan,
+        inventorySnapshot: input.inventorySnapshot ?? booking.inventorySnapshot,
+        estimate,
+      },
+      version,
+    );
+  }
   list(user: User) {
     requireActiveUser(user);
-    return this.bookings.list(user.role === 'admin' ? undefined : user.id);
+    return this.bookings.list(
+      user.role === 'admin' ? undefined : user.id,
+      undefined,
+      user.role !== 'admin',
+    );
   }
   async get(user: User, id: string) {
     const booking = await this.bookings.find(id);
@@ -703,6 +780,60 @@ export class MovingService implements MovingUseCases {
         );
     }
     return updated;
+  }
+  async updateCrew(
+    user: User,
+    id: string,
+    input: {
+      crew: NonNullable<Booking['crew']>;
+      crewBriefs: NonNullable<Booking['crewBriefs']>;
+      crewRefusedBy: NonNullable<Booking['crewRefusedBy']>;
+      crewReplies: NonNullable<Booking['crewReplies']>;
+      crewMessages: NonNullable<Booking['crewMessages']>;
+      version: number;
+    },
+  ) {
+    requireAdministrator(user);
+    const booking = await this.get(user, id);
+    if (booking.version !== input.version)
+      throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
+    const roleIds = [...input.crew.chauffeur, ...input.crew.menuisier, ...input.crew.manoeuvre];
+    if (new Set(roleIds).size !== roleIds.length)
+      throw new AppError(
+        400,
+        'Un employé ne peut pas occuper plusieurs rôles sur la même mission.',
+      );
+    if (input.crew.chef && !roleIds.includes(input.crew.chef))
+      throw new AppError(400, 'Le chef doit faire partie de l’équipe affectée.');
+    const members = await Promise.all(roleIds.map((memberId) => this.drivers.find(memberId)));
+    const expected = [
+      ...input.crew.chauffeur.map((memberId) => [memberId, 'chauffeur'] as const),
+      ...input.crew.menuisier.map((memberId) => [memberId, 'menuisier'] as const),
+      ...input.crew.manoeuvre.map((memberId) => [memberId, 'manoeuvre'] as const),
+    ];
+    for (const [index, [, role]] of expected.entries()) {
+      const member = members[index];
+      if (!member || !member.active || (member.role ?? 'chauffeur') !== role)
+        throw new AppError(
+          400,
+          'Un membre sélectionné est introuvable, inactif ou dans un autre rôle.',
+        );
+    }
+    const lead = input.crew.chauffeur
+      .map((memberId) => members[roleIds.indexOf(memberId)])
+      .find((member) => member?.userId);
+    return this.bookings.update(
+      {
+        ...booking,
+        driverId: lead?.id ?? null,
+        crew: input.crew,
+        crewBriefs: input.crewBriefs,
+        crewRefusedBy: input.crewRefusedBy,
+        crewReplies: input.crewReplies,
+        crewMessages: input.crewMessages,
+      },
+      input.version,
+    );
   }
   async quote(user: User, id: string, input: QuoteInput) {
     requireAdministrator(user);

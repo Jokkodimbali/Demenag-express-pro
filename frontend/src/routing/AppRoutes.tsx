@@ -3,11 +3,13 @@ import { Link, Navigate, Route, Routes } from 'react-router-dom';
 import { AdminLayout } from '../components/AdminLayout';
 import { Layout } from '../components/Layout';
 import { messages } from '../content/fr';
-import { Auth } from '../pages/Auth';
-import { Home } from '../pages/Home';
-import { BookingPage } from '../pages/BookingPage';
 import { Guard } from './Guard';
 import { routes } from './routes';
+const Auth = lazy(() => import('../pages/Auth').then((m) => ({ default: m.Auth })));
+const Home = lazy(() => import('../pages/Home').then((m) => ({ default: m.Home })));
+const BookingPage = lazy(() =>
+  import('../pages/BookingPage').then((m) => ({ default: m.BookingPage })),
+);
 const Account = lazy(() => import('../pages/Account').then((m) => ({ default: m.Account })));
 const Admin = lazy(() => import('../pages/Admin').then((m) => ({ default: m.Admin })));
 const AdminCreateQuote = lazy(() =>

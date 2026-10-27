@@ -32,44 +32,45 @@ export class PrismaBookings implements BookingRepository {
     courses: {
       id: string;
       sequence: number;
-      loadingPhotos: unknown;
-      unloadingPhotos: unknown;
+      loadingPhotos?: unknown;
+      unloadingPhotos?: unknown;
       startedAt: Date;
       finishedAt: Date | null;
     }[];
   }): Booking {
     const booking = row.donnees as Booking;
-    const workPlan = booking.workPlan?.length
-      ? booking.workPlan.map((step) => {
-          const legacyStep = step as typeof step & {
-            review?: WorkPlanReview;
-            driverReview?: WorkPlanReview;
-            adminReview?: WorkPlanReview;
-          };
-          if (legacyStep.review) return step;
-          const reviews = [legacyStep.driverReview, legacyStep.adminReview].filter(
-            (review): review is NonNullable<typeof review> => Boolean(review),
-          );
-          const review = reviews.sort(
-            (left, right) =>
-              new Date(right.checkedAt ?? 0).getTime() - new Date(left.checkedAt ?? 0).getTime(),
-          )[0] ?? {
-            status: 'pending' as const,
-            reason: '',
-            checkedAt: null,
-            checkedBy: null,
-          };
-          return { ...step, review };
-        })
-      : this.workPlanFromLegacyNotes(booking.notes);
+    const workPlan =
+      booking.workPlan !== undefined
+        ? booking.workPlan.map((step) => {
+            const legacyStep = step as typeof step & {
+              review?: WorkPlanReview;
+              driverReview?: WorkPlanReview;
+              adminReview?: WorkPlanReview;
+            };
+            if (legacyStep.review) return step;
+            const reviews = [legacyStep.driverReview, legacyStep.adminReview].filter(
+              (review): review is NonNullable<typeof review> => Boolean(review),
+            );
+            const review = reviews.sort(
+              (left, right) =>
+                new Date(right.checkedAt ?? 0).getTime() - new Date(left.checkedAt ?? 0).getTime(),
+            )[0] ?? {
+              status: 'pending' as const,
+              reason: '',
+              checkedAt: null,
+              checkedBy: null,
+            };
+            return { ...step, review };
+          })
+        : this.workPlanFromLegacyNotes(booking.notes);
     return {
       ...booking,
       workPlan,
       trips: row.courses.map((trip) => ({
         id: trip.id,
         sequence: trip.sequence,
-        loadingPhotos: trip.loadingPhotos as string[],
-        unloadingPhotos: trip.unloadingPhotos as string[] | null,
+        loadingPhotos: (trip.loadingPhotos as string[] | undefined) ?? [],
+        unloadingPhotos: (trip.unloadingPhotos as string[] | null | undefined) ?? null,
         startedAt: trip.startedAt.toISOString(),
         finishedAt: trip.finishedAt?.toISOString() ?? null,
       })),
@@ -100,7 +101,13 @@ export class PrismaBookings implements BookingRepository {
     }
     return items;
   }
-  async list(userId?: string, vehicleId?: string) {
+  async list(userId?: string, vehicleId?: string, includeTripPhotos = true) {
+    const courses = includeTripPhotos
+      ? { orderBy: { sequence: 'asc' as const } }
+      : {
+          orderBy: { sequence: 'asc' as const },
+          select: { id: true, sequence: true, startedAt: true, finishedAt: true },
+        };
     const rows = await this.db.reservation.findMany({
       where: {
         ...(userId ? { utilisateurId: userId } : {}),
@@ -108,7 +115,7 @@ export class PrismaBookings implements BookingRepository {
       },
       orderBy: { creeLe: 'desc' },
       take: userId ? 200 : undefined,
-      include: { courses: { orderBy: { sequence: 'asc' } } },
+      include: { courses },
     });
     return rows.map((r) => this.withTrips(r));
   }

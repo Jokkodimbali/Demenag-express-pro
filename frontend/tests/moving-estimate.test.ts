@@ -151,4 +151,5 @@ test('l’instantané de facture reprend les objets, accès et volumes du devis'
   assert.equal(snapshot.annexVolumeM3, 2.36);
   assert.equal(snapshot.totalVolumeM3, estimate.volume);
   assert.equal(snapshot.moverCount, estimate.crew);
+  assert.deepEqual(JSON.parse(JSON.stringify(snapshot)).sourceInventory, inventory);
 });

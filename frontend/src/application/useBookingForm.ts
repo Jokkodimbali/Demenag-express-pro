@@ -65,8 +65,8 @@ export function useBookingForm({
       }
       return;
     }
-    if (user.role !== 'client') {
-      setEditError('Cette demande ne peut être modifiée que depuis un compte client.');
+    if (user.role !== 'client' && !(administrativeQuote && user.role === 'admin')) {
+      setEditError('Cette demande ne peut être modifiée que depuis un compte autorisé.');
       setEditLoading(false);
       return;
     }
@@ -76,9 +76,9 @@ export function useBookingForm({
     void api
       .booking(editId)
       .then(async (booking) => {
-        if (!['pending', 'confirmed', 'cancelled'].includes(booking.status))
+        if (!administrativeQuote && !['pending', 'confirmed', 'cancelled'].includes(booking.status))
           throw new Error('Cette réservation ne peut plus être modifiée.');
-        if (booking.quotes.some((quote) => quote.kind === 'final'))
+        if (!administrativeQuote && booking.quotes.some((quote) => quote.kind === 'final'))
           throw new Error('Cette réservation ne peut plus être modifiée.');
         const route = await api.route(booking.from, booking.to);
         if (!active) return;
@@ -95,16 +95,23 @@ export function useBookingForm({
           to: booking.to,
           route,
           date: booking.date ?? '',
+          month: booking.month ?? booking.date?.slice(0, 7) ?? booking.createdAt.slice(0, 7),
           timeSlot: booking.timeSlot,
           estimatedTrips: Math.max(1, booking.estimate.trips),
           options: booking.options,
           notes: booking.notes,
+          questionnaireAnswers: Object.fromEntries(
+            (booking.questionnaireAnswers ?? []).map((answer) => [
+              answer.questionId,
+              answer.answer,
+            ]),
+          ),
           inventory: {
-            ...base.inventory,
-            fromFloor: workAccess?.fromFloor ?? 0,
-            toFloor: workAccess?.toFloor ?? 0,
-            fromLift: workAccess?.fromLift ?? false,
-            toLift: workAccess?.toLift ?? false,
+            ...(booking.inventorySnapshot?.sourceInventory ?? base.inventory),
+            fromFloor: workAccess?.fromFloor ?? booking.inventorySnapshot?.fromFloor ?? 0,
+            toFloor: workAccess?.toFloor ?? booking.inventorySnapshot?.toFloor ?? 0,
+            fromLift: workAccess?.fromLift ?? booking.inventorySnapshot?.fromLift ?? false,
+            toLift: workAccess?.toLift ?? booking.inventorySnapshot?.toLift ?? false,
           },
         });
         setEditingBooking(booking);
@@ -118,7 +125,7 @@ export function useBookingForm({
     return () => {
       active = false;
     };
-  }, [api, authLoading, editId, setDraft, user]);
+  }, [administrativeQuote, api, authLoading, editId, setDraft, user]);
   useEffect(() => {
     setTollLines((current) => {
       let changed = false;
@@ -269,6 +276,15 @@ export function useBookingForm({
   ) {
     e.preventDefault();
     if (submitLock.current) return;
+    if (
+      administrativeQuote &&
+      editingBooking &&
+      (['completed', 'cancelled'].includes(editingBooking.status) ||
+        editingBooking.quotes.some((quote) => quote.kind === 'final'))
+    ) {
+      setSubmitError('Cette réservation est clôturée et ne peut plus être modifiée.');
+      return;
+    }
     setSubmitError('');
     if (!draft.route || !price) {
       setSubmitError(messages.calculezLeTrajetPourObtenirUneEstimation);
@@ -308,6 +324,7 @@ export function useBookingForm({
         fromAddress: draft.fromAddress,
         toAddress: draft.toAddress,
         date: draft.date,
+        month: draft.date ? draft.date.slice(0, 7) : draft.month,
         timeSlot: draft.date ? draft.timeSlot : '',
         options: administrativeQuote && quoteOptions ? quoteOptions : draft.options,
         workAccess: {
@@ -345,17 +362,20 @@ export function useBookingForm({
                 })),
             ]
           : [],
-        workPlan: administrativeQuote ? workPlan : [],
-        inventorySnapshot: editingBooking ? undefined : inventorySnapshot,
+        workPlan:
+          administrativeQuote && (!editingBooking || inventorySnapshot) ? workPlan : undefined,
+        inventorySnapshot,
         requestId: draft.requestId,
       };
       const booking = editingBooking
-        ? await api.updateClientBooking(editingBooking.id, input, editingBooking.version)
+        ? administrativeQuote
+          ? await api.updateAdminBooking(editingBooking.id, input, editingBooking.version)
+          : await api.updateClientBooking(editingBooking.id, input, editingBooking.version)
         : await api.createBooking(input);
       if (administrativeQuote) clearAdminQuoteDraft();
       bookingLookup.current = null;
       setDraft(blankDraft());
-      if (editingBooking) {
+      if (editingBooking && !administrativeQuote) {
         navigate(routes.account);
         return;
       }
@@ -382,7 +402,7 @@ export function useBookingForm({
             {
               state: {
                 initialTollLines: tollLines,
-                quoteError: `Réservation créée, mais le devis n’a pas été enregistré : ${errorMessage(reason)}`,
+                quoteError: `${editingBooking ? 'Réservation mise à jour' : 'Réservation créée'}, mais le devis n’a pas été enregistré : ${errorMessage(reason)}`,
               },
             },
           );

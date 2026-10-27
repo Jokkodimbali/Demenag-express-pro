@@ -33,4 +33,7 @@ export class PrismaDrivers implements DriverRepository {
       conflict(error);
     }
   }
+  async delete(id: string) {
+    await this.db.chauffeur.delete({ where: { id } });
+  }
 }

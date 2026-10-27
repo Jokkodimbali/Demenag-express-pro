@@ -1,6 +1,6 @@
 import { ArrowLeft, Minus, Plus } from 'lucide-react';
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useBookingForm } from '../application/useBookingForm';
 import {
   readAdminQuoteDraft,
@@ -26,6 +26,8 @@ import { routes } from '../routing/routes';
 const RouteMap = lazy(() => import('../components/RouteMap'));
 
 export function AdminCreateQuote() {
+  const location = useLocation();
+  const editingReservation = new URLSearchParams(location.search).has('modifier');
   const restoredDraft = useRef(false);
   const skipInitialSave = useRef(false);
   const [quoteConfig, setQuoteConfig] = useState<AdminQuoteConfig>({
@@ -35,6 +37,11 @@ export function AdminCreateQuote() {
   });
   const [questionnaireOpen, setQuestionnaireOpen] = useState(false);
   const state = useBookingForm({ mode: 'admin-quote', quoteConfig });
+  const editingLocked = Boolean(
+    state.editingBooking &&
+    (['completed', 'cancelled'].includes(state.editingBooking.status) ||
+      state.editingBooking.quotes.some((quote) => quote.kind === 'final')),
+  );
   const {
     catalogue,
     loading,
@@ -56,6 +63,8 @@ export function AdminCreateQuote() {
     extras,
     clientRecognition,
     recognizingClient,
+    editLoading,
+    editError,
   } = state;
   const estimateInventory = {
     ...draft.inventory,
@@ -63,17 +72,17 @@ export function AdminCreateQuote() {
       ? ('non' as const)
       : draft.questionnaireAnswers['key-ready']?.startsWith('Oui')
         ? ('oui' as const)
-        : ('' as const),
+        : (draft.inventory.ready ?? ('' as const)),
     stairs: draft.questionnaireAnswers['key-stairs']?.startsWith('Non')
       ? ('non' as const)
       : draft.questionnaireAnswers['key-stairs']?.startsWith('Oui')
         ? ('oui' as const)
         : draft.questionnaireAnswers['key-stairs']?.startsWith('À vérifier')
           ? ('verif' as const)
-          : ('' as const),
+          : (draft.inventory.stairs ?? ('' as const)),
   };
   useEffect(() => {
-    const saved = readAdminQuoteDraft();
+    const saved = editingReservation ? null : readAdminQuoteDraft();
     if (saved) {
       setDraft(saved.draft);
       setQuoteConfig(saved.quoteConfig);
@@ -81,7 +90,7 @@ export function AdminCreateQuote() {
     }
     restoredDraft.current = true;
     skipInitialSave.current = true;
-  }, [setDraft, setTollLines]);
+  }, [editingReservation, setDraft, setTollLines]);
   useEffect(() => {
     if (!restoredDraft.current) return;
     if (skipInitialSave.current) {
@@ -90,6 +99,29 @@ export function AdminCreateQuote() {
     }
     saveAdminQuoteDraft({ draft, quoteConfig, tollLines });
   }, [draft, quoteConfig, tollLines]);
+  useEffect(() => {
+    const booking = state.editingBooking;
+    if (!booking) return;
+    const quote = booking.quotes.at(-1);
+    setQuoteConfig({
+      trips: quote?.price.trips ?? booking.estimate.trips,
+      discount: quote?.price.discount ?? booking.estimate.discount,
+      customPrice:
+        (quote?.price ?? booking.estimate).tier === 3
+          ? ((quote?.price ?? booking.estimate).lines.find((line) =>
+              line.label.startsWith('Transport'),
+            )?.unitPrice ?? null)
+          : null,
+    });
+    setTollLines(
+      (quote?.tolls ?? []).map((line) => ({
+        id: line.tollPointId,
+        label: line.label,
+        quantity: line.quantity,
+        unitPrice: line.unitPrice,
+      })),
+    );
+  }, [state.editingBooking, setTollLines]);
   const inventoryText = inventoryNote(estimateInventory);
   const labourPrice = catalogue
     ? labourUnitPrice(catalogue.settings, {
@@ -291,14 +323,32 @@ export function AdminCreateQuote() {
     <div className="admin-quote-page">
       <div className="admin-quote-heading">
         <div className="admin-quote-heading-copy">
-          <p className="eyebrow">NOUVEAU DEVIS · CLIENT EN AGENCE</p>
-          <h2>CRÉER UN DEVIS</h2>
+          <p className="eyebrow">
+            {editingReservation ? 'MODIFIER UNE RÉSERVATION' : 'NOUVEAU DEVIS · CLIENT EN AGENCE'}
+          </p>
+          <h2>{editingReservation ? 'MODIFIER LE DEVIS' : 'CRÉER UN DEVIS'}</h2>
           <p>Complétez la fiche d’appel. Le devis à droite se met à jour pendant la saisie.</p>
         </div>
         <Link to={routes.administration} className="button secondary small admin-quote-back">
           <ArrowLeft size={16} /> Vue d’ensemble
         </Link>
       </div>
+      {editLoading && (
+        <p className="panel loading" role="status">
+          Chargement de la réservation…
+        </p>
+      )}
+      {editError && (
+        <p className="alert error" role="alert">
+          {editError}
+        </p>
+      )}
+      {editingLocked && (
+        <p className="alert error" role="status">
+          Cette réservation est clôturée. Son devis reste consultable, mais ses informations ne
+          peuvent plus être modifiées.
+        </p>
+      )}
       <form
         id="admin-quote-form"
         onSubmit={(event) =>
@@ -312,7 +362,9 @@ export function AdminCreateQuote() {
               detail: step.detail,
               minutes: step.minutes,
             })),
-            movingEstimate?.volume
+            movingEstimate &&
+              (movingEstimate.volume > 0 ||
+                state.editingBooking?.inventorySnapshot?.sourceInventory)
               ? bookingInventorySnapshot(estimateInventory, movingEstimate)
               : undefined,
             movingEstimate?.volume
@@ -355,13 +407,26 @@ export function AdminCreateQuote() {
                 Date prévue
                 <input
                   type="date"
-                  min={today()}
+                  min={editingReservation ? undefined : today()}
                   value={draft.date}
                   onChange={(event) =>
                     setDraft((current) => ({ ...current, date: event.target.value }))
                   }
                 />
               </label>
+              {!draft.date && state.administrativeQuote && (
+                <label>
+                  Mois souhaité
+                  <input
+                    type="month"
+                    required
+                    value={draft.month}
+                    onChange={(event) =>
+                      setDraft((current) => ({ ...current, month: event.target.value }))
+                    }
+                  />
+                </label>
+              )}
               <label>
                 Heure prévue
                 <input
@@ -721,13 +786,26 @@ export function AdminCreateQuote() {
           )}
           <button
             className="button primary admin-quote-submit"
-            disabled={submitting || estimating || previewTotal === null || !draft.route}
+            disabled={
+              submitting ||
+              estimating ||
+              previewTotal === null ||
+              !draft.route ||
+              editLoading ||
+              Boolean(editError) ||
+              editingLocked
+            }
           >
-            {submitting ? 'Enregistrement…' : 'Enregistrer le devis provisoire'}
+            {submitting
+              ? 'Enregistrement…'
+              : editingReservation
+                ? 'Enregistrer les modifications'
+                : 'Enregistrer le devis provisoire'}
           </button>
           <p className="muted">
-            Le rendez-vous est ajouté aux réservations. Le client peut télécharger le devis
-            provisoire depuis son espace.
+            {editingReservation
+              ? 'La réservation et son nouveau devis provisoire seront enregistrés dans le dossier du client.'
+              : 'Le rendez-vous est ajouté aux réservations. Le client peut télécharger le devis provisoire depuis son espace.'}
           </p>
         </aside>
       </form>

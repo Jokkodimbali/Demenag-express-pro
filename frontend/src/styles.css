@@ -11,6 +11,7 @@
 @import './styles/booking-confirmation.css';
 @import './styles/reference-shell.css';
 @import './styles/reference-client.css';
+@import './styles/reference-calendar.css';
 /* Journal comptable de l'administration */
 .accounting-page {
   display: grid;

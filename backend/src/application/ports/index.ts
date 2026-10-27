@@ -81,7 +81,7 @@ export interface CatalogueRepository {
   deleteTollPoint(id: string): Promise<void>;
 }
 export interface BookingRepository {
-  list(userId?: string, vehicleId?: string): Promise<Booking[]>;
+  list(userId?: string, vehicleId?: string, includeTripPhotos?: boolean): Promise<Booking[]>;
   find(id: string): Promise<Booking | null>;
   create(booking: Booking, requestId: string): Promise<Booking>;
   update(booking: Booking, expectedVersion: number): Promise<Booking>;
@@ -96,6 +96,7 @@ export interface DriverRepository {
   findByUserId(userId: string): Promise<Driver | null>;
   create(driver: Driver): Promise<Driver>;
   update(driver: Driver): Promise<Driver>;
+  delete?(id: string): Promise<void>;
 }
 export type VehicleInspectionInput = {
   levels: Record<string, 'good' | 'low' | 'empty'>;

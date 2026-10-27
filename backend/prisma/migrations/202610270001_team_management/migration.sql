@@ -1,0 +1,11 @@
+ALTER TABLE "demenag"."drivers"
+ADD COLUMN "role" TEXT NOT NULL DEFAULT 'chauffeur',
+ADD COLUMN "authorized_vehicles" JSONB NOT NULL DEFAULT '[]',
+ADD COLUMN "address" TEXT NOT NULL DEFAULT '',
+ADD COLUMN "latitude" DOUBLE PRECISION,
+ADD COLUMN "longitude" DOUBLE PRECISION,
+ADD COLUMN "geocoded_address" TEXT,
+ADD COLUMN "tags" JSONB NOT NULL DEFAULT '[]',
+ADD COLUMN "notes" TEXT NOT NULL DEFAULT '',
+ADD COLUMN "mission_refusals" JSONB NOT NULL DEFAULT '[]',
+ADD COLUMN "cleared_refusals" INTEGER NOT NULL DEFAULT 0;

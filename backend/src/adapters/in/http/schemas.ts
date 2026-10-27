@@ -25,6 +25,52 @@ const workAccessSchema = z.object({
   toLift: z.boolean(),
 });
 const inventorySnapshotSchema = z.object({
+  sourceInventory: z
+    .object({
+      dwellingType: z.string().max(80),
+      annexOn: z.boolean().optional(),
+      fromFloor: z.number().int().min(0).max(20),
+      toFloor: z.number().int().min(0).max(20),
+      fromLift: z.boolean(),
+      toLift: z.boolean(),
+      entries: z.record(
+        z.string().max(100),
+        z.object({
+          quantity: z.number().int().min(0).max(999),
+          size: z.number().finite().min(0).max(10000),
+          format: z.enum(['small', 'medium', 'large']).optional(),
+          dismantle: z.boolean(),
+        }),
+      ),
+      variants: z
+        .array(
+          z.object({
+            id: z.string().max(100),
+            itemKey: z.string().max(100),
+            quantity: z.number().int().min(0).max(999),
+            size: z.number().finite().min(0).max(10000),
+            format: z.enum(['small', 'medium', 'large']).optional(),
+            dismantle: z.boolean(),
+          }),
+        )
+        .max(500),
+      flags: z.record(z.string().max(100), z.boolean()),
+      ready: z.enum(['oui', 'non', '']).optional(),
+      stairs: z.enum(['oui', 'non', 'verif', '']).optional(),
+      custom: z
+        .array(
+          z.object({
+            id: z.string().max(100),
+            label: z.string().max(120),
+            quantity: z.number().int().min(0).max(999),
+            format: z.enum(['small', 'medium', 'large']).optional(),
+            dismantle: z.boolean().optional(),
+          }),
+        )
+        .max(500),
+      crew: z.number().int().min(0).max(100).optional(),
+    })
+    .optional(),
   dwellingType: z.string().max(80),
   annexIncluded: z.boolean(),
   annexVolumeM3: z.number().finite().min(0).max(10000),
@@ -121,6 +167,10 @@ export const bookingSchema = estimateSchema
     date: z
       .union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal(''), z.null()])
       .transform((v) => v || null),
+    month: z
+      .string()
+      .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+      .optional(),
     timeSlot: z.union([z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/), z.literal('')]),
     notes: z.string().trim().max(2000).default(''),
     workAccess: workAccessSchema.optional(),
@@ -136,8 +186,7 @@ export const bookingSchema = estimateSchema
         }),
       )
       .max(50)
-      .optional()
-      .default([]),
+      .optional(),
     inventorySnapshot: inventorySnapshotSchema.optional(),
     requestId: z.uuid(),
   })
@@ -184,6 +233,19 @@ export const driverAssignmentSchema = z.object({
   driverId: z.uuid().nullable(),
   version: z.number().int().positive(),
 });
+export const bookingCrewSchema = z.object({
+  crew: z.object({
+    chauffeur: z.array(z.uuid()).max(20),
+    menuisier: z.array(z.uuid()).max(20),
+    manoeuvre: z.array(z.uuid()).max(30),
+    chef: z.union([z.literal(''), z.uuid()]),
+  }),
+  crewBriefs: z.record(z.string().uuid(), z.iso.datetime()),
+  crewRefusedBy: z.array(z.string().uuid()).max(100),
+  crewReplies: z.record(z.string().uuid(), z.enum(['ok', 'no'])),
+  crewMessages: z.record(z.string().uuid(), z.string().max(5000)),
+  version: z.number().int().positive(),
+});
 export const bookingRouteUpdateSchema = routeSchema.extend({
   version: z.number().int().positive(),
 });
@@ -216,24 +278,12 @@ export const quoteSchema = z.object({
   options: optionsSchema.optional(),
   version: z.number().int().positive(),
 });
-export const driverSchema = z.object({
-  name: z.string().trim().min(2).max(100),
-  phone: z.string().trim().min(9).max(25),
-  photo: imageSchema.nullable(),
-  active: z.boolean(),
-  vehicleId: z.string().min(1).max(30).nullable(),
-});
-export const createDriverSchema = driverSchema.extend({
-  photo: imageSchema,
-  password: z.string().min(10, messages.utilisezAuMoins10Caracteres).max(128),
-});
-export const driverProfileSchema = driverSchema.pick({ name: true, phone: true, photo: true });
 export const driverAvailabilitySchema = z
   .array(
     z.object({
       available: z.boolean(),
-      startTime: z.string().regex(/^\d{2}:\d{2}$/),
-      endTime: z.string().regex(/^\d{2}:\d{2}$/),
+      startTime: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
+      endTime: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
     }),
   )
   .length(7)
@@ -241,6 +291,38 @@ export const driverAvailabilitySchema = z
     (days) => days.every((day) => !day.available || day.endTime > day.startTime),
     'L’heure de fin doit être après l’heure de début.',
   );
+export const driverSchema = z.object({
+  name: z.string().trim().min(2).max(100),
+  phone: z.string().trim().min(9).max(25),
+  photo: imageSchema.nullable(),
+  active: z.boolean(),
+  vehicleId: z.string().min(1).max(30).nullable(),
+  availability: driverAvailabilitySchema.optional(),
+  role: z.enum(['chauffeur', 'menuisier', 'manoeuvre']).optional(),
+  authorizedVehicleIds: z.array(z.string().min(1).max(30)).max(30).optional(),
+  address: z.string().trim().max(300).optional(),
+  latitude: z.number().finite().min(-90).max(90).nullable().optional(),
+  longitude: z.number().finite().min(-180).max(180).nullable().optional(),
+  geocodedAddress: z.string().max(300).nullable().optional(),
+  tags: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
+  notes: z.string().max(2000).optional(),
+  refusals: z
+    .array(
+      z.object({
+        ref: z.string().max(50),
+        at: z.iso.datetime(),
+      }),
+    )
+    .max(500)
+    .optional(),
+  clearedRefusals: z.number().int().min(0).max(500).optional(),
+});
+export const createDriverSchema = driverSchema.extend({
+  active: z.boolean().optional().default(true),
+  photo: imageSchema.nullable(),
+  password: z.string().min(10, messages.utilisezAuMoins10Caracteres).max(128).optional(),
+});
+export const driverProfileSchema = driverSchema.pick({ name: true, phone: true, photo: true });
 export const vehicleInspectionSchema = z.object({
   levels: z.object({
     engineOil: z.enum(['good', 'low', 'empty']),

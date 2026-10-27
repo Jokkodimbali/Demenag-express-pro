@@ -29,24 +29,38 @@ export class DriverService implements DriverUseCases {
   async create(actor: User, input: DriverCreation) {
     requireAdministrator(actor);
     const phone = normalizePhone(input.phone);
-    if (await this.users.findByPhone(phone))
+    if (input.password && input.role && input.role !== 'chauffeur')
+      throw new AppError(400, 'Seul un chauffeur peut recevoir un compte de connexion.');
+    if (input.password && (await this.users.findByPhone(phone)))
       throw new AppError(409, messages.unCompteUtiliseDejaCeNumero);
-    const user = await this.users.create({
-      id: this.ids.next(),
-      name: input.name,
-      phone,
-      passwordHash: await this.passwords.hash(input.password),
-      role: 'driver',
-      active: true,
-    });
+    const user = input.password
+      ? await this.users.create({
+          id: this.ids.next(),
+          name: input.name,
+          phone,
+          passwordHash: await this.passwords.hash(input.password),
+          role: 'driver',
+          active: true,
+        })
+      : null;
     const driver = {
       id: this.ids.next(),
-      userId: user.id,
+      userId: user?.id ?? null,
       name: input.name,
       phone,
       photo: input.photo,
       active: true,
       vehicleId: input.vehicleId,
+      role: input.role ?? 'chauffeur',
+      authorizedVehicleIds: input.authorizedVehicleIds ?? [],
+      address: input.address ?? '',
+      latitude: input.latitude ?? null,
+      longitude: input.longitude ?? null,
+      geocodedAddress: input.geocodedAddress ?? null,
+      tags: input.tags ?? [],
+      notes: input.notes ?? '',
+      refusals: input.refusals ?? [],
+      clearedRefusals: input.clearedRefusals ?? 0,
     };
     await this.releaseVehicle(driver.vehicleId, driver.id);
     const created = await this.drivers.create(driver);
@@ -57,13 +71,69 @@ export class DriverService implements DriverUseCases {
     requireAdministrator(actor);
     const current = await this.drivers.find(input.id);
     if (!current) throw new AppError(404, messages.chauffeurIntrouvable);
+    if (current.userId && (input.role ?? current.role ?? 'chauffeur') !== 'chauffeur')
+      throw new AppError(
+        400,
+        'Un compte de connexion ne peut rester associé qu’au rôle chauffeur.',
+      );
     const phone = await this.availablePhone(input.phone, current.userId);
     await this.releaseVehicle(input.vehicleId, current.id);
-    const updated = await this.drivers.update({ ...input, userId: current.userId, phone });
+    const updated = await this.drivers.update({
+      ...current,
+      ...input,
+      userId: current.userId,
+      phone,
+    });
     if (current.userId) await this.users.updateProfile(current.userId, updated.name, updated.phone);
     if (current.vehicleId !== updated.vehicleId && updated.vehicleId)
       await this.notifyVehicleAssignment(updated);
     return updated;
+  }
+  async remove(actor: User, id: string) {
+    requireAdministrator(actor);
+    const employee = await this.drivers.find(id);
+    if (!employee) throw new AppError(404, messages.chauffeurIntrouvable);
+    const bookings = await this.bookingsRepository.list(undefined, undefined, false);
+    for (const booking of bookings) {
+      const currentCrew = booking.crew ?? {
+        chauffeur: booking.driverId ? [booking.driverId] : [],
+        menuisier: [],
+        manoeuvre: [],
+        chef: '',
+      };
+      const hasMember = [
+        ...currentCrew.chauffeur,
+        ...currentCrew.menuisier,
+        ...currentCrew.manoeuvre,
+      ].includes(id);
+      if (!hasMember) continue;
+      const crew = {
+        chauffeur: currentCrew.chauffeur.filter((memberId) => memberId !== id),
+        menuisier: currentCrew.menuisier.filter((memberId) => memberId !== id),
+        manoeuvre: currentCrew.manoeuvre.filter((memberId) => memberId !== id),
+        chef: currentCrew.chef === id ? '' : currentCrew.chef,
+      };
+      const nextDriver = await Promise.all(
+        crew.chauffeur.map((memberId) => this.drivers.find(memberId)),
+      );
+      const nextDriverId = nextDriver.find((member) => member?.userId)?.id ?? null;
+      await this.bookingsRepository.update(
+        {
+          ...booking,
+          driverId: booking.driverId === id ? nextDriverId : booking.driverId,
+          crew,
+        },
+        booking.version,
+      );
+    }
+    if (employee.userId) {
+      const disabled = await this.drivers.update({ ...employee, active: false });
+      return { removed: false, employee: disabled };
+    }
+    if (!this.drivers.delete)
+      throw new AppError(501, 'La suppression des employés n’est pas disponible.');
+    await this.drivers.delete(id);
+    return { removed: true, employee };
   }
   async profile(actor: User) {
     return this.requireProfile(actor);

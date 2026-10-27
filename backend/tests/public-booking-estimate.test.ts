@@ -17,7 +17,7 @@ import type {
   RouteRepository,
 } from '../src/application/ports/index.js';
 
-test('a client booking keeps the inventory and the server prices every estimated trip', async () => {
+test('a booking keeps its inventory and admin edits preserve or clear planning steps', async () => {
   const now = new Date('2026-10-26T12:00:00.000Z');
   const route = {
     id: 'route-1',
@@ -58,6 +58,11 @@ test('a client booking keeps the inventory and the server prices every estimated
         saved = booking;
         return booking;
       },
+      find: async () => saved,
+      update: async (booking: Booking) => {
+        saved = { ...booking, version: booking.version + 1 };
+        return saved;
+      },
     } as unknown as BookingRepository,
     { get: async () => catalogue } as CatalogueRepository,
     { find: async () => route } as unknown as RouteRepository,
@@ -96,6 +101,43 @@ test('a client booking keeps the inventory and the server prices every estimated
   assert.equal((saved as Booking).quotes[0]?.kind, 'provisional');
   assert.equal((saved as Booking).quotes[0]?.price.total, 74000);
   assert.equal((saved as Booking).quotes[0]?.price.trips, 2);
+
+  const administrator: User = {
+    id: 'admin-1',
+    name: 'Admin',
+    phone: '+221770000001',
+    role: 'admin',
+  };
+  const step = { id: 'plan-1', time: '08:00', title: 'Chargement', detail: '', minutes: 60 };
+  const created = saved as Booking;
+  const planned = await service.updateAdminRequest(
+    administrator,
+    created.id,
+    { ...input, workPlan: [step] },
+    created.version,
+  );
+  const checked = await service.reviewWorkPlan(
+    administrator,
+    planned.id,
+    step.id,
+    'respected',
+    '',
+    planned.version,
+  );
+  const unchanged = await service.updateAdminRequest(
+    administrator,
+    checked.id,
+    { ...input, workPlan: [step] },
+    checked.version,
+  );
+  assert.equal(unchanged.workPlan?.[0]?.review.status, 'respected');
+  const cleared = await service.updateAdminRequest(
+    administrator,
+    unchanged.id,
+    { ...input, workPlan: [] },
+    unchanged.version,
+  );
+  assert.deepEqual(cleared.workPlan, []);
 });
 
 test('the provisional quote and its lines are inserted with the booking', async () => {

@@ -929,7 +929,8 @@
     color: var(--yellow);
   }
   .admin-tabs {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
   }
 }
 

@@ -12,6 +12,7 @@ export const apiRoutes = {
     logout: '/api/auth/logout',
   },
   bookings: '/api/bookings',
+  bookingCrew: '/api/bookings/:id/crew',
   clientBookingRequest: '/api/bookings/:id/client-request',
   estimates: '/api/estimates',
   maps: {

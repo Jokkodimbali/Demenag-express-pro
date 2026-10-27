@@ -540,6 +540,7 @@ export function bookingInventorySnapshot(
     ? Math.max(0, (dwellingVolumes[inventory.dwellingType] ?? 0) - boxVolume)
     : 0;
   return {
+    sourceInventory: inventory,
     dwellingType: inventory.dwellingType,
     annexIncluded,
     annexVolumeM3,

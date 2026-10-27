@@ -55,6 +55,12 @@ export interface MovingUseCases {
     input: BookingInput,
     version: number,
   ): Promise<Booking>;
+  updateAdminRequest(
+    user: User,
+    id: string,
+    input: BookingInput,
+    version: number,
+  ): Promise<Booking>;
   list(user: User): Promise<Booking[]>;
   get(user: User, id: string): Promise<Booking>;
   recordClientReminder(user: User, id: string): Promise<Booking>;
@@ -80,6 +86,18 @@ export interface MovingUseCases {
   ): Promise<Booking>;
   updateRoute(user: User, id: string, from: Point, to: Point, version: number): Promise<Booking>;
   assignDriver(user: User, id: string, driverId: string | null, version: number): Promise<Booking>;
+  updateCrew(
+    user: User,
+    id: string,
+    input: {
+      crew: NonNullable<Booking['crew']>;
+      crewBriefs: NonNullable<Booking['crewBriefs']>;
+      crewRefusedBy: NonNullable<Booking['crewRefusedBy']>;
+      crewReplies: NonNullable<Booking['crewReplies']>;
+      crewMessages: NonNullable<Booking['crewMessages']>;
+      version: number;
+    },
+  ): Promise<Booking>;
   quote(user: User, id: string, input: QuoteInput): Promise<Booking>;
   delete(user: User, id: string): Promise<void>;
 }
@@ -101,18 +119,13 @@ export interface CatalogueUseCases {
   updateTollPoint(actor: User, id: string, input: TollPointInput): Promise<TollPoint>;
   deleteTollPoint(actor: User, id: string): Promise<void>;
 }
-export type DriverCreation = {
-  name: string;
-  phone: string;
-  password: string;
-  photo: string | null;
-  vehicleId: string | null;
-};
+export type DriverCreation = Omit<Driver, 'id' | 'userId' | 'active'> & { password?: string };
 export type DriverUpdate = Omit<Driver, 'userId'>;
 export interface DriverUseCases {
   list(actor: User): Promise<Driver[]>;
   create(actor: User, input: DriverCreation): Promise<Driver>;
   update(actor: User, driver: DriverUpdate): Promise<Driver>;
+  remove(actor: User, id: string): Promise<{ removed: boolean; employee: Driver }>;
   profile(actor: User): Promise<Driver>;
   updateProfile(actor: User, input: Pick<Driver, 'name' | 'phone' | 'photo'>): Promise<Driver>;
   updateAvailability(

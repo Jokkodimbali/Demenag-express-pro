@@ -564,6 +564,11 @@
     flex-direction: column;
     gap: 10px;
   }
+  .admin-reservations-mobile .admin-reservations-empty {
+    padding: 20px;
+    background: #272a2e;
+    border-radius: 16px;
+  }
   .search-field {
     width: 100%;
   }
@@ -707,7 +712,44 @@
 .map-pin > span {
   transform: rotate(45deg);
 }
-@media (max-width: 760px) {
+@media (max-width: 759px) {
+  .admin-reservations-desktop {
+    display: none;
+  }
+  .admin-reservations-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .reference-calendar-heading {
+    flex-wrap: wrap;
+  }
+  .reference-calendar-heading > strong {
+    order: -1;
+    width: 100%;
+  }
+  .reference-calendar-heading > .reference-calendar-today {
+    margin-left: auto;
+  }
+  .reference-month-view {
+    gap: 2px;
+  }
+  .reference-month-day {
+    min-height: 58px;
+    padding: 3px;
+  }
+  .reference-month-amounts,
+  .reference-month-day > small {
+    display: none;
+  }
+  .reference-month-booking {
+    padding: 2px;
+    font-size: 8px;
+  }
+  .admin-reference-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
   .admin-plan-follow-up .section-heading {
     align-items: flex-start;
     flex-direction: column;

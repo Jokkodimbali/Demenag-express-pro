@@ -86,11 +86,16 @@
 .driver-availability-times > span {
   color: #aeb4bb;
 }
-.admin-workspace {
+.workspace-page.admin-workspace {
   width: 100%;
-  max-width: none;
-  padding-left: clamp(16px, 3vw, 48px);
-  padding-right: clamp(16px, 3vw, 48px);
+  max-width: 1320px;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(14px, 4vw, 24px);
+  padding-top: clamp(20px, 5vw, 40px);
+  padding-bottom: 64px;
+  padding-left: 14px;
+  padding-right: 14px;
 }
 .workspace-page .section-heading {
   margin-bottom: 32px;
@@ -1052,11 +1057,11 @@ div.driver-course-complete p {
 }
 .admin-reference-heading {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
+  align-items: stretch;
+  flex-direction: column;
+  gap: 14px;
   min-width: 0;
-  margin-bottom: 8px;
+  margin-bottom: 0;
 }
 .admin-reference-heading > div > span {
   color: var(--yellow);
@@ -1083,12 +1088,12 @@ div.driver-course-complete p {
   background: #272a2e;
   scrollbar-width: thin;
 }
-.admin-tabs a {
+.admin-workspace .admin-tabs a {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  min-height: 40px;
+  min-height: 38px;
   padding: 0 14px;
   border-radius: 9px;
   color: #d5d9de;
@@ -1100,6 +1105,86 @@ div.driver-course-complete p {
 .admin-tabs a.active {
   background: var(--yellow);
   color: #1e2023;
+}
+.admin-reference-reservation-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.admin-reference-reservation-filters,
+.admin-reference-period {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.admin-reference-reservation-filters > button {
+  flex-shrink: 0;
+  border: 1.5px solid #3b4046;
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: transparent;
+  color: #d5d9de;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.admin-reference-reservation-filters > button.active {
+  border-color: var(--yellow);
+  background: var(--yellow);
+  color: #1e2023;
+}
+.admin-reference-period > div {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid #3b4046;
+  border-radius: 999px;
+  background: #1e2023;
+}
+.admin-reference-period > div button,
+.admin-reference-period > button {
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 14px;
+  background: transparent;
+  color: #d5d9de;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.admin-reference-period > div button.active {
+  background: var(--yellow);
+  color: #1e2023;
+}
+.admin-reference-period > button {
+  width: 36px;
+  height: 36px;
+  border: 1px solid #3b4046;
+  border-radius: 9px;
+  padding: 0;
+  background: #1e2023;
+  font-size: 18px;
+}
+.admin-reference-period input[type='date'] {
+  min-height: 36px;
+  border: 1px solid #3b4046;
+  border-radius: 9px;
+  padding: 6px 10px;
+  background: #1e2023;
+  color: #fff;
+  color-scheme: dark;
+  font-size: 14px;
+}
+.admin-reference-period > span {
+  color: #d5d9de;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 .client-code {
   color: inherit;
@@ -1385,6 +1470,9 @@ div.driver-course-complete p {
 .admin-reservations-row:not(.admin-reservations-header):hover {
   background: #30343a;
 }
+.admin-reservations-row:not(.admin-reservations-header) {
+  cursor: pointer;
+}
 .admin-reservations-header {
   padding-top: 14px;
   padding-bottom: 14px;
@@ -1413,6 +1501,47 @@ div.driver-course-complete p {
   min-width: 0;
   overflow-wrap: anywhere;
 }
+.admin-reservation-status-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+.admin-reservation-status-cell > small {
+  color: #3ddc84;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.admin-reservation-delete {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: #ff6b6b;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.admin-reservation-delete:hover {
+  color: #ff9a9d;
+}
+.admin-reservation-status-cell .reference-client-reminder {
+  gap: 6px;
+}
+.admin-reservations-empty {
+  padding: clamp(12px, 3.5vw, 24px) clamp(14px, 4vw, 20px);
+  color: #aeb4bb;
+  font-size: 14px;
+}
+.admin-reservations-hint {
+  display: block;
+  color: #aeb4bb;
+  font-size: 13px;
+}
 .admin-reservations-status {
   display: inline-flex;
   justify-self: start;
@@ -1424,8 +1553,13 @@ div.driver-course-complete p {
   font-size: 13px;
   font-weight: 800;
 }
+.admin-reservations-row .admin-reservations-status {
+  padding: 8px 12px;
+  border-radius: 999px;
+}
 .admin-reservations-status.confirmed,
-.admin-reservations-status.completed {
+.admin-reservations-status.completed,
+.admin-reservations-status.final {
   color: #3ddc84;
   background: #0e3a22;
   border-color: #3ddc84;
@@ -1453,6 +1587,7 @@ div.driver-course-complete p {
   border: 1px solid #3b4046;
   border-radius: 16px;
   text-decoration: none;
+  cursor: pointer;
 }
 .admin-reservations-mobile-card > div {
   display: flex;
@@ -1465,8 +1600,24 @@ div.driver-course-complete p {
 .admin-reservations-mobile-card > small {
   color: #aeb4bb;
 }
+.admin-reservations-mobile-client {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.admin-reservations-mobile-client > span {
+  font-size: 16px;
+  font-weight: 700;
+}
+.admin-reservations-mobile-client > small {
+  color: #aeb4bb;
+  font-size: 13px;
+}
 .admin-reservations-mobile-card > .admin-reservations-status {
   align-self: flex-start;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 15px;
 }
 .filter-buttons {
   display: flex;

@@ -128,6 +128,18 @@ export const fromDriver = (row: Chauffeur): Driver => ({
   active: row.actif,
   vehicleId: row.vehiculeId,
   availability: mapDriverAvailability(row.disponibilites),
+  role: row.fonction === 'menuisier' || row.fonction === 'manoeuvre' ? row.fonction : 'chauffeur',
+  authorizedVehicleIds: Array.isArray(row.vehiculesAutorises)
+    ? (row.vehiculesAutorises as string[])
+    : [],
+  address: row.adresse,
+  latitude: row.latitude,
+  longitude: row.longitude,
+  geocodedAddress: row.adresseGeocodee,
+  tags: Array.isArray(row.competences) ? (row.competences as string[]) : [],
+  notes: row.notes,
+  refusals: Array.isArray(row.refusMissions) ? (row.refusMissions as Driver['refusals']) : [],
+  clearedRefusals: row.refusEffaces,
 });
 export const toDriver = (value: Driver) => ({
   id: value.id,
@@ -136,8 +148,18 @@ export const toDriver = (value: Driver) => ({
   telephone: value.phone,
   photo: value.photo,
   actif: value.active,
+  fonction: value.role ?? 'chauffeur',
   vehiculeId: value.vehicleId,
   ...(value.availability ? { disponibilites: value.availability as Prisma.InputJsonValue } : {}),
+  vehiculesAutorises: (value.authorizedVehicleIds ?? []) as Prisma.InputJsonValue,
+  adresse: value.address ?? '',
+  latitude: value.latitude ?? null,
+  longitude: value.longitude ?? null,
+  adresseGeocodee: value.geocodedAddress ?? null,
+  competences: (value.tags ?? []) as Prisma.InputJsonValue,
+  notes: value.notes ?? '',
+  refusMissions: (value.refusals ?? []) as Prisma.InputJsonValue,
+  refusEffaces: value.clearedRefusals ?? 0,
 });
 export const fromSettings = (row: ParametreApplication): Settings => ({
   distanceBounds: row.bornesDistance as [number, number, number],

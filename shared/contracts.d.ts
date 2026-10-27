@@ -33,6 +33,16 @@ export type Driver = {
   active: boolean;
   vehicleId: string | null;
   availability?: DriverAvailabilityDay[];
+  role?: 'chauffeur' | 'menuisier' | 'manoeuvre';
+  authorizedVehicleIds?: string[];
+  address?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  geocodedAddress?: string | null;
+  tags?: string[];
+  notes?: string;
+  refusals?: { ref: string; at: string }[];
+  clearedRefusals?: number;
 };
 export type DriverAvailabilityDay = {
   available: boolean;
@@ -166,7 +176,44 @@ export type InventorySnapshotItem = {
   details: string;
   volumeM3: number;
 };
+export type BookingInventorySource = {
+  dwellingType: string;
+  annexOn?: boolean;
+  fromFloor: number;
+  toFloor: number;
+  fromLift: boolean;
+  toLift: boolean;
+  entries: Record<
+    string,
+    {
+      quantity: number;
+      size: number;
+      format?: 'small' | 'medium' | 'large';
+      dismantle: boolean;
+    }
+  >;
+  variants: {
+    id: string;
+    itemKey: string;
+    quantity: number;
+    size: number;
+    format?: 'small' | 'medium' | 'large';
+    dismantle: boolean;
+  }[];
+  flags: Record<string, boolean>;
+  ready?: 'oui' | 'non' | '';
+  stairs?: 'oui' | 'non' | 'verif' | '';
+  custom: {
+    id: string;
+    label: string;
+    quantity: number;
+    format?: 'small' | 'medium' | 'large';
+    dismantle?: boolean;
+  }[];
+  crew?: number;
+};
 export type BookingInventorySnapshot = {
+  sourceInventory?: BookingInventorySource;
   dwellingType: string;
   annexIncluded: boolean;
   annexVolumeM3: number;
@@ -224,6 +271,11 @@ export type Booking = {
   reference: string;
   userId: string;
   driverId?: string | null;
+  crew?: { chauffeur: string[]; menuisier: string[]; manoeuvre: string[]; chef: string };
+  crewBriefs?: Record<string, string>;
+  crewRefusedBy?: string[];
+  crewReplies?: Record<string, 'ok' | 'no'>;
+  crewMessages?: Record<string, string>;
   customerName: string;
   phone: string;
   vehicle: Vehicle;
@@ -233,6 +285,7 @@ export type Booking = {
   to: Point;
   distanceKm: number;
   date: string | null;
+  month?: string;
   timeSlot: string;
   options: Options;
   workAccess?: WorkAccess;
@@ -259,6 +312,7 @@ export type BookingInput = {
   fromAddress: string;
   toAddress: string;
   date: string | null;
+  month?: string;
   timeSlot: string;
   options: Options;
   workAccess?: WorkAccess;

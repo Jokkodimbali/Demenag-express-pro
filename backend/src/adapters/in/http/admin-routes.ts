@@ -149,4 +149,7 @@ export function registerAdminRoutes(
       }),
     ),
   );
+  app.delete(`${apiRoutes.administration.drivers}/:id`, authenticate, admin, async (req, res) =>
+    res.json(await deps.drivers.remove(getActor(res), userIdSchema.parse(req.params.id))),
+  );
 }

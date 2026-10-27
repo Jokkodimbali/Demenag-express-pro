@@ -81,19 +81,29 @@ model Vehicule {
 }
 
 model Chauffeur {
-  id                String             @id @default(uuid()) @db.Uuid
-  utilisateurId     String?            @unique @map("user_id") @db.Uuid
-  utilisateur       Utilisateur?       @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
-  nom               String             @map("name")
-  telephone         String             @unique @map("phone")
-  photo             String?            @map("photo")
-  actif             Boolean            @default(true) @map("active")
-  vehiculeId        String?            @map("vehicle_id")
-  disponibilites    Json               @default("[]") @map("availability")
-  vehicule          Vehicule?          @relation(fields: [vehiculeId], references: [id], onDelete: SetNull)
-  reservations      Reservation[]
-  controlesVehicule ControleVehicule[]
-  signalementsPanne SignalementPanne[]
+  id                 String             @id @default(uuid()) @db.Uuid
+  utilisateurId      String?            @unique @map("user_id") @db.Uuid
+  utilisateur        Utilisateur?       @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  nom                String             @map("name")
+  telephone          String             @unique @map("phone")
+  photo              String?            @map("photo")
+  actif              Boolean            @default(true) @map("active")
+  fonction           String             @default("chauffeur") @map("role")
+  vehiculeId         String?            @map("vehicle_id")
+  disponibilites     Json               @default("[]") @map("availability")
+  vehiculesAutorises Json               @default("[]") @map("authorized_vehicles")
+  adresse            String             @default("") @map("address")
+  latitude           Float?
+  longitude          Float?
+  adresseGeocodee    String?            @map("geocoded_address")
+  competences        Json               @default("[]") @map("tags")
+  notes              String             @default("")
+  refusMissions      Json               @default("[]") @map("mission_refusals")
+  refusEffaces       Int                @default(0) @map("cleared_refusals")
+  vehicule           Vehicule?          @relation(fields: [vehiculeId], references: [id], onDelete: SetNull)
+  reservations       Reservation[]
+  controlesVehicule  ControleVehicule[]
+  signalementsPanne  SignalementPanne[]
 
   @@index([vehiculeId])
   @@map("drivers")

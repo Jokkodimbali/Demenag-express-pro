@@ -12,6 +12,7 @@ export type Draft = {
   to: Point | null;
   route: RouteTicket | null;
   date: string;
+  month: string;
   timeSlot: string;
   estimatedTrips: number;
   options: Options;
@@ -32,6 +33,7 @@ export const blankDraft = (catalogue?: Catalogue): Draft => ({
   to: null,
   route: null,
   date: '',
+  month: new Date().toISOString().slice(0, 7),
   timeSlot: '',
   estimatedTrips: 1,
   options: { labour: 0, desk: 0, wardrobe: 0, bed: 0 },

@@ -7,6 +7,7 @@ import type { NotificationPublisher } from '../../../application/ports/index.js'
 import { messages } from '../../../domain/messages/fr.js';
 import {
   bookingSchema,
+  bookingCrewSchema,
   bookingRouteUpdateSchema,
   driverAssignmentSchema,
   estimateSchema,
@@ -64,6 +65,17 @@ export function registerBookingRoutes(
     const p = bookingSchema.extend({ version: z.number().int().positive() }).parse(req.body);
     res.json(
       await deps.moving.updateClientRequest(
+        getActor(res),
+        z.uuid().parse(req.params.id),
+        p,
+        p.version,
+      ),
+    );
+  });
+  app.patch(`${apiRoutes.bookings}/:id/admin-edit`, authenticate, admin, async (req, res) => {
+    const p = bookingSchema.extend({ version: z.number().int().positive() }).parse(req.body);
+    res.json(
+      await deps.moving.updateAdminRequest(
         getActor(res),
         z.uuid().parse(req.params.id),
         p,
@@ -200,6 +212,14 @@ export function registerBookingRoutes(
       z.uuid().parse(req.params.id),
       p.driverId,
       p.version,
+    );
+    res.json(booking);
+  });
+  app.patch(apiRoutes.bookingCrew, authenticate, admin, async (req, res) => {
+    const booking = await deps.moving.updateCrew(
+      getActor(res),
+      z.uuid().parse(req.params.id),
+      bookingCrewSchema.parse(req.body),
     );
     res.json(booking);
   });
