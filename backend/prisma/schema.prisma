@@ -62,6 +62,7 @@ model SessionConnexion {
 model Vehicule {
   id                  String             @id
   nom                 String             @map("name")
+  nomCourt            String             @default("") @map("short_name")
   volume              String
   longueur            String             @map("length")
   hauteur             String             @map("height")

@@ -414,6 +414,7 @@ export const catalogueSchema = z.object({
           interior: imageSchema,
           active: z.boolean().default(true),
           name: z.string().trim().min(2).max(100),
+          shortName: z.string().trim().min(1).max(50).optional(),
           prices: z.tuple([
             z.number().int().positive().max(10000000),
             z.number().int().positive().max(10000000),
@@ -423,20 +424,11 @@ export const catalogueSchema = z.object({
         .superRefine((vehicle, context) => {
           const length = measurementValue(vehicle.length);
           const height = measurementValue(vehicle.height);
-          const width = measurementValue(vehicle.width);
           const wheelWidth = measurementValue(vehicle.wheelWidth);
-          if ([length, height, width, wheelWidth].some((value) => value <= 0)) {
+          if ([length, height, measurementValue(vehicle.width), wheelWidth].some((value) => value <= 0)) {
             context.addIssue({
               code: 'custom',
               message: 'Les quatre dimensions doivent être positives.',
-            });
-          }
-          if (wheelWidth > width) {
-            context.addIssue({
-              code: 'custom',
-              path: ['wheelWidth'],
-              message:
-                'La largeur entre les passages de roue ne peut pas dépasser la largeur utile.',
             });
           }
         }),

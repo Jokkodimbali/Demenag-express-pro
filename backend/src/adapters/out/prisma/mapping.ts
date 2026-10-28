@@ -96,6 +96,7 @@ export const toUser = (value: UserCredentials) => ({
 export const fromVehicle = (row: Vehicule): Vehicle => ({
   id: row.id,
   name: row.nom,
+  shortName: row.nomCourt || row.nom,
   length: row.longueur,
   height: row.hauteur,
   width: row.largeur,
@@ -109,6 +110,7 @@ export const fromVehicle = (row: Vehicule): Vehicle => ({
 export const toVehicle = (value: Vehicle) => ({
   id: value.id,
   nom: value.name,
+  nomCourt: value.shortName?.trim() || value.name,
   longueur: value.length,
   hauteur: value.height,
   largeur: value.width,

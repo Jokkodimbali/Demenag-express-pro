@@ -1,7 +1,7 @@
 import type { Catalogue, Driver, QuoteInput, Settings, User, Vehicle } from '../../domain/model';
 import { messages } from '../../content/fr';
 import { vehicleCapacity } from '../../domain/vehicle-capacity';
-import { createLabourPriceMatrix, labourMatrixScenarios } from '../../domain/labour-price';
+import { createLabourPriceMatrix } from '../../domain/labour-price';
 import type { SettingsSection } from '../../pages/Settings';
 
 const role = (value: FormDataEntryValue | null): User['role'] =>
@@ -73,7 +73,10 @@ export async function vehicleFromForm(data: FormData, existing: Vehicle): Promis
   const wheelWidth = String(data.get('wheelWidth'));
   return {
     ...existing,
-    name: String(data.get('name')),
+    name: String(data.get('name')).trim(),
+    shortName: String(
+      data.get('shortName') || existing.shortName || String(data.get('name')).trim().split(/\s+/).at(-1),
+    ).trim(),
     volume: vehicleCapacity(length, height, width, wheelWidth),
     length,
     height,
@@ -96,13 +99,56 @@ export async function catalogueFromForm(
   section: SettingsSection,
 ): Promise<Catalogue> {
   if (section === 'pricing') {
-    const labourMatrix = createLabourPriceMatrix(catalogue.settings);
-    for (const scenario of labourMatrixScenarios)
-      for (let fromFloor = 0; fromFloor <= 5; fromFloor += 1)
-        for (let toFloor = 0; toFloor <= 5; toFloor += 1) {
-          const key = `labourMatrix.${scenario.id}.${fromFloor}.${toFloor}`;
-          if (data.has(key)) labourMatrix[scenario.id][fromFloor][toFloor] = integer(data.get(key));
-        }
+    const montageP = { ...(catalogue.settings.montageP ?? {}) };
+    for (const [name, value] of data.entries()) {
+      const match = /^montageP\.([^.]+)\.(?:(local|import)|(sz)\.(\d+)\.(local|import))$/.exec(
+        name,
+      );
+      if (!match) continue;
+      const [, key, baseOrigin, , size, sizeOrigin] = match;
+      const current = montageP[key] ?? {};
+      if (size && sizeOrigin) {
+        montageP[key] = {
+          ...current,
+          sz: {
+            ...(current.sz ?? {}),
+            [size]: { ...(current.sz?.[size] ?? {}), [sizeOrigin]: integer(value) },
+          },
+        };
+      } else if (baseOrigin) {
+        montageP[key] = { ...current, [baseOrigin]: integer(value) };
+      }
+    }
+    const labourPrice = integer(data.get('labourPrice'));
+    const labourFloorPrice = integer(data.get('labourFloorPrice'));
+    const labourLiftPrice = integer(data.get('labourLiftPrice'));
+    const whatsappCountryCode = String(
+      data.get('w.cc') ?? catalogue.settings.whatsappCountryCode ?? '221',
+    ).replace(/\D/g, '');
+    let whatsappLocalNumber = String(data.get('w.biz') ?? '').replace(/\D/g, '');
+    if (whatsappLocalNumber.startsWith('00')) whatsappLocalNumber = whatsappLocalNumber.slice(2);
+    const normalizedWhatsAppNumber = whatsappLocalNumber.replace(/^0+/, '');
+    const whatsappDigits = normalizedWhatsAppNumber.length <= 9
+      ? whatsappCountryCode + normalizedWhatsAppNumber
+      : normalizedWhatsAppNumber;
+    const movingLaborPlanning = {
+      ...catalogue.settings.movingLaborPlanning,
+      maxHandlingHours: Number(data.get('movingLaborPlanning.maxHandlingHours')),
+      maxDayHours: Number(data.get('movingLaborPlanning.maxDayHours')),
+      defaultStartHour: integer(data.get('movingLaborPlanning.defaultStartHour')),
+      maxMoversPerVehicle: integer(data.get('movingLaborPlanning.maxMoversPerVehicle')),
+      cubicMetersPerHourPerMover: Number(
+        data.get('movingLaborPlanning.cubicMetersPerHourPerMover'),
+      ),
+      pauseMinutes: integer(data.get('movingLaborPlanning.pauseMinutes')),
+    };
+    const labourMatrix = createLabourPriceMatrix({
+      ...catalogue.settings,
+      labourPrice,
+      labourFloorPrice,
+      labourLiftPrice,
+      labourMatrix: undefined,
+    });
     return {
       ...catalogue,
       vehicles: catalogue.vehicles.map((vehicle) => ({
@@ -111,20 +157,22 @@ export async function catalogueFromForm(
       })),
       settings: {
         ...catalogue.settings,
-        distanceBounds: tuple([0, 1, 2].map((index) => integer(data.get(`distance-${index}`)))),
-        labourPrice: labourMatrix.none[0][0],
+        distanceBounds: [15, 25, 35],
+        labourPrice,
+        labourFloorPrice,
+        labourLiftPrice,
         labourMatrix,
-        movingLaborPlanning: {
-          maxHandlingHours: Number(data.get('movingLaborPlanning.maxHandlingHours')),
-          maxDayHours: Number(data.get('movingLaborPlanning.maxDayHours')),
-          defaultStartHour: integer(data.get('movingLaborPlanning.defaultStartHour')),
-          maxMoversPerVehicle: integer(data.get('movingLaborPlanning.maxMoversPerVehicle')),
-          cubicMetersPerHourPerMover: Number(
-            data.get('movingLaborPlanning.cubicMetersPerHourPerMover'),
-          ),
-          pauseMinutes: integer(data.get('movingLaborPlanning.pauseMinutes')),
-        },
         assemblyPrice: integer(data.get('assembly')),
+        montageP,
+        movingLaborPlanning,
+        whatsappPhone: `+${whatsappDigits}`,
+        whatsappCountryCode,
+        whatsappMode: String(
+          data.get('w.mode') ?? catalogue.settings.whatsappMode ?? 'api',
+        ) as Settings['whatsappMode'],
+        whatsappQuoteTemplate: String(
+          data.get('w.tpl') ?? catalogue.settings.whatsappQuoteTemplate ?? '',
+        ),
       },
     };
   }
@@ -151,7 +199,7 @@ export async function catalogueFromForm(
     settings: {
       ...catalogue.settings,
       businessPhone: String(data.get('phone')),
-      whatsappPhone: String(data.get('whatsappPhone')),
+      whatsappPhone: String(data.get('whatsappPhone') ?? catalogue.settings.whatsappPhone),
       whatsappCountryCode: String(
         data.get('whatsappCountryCode') || catalogue.settings.whatsappCountryCode || '221',
       ),

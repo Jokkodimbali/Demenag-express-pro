@@ -649,6 +649,23 @@ export function CallInventory({
                               Démontage / montage
                             </label>
                           )}
+                          {entry.dismantle &&
+                            (item.assembly || item.key === 'salon' || item.key === 'chaise') && (
+                              <label className="inventory-check">
+                                Origine du meuble
+                                <select
+                                  value={entry.origin ?? 'local'}
+                                  onChange={(event) =>
+                                    setEntry(item.key, {
+                                      origin: event.target.value as 'local' | 'import',
+                                    })
+                                  }
+                                >
+                                  <option value="local">Local</option>
+                                  <option value="import">Importé</option>
+                                </select>
+                              </label>
+                            )}
                           <div className="inventory-quantity">
                             <button
                               type="button"
@@ -790,6 +807,30 @@ export function CallInventory({
                                     }
                                   />
                                   Démontage / montage
+                                </label>
+                              )}
+                              {variant.dismantle && (
+                                <label className="inventory-check">
+                                  Origine du meuble
+                                  <select
+                                    value={variant.origin ?? 'local'}
+                                    onChange={(event) =>
+                                      update({
+                                        ...inventory,
+                                        variants: inventory.variants.map((line) =>
+                                          line.id === variant.id
+                                            ? {
+                                                ...line,
+                                                origin: event.target.value as 'local' | 'import',
+                                              }
+                                            : line,
+                                        ),
+                                      })
+                                    }
+                                  >
+                                    <option value="local">Local</option>
+                                    <option value="import">Importé</option>
+                                  </select>
                                 </label>
                               )}
                               <div className="inventory-quantity">

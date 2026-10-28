@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Modal } from './Modal';
 import { dataUrl } from '../application/validation/forms';
 
@@ -23,7 +23,11 @@ export function VehiclePhotoEditor({
 }) {
   const [error, setError] = useState('');
   const [tracing, setTracing] = useState(false);
+  const [adjusting, setAdjusting] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [points, setPoints] = useState<TracePoint[]>([]);
+  const drag = useRef<{ x: number; y: number } | null>(null);
 
   async function chooseFile(file: File | null) {
     if (!file) return;
@@ -146,6 +150,8 @@ export function VehiclePhotoEditor({
       canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
       const context = canvas.getContext('2d');
       if (!context) return setError('Le détourage manuel est indisponible sur ce navigateur.');
+      context.fillStyle = '#27292D';
+      context.fillRect(0, 0, canvas.width, canvas.height);
       context.beginPath();
       points.forEach((point, index) => {
         const x = (point.x / 1000) * canvas.width;
@@ -156,12 +162,48 @@ export function VehiclePhotoEditor({
       context.closePath();
       context.clip();
       context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      context.beginPath();
+      points.forEach((point, index) => {
+        const x = (point.x / 1000) * canvas.width;
+        const y = (point.y / 1000) * canvas.height;
+        if (index === 0) context.moveTo(x, y);
+        else context.lineTo(x, y);
+      });
+      context.closePath();
+      context.strokeStyle = 'rgba(39,41,45,0.55)';
+      context.lineWidth = 2;
+      context.stroke();
       onChange(canvas.toDataURL('image/webp', 0.9));
       setTracing(false);
       setPoints([]);
       setError('');
     };
     image.onerror = () => setError('Cette image ne peut pas être traitée.');
+    image.src = value;
+  }
+
+  function applyCrop() {
+    if (!value) return;
+    const image = new Image();
+    image.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = dimensions.width;
+      canvas.height = dimensions.height;
+      const context = canvas.getContext('2d');
+      if (!context) return setError('Le cadrage est indisponible sur ce navigateur.');
+      context.fillStyle = '#27292D';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      const scale = Math.max(canvas.width / image.naturalWidth, canvas.height / image.naturalHeight) * zoom;
+      const width = image.naturalWidth * scale;
+      const height = image.naturalHeight * scale;
+      context.drawImage(image, (canvas.width - width) / 2 + offset.x, (canvas.height - height) / 2 + offset.y, width, height);
+      onChange(canvas.toDataURL('image/webp', 0.9));
+      setAdjusting(false);
+      setOffset({ x: 0, y: 0 });
+      setZoom(1);
+      setError('');
+    };
+    image.onerror = () => setError('Cette image ne peut pas être cadrée.');
     image.src = value;
   }
 
@@ -202,6 +244,17 @@ export function VehiclePhotoEditor({
       {value && (
         <>
           <div className="vehicle-photo-actions">
+            <button
+              type="button"
+              className="button secondary small"
+              onClick={() => {
+                setZoom(1);
+                setOffset({ x: 0, y: 0 });
+                setAdjusting(true);
+              }}
+            >
+              Ajuster le cadrage
+            </button>
             <button type="button" className="button secondary small" onClick={autoCutout}>
               Détourage automatique
             </button>
@@ -219,6 +272,59 @@ export function VehiclePhotoEditor({
         </>
       )}
       {error && <p className="alert error">{error}</p>}
+      {adjusting && value && (
+        <Modal
+          titleId="vehicle-crop-title"
+          busy={false}
+          onClose={() => setAdjusting(false)}
+          className="account-dialog vehicle-cutout-dialog"
+        >
+          <h2 id="vehicle-crop-title">Ajuster le cadrage · {label}</h2>
+          <p className="muted">Glissez la photo et réglez le zoom pour cadrer le véhicule.</p>
+          <div
+            className="vehicle-cutout-canvas"
+            style={{ aspectRatio: `${dimensions.width} / ${dimensions.height}`, touchAction: 'none' }}
+            onPointerDown={(event) => {
+              event.currentTarget.setPointerCapture(event.pointerId);
+              drag.current = { x: event.clientX, y: event.clientY };
+            }}
+            onPointerMove={(event) => {
+              if (!drag.current || event.buttons !== 1) return;
+              const bounds = event.currentTarget.getBoundingClientRect();
+              const dx = ((event.clientX - drag.current.x) / bounds.width) * dimensions.width;
+              const dy = ((event.clientY - drag.current.y) / bounds.height) * dimensions.height;
+              drag.current = { x: event.clientX, y: event.clientY };
+              setOffset((current) => ({ x: current.x + dx, y: current.y + dy }));
+            }}
+            onPointerUp={() => { drag.current = null; }}
+            onPointerCancel={() => { drag.current = null; }}
+          >
+            <img
+              src={value}
+              alt="Cadrage de la photo du véhicule"
+              draggable={false}
+              style={{
+                position: 'absolute',
+                left: '50%',
+                top: '50%',
+                width: '100%',
+                height: '100%',
+                maxWidth: 'none',
+                objectFit: 'cover',
+                transform: `translate(calc(-50% + ${(offset.x / dimensions.width) * 100}%), calc(-50% + ${(offset.y / dimensions.height) * 100}%)) scale(${zoom})`,
+              }}
+            />
+          </div>
+          <label className="vehicle-crop-zoom">
+            <span>Zoom</span>
+            <input type="range" min="1" max="3" step="0.01" value={zoom} onChange={(event) => setZoom(Number(event.target.value))} />
+          </label>
+          <div className="dialog-actions">
+            <button type="button" className="button secondary" onClick={() => setAdjusting(false)}>Annuler</button>
+            <button type="button" className="button primary" onClick={applyCrop}>Valider le cadrage</button>
+          </div>
+        </Modal>
+      )}
       {tracing && value && (
         <Modal
           titleId="vehicle-cutout-title"

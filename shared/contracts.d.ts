@@ -13,6 +13,7 @@ export type Point = [number, number];
 export type Vehicle = {
   id: string;
   name: string;
+  shortName?: string;
   volume: string;
   length: string;
   height: string;

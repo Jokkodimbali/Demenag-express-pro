@@ -11,6 +11,12 @@ export class CatalogueService {
         : [...catalogue.vehicles, vehicle],
     });
   }
+  removeVehicle(catalogue: Catalogue, vehicle: Vehicle): Promise<Catalogue> {
+    return this.repository.updateCatalogue({
+      ...catalogue,
+      vehicles: catalogue.vehicles.filter((item) => item.id !== vehicle.id),
+    });
+  }
   deactivateVehicle(catalogue: Catalogue, vehicle: Vehicle): Promise<Catalogue> {
     return this.saveVehicle(catalogue, { ...vehicle, active: false });
   }

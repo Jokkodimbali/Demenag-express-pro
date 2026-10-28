@@ -32,6 +32,9 @@ export class PrismaCatalogue implements CatalogueRepository {
           create: toVehicle(v),
         }),
       ),
+      this.db.vehicule.deleteMany({
+        where: { id: { notIn: vehicles.map((vehicle) => vehicle.id) } },
+      }),
       this.db.parametreApplication.update({ where: { id: 'main' }, data: toSettings(settings) }),
     ]);
   }
