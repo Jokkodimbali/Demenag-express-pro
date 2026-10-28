@@ -152,6 +152,7 @@
 .inventory-heading > div > span {
   color: #aeb4bb;
   font-size: 13px;
+  font-weight: 400;
 }
 .inventory-collapse {
   min-height: 40px;
@@ -525,14 +526,33 @@
   flex: 0 0 auto;
   white-space: nowrap;
 }
-.inventory-origin select {
-  min-height: 34px;
+.inventory-origin-toggle {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 3px;
+  padding: 2px;
   border: 1px solid #3b4046;
-  border-radius: 8px;
-  padding: 4px 8px;
+  border-radius: 9px;
   background: #1e2023;
-  color: #fff;
-  font: inherit;
+}
+.inventory-origin-toggle button {
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #d5d9de;
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.inventory-origin-toggle button.active {
+  background: #f6d73c;
+  color: #1e2023;
+}
+.inventory-origin-toggle button:focus-visible {
+  outline: 2px solid #f6d73c;
+  outline-offset: 2px;
 }
 .inventory-size-stepper {
   display: inline-flex;

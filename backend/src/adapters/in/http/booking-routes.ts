@@ -11,6 +11,7 @@ import {
   bookingRouteUpdateSchema,
   driverAssignmentSchema,
   estimateSchema,
+  adminEstimateSchema,
   quoteSchema,
   statusSchema,
   tripPhotosSchema,
@@ -42,6 +43,19 @@ export function registerBookingRoutes(
   app.post(apiRoutes.estimates, async (req, res) => {
     const p = estimateSchema.parse(req.body);
     res.json(await deps.moving.estimate(p.vehicleId, p.routeId, p.options, p.workAccess, p.trips));
+  });
+  app.post(`${apiRoutes.adminEstimates}`, authenticate, admin, async (req, res) => {
+    const p = adminEstimateSchema.parse(req.body);
+    res.json(
+      await deps.moving.estimate(
+        p.vehicleId,
+        p.routeId,
+        p.options,
+        p.workAccess,
+        p.trips,
+        p.distanceKmOverride,
+      ),
+    );
   });
   app.get(apiRoutes.bookings, authenticate, async (_req, res) =>
     res.json(await deps.moving.list(getActor(res))),

@@ -1,5 +1,5 @@
 import { messages } from '../content/fr';
-import { dateLabel, money, tierLabels } from '../domain/format';
+import { dateLabel, money, referenceTierLabels } from '../domain/format';
 import type { Booking, Quote, Settings } from '../domain/model';
 
 function notesForPdf(value: string): string {
@@ -199,7 +199,7 @@ export async function downloadQuote(
   y = paragraph(`B  ${booking.toAddress}`, margin, y, contentWidth, 10, true);
   const bounds = settings.distanceBounds ?? [15, 25, 35];
   y = paragraph(
-    `${booking.distanceKm.toLocaleString('fr-FR')} km par la route  ·  Tranche : ${tierLabels(bounds)[price.tier]}`,
+    `${booking.distanceKm.toLocaleString('fr-FR')} km par la route  ·  Tranche : ${referenceTierLabels(bounds)[price.tier]}`,
     margin,
     y + 1,
     contentWidth,

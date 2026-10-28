@@ -12,7 +12,9 @@ export type Draft = {
   from: Point | null;
   to: Point | null;
   route: RouteTicket | null;
+  distanceKmOverride?: number | null;
   date: string;
+  noDate?: boolean;
   month: string;
   timeSlot: string;
   estimatedTrips: number;
@@ -34,7 +36,9 @@ export const blankDraft = (catalogue?: Catalogue): Draft => ({
   from: null,
   to: null,
   route: null,
+  distanceKmOverride: null,
   date: '',
+  noDate: false,
   month: new Date().toISOString().slice(0, 7),
   timeSlot: '',
   estimatedTrips: 1,

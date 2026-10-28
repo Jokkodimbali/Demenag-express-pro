@@ -15,6 +15,7 @@ export const apiRoutes = {
   bookingCrew: '/api/bookings/:id/crew',
   clientBookingRequest: '/api/bookings/:id/client-request',
   estimates: '/api/estimates',
+  adminEstimates: '/api/admin/estimates',
   maps: {
     base: '/api/maps',
     route: '/api/maps/route',

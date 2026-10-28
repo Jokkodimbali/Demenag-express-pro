@@ -1,7 +1,8 @@
-import { ArrowLeft, Minus, Plus, Warehouse } from 'lucide-react';
+import { ChevronDown, Warehouse } from 'lucide-react';
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useBookingForm } from '../application/useBookingForm';
+import { useApp } from '../application/context';
 import {
   readAdminQuoteDraft,
   saveAdminQuoteDraft,
@@ -11,19 +12,19 @@ import { normalizedClientPhone } from '../application/services/client-summary';
 import { CallInventory } from '../components/booking/CallInventory';
 import { ClientQuestionnaire } from '../components/booking/ClientQuestionnaire';
 import { TollRateSelector } from '../components/TollRateSelector';
-import { inventoryNote } from '../domain/inventory';
-import { money, today } from '../domain/format';
+import {
+  referenceInventoryNote,
+  referenceMovingEstimateNote,
+} from '../domain/reference-inventory-note';
+import { money, referenceTierLabels, today } from '../domain/format';
 import { assemblyUnitPrice, labourUnitPrice } from '../domain/labour-price';
 import { inventoryAssemblyLines, inventoryAssemblyOptions } from '../domain/inventory-assembly';
 import { googleTrafficDuration, readGoogleMapsKey } from '../application/google-maps-traffic';
-import type { Options } from '../domain/model';
-import {
-  bookingInventorySnapshot,
-  estimateMovingWork,
-  movingEstimateNote,
-} from '../domain/moving-estimate';
+import type { Booking, Options, Price, Quote } from '../domain/model';
+import { bookingInventorySnapshot, estimateMovingWork } from '../domain/moving-estimate';
 import { defaultClientQuestions } from '../domain/questionnaire';
-import { routes } from '../routing/routes';
+import { quoteNotificationUrl } from '../application/services/quote-notification';
+import { whatsappNumber } from '../application/services/whatsapp';
 
 const RouteMap = lazy(() => import('../components/RouteMap'));
 
@@ -41,6 +42,18 @@ export function AdminCreateQuote() {
     labourUnitPriceOverride: null,
   });
   const [questionnaireOpen, setQuestionnaireOpen] = useState(false);
+  const [quoteKind, setQuoteKind] = useState<Quote['kind']>('provisional');
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [pdfError, setPdfError] = useState('');
+  const [stageError, setStageError] = useState('');
+  const whatsappWindow = useRef<Window | null>(null);
+  const sendWhatsAppAfterSave = useRef(false);
+  const [openQuoteSections, setOpenQuoteSections] = useState({
+    client: false,
+    route: false,
+    tolls: false,
+    options: false,
+  });
   const [googleMapsKey] = useState(readGoogleMapsKey);
   const [traffic, setTraffic] = useState<{
     minutes: number;
@@ -49,12 +62,36 @@ export function AdminCreateQuote() {
   } | null>(null);
   const [trafficBusy, setTrafficBusy] = useState(false);
   const [trafficError, setTrafficError] = useState(false);
-  const state = useBookingForm({ mode: 'admin-quote', quoteConfig });
+  const { exportQuote, catalogue: appCatalogue } = useApp();
+  const state = useBookingForm({
+    mode: 'admin-quote',
+    quoteConfig,
+    quoteKind,
+    onQuoteSaved: (booking) => {
+      if (!sendWhatsAppAfterSave.current) return;
+      sendWhatsAppAfterSave.current = false;
+      const quote = booking.quotes.filter((item) => item.kind === quoteKind).at(-1);
+      if (!quote) {
+        whatsappWindow.current?.close();
+        whatsappWindow.current = null;
+        return;
+      }
+      const href = quoteNotificationUrl(
+        booking,
+        quote,
+        booking.pricingSettings ?? appCatalogue?.settings,
+      );
+      if (whatsappWindow.current) whatsappWindow.current.location.href = href;
+      else window.open(href, '_blank', 'noopener,noreferrer');
+      whatsappWindow.current = null;
+    },
+  });
   const editingLocked = Boolean(
     state.editingBooking &&
     (['completed', 'cancelled'].includes(state.editingBooking.status) ||
       state.editingBooking.quotes.some((quote) => quote.kind === 'final')),
   );
+  const editingBooking = state.editingBooking;
   const {
     catalogue,
     loading,
@@ -64,7 +101,6 @@ export function AdminCreateQuote() {
     setDraft,
     selected,
     price,
-    tiers,
     estimating,
     estimateError,
     submitError,
@@ -79,6 +115,16 @@ export function AdminCreateQuote() {
     editLoading,
     editError,
   } = state;
+  const canCreateFinal = Boolean(
+    editingBooking?.status !== 'cancelled' &&
+    !editingBooking?.quotes.some((quote) => quote.kind === 'final') &&
+    Boolean(draft.date) &&
+    !draft.noDate,
+  );
+  useEffect(() => {
+    const lastQuote = state.editingBooking?.quotes.at(-1);
+    if (lastQuote) setQuoteKind(lastQuote.kind);
+  }, [state.editingBooking]);
   const estimateInventory = {
     ...draft.inventory,
     ready: draft.questionnaireAnswers['key-ready']?.startsWith('Non')
@@ -139,9 +185,13 @@ export function AdminCreateQuote() {
       })),
     );
   }, [state.editingBooking, setTollLines]);
-  const inventoryText = inventoryNote(estimateInventory);
+  const inventoryText = referenceInventoryNote(
+    estimateInventory,
+    draft.fromAddress,
+    draft.toAddress,
+  );
+  const route = draft.route;
   useEffect(() => {
-    const route = draft.route;
     if (!googleMapsKey || !route) {
       setTraffic(null);
       setTrafficError(false);
@@ -149,15 +199,24 @@ export function AdminCreateQuote() {
     }
     let active = true;
     const timeMatch = /^(\d{1,2}):(\d{2})$/u.exec(draft.timeSlot);
-    const departure = draft.date && timeMatch
-      ? new Date(`${draft.date}T${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}:00`)
-      : undefined;
+    const departure =
+      draft.date && timeMatch
+        ? new Date(`${draft.date}T${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}:00`)
+        : undefined;
     setTrafficBusy(true);
     setTrafficError(false);
     googleTrafficDuration(route.from, route.to, googleMapsKey, departure)
       .then((result) => {
         if (!active) return;
-        setTraffic(result ? { minutes: result.minutes, freeMinutes: result.freeMinutes, fetchedAt: result.fetchedAt } : null);
+        setTraffic(
+          result
+            ? {
+                minutes: result.minutes,
+                freeMinutes: result.freeMinutes,
+                fetchedAt: result.fetchedAt,
+              }
+            : null,
+        );
         setTrafficError(!result);
       })
       .finally(() => {
@@ -166,10 +225,41 @@ export function AdminCreateQuote() {
     return () => {
       active = false;
     };
-  }, [draft.date, draft.route?.from[0], draft.route?.from[1], draft.route?.to[0], draft.route?.to[1], draft.timeSlot, googleMapsKey]);
-  const estimateRoute = draft.route && traffic
-    ? { ...draft.route, durationMinutes: traffic.minutes }
-    : draft.route;
+  }, [draft.date, route, draft.timeSlot, googleMapsKey]);
+  async function refreshTraffic() {
+    if (!googleMapsKey || !route) return;
+    const timeMatch = /^(\d{1,2}):(\d{2})$/u.exec(draft.timeSlot);
+    const departure =
+      draft.date && timeMatch
+        ? new Date(`${draft.date}T${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}:00`)
+        : undefined;
+    setTrafficBusy(true);
+    setTrafficError(false);
+    try {
+      const result = await googleTrafficDuration(route.from, route.to, googleMapsKey, departure);
+      setTraffic(
+        result
+          ? {
+              minutes: result.minutes,
+              freeMinutes: result.freeMinutes,
+              fetchedAt: result.fetchedAt,
+            }
+          : null,
+      );
+      setTrafficError(!result);
+    } catch {
+      setTraffic(null);
+      setTrafficError(true);
+    } finally {
+      setTrafficBusy(false);
+    }
+  }
+  const pricingRoute =
+    draft.route && draft.distanceKmOverride != null
+      ? { ...draft.route, distanceKm: draft.distanceKmOverride }
+      : draft.route;
+  const estimateRoute =
+    pricingRoute && traffic ? { ...pricingRoute, durationMinutes: traffic.minutes } : pricingRoute;
   const labourPrice = catalogue
     ? labourUnitPrice(catalogue.settings, {
         fromFloor: draft.inventory.fromFloor,
@@ -242,6 +332,15 @@ export function AdminCreateQuote() {
     Object.values(draft.inventory.entries).reduce((sum, entry) => sum + entry.quantity, 0) +
     draft.inventory.variants.reduce((sum, entry) => sum + entry.quantity, 0) +
     draft.inventory.custom.reduce((sum, entry) => sum + entry.quantity, 0);
+  const visibleInventoryText =
+    inventoryCount > 0 ||
+    Boolean(draft.inventory.dwellingType) ||
+    draft.inventory.fromFloor > 0 ||
+    draft.inventory.toFloor > 0 ||
+    draft.inventory.fromLift ||
+    draft.inventory.toLift
+      ? inventoryText
+      : '';
   const questionnaireAutoAnswers = {
     name: Boolean(draft.customerName.trim()),
     phone: Boolean(draft.customerPhone.trim()),
@@ -253,7 +352,13 @@ export function AdminCreateQuote() {
     dwelling: Boolean(draft.inventory.dwellingType),
     items: inventoryCount > 0,
   };
-  const estimateText = movingEstimate?.volume ? movingEstimateNote(movingEstimate) : '';
+  const estimateText = movingEstimate?.volume
+    ? referenceMovingEstimateNote(
+        movingEstimate,
+        draft.route?.distanceKm ?? 0,
+        catalogue?.settings.movingLaborPlanning?.maxDayHours,
+      )
+    : '';
   const questionnaireText = [
     ...questionnaire
       .filter(
@@ -272,55 +377,72 @@ export function AdminCreateQuote() {
   ].join('\n');
   const totalTolls = tollLines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
   const quoteDate = draft.date ? draft.date.split('-').reverse().join('/') : '—';
+  const businessPhone = catalogue?.settings.businessPhone ?? '';
+  const businessPhoneDigits = businessPhone.replace(/\D/g, '');
+  const displayBusinessPhone = /^221\d{9}$/u.test(businessPhoneDigits)
+    ? `+221 ${businessPhoneDigits.slice(3, 5)} ${businessPhoneDigits.slice(5, 8)} ${businessPhoneDigits.slice(8, 10)} ${businessPhoneDigits.slice(10)}`
+    : businessPhone;
   const bounds = catalogue?.settings.distanceBounds ?? [15, 25, 35];
+  const tiers = referenceTierLabels(bounds);
+  const effectiveDistance = draft.distanceKmOverride ?? draft.route?.distanceKm;
   const previewTier = !draft.route
     ? 0
-    : draft.route.distanceKm < bounds[0]
+    : effectiveDistance! < bounds[0]
       ? 0
-      : draft.route.distanceKm <= bounds[1]
+      : effectiveDistance! <= bounds[1]
         ? 1
-        : draft.route.distanceKm <= bounds[2]
+        : effectiveDistance! <= bounds[2]
           ? 2
           : 3;
   const previewTransportUnit =
     previewTier === 3 ? (quoteConfig.customPrice ?? 0) : (selected?.prices[previewTier] ?? 0);
-  const rawPreviewLines =
-    price?.lines ??
-    (selected
-      ? [
-          {
-            label: `Transport ${selected.name} · ${tiers[previewTier] ?? 'moins de 15 km'} (aller-retour)`,
-            quantity: quoteConfig.trips,
-            unitPrice: previewTransportUnit,
-            total: previewTransportUnit * quoteConfig.trips,
-          },
-          ...extras
-            .filter(([key]) => draft.options[key] > 0)
-            .map(([key, label]) => ({
-              label,
-              quantity: draft.options[key],
-              unitPrice:
-                key === 'labour'
-                  ? quoteConfig.labourUnitPriceOverride || labourPrice
-                  : catalogue
-                    ? assemblyUnitPrice(
-                        catalogue.settings,
-                        key === 'desk' ? 'bureau' : key === 'wardrobe' ? 'armoire' : 'lit',
-                      )
-                    : 0,
-              total:
-                draft.options[key] *
-                (key === 'labour'
-                  ? quoteConfig.labourUnitPriceOverride || labourPrice
-                  : catalogue
-                    ? assemblyUnitPrice(
-                        catalogue.settings,
-                        key === 'desk' ? 'bureau' : key === 'wardrobe' ? 'armoire' : 'lit',
-                      )
-                    : 0),
-            })),
-        ]
-      : []);
+  const transportPreviewLine = selected
+    ? {
+        label: `Transport ${selected.shortName || selected.name} · ${(tiers[previewTier] ?? 'Moins de 15 km').toLowerCase()} (aller-retour)`,
+        quantity: quoteConfig.trips,
+        unitPrice: previewTransportUnit,
+        total: previewTransportUnit * quoteConfig.trips,
+      }
+    : null;
+  const fallbackServiceLines = extras
+    .filter(([key]) => draft.options[key] > 0)
+    .map(([key, label]) => ({
+      label,
+      quantity: draft.options[key],
+      unitPrice:
+        key === 'labour'
+          ? quoteConfig.labourUnitPriceOverride || labourPrice
+          : catalogue
+            ? assemblyUnitPrice(
+                catalogue.settings,
+                key === 'desk' ? 'bureau' : key === 'wardrobe' ? 'armoire' : 'lit',
+              )
+            : 0,
+      total:
+        draft.options[key] *
+        (key === 'labour'
+          ? quoteConfig.labourUnitPriceOverride || labourPrice
+          : catalogue
+            ? assemblyUnitPrice(
+                catalogue.settings,
+                key === 'desk' ? 'bureau' : key === 'wardrobe' ? 'armoire' : 'lit',
+              )
+            : 0),
+    }));
+  const rawPreviewLines = [
+    ...(transportPreviewLine ? [transportPreviewLine] : []),
+    ...(price?.lines ?? fallbackServiceLines)
+      .filter((line) => !line.label.startsWith('Transport '))
+      .map((line) =>
+        line.label.startsWith('Manœuvre') && quoteConfig.labourUnitPriceOverride
+          ? {
+              ...line,
+              unitPrice: quoteConfig.labourUnitPriceOverride,
+              total: line.quantity * quoteConfig.labourUnitPriceOverride,
+            }
+          : line,
+      ),
+  ];
   const inventoryMenuLines = catalogue
     ? inventoryAssemblyLines(draft.inventory, catalogue.settings)
     : [];
@@ -354,11 +476,130 @@ export function AdminCreateQuote() {
       ? Math.round((previewSubtotal * Math.min(100, quoteConfig.discount)) / 100)
       : Math.min(previewSubtotal, quoteConfig.discount);
   const previewDiscountLabel = `Remise${quoteConfig.discountType === 'pct' && quoteConfig.discount ? ` (${Math.min(100, quoteConfig.discount)} %)` : ''}${quoteConfig.discountReason.trim() ? ` · ${quoteConfig.discountReason.trim()}` : ''}`;
-  const previewTotal = price && !inventoryMenuLines.length
-    ? price.total
-    : previewTier === 3 && !quoteConfig.customPrice
-      ? null
-      : previewSubtotal - previewDiscount;
+  const previewTotal =
+    previewTier === 3 && !quoteConfig.customPrice ? null : previewSubtotal - previewDiscount;
+  const savedQuote = editingBooking?.quotes.filter((quote) => quote.kind === quoteKind).at(-1);
+  const canSendQuoteWhatsApp = Boolean(
+    whatsappNumber(draft.customerPhone, catalogue?.settings.whatsappCountryCode ?? '221').length >=
+    10,
+  );
+  function sendCurrentQuoteOnWhatsApp() {
+    if (!canSendQuoteWhatsApp) {
+      setStageError('Numéro WhatsApp du client invalide.');
+      setOpenQuoteSections((current) => ({ ...current, client: true }));
+      return;
+    }
+    if (quoteKind === 'final' && (!draft.date || draft.noDate)) {
+      setStageError(
+        'Un devis sans date reste provisoire. Choisissez une date pour passer en final.',
+      );
+      return;
+    }
+    const form = document.getElementById('admin-quote-form') as HTMLFormElement | null;
+    if (!form?.reportValidity()) return;
+    whatsappWindow.current = window.open('about:blank', '_blank');
+    if (!whatsappWindow.current) {
+      setStageError('Autorisez les fenêtres pour ouvrir WhatsApp après l’enregistrement du devis.');
+      return;
+    }
+    sendWhatsAppAfterSave.current = true;
+    setStageError('');
+    form.requestSubmit();
+  }
+  async function downloadCurrentQuote() {
+    if (!catalogue || !draft.route || !selected || previewTotal === null) return;
+    setPdfBusy(true);
+    setPdfError('');
+    try {
+      const currentPrice: Price = {
+        lines: previewLines.map((line) => ({ ...line })),
+        total: previewTotal,
+        discount: previewDiscount,
+        discountType: quoteConfig.discountType,
+        discountValue: quoteConfig.discount,
+        discountReason: quoteConfig.discountReason,
+        tier: previewTier,
+        trips: quoteConfig.trips,
+        currency: 'XOF',
+      };
+      const quote: Quote = {
+        id: savedQuote?.id ?? 'preview',
+        reference: savedQuote?.reference ?? 'DEVIS-EN-COURS',
+        kind: quoteKind,
+        createdAt: savedQuote?.createdAt ?? new Date().toISOString(),
+        price: currentPrice,
+        notes: [visibleInventoryText, estimateText, questionnaireText, draft.notes]
+          .filter(Boolean)
+          .join('\n'),
+        options: draft.options,
+        tolls: tollLines.map((line) => ({
+          tollPointId: line.id,
+          label: line.label,
+          quantity: line.quantity,
+          unitPrice: line.unitPrice,
+        })),
+      };
+      const previewBooking: Booking = {
+        ...(editingBooking ?? {
+          id: 'preview',
+          reference: 'DEVIS-EN-COURS',
+          userId: '',
+          customerName: '',
+          phone: '',
+          vehicle: selected,
+          fromAddress: '',
+          toAddress: '',
+          from: draft.route.from,
+          to: draft.route.to,
+          distanceKm: draft.route.distanceKm,
+          date: null,
+          timeSlot: '',
+          options: draft.options,
+          notes: '',
+          status: 'pending',
+          estimate: currentPrice,
+          quotes: [],
+          createdAt: new Date().toISOString(),
+          version: 1,
+        }),
+        customerName: draft.customerName,
+        phone: draft.customerPhone,
+        vehicle: selected,
+        fromAddress: draft.fromAddress,
+        toAddress: draft.toAddress,
+        from: draft.route.from,
+        to: draft.route.to,
+        distanceKm: effectiveDistance ?? draft.route.distanceKm,
+        date: draft.date || null,
+        month: draft.month,
+        timeSlot: draft.timeSlot,
+        options: draft.options,
+        notes: quote.notes,
+        status: quoteKind === 'final' ? 'completed' : (editingBooking?.status ?? 'pending'),
+        pricingSettings: editingBooking?.pricingSettings ?? catalogue.settings,
+        inventorySnapshot: movingEstimate?.volume
+          ? bookingInventorySnapshot(estimateInventory, movingEstimate)
+          : editingBooking?.inventorySnapshot,
+        estimate: currentPrice,
+        quotes: editingBooking?.quotes ?? [],
+      };
+      const blob = await exportQuote(
+        previewBooking,
+        quote,
+        editingBooking?.pricingSettings ?? catalogue.settings,
+      );
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${editingBooking?.reference ?? 'devis-en-cours'}-${quoteKind}.pdf`;
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch {
+      setPdfError('Le PDF n’a pas pu être généré. Réessayez.');
+    } finally {
+      setPdfBusy(false);
+    }
+  }
   const onTollToggle = (line: (typeof tollLines)[number], checked: boolean) =>
     setTollLines((current) =>
       checked
@@ -384,6 +625,10 @@ export function AdminCreateQuote() {
     });
   };
 
+  function toggleQuoteSection(section: keyof typeof openQuoteSections) {
+    setOpenQuoteSections((current) => ({ ...current, [section]: !current[section] }));
+  }
+
   if (loading)
     return (
       <div className="panel loading" role="status">
@@ -402,18 +647,6 @@ export function AdminCreateQuote() {
 
   return (
     <div className="admin-quote-page">
-      <div className="admin-quote-heading">
-        <div className="admin-quote-heading-copy">
-          <p className="eyebrow">
-            {editingReservation ? 'MODIFIER UNE RÉSERVATION' : 'NOUVEAU DEVIS · CLIENT EN AGENCE'}
-          </p>
-          <h2>{editingReservation ? 'MODIFIER LE DEVIS' : 'CRÉER UN DEVIS'}</h2>
-          <p>Complétez la fiche d’appel. Le devis à droite se met à jour pendant la saisie.</p>
-        </div>
-        <Link to={routes.administration} className="button secondary small admin-quote-back">
-          <ArrowLeft size={16} /> Vue d’ensemble
-        </Link>
-      </div>
       {editLoading && (
         <p className="panel loading" role="status">
           Chargement de la réservation…
@@ -432,10 +665,24 @@ export function AdminCreateQuote() {
       )}
       <form
         id="admin-quote-form"
-        onSubmit={(event) =>
+        onSubmit={(event) => {
+          if (draft.customerPhone.replace(/\D/g, '').length < 9) {
+            event.preventDefault();
+            setOpenQuoteSections((current) => ({ ...current, client: true }));
+            setStageError('Indiquez votre numéro de téléphone (9 chiffres).');
+            return;
+          }
+          if (quoteKind === 'final' && (!draft.date || draft.noDate)) {
+            event.preventDefault();
+            setStageError(
+              'Un devis sans date reste provisoire. Choisissez une date pour passer en final.',
+            );
+            return;
+          }
+          setStageError('');
           void submit(
             event,
-            estimateText,
+            [visibleInventoryText, estimateText, questionnaireText].filter(Boolean).join('\n'),
             (movingEstimate?.planning ?? []).map((step, index) => ({
               id: `plan-${index + 1}`,
               time: step.time,
@@ -451,365 +698,490 @@ export function AdminCreateQuote() {
             movingEstimate?.volume
               ? { ...draft.options, labour: movingEstimate.crew }
               : draft.options,
-          )
-        }
+          );
+        }}
         className="admin-quote-layout"
       >
         <div className="admin-quote-fields">
           <section className="admin-quote-card">
-            <h3>NOUVEAU DEVIS · CLIENT EN AGENCE</h3>
-            <div className="admin-quote-identity">
-              <label>
-                Nom du client
-                <input
-                  required
-                  maxLength={100}
-                  value={draft.customerName}
-                  onChange={(event) =>
-                    setDraft((current) => ({ ...current, customerName: event.target.value }))
-                  }
-                  placeholder="Nom du client"
-                />
-              </label>
-              <label>
-                Téléphone
-                <input
-                  required
-                  type="tel"
-                  maxLength={25}
-                  value={draft.customerPhone}
-                  onChange={(event) =>
-                    setDraft((current) => ({ ...current, customerPhone: event.target.value }))
-                  }
-                  placeholder="Téléphone"
-                />
-              </label>
-              <div className="admin-quote-source">
-                <span>COMMENT LE CLIENT NOUS A CONNUS ?</span>
-                <div>
-                  {[
-                    'Facebook',
-                    'YouTube',
-                    'Instagram',
-                    'Snapchat',
-                    'TikTok',
-                    'Autre pub',
-                    'Bouche-à-oreille',
-                    'Client fidèle',
-                    'Autre',
-                  ].map((source) => {
-                    const selected = draft.source === source;
-                    return (
+            <button
+              className="admin-quote-section-toggle"
+              type="button"
+              aria-expanded={openQuoteSections.client}
+              aria-controls="admin-quote-client-fields"
+              onClick={() => toggleQuoteSection('client')}
+            >
+              <ChevronDown size={16} aria-hidden="true" />
+              <span>
+                {state.editingBooking
+                  ? `DEVIS POUR ${state.editingBooking.reference}`
+                  : 'NOUVEAU DEVIS · CLIENT EN AGENCE'}
+              </span>
+            </button>
+            {openQuoteSections.client && (
+              <div id="admin-quote-client-fields">
+                <div className="admin-quote-identity">
+                  <div className="admin-quote-client-name">
+                    <input
+                      required
+                      maxLength={100}
+                      value={draft.customerName}
+                      onChange={(event) =>
+                        setDraft((current) => ({ ...current, customerName: event.target.value }))
+                      }
+                      placeholder="Nom du client"
+                      aria-label="Nom du client"
+                    />
+                  </div>
+                  <div>
+                    <input
+                      required
+                      type="tel"
+                      maxLength={25}
+                      value={draft.customerPhone}
+                      onChange={(event) =>
+                        setDraft((current) => ({ ...current, customerPhone: event.target.value }))
+                      }
+                      placeholder="Téléphone"
+                      aria-label="Téléphone"
+                    />
+                  </div>
+                  <div className="admin-quote-source">
+                    <span>COMMENT LE CLIENT NOUS A CONNUS ?</span>
+                    <div>
+                      {[
+                        'Facebook',
+                        'YouTube',
+                        'Instagram',
+                        'Snapchat',
+                        'TikTok',
+                        'Autre pub',
+                        'Bouche-à-oreille',
+                        'Client fidèle',
+                        'Autre',
+                      ].map((source) => {
+                        const selected = draft.source === source;
+                        return (
+                          <button
+                            type="button"
+                            key={source}
+                            className={selected ? 'selected' : ''}
+                            onClick={() =>
+                              setDraft((current) => ({
+                                ...current,
+                                source: selected ? '' : source,
+                              }))
+                            }
+                          >
+                            {source}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="admin-quote-date-control">
+                    {!draft.noDate && (
+                      <input
+                        type="date"
+                        min={editingReservation ? undefined : today()}
+                        value={draft.date}
+                        aria-label="Date prévue"
+                        onChange={(event) =>
+                          setDraft((current) => ({
+                            ...current,
+                            date: event.target.value,
+                            month: event.target.value
+                              ? event.target.value.slice(0, 7)
+                              : current.month,
+                          }))
+                        }
+                      />
+                    )}
+                    {draft.noDate && state.administrativeQuote && (
+                      <input
+                        type="month"
+                        required
+                        value={draft.month}
+                        aria-label="Mois souhaité"
+                        onChange={(event) =>
+                          setDraft((current) => ({ ...current, month: event.target.value }))
+                        }
+                      />
+                    )}
+                    {state.administrativeQuote && (
+                      <label className="admin-quote-no-date">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(draft.noDate)}
+                          onChange={(event) =>
+                            setDraft((current) => ({
+                              ...current,
+                              noDate: event.target.checked,
+                              date: event.target.checked ? '' : current.date,
+                              timeSlot: event.target.checked ? '' : current.timeSlot,
+                            }))
+                          }
+                        />
+                        <span>Date à définir (mois seulement)</span>
+                      </label>
+                    )}
+                  </div>
+                  <label className="admin-quote-start-time">
+                    <span>Début</span>
+                    <input
+                      type="time"
+                      required={Boolean(draft.date)}
+                      value={draft.timeSlot}
+                      onChange={(event) =>
+                        setDraft((current) => ({ ...current, timeSlot: event.target.value }))
+                      }
+                    />
+                  </label>
+                  <div className="admin-quote-vehicles" role="group" aria-label="Véhicule">
+                    {catalogue.vehicles.map((vehicle) => (
                       <button
                         type="button"
-                        key={source}
-                        className={selected ? 'selected' : ''}
+                        key={vehicle.id}
+                        disabled={vehicle.active === false}
+                        aria-pressed={draft.vehicleId === vehicle.id}
+                        className={draft.vehicleId === vehicle.id ? 'active' : ''}
                         onClick={() =>
-                          setDraft((current) => ({ ...current, source: selected ? '' : source }))
+                          setDraft((current) => ({ ...current, vehicleId: vehicle.id }))
                         }
                       >
-                        {source}
+                        {vehicle.name.replace(/^(Mercedes|Renault) /, '')}
                       </button>
-                    );
-                  })}
+                    ))}
+                  </div>
                 </div>
+                {recognizingClient && (
+                  <p className="muted" role="status">
+                    Vérification du client…
+                  </p>
+                )}
+                {clientRecognition &&
+                  clientRecognition.phone === normalizedClientPhone(draft.customerPhone) && (
+                    <p className="client-recognition">
+                      Client déjà connu : {clientRecognition.name} ·{' '}
+                      {clientRecognition.bookingCount} réservation(s)
+                    </p>
+                  )}
               </div>
-              <label>
-                Date prévue
-                <input
-                  type="date"
-                  min={editingReservation ? undefined : today()}
-                  value={draft.date}
-                  onChange={(event) =>
-                    setDraft((current) => ({ ...current, date: event.target.value }))
-                  }
-                />
-              </label>
-              {!draft.date && state.administrativeQuote && (
-                <label>
-                  Mois souhaité
-                  <input
-                    type="month"
-                    required
-                    value={draft.month}
-                    onChange={(event) =>
-                      setDraft((current) => ({ ...current, month: event.target.value }))
-                    }
-                  />
-                </label>
-              )}
-              <label>
-                Heure prévue
-                <input
-                  type="time"
-                  required={Boolean(draft.date)}
-                  value={draft.timeSlot}
-                  onChange={(event) =>
-                    setDraft((current) => ({ ...current, timeSlot: event.target.value }))
-                  }
-                />
-              </label>
-            </div>
-            {recognizingClient && (
-              <p className="muted" role="status">
-                Vérification du client…
-              </p>
             )}
-            {clientRecognition &&
-              clientRecognition.phone === normalizedClientPhone(draft.customerPhone) && (
-                <p className="client-recognition">
-                  Client déjà connu : {clientRecognition.name} · {clientRecognition.bookingCount}{' '}
-                  réservation(s)
-                </p>
-              )}
-            <div className="admin-quote-vehicles" role="group" aria-label="Véhicule">
-              {catalogue.vehicles.map((vehicle) => (
-                <button
-                  type="button"
-                  key={vehicle.id}
-                  disabled={vehicle.active === false}
-                  aria-pressed={draft.vehicleId === vehicle.id}
-                  className={draft.vehicleId === vehicle.id ? 'active' : ''}
-                  onClick={() => setDraft((current) => ({ ...current, vehicleId: vehicle.id }))}
-                >
-                  {vehicle.name.replace(/^(Mercedes|Renault) /, '')}
-                </button>
-              ))}
-            </div>
           </section>
 
           <section className="admin-quote-card">
-            <h3>TRAJET · CARTE</h3>
-            <Suspense fallback={<div className="map loading">Chargement de la carte…</div>}>
-              <RouteMap
-                tollLines={tollLines}
-                onTollToggle={onTollToggle}
-                fromNote={draft.fromNote}
-                toNote={draft.toNote}
-                onNoteChange={(side, value) =>
-                  setDraft((current) => ({
-                    ...current,
-                    [side === 'from' ? 'fromNote' : 'toNote']: value,
-                  }))
-                }
-              />
-            </Suspense>
-            {draft.fromAddress && draft.toAddress && (
-              <a
-                className="button secondary small admin-quote-map-link"
-                target="_blank"
-                rel="noreferrer"
-                href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(draft.fromAddress)}&destination=${encodeURIComponent(draft.toAddress)}`}
-              >
-                Vérifier dans Google Maps
-              </a>
-            )}
-            <p className="admin-quote-distance">
-              Distance :{' '}
-              <strong>{draft.route ? `${draft.route.distanceKm} km` : 'À calculer'}</strong> ·
-              Tranche : <strong>{price ? tiers[price.tier] : '—'}</strong>
-            </p>
-            <p className="admin-quote-distance" role="status">
-              {!googleMapsKey
-                ? 'Trafic en direct inactif · ajoutez votre clé Google Maps dans Paramètres.'
-                : trafficBusy
-                  ? 'Calcul du trafic Google Maps…'
-                  : traffic
-                    ? `Durée avec trafic : ${traffic.minutes} min${traffic.minutes > traffic.freeMinutes ? ` · +${traffic.minutes - traffic.freeMinutes} min de trafic` : ''} · actualisée à ${new Date(traffic.fetchedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`
-                    : trafficError
-                      ? 'Trafic indisponible · vérifiez la clé et l’activation de Distance Matrix.'
-                      : ''}
-            </p>
-            {price?.tier === 3 && (
-              <label>
-                Tarif par aller-retour au-delà de 35 km
-                <input
-                  type="number"
-                  min={1}
-                  max={10000000}
-                  required
-                  value={quoteConfig.customPrice ?? ''}
-                  onChange={(event) =>
-                    setQuoteConfig((current) => ({
-                      ...current,
-                      customPrice: event.target.value
-                        ? Math.max(1, Number(event.target.value))
-                        : null,
-                    }))
-                  }
-                />
-              </label>
+            <button
+              className="admin-quote-section-toggle"
+              type="button"
+              aria-expanded={openQuoteSections.route}
+              aria-controls="admin-quote-route-fields"
+              onClick={() => toggleQuoteSection('route')}
+            >
+              <ChevronDown size={16} aria-hidden="true" />
+              <span>TRAJET · CARTE</span>
+            </button>
+            {openQuoteSections.route && (
+              <div id="admin-quote-route-fields">
+                <Suspense fallback={<div className="map loading">Chargement de la carte…</div>}>
+                  <RouteMap
+                    tollLines={tollLines}
+                    onTollToggle={onTollToggle}
+                    fromNote={draft.fromNote}
+                    toNote={draft.toNote}
+                    adminQuote
+                    onNoteChange={(side, value) =>
+                      setDraft((current) => ({
+                        ...current,
+                        [side === 'from' ? 'fromNote' : 'toNote']: value,
+                      }))
+                    }
+                  />
+                </Suspense>
+                <a
+                  className="button secondary small admin-quote-map-link"
+                  target="_blank"
+                  rel="noreferrer"
+                  href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(draft.fromAddress)}&destination=${encodeURIComponent(draft.toAddress)}`}
+                >
+                  Vérifier dans Google Maps
+                </a>
+                <label className="admin-quote-distance-editor">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100000"
+                    step="0.1"
+                    placeholder="Distance km"
+                    value={effectiveDistance ?? ''}
+                    disabled={!draft.route}
+                    aria-label="Distance du trajet en kilomètres"
+                    onChange={(event) =>
+                      setDraft((current) => ({
+                        ...current,
+                        distanceKmOverride:
+                          event.target.value === '' ? null : Number(event.target.value),
+                      }))
+                    }
+                  />
+                  <span>
+                    Calculée par l’itinéraire, modifiable. Tranche appliquée :{' '}
+                    <strong>{draft.route ? tiers[previewTier] : '—'}</strong>
+                  </span>
+                </label>
+                {draft.from && draft.to && (!googleMapsKey ? (
+                  <p className="admin-quote-distance" role="status">
+                    Trafic en direct inactif · ajoutez votre clé Google Maps dans Paramètres.
+                  </p>
+                ) : trafficBusy ? (
+                  <p className="admin-quote-distance" role="status">
+                    Calcul du trafic Google Maps…
+                  </p>
+                ) : traffic ? (
+                  <div className="admin-quote-traffic" role="status">
+                    <span aria-hidden="true" />
+                    <strong>Durée avec trafic : {traffic.minutes} min</strong>
+                    <small>
+                      {traffic.minutes > traffic.freeMinutes
+                        ? `+${traffic.minutes - traffic.freeMinutes} min de trafic · `
+                        : ''}
+                      Actualisée à{' '}
+                      {new Date(traffic.fetchedAt).toLocaleTimeString('fr-FR', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </small>
+                    <button type="button" onClick={() => void refreshTraffic()}>
+                      Actualiser
+                    </button>
+                  </div>
+                ) : trafficError ? (
+                  <p className="admin-quote-distance" role="status">
+                    Trafic indisponible · vérifiez la clé et l’activation de Distance Matrix.
+                  </p>
+                ) : null)}
+                {draft.route && previewTier === 3 && (
+                    <input className="admin-quote-custom-price" aria-label="Prix par aller-retour (au-delà de 35 km)" placeholder="Prix par aller-retour (au-delà de 35 km)"
+                      type="number"
+                      min={1}
+                      max={10000000}
+                      required
+                      value={quoteConfig.customPrice ?? ''}
+                      onChange={(event) =>
+                        setQuoteConfig((current) => ({
+                          ...current,
+                          customPrice: event.target.value
+                            ? Math.max(1, Number(event.target.value))
+                            : null,
+                        }))
+                      }
+                    />
+                )}
+              </div>
             )}
           </section>
 
           <section className="admin-quote-card">
             <div className="admin-quote-card-head">
-              <h3>PÉAGES</h3>
-              <strong>{money(totalTolls)}</strong>
+              <button
+                className="admin-quote-section-toggle"
+                type="button"
+                aria-expanded={openQuoteSections.tolls}
+                aria-controls="admin-quote-toll-fields"
+                onClick={() => toggleQuoteSection('tolls')}
+              >
+                <ChevronDown size={16} aria-hidden="true" />
+                <span>PÉAGES</span>
+              </button>
+              <strong>{totalTolls ? money(totalTolls) : ''}</strong>
             </div>
-            <p className="muted">
-              Cochez les péages traversés. Un aller-retour compte deux passages. Vous pouvez aussi
-              toucher un péage sur la carte.
-            </p>
-            <TollRateSelector lines={tollLines} onToggle={onTollToggle} />
+            {openQuoteSections.tolls && (
+              <div id="admin-quote-toll-fields">
+                <TollRateSelector
+                  lines={tollLines}
+                  onToggle={onTollToggle}
+                  roundTrips={quoteConfig.trips}
+                />
+              </div>
+            )}
           </section>
 
           <section className="admin-quote-card admin-quote-services">
-            <h3>TRANSPORT ET OPTIONS</h3>
-            <div className="admin-quote-service-row">
-              <div>
-                <strong>Allers-retours prévus</strong>
-                <span>Transport · {selected.name}</span>
-              </div>
-              <div className="admin-quote-stepper">
-                <button
-                  type="button"
-                  aria-label="Retirer un aller-retour"
-                  disabled={quoteConfig.trips <= 1}
-                  onClick={() =>
-                    setQuoteConfig((current) => ({
-                      ...current,
-                      trips: Math.max(1, current.trips - 1),
-                    }))
-                  }
-                >
-                  <Minus size={17} />
-                </button>
-                <output>{quoteConfig.trips}</output>
-                <button
-                  type="button"
-                  aria-label="Ajouter un aller-retour"
-                  disabled={quoteConfig.trips >= catalogue.settings.maxTrips}
-                  onClick={() =>
-                    setQuoteConfig((current) => ({
-                      ...current,
-                      trips: Math.min(catalogue.settings.maxTrips, current.trips + 1),
-                    }))
-                  }
-                >
-                  <Plus size={17} />
-                </button>
-              </div>
-            </div>
-            {extras.map(([key, label]) => (
-              <div className="admin-quote-service-row" key={key}>
-                <div>
-                  <strong>{label}</strong>
-                  <span>
-                    {money(
-                      key === 'labour'
-                        ? labourPrice
-                        : assemblyUnitPrice(
-                            catalogue.settings,
-                            key === 'desk' ? 'bureau' : key === 'wardrobe' ? 'armoire' : 'lit',
-                          ),
-                    )} /
-                    unité
-                  </span>
+            <button
+              className="admin-quote-section-toggle"
+              type="button"
+              aria-expanded={openQuoteSections.options}
+              aria-controls="admin-quote-option-fields"
+              onClick={() => toggleQuoteSection('options')}
+            >
+              <ChevronDown size={16} aria-hidden="true" />
+              <span>OPTIONS ET QUANTITÉS</span>
+            </button>
+            {openQuoteSections.options && (
+              <div id="admin-quote-option-fields" className="admin-quote-option-fields">
+                <div className="admin-quote-service-row">
+                  <strong>Allers-retours</strong>
+                  <div className="admin-quote-stepper">
+                    <button
+                      type="button"
+                      aria-label="Retirer un aller-retour"
+                      disabled={quoteConfig.trips <= 1}
+                      onClick={() =>
+                        setQuoteConfig((current) => ({
+                          ...current,
+                          trips: Math.max(1, current.trips - 1),
+                        }))
+                      }
+                    >
+                      −
+                    </button>
+                    <output>{quoteConfig.trips}</output>
+                    <button
+                      type="button"
+                      aria-label="Ajouter un aller-retour"
+                      disabled={quoteConfig.trips >= catalogue.settings.maxTrips}
+                      onClick={() =>
+                        setQuoteConfig((current) => ({
+                          ...current,
+                          trips: Math.min(catalogue.settings.maxTrips, current.trips + 1),
+                        }))
+                      }
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
-                <div className="admin-quote-stepper">
-                  <button
-                    type="button"
-                    aria-label={`Retirer ${label}`}
-                    disabled={
-                      draft.options[key] === 0 ||
-                      (key === 'labour' &&
-                        Boolean(movingEstimate?.volume) &&
-                        draft.options.labour <= 1)
+                {extras.map(([key, label]) => (
+                  <div className="admin-quote-service-row" key={key}>
+                    <strong>
+                      {key === 'labour'
+                        ? 'Manœuvres'
+                        : key === 'desk'
+                          ? 'Montage/démontage bureau'
+                          : key === 'wardrobe'
+                            ? 'Montage/démontage armoire'
+                            : 'Montage/démontage lit 2 places'}
+                    </strong>
+                    <div className="admin-quote-stepper">
+                      <button
+                        type="button"
+                        aria-label={`Retirer ${label}`}
+                        disabled={
+                          draft.options[key] === 0 ||
+                          (key === 'labour' &&
+                            Boolean(movingEstimate?.volume) &&
+                            draft.options.labour <= 1)
+                        }
+                        onClick={() => changeQuoteOption(key, -1)}
+                      >
+                        −
+                      </button>
+                      <output>{draft.options[key]}</output>
+                      <button
+                        type="button"
+                        aria-label={`Ajouter ${label}`}
+                        disabled={draft.options[key] >= catalogue.settings.maxOptions}
+                        onClick={() => changeQuoteOption(key, 1)}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <div className="admin-quote-options-bottom">
+                  <div className="admin-quote-discount-panel">
+                    <div className="admin-quote-discount-heading">
+                      <strong>REMISE</strong>
+                      {quoteConfig.discount > 0 && (
+                        <span>
+                          − {money(previewDiscount)} sur {money(previewSubtotal)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="admin-quote-discount-entry">
+                      <input
+                        type="number"
+                        min={0}
+                        value={quoteConfig.discount || ''}
+                        aria-label="Remise"
+                        placeholder={
+                          quoteConfig.discountType === 'pct' ? 'Remise en %' : 'Remise en FCFA'
+                        }
+                        onChange={(event) =>
+                          setQuoteConfig((current) => ({
+                            ...current,
+                            discount: Math.max(0, Number(event.target.value) || 0),
+                          }))
+                        }
+                      />
+                      <div
+                        className="admin-quote-discount-types"
+                        role="group"
+                        aria-label="Type de remise"
+                      >
+                        {(['fcfa', 'pct'] as const).map((type) => (
+                          <button
+                            key={type}
+                            type="button"
+                            className={quoteConfig.discountType === type ? 'selected' : ''}
+                            aria-pressed={quoteConfig.discountType === type}
+                            onClick={() =>
+                              setQuoteConfig((current) => ({ ...current, discountType: type }))
+                            }
+                          >
+                            {type === 'fcfa' ? 'FCFA' : '%'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <input
+                      className="admin-quote-discount-reason-input"
+                      type="text"
+                      maxLength={200}
+                      value={quoteConfig.discountReason}
+                      placeholder="Motif de la remise"
+                      aria-label="Motif de la remise"
+                      onChange={(event) =>
+                        setQuoteConfig((current) => ({
+                          ...current,
+                          discountReason: event.target.value,
+                        }))
+                      }
+                    />
+                    <div
+                      className="admin-quote-discount-reasons"
+                      aria-label="Motifs de remise proposés"
+                    >
+                      {['Client fidèle', 'Promotion', 'Geste commercial', 'Parrainage'].map(
+                        (reason) => (
+                          <button
+                            type="button"
+                            key={reason}
+                            aria-pressed={quoteConfig.discountReason === reason}
+                            onClick={() =>
+                              setQuoteConfig((current) => ({ ...current, discountReason: reason }))
+                            }
+                          >
+                            {reason}
+                          </button>
+                        ),
+                      )}
+                    </div>
+                  </div>
+                  <textarea
+                    className="admin-quote-free-note"
+                    aria-label="Remarque libre"
+                    rows={3}
+                    maxLength={2000}
+                    value={draft.notes}
+                    onChange={(event) =>
+                      setDraft((current) => ({ ...current, notes: event.target.value }))
                     }
-                    onClick={() => changeQuoteOption(key, -1)}
-                  >
-                    <Minus size={17} />
-                  </button>
-                  <output>{draft.options[key]}</output>
-                  <button
-                    type="button"
-                    aria-label={`Ajouter ${label}`}
-                    disabled={draft.options[key] >= catalogue.settings.maxOptions}
-                    onClick={() => changeQuoteOption(key, 1)}
-                  >
-                    <Plus size={17} />
-                  </button>
+                    placeholder="Remarque libre (ajoutée sous l'inventaire de la fiche d'appel)"
+                  />
                 </div>
               </div>
-            ))}
-            <div className="admin-quote-labour-override">
-              <label htmlFor="admin-labour-unit-price">Prix par manœuvre (FCFA)</label>
-              <input
-                id="admin-labour-unit-price"
-                type="number"
-                min="0"
-                value={quoteConfig.labourUnitPriceOverride ?? ''}
-                placeholder={String(labourPrice)}
-                onChange={(event) =>
-                  setQuoteConfig((current) => ({
-                    ...current,
-                    labourUnitPriceOverride: event.target.value
-                      ? Math.max(0, Number(event.target.value)) || null
-                      : null,
-                  }))
-                }
-              />
-              <small>Vide = grille admin ({money(labourPrice)})</small>
-            </div>
-            <div className="admin-quote-discount">
-              <label>
-                Type de remise
-                <select
-                  value={quoteConfig.discountType}
-                  onChange={(event) =>
-                    setQuoteConfig((current) => ({
-                      ...current,
-                      discountType: event.target.value as 'fcfa' | 'pct',
-                    }))
-                  }
-                >
-                  <option value="fcfa">FCFA</option>
-                  <option value="pct">%</option>
-                </select>
-              </label>
-              <label>
-                Remise ({quoteConfig.discountType === 'pct' ? '%' : 'FCFA'})
-                <input
-                  type="number"
-                  min={0}
-                  max={10000000}
-                  value={quoteConfig.discount}
-                  onChange={(event) =>
-                    setQuoteConfig((current) => ({
-                      ...current,
-                      discount: Math.max(0, Number(event.target.value) || 0),
-                    }))
-                  }
-                />
-              </label>
-              <label>
-                Motif de la remise
-                <input
-                  type="text"
-                  maxLength={200}
-                  value={quoteConfig.discountReason}
-                  onChange={(event) =>
-                    setQuoteConfig((current) => ({
-                      ...current,
-                      discountReason: event.target.value,
-                    }))
-                  }
-                />
-              </label>
-            </div>
-            <label>
-              Remarque libre
-              <textarea
-                rows={3}
-                maxLength={2000}
-                value={draft.notes}
-                onChange={(event) =>
-                  setDraft((current) => ({ ...current, notes: event.target.value }))
-                }
-                placeholder="Ajoutée sous l’inventaire de la fiche d’appel"
-              />
-            </label>
+            )}
           </section>
           <CallInventory
             draft={draft}
@@ -820,6 +1192,27 @@ export function AdminCreateQuote() {
             quoteTrips={quoteConfig.trips}
             maxTrips={catalogue.settings.maxTrips}
             laborPlanning={catalogue.settings.movingLaborPlanning}
+            labourPriceEditor={
+              <div className="admin-quote-labour-override">
+                <label htmlFor="admin-labour-unit-price">Prix par manœuvre (FCFA)</label>
+                <input
+                  id="admin-labour-unit-price"
+                  type="number"
+                  min="0"
+                  value={quoteConfig.labourUnitPriceOverride ?? ''}
+                  placeholder={String(labourPrice)}
+                  onChange={(event) =>
+                    setQuoteConfig((current) => ({
+                      ...current,
+                      labourUnitPriceOverride: event.target.value
+                        ? Math.max(0, Number(event.target.value)) || null
+                        : null,
+                    }))
+                  }
+                />
+                <small>Vide = grille admin ({money(labourPrice)})</small>
+              </div>
+            }
             estimateInventory={estimateInventory}
             onApplyEstimate={(vehicleId, trips) => {
               setDraft((current) => ({ ...current, vehicleId }));
@@ -859,12 +1252,12 @@ export function AdminCreateQuote() {
                 <img src="/assets/logo.png" alt="" />
                 <div>
                   <strong>DEMENAG EXPRESS PRO MTH</strong>
-                  <span>Dakar · {catalogue.settings.businessPhone}</span>
+                  <span>Dakar · {displayBusinessPhone}</span>
                 </div>
               </div>
               <div className="admin-quote-paper-title">
-                <strong>DEVIS PROVISOIRE</strong>
-                <span>En préparation</span>
+                <strong>{quoteKind === 'final' ? 'DEVIS FINAL' : 'DEVIS PROVISOIRE'}</strong>
+                <span>Brouillon</span>
               </div>
             </header>
             <div className="admin-quote-stripe">
@@ -889,14 +1282,14 @@ export function AdminCreateQuote() {
               <div className="admin-quote-route">
                 <small>TRAJET</small>
                 <strong>
-                  {draft.fromAddress || 'Départ'} → {draft.toAddress || 'Arrivée'}
+                  {draft.fromAddress || '—'} → {draft.toAddress || '—'}
                 </strong>
                 {draft.fromNote.trim() && <span>Repère départ : {draft.fromNote.trim()}</span>}
                 {draft.toNote.trim() && <span>Repère arrivée : {draft.toNote.trim()}</span>}
                 <span>
                   {draft.route
-                    ? `${draft.route.distanceKm} km · ${price ? tiers[price.tier] : ''}`
-                    : 'Distance à calculer'}
+                    ? `${effectiveDistance} km · ${tiers[previewTier]}`
+                    : 'Distance à relever'}
                 </span>
               </div>
             </div>
@@ -929,7 +1322,7 @@ export function AdminCreateQuote() {
                 </div>
               )}
               <div className="admin-quote-paper-total">
-                <strong>TOTAL</strong>
+                <strong>{quoteKind === 'final' ? 'TOTAL' : 'TOTAL ESTIMÉ'}</strong>
                 <strong>{previewTotal === null ? 'À calculer' : money(previewTotal)}</strong>
               </div>
             </div>
@@ -971,18 +1364,95 @@ export function AdminCreateQuote() {
                 </div>
               </div>
             )}
-            {(inventoryText || estimateText || questionnaireText || draft.notes) && (
+            {(visibleInventoryText || estimateText || questionnaireText || draft.notes) && (
               <div className="admin-quote-paper-note">
-                {[inventoryText, estimateText, questionnaireText, draft.notes]
+                {[visibleInventoryText, estimateText, questionnaireText, draft.notes]
                   .filter(Boolean)
-                  .join('\n\n')}
+                  .join('\n')}
               </div>
             )}
             <p>
-              Devis provisoire basé sur le nombre d’allers-retours prévus. Le devis final sera
-              établi après le déménagement selon les trajets réellement effectués.
+              {quoteKind === 'final'
+                ? `Devis final établi sur la base du nombre réel d'allers-retours effectués (${quoteConfig.trips}), au tarif de la tranche de distance appliquée.`
+                : `Devis temporaire, calculé sur ${quoteConfig.trips} aller(s)-retour(s) estimé(s). Le transport est facturé par aller-retour effectué : le devis final, basé sur le nombre réel d'allers-retours, sera envoyé par Demenag Express à la fin du déménagement.`}
             </p>
           </div>
+          <section className="admin-quote-stage" aria-label="Étape actuelle du devis">
+            <span className="admin-quote-stage-label">ÉTAPE ACTUELLE</span>
+            <div className="admin-quote-stage-switch" role="group" aria-label="Type de devis">
+              <button
+                type="button"
+                aria-pressed={quoteKind === 'provisional'}
+                className={quoteKind === 'provisional' ? 'active provisional' : ''}
+                onClick={() => setQuoteKind('provisional')}
+              >
+                Provisoire
+              </button>
+              <button
+                type="button"
+                aria-pressed={quoteKind === 'final'}
+                className={quoteKind === 'final' ? 'active final' : ''}
+                disabled={Boolean(editingBooking?.quotes.some((quote) => quote.kind === 'final'))}
+                title={
+                  canCreateFinal
+                    ? undefined
+                    : 'Une date est nécessaire pour enregistrer un devis final.'
+                }
+                onClick={() => {
+                  setQuoteKind('final');
+                  setStageError('');
+                }}
+              >
+                Final
+              </button>
+            </div>
+            {quoteKind === 'final' && (
+              <span className="admin-quote-stage-instruction">
+                Indiquez le nombre réel d'allers-retours, puis enregistrez.
+              </span>
+            )}
+            <div className="admin-quote-stage-actions">
+              <button
+                type="button"
+                className="admin-quote-action-whatsapp"
+                disabled={submitting || estimating || editingLocked}
+                onClick={sendCurrentQuoteOnWhatsApp}
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
+                </svg>
+                Envoyer le devis {quoteKind === 'final' ? 'final' : 'provisoire'} sur WhatsApp
+              </button>
+            </div>
+            <span className="admin-quote-recipient">
+              Destinataire :{' '}
+              <strong>
+                {canSendQuoteWhatsApp
+                  ? `+${whatsappNumber(draft.customerPhone, catalogue?.settings.whatsappCountryCode ?? '221')}`
+                  : 'aucun numéro'}
+              </strong>
+            </span>
+            {stageError && (
+              <span className="admin-quote-stage-error" role="alert">
+                {stageError}
+              </span>
+            )}
+            {pdfError && (
+              <span className="admin-quote-stage-error" role="alert">
+                {pdfError}
+              </span>
+            )}
+          </section>
           {estimateError && (
             <p className="alert error" role="alert">
               {estimateError}
@@ -996,26 +1466,25 @@ export function AdminCreateQuote() {
           <button
             className="button primary admin-quote-submit"
             disabled={
-              submitting ||
-              estimating ||
-              previewTotal === null ||
-              !draft.route ||
-              editLoading ||
-              Boolean(editError) ||
-              editingLocked
+              submitting || estimating || editLoading || Boolean(editError) || editingLocked
             }
           >
             {submitting
               ? 'Enregistrement…'
               : editingReservation
                 ? 'Enregistrer les modifications'
-                : 'Enregistrer le devis provisoire'}
+                : 'Enregistrer'}
           </button>
-          <p className="muted">
-            {editingReservation
-              ? 'La réservation et son nouveau devis provisoire seront enregistrés dans le dossier du client.'
-              : 'Le rendez-vous est ajouté aux réservations. Le client peut télécharger le devis provisoire depuis son espace.'}
-          </p>
+          <button
+            type="button"
+            className="admin-quote-action-pdf"
+            disabled={!draft.route || previewTotal === null || pdfBusy}
+            onClick={() => void downloadCurrentQuote()}
+          >
+            {pdfBusy
+              ? 'Préparation du PDF…'
+              : `Télécharger le PDF ${quoteKind === 'final' ? 'final' : 'provisoire'}`}
+          </button>
         </aside>
       </form>
     </div>

@@ -23,9 +23,7 @@ export function AdminLayout() {
     const active = tabs?.querySelector<HTMLElement>('a.active');
     if (!tabs || !active || tabs.scrollWidth <= tabs.clientWidth) return;
     const left = active.getBoundingClientRect().left - tabs.getBoundingClientRect().left;
-    if (left < 0) tabs.scrollLeft += left - 6;
-    else if (left + active.offsetWidth > tabs.clientWidth)
-      tabs.scrollLeft += left + active.offsetWidth - tabs.clientWidth + 6;
+    tabs.scrollLeft += left - (tabs.clientWidth - active.offsetWidth) / 2;
   }, [location.pathname]);
   return (
     <section className="container workspace-page admin-workspace">

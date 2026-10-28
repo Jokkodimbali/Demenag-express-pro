@@ -184,6 +184,7 @@ export interface PricingRepository {
     signal?: AbortSignal,
     workAccess?: import('../domain/model').WorkAccess,
     trips?: number,
+    distanceKmOverride?: number | null,
   ): Promise<Price>;
 }
 export interface NotificationRepository {

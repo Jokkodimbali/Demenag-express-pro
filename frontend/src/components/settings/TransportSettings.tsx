@@ -108,19 +108,31 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
       const key = referenceInventoryKey(item.key);
       const pricing =
         catalogue.settings.montageP?.[key] ?? catalogue.settings.montageP?.[item.key] ?? {};
-      const range = item.sizeLabel
-        ? (sizeRanges[key] ?? [1, (item.defaultSize ?? 1) + 3])
-        : null;
+      const range = item.sizeLabel ? (sizeRanges[key] ?? [1, (item.defaultSize ?? 1) + 3]) : null;
       return { item, key, pricing, range };
     });
+  const assemblySections = Array.from(
+    new Map(
+      rows.map(({ item }) => [
+        item.section,
+        rows.filter((row) => row.item.section === item.section),
+      ]),
+    ),
+  );
+  const assemblyColumns = [
+    [assemblySections[0], assemblySections[3]].filter(Boolean),
+    [assemblySections[1], assemblySections[2]].filter(Boolean),
+  ];
   const floorSupplement = catalogue.settings.labourFloorPrice ?? 500;
   const liftSupplement = catalogue.settings.labourLiftPrice ?? 500;
   const referenceVehicleOrder = ['sprinter', 'trafic', 'master'];
   const vehicles = [...catalogue.vehicles].sort((left, right) => {
     const leftIndex = referenceVehicleOrder.indexOf(left.id);
     const rightIndex = referenceVehicleOrder.indexOf(right.id);
-    return (leftIndex < 0 ? referenceVehicleOrder.length : leftIndex) -
-      (rightIndex < 0 ? referenceVehicleOrder.length : rightIndex);
+    return (
+      (leftIndex < 0 ? referenceVehicleOrder.length : leftIndex) -
+      (rightIndex < 0 ? referenceVehicleOrder.length : rightIndex)
+    );
   });
   const planning = { ...planningDefaults, ...catalogue.settings.movingLaborPlanning };
 
@@ -160,175 +172,197 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
 
         <section className="reference-settings-wide" style={sectionStyle}>
           <span className="reference-settings-card-title">Suppléments fixes</span>
-          <label style={lineStyle}>
-            <span>Manœuvre (par personne)</span>
-            <input
-              style={inputStyle}
-              type="number"
-              min="0"
-              name="labourPrice"
-              defaultValue={catalogue.settings.labourPrice}
-            />
-          </label>
-          <label style={lineStyle}>
-            <span>Supplément par étage sans ascenseur (par manœuvre)</span>
-            <input
-              style={inputStyle}
-              type="number"
-              min="0"
-              name="labourFloorPrice"
-              defaultValue={floorSupplement}
-            />
-          </label>
-          <label style={lineStyle}>
-            <span>Forfait avec ascenseur, dès le 1er (par manœuvre)</span>
-            <input
-              style={inputStyle}
-              type="number"
-              min="0"
-              name="labourLiftPrice"
-              defaultValue={liftSupplement}
-            />
-          </label>
+          <div className="reference-settings-fixed-fields">
+            <label>
+              <span>Manœuvre (par personne)</span>
+              <input
+                style={inputStyle}
+                type="number"
+                min="0"
+                name="labourPrice"
+                defaultValue={catalogue.settings.labourPrice}
+              />
+            </label>
+            <label>
+              <span>Supplément par étage sans ascenseur (par manœuvre)</span>
+              <input
+                style={inputStyle}
+                type="number"
+                min="0"
+                name="labourFloorPrice"
+                defaultValue={floorSupplement}
+              />
+            </label>
+            <label>
+              <span>Forfait avec ascenseur, dès le 1er (par manœuvre)</span>
+              <input
+                style={inputStyle}
+                type="number"
+                min="0"
+                name="labourLiftPrice"
+                defaultValue={liftSupplement}
+              />
+            </label>
+          </div>
           <input type="hidden" name="assembly" value={catalogue.settings.assemblyPrice} />
 
           <span className="reference-settings-kicker">
             DÉMONTAGE / MONTAGE PAR MEUBLE (PRIX CLIENT)
           </span>
-          <div className="reference-settings-price-matrix">
-            <span /> <span className="reference-settings-column-title">Local</span>
-            <span className="reference-settings-column-title">Importé</span>
-            {rows.map(({ item, key, pricing, range }, index) => {
-              const previous = rows[index - 1];
-              const local = pricing.local ?? catalogue.settings.assemblyPrice;
-              const imported = pricing.import ?? Math.round(local * 1.5);
-              const sizeLabel = item.sizeLabel ?? '';
-              return (
-                <div className="reference-settings-item-group" key={key}>
-                  {(!previous || previous.item.section !== item.section) && (
-                    <strong className="reference-settings-category">
-                      {item.section.toUpperCase()}
-                    </strong>
-                  )}
-                  <div className="reference-settings-price-row">
-                    <span>
-                      {item.label}
-                      {range ? ` (${item.defaultSize} ${sizeLabel})` : ''}
-                    </span>
-                    <input
-                      style={inputStyle}
-                      type="number"
-                      min="0"
-                      name={`montageP.${key}.local`}
-                      defaultValue={local}
-                      aria-label={`${item.label}, local`}
-                    />
-                    <input
-                      style={inputStyle}
-                      type="number"
-                      min="0"
-                      name={`montageP.${key}.import`}
-                      defaultValue={imported}
-                      aria-label={`${item.label}, importé`}
-                    />
-                  </div>
-                  {range && (
-                    <div className="reference-settings-size-row">
-                      <div className="reference-settings-size-labels">
-                        <span>Local</span>
-                        <span>Importé</span>
-                      </div>
-                      <div className="reference-settings-size-increment">
-                        <span>Supplément par {sizeLabel.replace(/s$/u, '')} en plus</span>
-                        <label>
-                          <span>Local</span>
-                          <input
-                            style={inputStyle}
-                            type="number"
-                            min="0"
-                            name={`montageP.${key}.u`}
-                            defaultValue={pricing.u ?? 0}
-                            aria-label={`${item.label}, supplément local par ${sizeLabel.replace(/s$/u, '')}`}
-                          />
-                        </label>
-                        <label>
-                          <span>Importé</span>
-                          <input
-                            style={inputStyle}
-                            type="number"
-                            min="0"
-                            name={`montageP.${key}.uI`}
-                            defaultValue={pricing.uI ?? pricing.u ?? 0}
-                            aria-label={`${item.label}, supplément importé par ${sizeLabel.replace(/s$/u, '')}`}
-                          />
-                        </label>
-                      </div>
-                      {Array.from({ length: range[1] - range[0] + 1 }, (_, offset) => {
-                        const size = range[0] + offset;
-                        const savedSize = pricing.sz?.[String(size)];
-                        const priceAtSize = (origin: 'local' | 'import') =>
-                          savedSize?.[origin] ??
-                          (origin === 'local' ? local : imported) +
-                            Math.max(0, size - (item.defaultSize ?? 1)) *
-                              (origin === 'local'
-                                ? (pricing.u ?? 0)
-                                : (pricing.uI ?? pricing.u ?? 0));
+          <div className="reference-settings-assembly-columns">
+            {assemblyColumns.map((sections, columnIndex) => (
+              <div className="reference-settings-assembly-column" key={columnIndex}>
+                <div className="reference-settings-price-head">
+                  <span />
+                  <span className="reference-settings-column-title">Local</span>
+                  <span className="reference-settings-column-title">Importé</span>
+                </div>
+                {sections.map(([section, sectionRows]) => (
+                  <div className="reference-settings-assembly-category" key={section}>
+                    <strong className="reference-settings-category">{section.toUpperCase()}</strong>
+                    <div className="reference-settings-price-matrix">
+                      {sectionRows.map(({ item, key, pricing, range }) => {
+                        const local = pricing.local ?? catalogue.settings.assemblyPrice;
+                        const imported = pricing.import ?? Math.round(local * 1.5);
+                        const sizeLabel = item.sizeLabel ?? '';
                         return (
-                          <div className="reference-settings-size-card" key={size}>
-                            <span>
-                              {size} {size === 1 ? sizeLabel.replace(/s$/, '') : sizeLabel}
-                            </span>
-                            <input
-                              style={inputStyle}
-                              type="number"
-                              min="0"
-                              name={`montageP.${key}.sz.${size}.local`}
-                              defaultValue={priceAtSize('local')}
-                              aria-label={`${item.label}, ${size} ${sizeLabel}, local`}
-                            />
-                            <input
-                              style={inputStyle}
-                              type="number"
-                              min="0"
-                              name={`montageP.${key}.sz.${size}.import`}
-                              defaultValue={priceAtSize('import')}
-                              aria-label={`${item.label}, ${size} ${sizeLabel}, importé`}
-                            />
+                          <div className="reference-settings-item-group" key={key}>
+                            <div className="reference-settings-price-row">
+                              <span>
+                                {item.label}
+                                {range ? ` (${item.defaultSize} ${sizeLabel})` : ''}
+                              </span>
+                              <input
+                                style={inputStyle}
+                                type="number"
+                                min="0"
+                                name={`montageP.${key}.local`}
+                                defaultValue={local}
+                                aria-label={`${item.label}, local`}
+                              />
+                              <input
+                                style={inputStyle}
+                                type="number"
+                                min="0"
+                                name={`montageP.${key}.import`}
+                                defaultValue={imported}
+                                aria-label={`${item.label}, importé`}
+                              />
+                            </div>
+                            {range && (
+                              <div className="reference-settings-size-row">
+                                <div className="reference-settings-size-labels">
+                                  <span>Local</span>
+                                  <span>Importé</span>
+                                </div>
+                                <div className="reference-settings-size-increment">
+                                  <span>Supplément par {sizeLabel.replace(/s$/u, '')} en plus</span>
+                                  <label>
+                                    <span>Local</span>
+                                    <input
+                                      style={inputStyle}
+                                      type="number"
+                                      min="0"
+                                      name={`montageP.${key}.u`}
+                                      defaultValue={pricing.u ?? 0}
+                                      aria-label={`${item.label}, supplément local par ${sizeLabel.replace(/s$/u, '')}`}
+                                    />
+                                  </label>
+                                  <label>
+                                    <span>Importé</span>
+                                    <input
+                                      style={inputStyle}
+                                      type="number"
+                                      min="0"
+                                      name={`montageP.${key}.uI`}
+                                      defaultValue={pricing.uI ?? pricing.u ?? 0}
+                                      aria-label={`${item.label}, supplément importé par ${sizeLabel.replace(/s$/u, '')}`}
+                                    />
+                                  </label>
+                                </div>
+                                {Array.from({ length: range[1] - range[0] + 1 }, (_, offset) => {
+                                  const size = range[0] + offset;
+                                  const savedSize = pricing.sz?.[String(size)];
+                                  const priceAtSize = (origin: 'local' | 'import') =>
+                                    savedSize?.[origin] ??
+                                    (origin === 'local' ? local : imported) +
+                                      Math.max(0, size - (item.defaultSize ?? 1)) *
+                                        (origin === 'local'
+                                          ? (pricing.u ?? 0)
+                                          : (pricing.uI ?? pricing.u ?? 0));
+                                  return (
+                                    <div className="reference-settings-size-card" key={size}>
+                                      <span>
+                                        {size}{' '}
+                                        {size === 1 ? sizeLabel.replace(/s$/, '') : sizeLabel}
+                                      </span>
+                                      <label>
+                                        <span>Local</span>
+                                        <input
+                                          style={inputStyle}
+                                          type="number"
+                                          min="0"
+                                          name={`montageP.${key}.sz.${size}.local`}
+                                          defaultValue={priceAtSize('local')}
+                                          aria-label={`${item.label}, ${size} ${sizeLabel}, local`}
+                                        />
+                                      </label>
+                                      <label>
+                                        <span>Importé</span>
+                                        <input
+                                          style={inputStyle}
+                                          type="number"
+                                          min="0"
+                                          name={`montageP.${key}.sz.${size}.import`}
+                                          defaultValue={priceAtSize('import')}
+                                          aria-label={`${item.label}, ${size} ${sizeLabel}, importé`}
+                                        />
+                                      </label>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                         );
                       })}
                     </div>
-                  )}
-                </div>
-              );
-            })}
-            <div className="reference-settings-item-group">
-              <strong className="reference-settings-category">AUTRES OBJETS</strong>
-              <div className="reference-settings-price-row">
-                <span>Autre objet</span>
-                <input
-                  style={inputStyle}
-                  type="number"
-                  min="0"
-                  name="montageP.custom.local"
-                  defaultValue={
-                    catalogue.settings.montageP?.custom?.local ?? catalogue.settings.assemblyPrice
-                  }
-                  aria-label="Autre objet, local"
-                />
-                <input
-                  style={inputStyle}
-                  type="number"
-                  min="0"
-                  name="montageP.custom.import"
-                  defaultValue={
-                    catalogue.settings.montageP?.custom?.import ??
-                    Math.round(catalogue.settings.assemblyPrice * 1.5)
-                  }
-                  aria-label="Autre objet, importé"
-                />
+                  </div>
+                ))}
+                {columnIndex === 0 && (
+                  <div className="reference-settings-assembly-category">
+                    <strong className="reference-settings-category">AUTRES OBJETS</strong>
+                    <div className="reference-settings-price-matrix">
+                      <div className="reference-settings-price-row">
+                        <span>Autre objet</span>
+                        <input
+                          style={inputStyle}
+                          type="number"
+                          min="0"
+                          name="montageP.custom.local"
+                          defaultValue={
+                            catalogue.settings.montageP?.custom?.local ??
+                            catalogue.settings.assemblyPrice
+                          }
+                          aria-label="Autre objet, local"
+                        />
+                        <input
+                          style={inputStyle}
+                          type="number"
+                          min="0"
+                          name="montageP.custom.import"
+                          defaultValue={
+                            catalogue.settings.montageP?.custom?.import ??
+                            Math.round(catalogue.settings.assemblyPrice * 1.5)
+                          }
+                          aria-label="Autre objet, importé"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
+            ))}
           </div>
         </section>
 

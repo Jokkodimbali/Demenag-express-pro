@@ -30,3 +30,9 @@ export const tierLabels = (bounds: [number, number, number] = [15, 25, 35]) => [
   messages.distanceBetween(bounds[1], bounds[2]),
   messages.distanceAbove(bounds[2]),
 ];
+export const referenceTierLabels = (bounds: [number, number, number] = [15, 25, 35]) => [
+  `Moins de ${bounds[0]} km`,
+  `${bounds[0]} – ${bounds[1]} km`,
+  `${bounds[1]} – ${bounds[2]} km`,
+  `Plus de ${bounds[2]} km`,
+];

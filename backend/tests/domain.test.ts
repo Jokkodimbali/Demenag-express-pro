@@ -84,12 +84,18 @@ test('Chaque ligne du devis conserve la quantité exacte de sa prestation', () =
   assert.deepEqual(
     price.lines.map(({ label, quantity }) => ({ label, quantity })),
     [
-      { label: 'Transport Sprinter · aller-retour', quantity: 3 },
+      { label: 'Transport Sprinter · 15 – 25 km (aller-retour)', quantity: 3 },
       { label: 'Manœuvre', quantity: 2 },
       { label: 'Menuisier · bureau', quantity: 1 },
       { label: 'Menuisier · armoire', quantity: 1 },
     ],
   );
+});
+test('Le prix personnalisé ne remplace pas la tranche normale après modification du trajet', () => {
+  const price = calculatePrice(vehicle, settings, 20, none, 2, 90000);
+  assert.equal(price.lines[0].unitPrice, vehicle.prices[1]);
+  assert.equal(price.lines[0].label, 'Transport Sprinter · 15 – 25 km (aller-retour)');
+  assert.equal(price.total, vehicle.prices[1] * 2);
 });
 test('Le tarif par manœuvre ajoute les étages sans ascenseur et le forfait ascenseur', () => {
   const access = { fromFloor: 2, toFloor: 1, fromLift: false, toLift: true };
@@ -222,7 +228,7 @@ test('Un devis qui dépasserait la capacité des colonnes comptables est refusé
     /limite de stockage/u,
   );
   assert.throws(
-    () => calculatePrice(vehicle, { ...settings, maxTrips: 10000 }, 10, none, 10000, 10000000),
+    () => calculatePrice(vehicle, { ...settings, maxTrips: 10000 }, 50, none, 10000, 10000000),
     /limite de stockage/u,
   );
 });

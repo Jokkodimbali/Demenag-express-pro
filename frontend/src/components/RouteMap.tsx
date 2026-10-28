@@ -10,12 +10,14 @@ export default function RouteMap({
   fromNote,
   toNote,
   onNoteChange,
+  adminQuote = false,
 }: {
   tollLines?: TollExtraLine[];
   onTollToggle?: (line: TollExtraLine, selected: boolean) => void;
   fromNote?: string;
   toNote?: string;
   onNoteChange?: (side: 'from' | 'to', value: string) => void;
+  adminQuote?: boolean;
 }) {
   const {
     draft,
@@ -35,61 +37,104 @@ export default function RouteMap({
     setPointRef,
     address,
     search,
+    geocode,
     route,
+    clear,
     locate,
   } = useRouteMap(tollLines, onTollToggle);
 
+  const addressField = (side: 'from' | 'to') => (
+    <div key={side}>
+      <label
+        className={adminQuote ? 'route-accessible-label' : undefined}
+        htmlFor={'address-' + side}
+      >
+        {side === 'from' ? messages.adresseDeDepart : messages.adresseDArrivee}
+      </label>
+      <div className={'address-field' + (adminQuote && active === side ? ' active' : '')}>
+        <span className={'point-badge ' + side}>{side === 'from' ? 'A' : 'B'}</span>
+        <input
+          id={'address-' + side}
+          value={draft[(side + 'Address') as 'fromAddress' | 'toAddress']}
+          onChange={(event) => address(side, event.target.value)}
+          onFocus={() => setActive(side)}
+          onBlur={adminQuote ? () => void geocode(side) : undefined}
+          placeholder={
+            adminQuote
+              ? side === 'from'
+                ? 'Départ'
+                : 'Arrivée'
+              : side === 'from'
+                ? messages.exOuakamDakar
+                : messages.exAlmadiesDakar
+          }
+          maxLength={300}
+        />
+        {!adminQuote && (
+          <button
+            type="button"
+            className="icon-button"
+            aria-label={'Rechercher ' + (side === 'from' ? messages.leDepart : messages.lArrivee)}
+            disabled={searching !== null}
+            onClick={() => search(side)}
+          >
+            <Search size={18} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+  const noteField = (side: 'from' | 'to') =>
+    onNoteChange && (
+      <label key={side} className="route-address-note" htmlFor={'address-note-' + side}>
+        <span className={adminQuote ? 'route-accessible-label' : undefined}>
+          {side === 'from' ? 'Repère de départ' : 'Repère d’arrivée'}
+        </span>
+        <input
+          id={'address-note-' + side}
+          value={side === 'from' ? (fromNote ?? '') : (toNote ?? '')}
+          onChange={(event) => onNoteChange(side, event.target.value)}
+          placeholder={
+            adminQuote
+              ? side === 'from'
+                ? 'Note départ (repère, bâtiment, porte…)'
+                : 'Note arrivée (repère, bâtiment, porte…)'
+              : 'Bâtiment, porte, lieu connu…'
+          }
+          maxLength={300}
+        />
+      </label>
+    );
+
   return (
     <div className="route-picker">
-      <div className="field-pair">
-        {(['from', 'to'] as const).map((side) => (
-          <div key={side}>
-            <label htmlFor={'address-' + side}>
-              {side === 'from' ? messages.adresseDeDepart : messages.adresseDArrivee}
-            </label>
-            <div className="address-field">
-              <span className={'point-badge ' + side}>{side === 'from' ? 'A' : 'B'}</span>
-              <input
-                id={'address-' + side}
-                value={draft[(side + 'Address') as 'fromAddress' | 'toAddress']}
-                onChange={(e) => address(side, e.target.value)}
-                onFocus={() => setActive(side)}
-                placeholder={side === 'from' ? messages.exOuakamDakar : messages.exAlmadiesDakar}
-                maxLength={300}
-              />
-              <button
-                type="button"
-                className="icon-button"
-                aria-label={
-                  'Rechercher ' + (side === 'from' ? messages.leDepart : messages.lArrivee)
-                }
-                disabled={searching !== null}
-                onClick={() => search(side)}
-              >
-                <Search size={18} />
-              </button>
+      <div className={'field-pair' + (adminQuote ? ' admin-quote-route-grid' : '')}>
+        {adminQuote ? (
+          <>
+            <div className="admin-quote-route-column">
+              {addressField('from')}
+              {addressField('to')}
             </div>
-            {onNoteChange && (
-              <label className="route-address-note" htmlFor={'address-note-' + side}>
-                <span>{side === 'from' ? 'Repère de départ' : 'Repère d’arrivée'}</span>
-                <input
-                  id={'address-note-' + side}
-                  value={side === 'from' ? (fromNote ?? '') : (toNote ?? '')}
-                  onChange={(event) => onNoteChange(side, event.target.value)}
-                  placeholder="Bâtiment, porte, lieu connu…"
-                  maxLength={300}
-                />
-              </label>
-            )}
-          </div>
-        ))}
+            <div className="admin-quote-route-column">
+              {noteField('from')}
+              {noteField('to')}
+            </div>
+          </>
+        ) : (
+          (['from', 'to'] as const).map((side) => (
+            <div key={side}>
+              {addressField(side)}
+              {noteField(side)}
+            </div>
+          ))
+        )}
       </div>
       {searching && (
         <p className="muted" role="status">
           {messages.rechercheDeLAdresse}
         </p>
       )}
-      {results && results.items.length > 0 && (
+      {!adminQuote && results && results.items.length > 0 && (
         <div className="search-results" aria-label={messages.resultatsDeRecherche}>
           {results.items.map((item, i) => (
             <button
@@ -105,9 +150,7 @@ export default function RouteMap({
       <div className={'map-shell ' + (full ? 'fullscreen' : '')}>
         <div className="map" ref={host} />
         <span className="map-hint">
-          {messages.placez}
-          {active === 'from' ? messages.leDepartA : messages.lArriveeB}
-          {messages.surLaCarte}
+          {adminQuote ? `Touchez la carte pour placer ${active === 'from' ? 'le départ (A)' : "l'arrivée (B)"}` : <>{messages.placez}{active === 'from' ? messages.leDepartA : messages.lArriveeB}{messages.surLaCarte}</>}
         </span>
         <button
           type="button"
@@ -118,60 +161,103 @@ export default function RouteMap({
         >
           {full ? <X size={19} /> : <Expand size={19} />}
         </button>
-        <div className="map-actions">
+        {!adminQuote && (
+          <div className="map-actions">
+            <button
+              type="button"
+              className={'button small ' + (active === 'from' ? 'primary' : 'secondary')}
+              onClick={() => setActive('from')}
+            >
+              {messages.aDepart}
+            </button>
+            <button
+              type="button"
+              className={'button small ' + (active === 'to' ? 'primary' : 'secondary')}
+              onClick={() => setActive('to')}
+            >
+              {messages.bArrivee}
+            </button>
+            <button
+              type="button"
+              className="button secondary small"
+              onClick={locate}
+              aria-label={messages.utiliserMaPosition}
+            >
+              <LocateFixed size={18} />
+            </button>
+          </div>
+        )}
+        {adminQuote && full && (
+          <div className="admin-quote-map-full-summary">
+            <span>
+              Distance :{' '}
+              <strong>{draft.distanceKmOverride ?? draft.route?.distanceKm ?? '—'} km</strong>
+            </span>
+            <button type="button" onClick={() => setFull(false)}>
+              Valider
+            </button>
+          </div>
+        )}
+      </div>
+      {adminQuote && (
+        <div className="admin-quote-pin-actions">
           <button
             type="button"
-            className={'button small ' + (active === 'from' ? 'primary' : 'secondary')}
+            className={active === 'from' ? 'active' : ''}
+            aria-pressed={active === 'from'}
             onClick={() => setActive('from')}
           >
-            {messages.aDepart}
+            Placer le départ (A)
           </button>
           <button
             type="button"
-            className={'button small ' + (active === 'to' ? 'primary' : 'secondary')}
+            className={active === 'to' ? 'active' : ''}
+            aria-pressed={active === 'to'}
             onClick={() => setActive('to')}
           >
-            {messages.bArrivee}
+            Placer l’arrivée (B)
           </button>
+          <button type="button" className="admin-quote-clear-route" onClick={clear}>
+            Effacer
+          </button>
+        </div>
+      )}
+      {!adminQuote && (
+        <button type="button" className="admin-quote-clear-route" onClick={clear}>
+          Effacer
+        </button>
+      )}
+      {!adminQuote && (
+        <div className="route-bottom">
+          <span className="muted">
+            {draft.route ? (
+              <>
+                <strong>
+                  {draft.route.distanceKm}
+                  {messages.km}
+                </strong>
+                {messages.environ}
+                {draft.route.durationMinutes} {messages.min}
+              </>
+            ) : (
+              messages.choisissezLesDeuxPointsPourCalculerLeTrajet
+            )}
+          </span>
           <button
             type="button"
             className="button secondary small"
-            onClick={locate}
-            aria-label={messages.utiliserMaPosition}
+            onClick={route}
+            disabled={busy || !draft.from || !draft.to}
           >
-            <LocateFixed size={18} />
+            {busy
+              ? messages.calculEnCours
+              : draft.route
+                ? messages.recalculerLeTrajet
+                : messages.calculerMonTrajet}
           </button>
         </div>
-      </div>
-      <div className="route-bottom">
-        <span className="muted">
-          {draft.route ? (
-            <>
-              <strong>
-                {draft.route.distanceKm}
-                {messages.km}
-              </strong>
-              {messages.environ}
-              {draft.route.durationMinutes} {messages.min}
-            </>
-          ) : (
-            messages.choisissezLesDeuxPointsPourCalculerLeTrajet
-          )}
-        </span>
-        <button
-          type="button"
-          className="button secondary small"
-          onClick={route}
-          disabled={busy || !draft.from || !draft.to}
-        >
-          {busy
-            ? messages.calculEnCours
-            : draft.route
-              ? messages.recalculerLeTrajet
-              : messages.calculerMonTrajet}
-        </button>
-      </div>
-      {draft.route && (
+      )}
+      {!adminQuote && draft.route && (
         <div className="route-tolls" role="status" aria-live="polite">
           <strong>
             {routeTolls.length === 0
@@ -211,7 +297,9 @@ export default function RouteMap({
           {error}
         </p>
       )}
-      <p className="caption">{messages.rechercheEtCarteOpenstreetmapItineraireRoutierOsrmVous}</p>
+      {!adminQuote && (
+        <p className="caption">{messages.rechercheEtCarteOpenstreetmapItineraireRoutierOsrmVous}</p>
+      )}
     </div>
   );
 }

@@ -83,7 +83,6 @@ export const messages = {
   remiseInvalide: 'Remise invalide.',
   prixPersonnaliseInvalide: 'Prix personnalisé invalide.',
   chargeSupplementaireInvalide: 'Charge supplémentaire invalide.',
-  transportLine: (vehicleName: string | number) => `Transport ${vehicleName} · aller-retour`,
   manUvre: 'Manœuvre',
   menuisierBureau: 'Menuisier · bureau',
   menuisierArmoire: 'Menuisier · armoire',

@@ -19,8 +19,8 @@ export const optionsSchema = z.object({
   bed: z.number().int().min(0).max(20),
 });
 const workAccessSchema = z.object({
-  fromFloor: z.number().int().min(0).max(5),
-  toFloor: z.number().int().min(0).max(5),
+  fromFloor: z.number().int().min(0).max(20),
+  toFloor: z.number().int().min(0).max(20),
   fromLift: z.boolean(),
   toLift: z.boolean(),
 });
@@ -163,8 +163,12 @@ export const estimateSchema = z.object({
   trips: z.number().int().min(1).max(20).optional(),
   workAccess: workAccessSchema.optional(),
 });
+export const adminEstimateSchema = estimateSchema.extend({
+  distanceKmOverride: z.number().min(0).max(100000),
+});
 export const bookingSchema = estimateSchema
   .extend({
+    distanceKmOverride: z.number().min(0).max(100000).nullable().optional(),
     customerName: z.string().trim().min(2).max(100),
     customerPhone: z.string().trim().min(9).max(25),
     source: z
@@ -191,7 +195,7 @@ export const bookingSchema = estimateSchema
       .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
       .optional(),
     timeSlot: z.union([z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/), z.literal('')]),
-    notes: z.string().trim().max(2000).default(''),
+    notes: z.string().trim().max(10000).default(''),
     workAccess: workAccessSchema.optional(),
     questionnaireAnswers: questionnaireAnswersSchema.optional(),
     workPlan: z
@@ -295,7 +299,7 @@ export const quoteSchema = z.object({
   discount: z.number().int().min(0).max(10000000),
   discountType: z.enum(['fcfa', 'pct']).optional(),
   discountReason: z.string().trim().max(200).optional(),
-  notes: z.string().trim().max(2000),
+  notes: z.string().trim().max(10000),
   extraLines: z
     .array(
       z.object({

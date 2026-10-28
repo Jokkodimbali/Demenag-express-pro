@@ -34,6 +34,7 @@ export const httpRoutes = {
   notifications: '/notifications',
   announce: '/admin/notifications/announce',
   estimates: '/estimates',
+  adminEstimates: '/admin/estimates',
   maps: {
     route: '/maps/route',
     search: '/maps/search',

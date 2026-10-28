@@ -127,7 +127,8 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
     updateTollPoint: (id, input) => request(`${httpRoutes.tollPoints}/${id}`, 'PUT', input),
     deleteTollPoint: (id) => request(`${httpRoutes.tollPoints}/${id}`, 'DELETE'),
     updateCatalogue: (value) => request(httpRoutes.catalogue, 'PUT', value),
-    deleteVehicle: (id) => request(`${httpRoutes.catalogue}/vehicles/${encodeURIComponent(id)}`, 'DELETE'),
+    deleteVehicle: (id) =>
+      request(`${httpRoutes.catalogue}/vehicles/${encodeURIComponent(id)}`, 'DELETE'),
     me: () =>
       sharePendingRead(httpRoutes.authentication.current, () =>
         request(httpRoutes.authentication.current),
@@ -175,11 +176,11 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
     route: (from, to) => request(httpRoutes.maps.route, 'POST', { from, to }),
     search: (query) => request(`${httpRoutes.maps.search}?q=${encodeURIComponent(query)}`),
     reverse: (point) => request(`${httpRoutes.maps.reverse}?lat=${point[0]}&lon=${point[1]}`),
-    estimate: (vehicleId, routeId, options, signal, workAccess, trips) =>
+    estimate: (vehicleId, routeId, options, signal, workAccess, trips, distanceKmOverride) =>
       request(
-        httpRoutes.estimates,
+        distanceKmOverride == null ? httpRoutes.estimates : httpRoutes.adminEstimates,
         'POST',
-        { vehicleId, routeId, options, workAccess, trips },
+        { vehicleId, routeId, options, workAccess, trips, distanceKmOverride },
         signal,
       ),
   };

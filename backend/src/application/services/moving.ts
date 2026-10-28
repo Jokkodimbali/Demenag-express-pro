@@ -125,20 +125,30 @@ export class MovingService implements MovingUseCases {
     options: Options,
     workAccess?: WorkAccess,
     trips = 1,
+    distanceKmOverride?: number | null,
   ) {
     const [catalogue, route] = await Promise.all([this.catalogue.get(), this.routes.find(routeId)]);
     if (!route || +new Date(route.expiresAt) <= +this.clock.now())
       throw new AppError(400, messages.recalculezLeTrajetSonEstimationAExpire);
     const vehicle = catalogue.vehicles.find((v) => v.id === vehicleId);
     if (!vehicle || vehicle.active === false) throw new AppError(400, messages.vehiculeInconnu);
+    if (distanceKmOverride != null)
+      requireValue(
+        Number.isFinite(distanceKmOverride) &&
+          distanceKmOverride >= 0 &&
+          distanceKmOverride <= 100000,
+        'La distance personnalisée doit être comprise entre 0 et 100 000 km.',
+      );
+    const effectiveRoute =
+      distanceKmOverride == null ? route : { ...route, distanceKm: distanceKmOverride };
     return {
-      route,
+      route: effectiveRoute,
       settings: catalogue.settings,
       vehicle,
       estimate: calculatePrice(
         vehicle,
         catalogue.settings,
-        route.distanceKm,
+        effectiveRoute.distanceKm,
         options,
         trips,
         null,
@@ -154,17 +164,25 @@ export class MovingService implements MovingUseCases {
     options: Options,
     workAccess?: WorkAccess,
     trips = 1,
+    distanceKmOverride?: number,
   ) {
-    return (await this.priceInput(vehicleId, routeId, options, workAccess, trips)).estimate;
+    return (
+      await this.priceInput(vehicleId, routeId, options, workAccess, trips, distanceKmOverride)
+    ).estimate;
   }
   async create(user: User, input: BookingInput) {
     requireActiveUser(user);
+    requireValue(
+      user.role === 'admin' || input.distanceKmOverride == null,
+      'La distance personnalisée est réservée à l’administration.',
+    );
     const { route, vehicle, estimate, settings } = await this.priceInput(
       input.vehicleId,
       input.routeId,
       input.options,
       input.workAccess,
       input.trips ?? 1,
+      user.role === 'admin' ? input.distanceKmOverride : undefined,
     );
     if (user.role !== 'admin')
       requireValue(
@@ -238,6 +256,10 @@ export class MovingService implements MovingUseCases {
   async updateClientRequest(user: User, id: string, input: BookingInput, version: number) {
     requireActiveUser(user);
     requireValue(user.role === 'client', 'Action réservée au client de la réservation.');
+    requireValue(
+      input.distanceKmOverride == null,
+      'La distance personnalisée est réservée à l’administration.',
+    );
     const booking = await this.get(user, id);
     if (booking.version !== version)
       throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
@@ -311,6 +333,7 @@ export class MovingService implements MovingUseCases {
       input.options,
       input.workAccess,
       input.trips ?? 1,
+      input.distanceKmOverride,
     );
     if (input.date && input.date !== booking.date)
       validateDate(input.date, this.clock.now(), { ...settings, maxAdvanceDays: 730 });
@@ -913,27 +936,11 @@ export class MovingService implements MovingUseCases {
       !booking.quotes.some((quote) => quote.kind === 'final'),
       'Un devis final existe déjà pour cette réservation.',
     );
-    requireValue(
-      !['completed', 'cancelled'].includes(booking.status),
-      messages.cetteReservationEstCloturee,
-    );
+    requireValue(booking.status !== 'cancelled', messages.cetteReservationEstCloturee);
     if (input.kind === 'final') {
       requireValue(
-        booking.status === 'in_progress',
-        messages.demarrezLeDemenagementAvantDeFinaliserSonDevis,
-      );
-      requireValue(
-        booking.driverFinishedAt,
-        'Attendez que le chauffeur signale la fin de ses courses.',
-      );
-      const completedTrips = booking.trips?.filter((trip) => trip.finishedAt).length ?? 0;
-      requireValue(
-        completedTrips > 0 && completedTrips === booking.trips?.length,
-        'Toutes les courses doivent être terminées avant de créer le devis final.',
-      );
-      requireValue(
-        input.trips === completedTrips,
-        `Le devis final doit compter ${completedTrips} aller(s)-retour(s), selon les courses enregistrées.`,
+        Boolean(booking.date),
+        'Un devis sans date reste provisoire. Choisissez une date pour passer en final.',
       );
     }
     const catalogue = await this.catalogue.get();
@@ -1004,7 +1011,7 @@ export class MovingService implements MovingUseCases {
       {
         ...booking,
         quotes: [...booking.quotes, quote],
-        status: booking.status,
+        status: input.kind === 'final' ? 'completed' : booking.status,
       },
       input.version,
     );

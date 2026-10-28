@@ -92,7 +92,7 @@ export function useRouteMap(
       const id = ++routeRequest.current;
       setBusy(true);
       setError('');
-      setDraft((d) => ({ ...d, route: null }));
+      setDraft((d) => ({ ...d, route: null, distanceKmOverride: null }));
       try {
         const result = await api.route(from, to);
         if (id === routeRequest.current) setDraft((d) => ({ ...d, route: result }));
@@ -167,6 +167,8 @@ export function useRouteMap(
         draggable: true,
         alt: side === 'from' ? messages.pointDeDepart : messages.pointDArrivee,
       }).addTo(map.current);
+      marker.on('click', () => setActive(side));
+      marker.on('dragstart', () => setActive(side));
       marker.on('dragend', () => {
         const p = marker.getLatLng();
         setPointRef.current(side, [p.lat, p.lng]);
@@ -206,7 +208,13 @@ export function useRouteMap(
     setBusy(false);
     setSearching(null);
     setResults(null);
-    setDraft((d) => ({ ...d, [side + 'Address']: value, [side]: null, route: null }));
+    setDraft((d) => ({
+      ...d,
+      [side + 'Address']: value,
+      [side]: null,
+      route: null,
+      distanceKmOverride: null,
+    }));
   }
   async function search(side: Side) {
     const q = draft[(side + 'Address') as 'fromAddress' | 'toAddress'];
@@ -229,8 +237,46 @@ export function useRouteMap(
       if (id === searchRequest.current) setSearching(null);
     }
   }
+  async function geocode(side: Side) {
+    const query = draft[(side + 'Address') as 'fromAddress' | 'toAddress'].trim();
+    if (query.length < 3 || draft[side]) return;
+    const id = ++searchRequest.current;
+    setSearching(side);
+    setError('');
+    try {
+      const items = await api.search(query);
+      if (id !== searchRequest.current) return;
+      if (items.length) setPointRef.current(side, items[0].point, query);
+      else setError(messages.aucuneAdresseTrouveePlacezLePointSurLa);
+    } catch (error) {
+      if (id === searchRequest.current) setError(errorMessage(error));
+    } finally {
+      if (id === searchRequest.current) setSearching(null);
+    }
+  }
   function route() {
     if (draft.from && draft.to) void calculateRoute(draft.from, draft.to);
+  }
+  function clear() {
+    routeRequest.current++;
+    searchRequest.current++;
+    addressRequest.current++;
+    setResults(null);
+    setBusy(false);
+    setSearching(null);
+    setError('');
+    setActive('from');
+    setDraft((current) => ({
+      ...current,
+      from: null,
+      to: null,
+      fromAddress: '',
+      toAddress: '',
+      fromNote: '',
+      toNote: '',
+      route: null,
+      distanceKmOverride: null,
+    }));
   }
   function locate() {
     if (!navigator.geolocation) {
@@ -269,7 +315,9 @@ export function useRouteMap(
     to,
     address,
     search,
+    geocode,
     route,
+    clear,
     locate,
   };
 }

@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from 'react';
+import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import type { Draft } from '../../application/booking-draft';
 import {
   defaultMovingLaborPlanning,
@@ -17,6 +17,7 @@ export function MovingPlanningPanel({
   maxTrips,
   onApply,
   laborPlanning,
+  labourPriceEditor,
   estimateInventory,
 }: {
   draft: Draft;
@@ -27,6 +28,7 @@ export function MovingPlanningPanel({
   maxTrips: number;
   onApply: (vehicleId: string, trips: number) => void;
   laborPlanning?: MovingLaborPlanningSettings;
+  labourPriceEditor?: ReactNode;
   estimateInventory?: Inventory;
 }) {
   const inventory = estimateInventory ?? draft.inventory;
@@ -143,6 +145,7 @@ export function MovingPlanningPanel({
             </strong>
           </header>
           <div className="moving-labor-summary">
+            {labourPriceEditor}
             <div className="moving-crew-control">
               <span>Manœuvres</span>
               <div>

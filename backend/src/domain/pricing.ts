@@ -62,7 +62,7 @@ export function labourUnitPrice(settings: Settings, access?: WorkAccess) {
   );
 }
 export function tierOf(distance: number, bounds: [number, number, number]) {
-  requireValue(Number.isFinite(distance) && distance > 0, 'Distance invalide.');
+  requireValue(Number.isFinite(distance) && distance >= 0, 'Distance invalide.');
   return distance < bounds[0] ? 0 : distance <= bounds[1] ? 1 : distance <= bounds[2] ? 2 : 3;
 }
 export function calculatePrice(
@@ -105,13 +105,20 @@ export function calculatePrice(
     'Prix par manœuvre invalide.',
   );
   const tier = tierOf(distance, settings.distanceBounds);
-  const transport = customPrice ?? (tier === 3 ? null : vehicle.prices[tier]);
+  const transport = tier === 3 ? customPrice : vehicle.prices[tier];
+  const [firstBound, secondBound, thirdBound] = settings.distanceBounds;
+  const transportTier = [
+    `moins de ${firstBound} km`,
+    `${firstBound} – ${secondBound} km`,
+    `${secondBound} – ${thirdBound} km`,
+    `plus de ${thirdBound} km`,
+  ][tier];
   const lines =
     transport === null
       ? []
       : [
           {
-            label: messages.transportLine(vehicle.name),
+            label: `Transport ${vehicle.shortName || vehicle.name} · ${transportTier} (aller-retour)`,
             quantity: trips,
             unitPrice: transport,
             total: transport * trips,

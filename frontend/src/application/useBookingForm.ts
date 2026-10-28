@@ -8,6 +8,7 @@ import type {
   BookingInventorySnapshot,
   Options,
   Price,
+  Quote,
 } from '../domain/model';
 import { inventoryNote } from '../domain/inventory';
 import { tollPrice } from '../domain/toll-prices';
@@ -28,7 +29,14 @@ export type AdminQuoteConfig = {
 export function useBookingForm({
   mode = 'booking',
   quoteConfig,
-}: { mode?: 'booking' | 'admin-quote'; quoteConfig?: AdminQuoteConfig } = {}) {
+  quoteKind,
+  onQuoteSaved,
+}: {
+  mode?: 'booking' | 'admin-quote';
+  quoteConfig?: AdminQuoteConfig;
+  quoteKind?: Quote['kind'];
+  onQuoteSaved?: (booking: Booking) => void;
+} = {}) {
   const { catalogue, tollPoints, loading, error, reload, api, user, authLoading, draft, setDraft } =
     useApp();
   const navigate = useNavigate();
@@ -102,7 +110,12 @@ export function useBookingForm({
           from: booking.from,
           to: booking.to,
           route,
+          distanceKmOverride:
+            administrativeQuote && Math.abs(booking.distanceKm - route.distanceKm) > 0.01
+              ? booking.distanceKm
+              : null,
           date: booking.date ?? '',
+          noDate: !booking.date,
           month: booking.month ?? booking.date?.slice(0, 7) ?? booking.createdAt.slice(0, 7),
           timeSlot: booking.timeSlot,
           estimatedTrips: Math.max(1, booking.estimate.trips),
@@ -181,6 +194,7 @@ export function useBookingForm({
           toLift: draft.inventory.toLift,
         },
         administrativeQuote ? (quoteConfig?.trips ?? 1) : draft.estimatedTrips,
+        administrativeQuote ? draft.distanceKmOverride : null,
       )
       .then(setPrice)
       .catch((e: unknown) => {
@@ -198,6 +212,7 @@ export function useBookingForm({
     draft.inventory.fromLift,
     draft.inventory.toLift,
     draft.route,
+    draft.distanceKmOverride,
     draft.vehicleId,
     draft.options,
     quoteConfig?.trips,
@@ -313,10 +328,10 @@ export function useBookingForm({
       draft.notes,
     ]
       .filter(Boolean)
-      .join('\n\n');
-    if (bookingNotes.length > 2000) {
+      .join(administrativeQuote ? '\n' : '\n\n');
+    if (bookingNotes.length > (administrativeQuote ? 10000 : 2000)) {
       setSubmitError(
-        'La fiche d’appel et les précisions dépassent 2 000 caractères. Réduisez les précisions avant l’envoi.',
+        `La fiche d’appel et les précisions dépassent ${administrativeQuote ? '10 000' : '2 000'} caractères. Réduisez les précisions avant l’envoi.`,
       );
       return;
     }
@@ -326,6 +341,7 @@ export function useBookingForm({
       const input: BookingInput = {
         vehicleId: draft.vehicleId,
         routeId: draft.route.id,
+        distanceKmOverride: administrativeQuote ? draft.distanceKmOverride : undefined,
         trips: administrativeQuote ? (quoteConfig?.trips ?? 1) : draft.estimatedTrips,
         customerName: draft.customerName,
         customerPhone: draft.customerPhone,
@@ -390,8 +406,8 @@ export function useBookingForm({
       }
       if (administrativeQuote) {
         try {
-          await api.quote(booking.id, {
-            kind: 'provisional',
+          const savedQuoteBooking = await api.quote(booking.id, {
+            kind: quoteKind ?? 'provisional',
             trips: quoteConfig?.trips ?? 1,
             customPrice: price.tier === 3 ? (quoteConfig?.customPrice ?? null) : null,
             labourUnitPriceOverride: quoteConfig?.labourUnitPriceOverride ?? null,
@@ -404,6 +420,7 @@ export function useBookingForm({
             options: administrativeQuote && quoteOptions ? quoteOptions : draft.options,
             version: booking.version,
           });
+          onQuoteSaved?.(savedQuoteBooking);
           navigate(`${routes.administrationBookings}?q=${booking.reference}&detail=${booking.id}`);
         } catch (reason) {
           navigate(
