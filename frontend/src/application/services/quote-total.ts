@@ -1,5 +1,9 @@
 import type { Booking, Options, Settings } from '../../domain/model';
-import { labourUnitPrice } from '../../domain/labour-price';
+import { assemblyUnitPrice, labourUnitPrice } from '../../domain/labour-price';
+import {
+  inventoryAssemblyLines,
+  subtractInventoryAssemblyOptions,
+} from '../../domain/inventory-assembly';
 
 export type QuoteExtraLine = { label: string; quantity: number; unitPrice: number };
 
@@ -10,6 +14,7 @@ export function quoteTotal(
     trips: number;
     customPrice: number | null;
     discount: number;
+    discountType?: 'fcfa' | 'pct';
     options: Options;
     kind?: 'provisional' | 'final';
   },
@@ -20,14 +25,32 @@ export function quoteTotal(
   const maxTrips = draft.kind === 'final' ? 10000 : settings.maxTrips;
   if (!Number.isInteger(draft.trips) || draft.trips < 1 || draft.trips > maxTrips) return null;
   if (!Number.isInteger(draft.discount) || draft.discount < 0) return null;
+  const options = subtractInventoryAssemblyOptions(
+    draft.options,
+    booking.inventorySnapshot?.sourceInventory,
+  );
   const optionTotal =
-    draft.options.labour * labourUnitPrice(settings, booking.workAccess) +
-    (draft.options.desk + draft.options.wardrobe + draft.options.bed) * settings.assemblyPrice;
+    options.labour * labourUnitPrice(settings, booking.workAccess) +
+    options.desk * assemblyUnitPrice(settings, 'bureau') +
+    options.wardrobe * assemblyUnitPrice(settings, 'armoire') +
+    options.bed * assemblyUnitPrice(settings, 'lit');
+  const inventoryLines = inventoryAssemblyLines(
+    booking.inventorySnapshot?.sourceInventory,
+    settings,
+  );
   const extrasTotal = extras.reduce((sum, line) => {
     if (!line.label.trim() || line.quantity < 1 || line.unitPrice < 1) return sum;
     return sum + line.quantity * line.unitPrice;
   }, 0);
   if (transportUnit === null) return null;
-  const subtotal = transportUnit * draft.trips + optionTotal + extrasTotal;
-  return draft.discount <= subtotal ? subtotal - draft.discount : null;
+  const inventoryTotal = inventoryLines.reduce(
+    (sum, line) => sum + line.quantity * line.unitPrice,
+    0,
+  );
+  const subtotal = transportUnit * draft.trips + optionTotal + inventoryTotal + extrasTotal;
+  const discount =
+    draft.discountType === 'pct'
+      ? Math.round((subtotal * Math.min(100, draft.discount)) / 100)
+      : Math.min(subtotal, draft.discount);
+  return subtotal - discount;
 }

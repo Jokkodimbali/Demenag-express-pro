@@ -1711,14 +1711,18 @@ div.driver-course-complete p {
   min-height: 38px;
 }
 .settings-form {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
   display: grid;
   gap: 20px;
 }
 .reference-settings-page {
+  min-width: 0;
   color: #fff;
   font-family: Montserrat, sans-serif;
 }
 .reference-settings-grid {
+  min-width: 0;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
   gap: 20px;
@@ -1738,6 +1742,8 @@ div.driver-course-complete p {
   letter-spacing: 0.08em;
 }
 .reference-settings-price-matrix {
+  min-width: 0;
+  overflow-x: auto;
   display: grid;
   grid-template-columns: minmax(120px, 260px) minmax(0, 160px) minmax(0, 160px);
   gap: 8px 10px;
@@ -1784,6 +1790,28 @@ div.driver-course-complete p {
   color: #aeb4bb;
   font-size: 11.5px;
   font-weight: 800;
+}
+.reference-settings-size-increment {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) repeat(2, minmax(90px, 150px));
+  align-items: end;
+  gap: 10px;
+  padding: 10px 0;
+}
+.reference-settings-size-increment label {
+  display: grid;
+  gap: 5px;
+  color: #aeb4bb;
+  font-size: 12px;
+  font-weight: 700;
+}
+@media (max-width: 560px) {
+  .reference-settings-size-increment {
+    grid-template-columns: 1fr 1fr;
+  }
+  .reference-settings-size-increment > span {
+    grid-column: 1 / -1;
+  }
 }
 .reference-settings-size-card {
   display: flex;
@@ -1913,7 +1941,8 @@ div.driver-course-complete p {
   cursor: pointer;
 }
 .reference-settings-vehicles,
-.reference-settings-whatsapp {
+.reference-settings-whatsapp,
+.reference-settings-google-maps {
   grid-column: 1 / -1;
   display: flex;
   flex-direction: column;
@@ -1926,7 +1955,8 @@ div.driver-course-complete p {
   font-family: Montserrat, sans-serif;
 }
 .reference-settings-vehicles .reference-settings-section-heading,
-.reference-settings-whatsapp .reference-settings-card-title {
+.reference-settings-whatsapp .reference-settings-card-title,
+.reference-settings-google-maps .reference-settings-card-title {
   font-size: 15px;
   font-weight: 800;
 }
@@ -2018,7 +2048,8 @@ div.driver-course-complete p {
 }
 .reference-settings-whatsapp-grid input,
 .reference-settings-whatsapp-grid select,
-.reference-settings-whatsapp-template textarea {
+.reference-settings-whatsapp-template textarea,
+.reference-settings-google-maps input {
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
@@ -2616,15 +2647,6 @@ div.driver-course-complete p {
   display: grid;
   gap: 4px;
   color: #c5c8cc;
-  font-size: 12px;
-}
-.fleet-dimension-save-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  color: #78c998;
   font-size: 12px;
 }
 .fleet-dimension-management {

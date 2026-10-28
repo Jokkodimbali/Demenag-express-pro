@@ -1233,3 +1233,23 @@
   font-weight: 800;
   white-space: nowrap;
 }
+.quote-inventory-services {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #3b4046;
+  border-radius: 10px;
+  background: #1e2023;
+}
+.quote-inventory-services h4 {
+  margin: 0;
+  font-size: 13px;
+}
+.quote-inventory-services > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #d5d9de;
+  font-size: 12px;
+}

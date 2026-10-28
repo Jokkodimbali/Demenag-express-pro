@@ -13,7 +13,9 @@ import { ClientQuestionnaire } from '../components/booking/ClientQuestionnaire';
 import { TollRateSelector } from '../components/TollRateSelector';
 import { inventoryNote } from '../domain/inventory';
 import { money, today } from '../domain/format';
-import { labourUnitPrice } from '../domain/labour-price';
+import { assemblyUnitPrice, labourUnitPrice } from '../domain/labour-price';
+import { inventoryAssemblyLines, inventoryAssemblyOptions } from '../domain/inventory-assembly';
+import { googleTrafficDuration, readGoogleMapsKey } from '../application/google-maps-traffic';
 import type { Options } from '../domain/model';
 import {
   bookingInventorySnapshot,
@@ -39,6 +41,14 @@ export function AdminCreateQuote() {
     labourUnitPriceOverride: null,
   });
   const [questionnaireOpen, setQuestionnaireOpen] = useState(false);
+  const [googleMapsKey] = useState(readGoogleMapsKey);
+  const [traffic, setTraffic] = useState<{
+    minutes: number;
+    freeMinutes: number;
+    fetchedAt: number;
+  } | null>(null);
+  const [trafficBusy, setTrafficBusy] = useState(false);
+  const [trafficError, setTrafficError] = useState(false);
   const state = useBookingForm({ mode: 'admin-quote', quoteConfig });
   const editingLocked = Boolean(
     state.editingBooking &&
@@ -130,6 +140,36 @@ export function AdminCreateQuote() {
     );
   }, [state.editingBooking, setTollLines]);
   const inventoryText = inventoryNote(estimateInventory);
+  useEffect(() => {
+    const route = draft.route;
+    if (!googleMapsKey || !route) {
+      setTraffic(null);
+      setTrafficError(false);
+      return;
+    }
+    let active = true;
+    const timeMatch = /^(\d{1,2}):(\d{2})$/u.exec(draft.timeSlot);
+    const departure = draft.date && timeMatch
+      ? new Date(`${draft.date}T${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}:00`)
+      : undefined;
+    setTrafficBusy(true);
+    setTrafficError(false);
+    googleTrafficDuration(route.from, route.to, googleMapsKey, departure)
+      .then((result) => {
+        if (!active) return;
+        setTraffic(result ? { minutes: result.minutes, freeMinutes: result.freeMinutes, fetchedAt: result.fetchedAt } : null);
+        setTrafficError(!result);
+      })
+      .finally(() => {
+        if (active) setTrafficBusy(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [draft.date, draft.route?.from[0], draft.route?.from[1], draft.route?.to[0], draft.route?.to[1], draft.timeSlot, googleMapsKey]);
+  const estimateRoute = draft.route && traffic
+    ? { ...draft.route, durationMinutes: traffic.minutes }
+    : draft.route;
   const labourPrice = catalogue
     ? labourUnitPrice(catalogue.settings, {
         fromFloor: draft.inventory.fromFloor,
@@ -139,7 +179,7 @@ export function AdminCreateQuote() {
       })
     : 0;
   const movingEstimate = selected
-    ? estimateMovingWork(estimateInventory, selected, draft.route, {
+    ? estimateMovingWork(estimateInventory, selected, estimateRoute, {
         trips: quoteConfig.trips,
         crew: draft.inventory.crew,
         startTime: draft.timeSlot,
@@ -244,7 +284,7 @@ export function AdminCreateQuote() {
           : 3;
   const previewTransportUnit =
     previewTier === 3 ? (quoteConfig.customPrice ?? 0) : (selected?.prices[previewTier] ?? 0);
-  const previewLines =
+  const rawPreviewLines =
     price?.lines ??
     (selected
       ? [
@@ -262,22 +302,59 @@ export function AdminCreateQuote() {
               unitPrice:
                 key === 'labour'
                   ? quoteConfig.labourUnitPriceOverride || labourPrice
-                  : (catalogue?.settings.assemblyPrice ?? 0),
+                  : catalogue
+                    ? assemblyUnitPrice(
+                        catalogue.settings,
+                        key === 'desk' ? 'bureau' : key === 'wardrobe' ? 'armoire' : 'lit',
+                      )
+                    : 0,
               total:
                 draft.options[key] *
                 (key === 'labour'
                   ? quoteConfig.labourUnitPriceOverride || labourPrice
-                  : (catalogue?.settings.assemblyPrice ?? 0)),
+                  : catalogue
+                    ? assemblyUnitPrice(
+                        catalogue.settings,
+                        key === 'desk' ? 'bureau' : key === 'wardrobe' ? 'armoire' : 'lit',
+                      )
+                    : 0),
             })),
         ]
       : []);
+  const inventoryMenuLines = catalogue
+    ? inventoryAssemblyLines(draft.inventory, catalogue.settings)
+    : [];
+  const inventoryMenuOptions = inventoryAssemblyOptions(draft.inventory);
+  const previewLines = inventoryMenuLines.length
+    ? [
+        ...rawPreviewLines.filter((line) => !line.label.startsWith('Menuisier ·')),
+        ...extras
+          .filter(([key]) => key !== 'labour')
+          .map(([key, label]) => {
+            const inventoryCount = inventoryMenuOptions[key];
+            const quantity = Math.max(0, draft.options[key] - inventoryCount);
+            const unitPrice = catalogue
+              ? assemblyUnitPrice(
+                  catalogue.settings,
+                  key === 'desk' ? 'bureau' : key === 'wardrobe' ? 'armoire' : 'lit',
+                )
+              : 0;
+            return { label, quantity, unitPrice, total: quantity * unitPrice };
+          })
+          .filter((line) => line.quantity > 0),
+        ...inventoryMenuLines.map((line) => ({
+          ...line,
+          total: line.quantity * line.unitPrice,
+        })),
+      ]
+    : rawPreviewLines;
   const previewSubtotal = previewLines.reduce((sum, line) => sum + line.total, 0);
   const previewDiscount =
     quoteConfig.discountType === 'pct'
       ? Math.round((previewSubtotal * Math.min(100, quoteConfig.discount)) / 100)
       : Math.min(previewSubtotal, quoteConfig.discount);
   const previewDiscountLabel = `Remise${quoteConfig.discountType === 'pct' && quoteConfig.discount ? ` (${Math.min(100, quoteConfig.discount)} %)` : ''}${quoteConfig.discountReason.trim() ? ` · ${quoteConfig.discountReason.trim()}` : ''}`;
-  const previewTotal = price
+  const previewTotal = price && !inventoryMenuLines.length
     ? price.total
     : previewTier === 3 && !quoteConfig.customPrice
       ? null
@@ -532,6 +609,17 @@ export function AdminCreateQuote() {
               <strong>{draft.route ? `${draft.route.distanceKm} km` : 'À calculer'}</strong> ·
               Tranche : <strong>{price ? tiers[price.tier] : '—'}</strong>
             </p>
+            <p className="admin-quote-distance" role="status">
+              {!googleMapsKey
+                ? 'Trafic en direct inactif · ajoutez votre clé Google Maps dans Paramètres.'
+                : trafficBusy
+                  ? 'Calcul du trafic Google Maps…'
+                  : traffic
+                    ? `Durée avec trafic : ${traffic.minutes} min${traffic.minutes > traffic.freeMinutes ? ` · +${traffic.minutes - traffic.freeMinutes} min de trafic` : ''} · actualisée à ${new Date(traffic.fetchedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`
+                    : trafficError
+                      ? 'Trafic indisponible · vérifiez la clé et l’activation de Distance Matrix.'
+                      : ''}
+            </p>
             {price?.tier === 3 && (
               <label>
                 Tarif par aller-retour au-delà de 35 km
@@ -608,7 +696,14 @@ export function AdminCreateQuote() {
                 <div>
                   <strong>{label}</strong>
                   <span>
-                    {money(key === 'labour' ? labourPrice : catalogue.settings.assemblyPrice)} /
+                    {money(
+                      key === 'labour'
+                        ? labourPrice
+                        : assemblyUnitPrice(
+                            catalogue.settings,
+                            key === 'desk' ? 'bureau' : key === 'wardrobe' ? 'armoire' : 'lit',
+                          ),
+                    )} /
                     unité
                   </span>
                 </div>

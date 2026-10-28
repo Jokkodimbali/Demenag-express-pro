@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Vehicle } from '../domain/model';
 import { vehicleCapacity } from '../domain/vehicle-capacity';
@@ -7,6 +7,7 @@ type Dimensions = Pick<Vehicle, 'length' | 'height' | 'width' | 'wheelWidth'>;
 
 const numeric = (value: string) => Number.parseFloat(value.replace(',', '.')) || 0;
 const shown = (value: number) => value.toFixed(2).replace('.', ',');
+const formatted = (value: string) => shown(numeric(value));
 const inputValue = (value: string) => String(numeric(value)).replace('.', ',');
 const assetRatio = (source: string, fallback: string) => {
   const filename = source.split('/').pop()?.split('?')[0] ?? '';
@@ -72,7 +73,7 @@ export function FleetVehicleDimensions({
   const width = numeric(dimensions.width);
   const wheelWidth = Math.min(numeric(dimensions.wheelWidth) || width, width);
   const gross = length * height * width;
-  const wheelSpace = Math.max(0, width - wheelWidth) * 0.3 * Math.min(length, 1.9);
+  const wheelSpace = Math.max(0, width - wheelWidth) * 0.3 * Math.min(length, 0.95 * 1.9);
   const volume = vehicleCapacity(
     dimensions.length,
     dimensions.height,
@@ -87,8 +88,12 @@ export function FleetVehicleDimensions({
   const overlays = vehicleOverlays[vehicle.id];
   const profileDimensions: [number, number] = vehicle.id === 'trafic' ? [960, 365] : [960, 355];
   const interiorDimensions: [number, number] = vehicle.id === 'trafic' ? [590, 342] : [560, 500];
+  const displayedLength = formatted(dimensions.length);
+  const displayedHeight = formatted(dimensions.height);
+  const displayedWidth = formatted(dimensions.width);
+  const displayedWheelWidth = formatted(dimensions.wheelWidth);
 
-  async function saveDimensions() {
+  const saveDimensions = useCallback(async () => {
     if (invalid || !dirty || disabled) return;
     try {
       await onSave({
@@ -103,7 +108,13 @@ export function FleetVehicleDimensions({
     } catch {
       setSaved(false);
     }
-  }
+  }, [disabled, dirty, height, invalid, length, onSave, vehicle, volume, wheelWidth, width]);
+
+  useEffect(() => {
+    if (invalid || !dirty || disabled) return;
+    const timer = window.setTimeout(() => void saveDimensions(), 500);
+    return () => window.clearTimeout(timer);
+  }, [disabled, dirty, invalid, saveDimensions]);
 
   return (
     <article className="fleet-dimension-card">
@@ -122,7 +133,7 @@ export function FleetVehicleDimensions({
                 : undefined
             }
           >
-            LONGUEUR <strong>{dimensions.length} m</strong>
+            LONGUEUR <strong>{displayedLength} m</strong>
           </span>
           <span className="fleet-dimension-volume-chip">VOLUME ~{volume}</span>
         </div>
@@ -143,7 +154,7 @@ export function FleetVehicleDimensions({
                 : undefined
             }
           >
-            HAUTEUR <strong>{dimensions.height} m</strong>
+            HAUTEUR <strong>{displayedHeight} m</strong>
           </span>
           <span
             className="fleet-dimension-width"
@@ -156,7 +167,7 @@ export function FleetVehicleDimensions({
                 : undefined
             }
           >
-            LARGEUR <strong>{dimensions.width} m</strong>
+            LARGEUR <strong>{displayedWidth} m</strong>
           </span>
           <span
             className="fleet-wheel-width"
@@ -171,7 +182,7 @@ export function FleetVehicleDimensions({
                 : undefined
             }
           >
-            {dimensions.wheelWidth} m entre passages de roue
+            {displayedWheelWidth} m entre passages de roue
           </span>
         </div>
       </div>
@@ -202,33 +213,21 @@ export function FleetVehicleDimensions({
       <div className="fleet-volume-breakdown">
         <div>
           <strong>VOLUME UTILE CALCULÉ</strong>
-          <b>{volume}</b>
+          <b>~{volume}</b>
         </div>
         <div className="fleet-volume-steps">
           <span>
-            {dimensions.length} m × {dimensions.height} m × {dimensions.width} m = {shown(gross)} m³
+            {displayedLength} m × {displayedHeight} m × {displayedWidth} m = {shown(gross)} m³
           </span>
           <span>
-            Passages de roue : ({dimensions.width} m − {dimensions.wheelWidth} m) × 0,30 m ×{' '}
-            {Math.min(length, 1.9).toFixed(2).replace('.', ',')} m = − {shown(wheelSpace)} m³
+            Passages de roue : ({displayedWidth} m − {displayedWheelWidth} m) × 0,30 m ×{' '}
+            1,90 m = − {shown(wheelSpace)} m³
           </span>
           <span>Parois et toit arrondis : × 0,95 = {volume}</span>
         </div>
       </div>
       <div className="fleet-dimension-management">{management}</div>
-      {(dirty || saved) && (
-        <div className="fleet-dimension-save-row">
-          {saved && <span role="status">Dimensions enregistrées.</span>}
-          <button
-            type="button"
-            className="button primary"
-            disabled={disabled || invalid || !dirty}
-            onClick={() => void saveDimensions()}
-          >
-            Enregistrer les dimensions
-          </button>
-        </div>
-      )}
+      {saved && <span role="status" className="sr-only">Dimensions enregistrées.</span>}
     </article>
   );
 }

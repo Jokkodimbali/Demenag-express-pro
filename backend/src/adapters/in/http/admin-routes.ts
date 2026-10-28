@@ -113,6 +113,11 @@ export function registerAdminRoutes(
     await deps.catalogue.update(getActor(res), p.vehicles, p.settings);
     res.json(await deps.catalogue.get());
   });
+  app.delete(`${apiRoutes.catalogue}/vehicles/:id`, authenticate, admin, async (req, res) => {
+    const id = z.string().regex(/^[a-z0-9-]{1,30}$/).parse(req.params.id);
+    await deps.catalogue.removeVehicle(getActor(res), id);
+    res.status(204).end();
+  });
   app.post(apiRoutes.tollPoints, authenticate, admin, async (req, res) =>
     res
       .status(201)

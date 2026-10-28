@@ -32,11 +32,27 @@ export class PrismaCatalogue implements CatalogueRepository {
           create: toVehicle(v),
         }),
       ),
-      this.db.vehicule.deleteMany({
-        where: { id: { notIn: vehicles.map((vehicle) => vehicle.id) } },
-      }),
       this.db.parametreApplication.update({ where: { id: 'main' }, data: toSettings(settings) }),
     ]);
+  }
+  async removeVehicle(id: string) {
+    await this.db.$transaction(async (tx) => {
+      const [bookingCount, driverCount] = await Promise.all([
+        tx.reservation.count({ where: { vehiculeId: id } }),
+        tx.chauffeur.count({ where: { vehiculeId: id } }),
+      ]);
+      if (bookingCount > 0)
+        throw new AppError(409, `Impossible : ce véhicule est utilisé dans ${bookingCount} réservation${bookingCount > 1 ? 's' : ''}.`);
+      if (driverCount > 0)
+        throw new AppError(409, 'Impossible : un membre de l’équipe est affecté à ce véhicule.');
+      try {
+        await tx.vehicule.delete({ where: { id } });
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025')
+          throw new AppError(404, 'Véhicule introuvable.');
+        throw error;
+      }
+    });
   }
   async listTollPoints(): Promise<TollPoint[]> {
     const rows = await this.db.pointPeage.findMany({

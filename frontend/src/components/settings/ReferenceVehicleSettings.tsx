@@ -32,7 +32,7 @@ export function ReferenceVehicleSettings({ catalogue }: { catalogue: Catalogue }
     setNotice('');
     setEditing({
       ...base,
-      id: `veh-${crypto.randomUUID().slice(0, 12)}`,
+      id: `veh-${crypto.randomUUID().slice(0, 10)}`,
       name: '',
       shortName: '',
       length: '',

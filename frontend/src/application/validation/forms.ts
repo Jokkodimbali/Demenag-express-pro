@@ -2,6 +2,7 @@ import type { Catalogue, Driver, QuoteInput, Settings, User, Vehicle } from '../
 import { messages } from '../../content/fr';
 import { vehicleCapacity } from '../../domain/vehicle-capacity';
 import { createLabourPriceMatrix } from '../../domain/labour-price';
+import { referenceInventoryKey } from '../../domain/inventory-assembly';
 import type { SettingsSection } from '../../pages/Settings';
 
 const role = (value: FormDataEntryValue | null): User['role'] =>
@@ -30,6 +31,8 @@ export function quoteFromForm(
     trips: integer(data.get('trips')),
     customPrice: data.get('customPrice') ? integer(data.get('customPrice')) : null,
     discount: integer(data.get('discount')),
+    discountType: data.get('discountType') === 'pct' ? 'pct' : 'fcfa',
+    discountReason: String(data.get('discountReason') ?? ''),
     notes: String(data.get('notes')),
     extraLines,
     tolls,
@@ -75,7 +78,9 @@ export async function vehicleFromForm(data: FormData, existing: Vehicle): Promis
     ...existing,
     name: String(data.get('name')).trim(),
     shortName: String(
-      data.get('shortName') || existing.shortName || String(data.get('name')).trim().split(/\s+/).at(-1),
+      data.get('shortName') ||
+        existing.shortName ||
+        String(data.get('name')).trim().split(/\s+/).at(-1),
     ).trim(),
     volume: vehicleCapacity(length, height, width, wheelWidth),
     length,
@@ -100,12 +105,26 @@ export async function catalogueFromForm(
 ): Promise<Catalogue> {
   if (section === 'pricing') {
     const montageP = { ...(catalogue.settings.montageP ?? {}) };
+    for (const [legacyKey, canonicalKey] of Object.entries({
+      'table-manger': 'tablem',
+      bibliotheque: 'biblio',
+      congelateur: 'congel',
+      'machine-laver': 'mal',
+      'micro-ondes': 'micro',
+      climatiseur: 'clim',
+      ventilateur: 'ventilo',
+    })) {
+      if (montageP[legacyKey] && !montageP[canonicalKey])
+        montageP[canonicalKey] = montageP[legacyKey];
+      delete montageP[legacyKey];
+    }
     for (const [name, value] of data.entries()) {
-      const match = /^montageP\.([^.]+)\.(?:(local|import)|(sz)\.(\d+)\.(local|import))$/.exec(
+      const match = /^montageP\.([^.]+)\.(?:(local|import|u|uI)|(sz)\.(\d+)\.(local|import))$/.exec(
         name,
       );
       if (!match) continue;
-      const [, key, baseOrigin, , size, sizeOrigin] = match;
+      const [, formKey, baseOrigin, , size, sizeOrigin] = match;
+      const key = referenceInventoryKey(formKey);
       const current = montageP[key] ?? {};
       if (size && sizeOrigin) {
         montageP[key] = {
@@ -128,9 +147,10 @@ export async function catalogueFromForm(
     let whatsappLocalNumber = String(data.get('w.biz') ?? '').replace(/\D/g, '');
     if (whatsappLocalNumber.startsWith('00')) whatsappLocalNumber = whatsappLocalNumber.slice(2);
     const normalizedWhatsAppNumber = whatsappLocalNumber.replace(/^0+/, '');
-    const whatsappDigits = normalizedWhatsAppNumber.length <= 9
-      ? whatsappCountryCode + normalizedWhatsAppNumber
-      : normalizedWhatsAppNumber;
+    const whatsappDigits =
+      normalizedWhatsAppNumber.length <= 9
+        ? whatsappCountryCode + normalizedWhatsAppNumber
+        : normalizedWhatsAppNumber;
     const movingLaborPlanning = {
       ...catalogue.settings.movingLaborPlanning,
       maxHandlingHours: Number(data.get('movingLaborPlanning.maxHandlingHours')),
@@ -147,7 +167,6 @@ export async function catalogueFromForm(
       labourPrice,
       labourFloorPrice,
       labourLiftPrice,
-      labourMatrix: undefined,
     });
     return {
       ...catalogue,

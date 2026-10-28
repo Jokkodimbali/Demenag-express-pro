@@ -525,6 +525,15 @@
   flex: 0 0 auto;
   white-space: nowrap;
 }
+.inventory-origin select {
+  min-height: 34px;
+  border: 1px solid #3b4046;
+  border-radius: 8px;
+  padding: 4px 8px;
+  background: #1e2023;
+  color: #fff;
+  font: inherit;
+}
 .inventory-size-stepper {
   display: inline-flex;
   align-items: center;

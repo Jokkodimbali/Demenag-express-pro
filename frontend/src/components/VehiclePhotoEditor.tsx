@@ -41,6 +41,10 @@ export function VehiclePhotoEditor({
     }
   }
 
+  function replacePhoto(file: File | null) {
+    void chooseFile(file);
+  }
+
   function normalizeImage(source: string): Promise<string> {
     return new Promise((resolve, reject) => {
       const image = new Image();
@@ -228,9 +232,12 @@ export function VehiclePhotoEditor({
         <label className="vehicle-photo-upload-overlay" aria-label={`Importer ${label}`}>
           <input
             type="file"
-            accept="image/png,image/jpeg,image/webp"
+            accept="image/*"
             aria-required={required && !value}
-            onChange={(event) => void chooseFile(event.currentTarget.files?.item(0) ?? null)}
+            onChange={(event) => {
+              replacePhoto(event.currentTarget.files?.item(0) ?? null);
+              event.currentTarget.value = '';
+            }}
           />
           <span>
             {value ? 'Cliquer pour remplacer la photo' : 'Cliquer pour importer la photo'}

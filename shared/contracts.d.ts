@@ -210,6 +210,7 @@ export type BookingInventorySource = {
       size: number;
       format?: 'small' | 'medium' | 'large';
       dismantle: boolean;
+      menuisier?: boolean;
       origin?: 'local' | 'import';
     }
   >;
@@ -220,6 +221,7 @@ export type BookingInventorySource = {
     size: number;
     format?: 'small' | 'medium' | 'large';
     dismantle: boolean;
+    menuisier?: boolean;
     origin?: 'local' | 'import';
   }[];
   flags: Record<string, boolean>;
@@ -231,6 +233,7 @@ export type BookingInventorySource = {
     quantity: number;
     format?: 'small' | 'medium' | 'large';
     dismantle?: boolean;
+    origin?: 'local' | 'import';
   }[];
   crew?: number;
 };

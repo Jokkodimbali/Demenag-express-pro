@@ -47,8 +47,6 @@ export const messages = {
   unAutreAdministrateurAModifieCesComptesActualisez:
     'Un autre administrateur a modifié ces comptes. Actualisez.',
   cetteReservationAChangeActualisezLaPage: 'Cette réservation a changé. Actualisez la page.',
-  tarifsHistoriquesIndisponibles:
-    'Les tarifs de cette ancienne réservation ne sont pas archivés. Son prix ne peut pas être recalculé sans vérification manuelle.',
   leCatalogueDoitEtreInitialise: 'Le catalogue doit être initialisé.',
   conflitCeNumeroExisteDejaOuCeVehicule:
     'Conflit : ce numéro existe déjà ou ce véhicule est déjà réservé sur ce créneau.',

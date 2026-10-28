@@ -23,7 +23,8 @@ import { TollRateSelector } from './TollRateSelector';
 import { quotedServiceOptions } from '../application/services/quote-service-options';
 import { messages } from '../content/fr';
 import { dateLabel, money, statuses } from '../domain/format';
-import { labourUnitPrice } from '../domain/labour-price';
+import { assemblyUnitPrice, labourUnitPrice } from '../domain/labour-price';
+import { inventoryAssemblyLines } from '../domain/inventory-assembly';
 import type { Booking } from '../domain/model';
 import { useApp } from '../application/context';
 import { whatsappNumber, whatsappUrl } from '../application/services/whatsapp';
@@ -86,6 +87,9 @@ export function BookingCard({
   const displayedQuote = finalQuote ?? last;
   const displayedPrice = displayedQuote?.price ?? b.estimate;
   const displayedOptions = quotedServiceOptions(b, displayedQuote);
+  const inventoryMenuPreview = quoteSettings
+    ? inventoryAssemblyLines(b.inventorySnapshot?.sourceInventory, quoteSettings)
+    : [];
   const clientPhoneLink = b.phone.replace(/[^\d+]/g, '');
   const reminderToday = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Africa/Dakar',
@@ -752,7 +756,11 @@ export function BookingCard({
                       id={'trips-' + b.id}
                       type="number"
                       min={1}
-                      max={quoteDraft.kind === 'final' ? 10000 : b.pricingSettings?.maxTrips}
+                      max={
+                        quoteDraft.kind === 'final'
+                          ? 10000
+                          : (catalogue?.settings.maxTrips ?? b.pricingSettings?.maxTrips)
+                      }
                       step={1}
                       value={quoteDraft.trips}
                       disabled={quoteDraft.kind === 'final'}
@@ -787,7 +795,26 @@ export function BookingCard({
                     />
                   </div>
                   <div>
-                    <label htmlFor={'discount-' + b.id}>{messages.remiseFcfa}</label>
+                    <label htmlFor={'discountType-' + b.id}>Type de remise</label>
+                    <select
+                      name="discountType"
+                      id={'discountType-' + b.id}
+                      value={quoteDraft.discountType}
+                      onChange={(event) =>
+                        setQuoteDraft((draft) => ({
+                          ...draft,
+                          discountType: event.target.value as 'fcfa' | 'pct',
+                        }))
+                      }
+                    >
+                      <option value="fcfa">FCFA</option>
+                      <option value="pct">Pourcentage</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor={'discount-' + b.id}>
+                      Remise ({quoteDraft.discountType === 'pct' ? '%' : 'FCFA'})
+                    </label>
                     <input
                       name="discount"
                       id={'discount-' + b.id}
@@ -803,6 +830,19 @@ export function BookingCard({
                         }))
                       }
                       required
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor={'discountReason-' + b.id}>Motif de la remise</label>
+                    <input
+                      name="discountReason"
+                      id={'discountReason-' + b.id}
+                      type="text"
+                      maxLength={200}
+                      value={quoteDraft.discountReason}
+                      onChange={(event) =>
+                        setQuoteDraft((draft) => ({ ...draft, discountReason: event.target.value }))
+                      }
                     />
                   </div>
                 </div>
@@ -912,7 +952,12 @@ export function BookingCard({
                     ? quoteSettings
                       ? labourUnitPrice(quoteSettings, b.workAccess)
                       : 0
-                    : (quoteSettings?.assemblyPrice ?? 0);
+                    : quoteSettings
+                      ? assemblyUnitPrice(
+                          quoteSettings,
+                          key === 'desk' ? 'bureau' : key === 'wardrobe' ? 'armoire' : 'lit',
+                        )
+                      : 0;
                 return (
                   <label key={key}>
                     <span>
@@ -925,7 +970,7 @@ export function BookingCard({
                       aria-label={label}
                       type="number"
                       min={0}
-                      max={b.pricingSettings?.maxOptions ?? 20}
+                      max={catalogue?.settings.maxOptions ?? b.pricingSettings?.maxOptions ?? 20}
                       step={1}
                       value={quoteDraft.options[key]}
                       onChange={(event) =>
@@ -939,6 +984,19 @@ export function BookingCard({
                 );
               })}
             </div>
+            {inventoryMenuPreview.length > 0 && (
+              <div className="quote-inventory-services">
+                <h4>Démontage / montage selon l’inventaire</h4>
+                {inventoryMenuPreview.map((line) => (
+                  <div key={line.label}>
+                    <span>
+                      {line.quantity} × {line.label}
+                    </span>
+                    <strong>{money(line.quantity * line.unitPrice)}</strong>
+                  </div>
+                ))}
+              </div>
+            )}
             <TollRateSelector
               lines={extraLines}
               vehicleId={b.vehicle.id}

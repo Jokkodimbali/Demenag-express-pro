@@ -2,6 +2,7 @@ import { Minus, Plus } from 'lucide-react';
 import type { BookingViewState } from '../../application/contracts/booking-view';
 import { messages } from '../../content/fr';
 import { money, today } from '../../domain/format';
+import { assemblyUnitPrice } from '../../domain/labour-price';
 import type { Catalogue } from '../../domain/model';
 import { TollRateSelector } from '../TollRateSelector';
 
@@ -80,7 +81,10 @@ export function ScheduleOptions({
                 {money(
                   key === 'labour'
                     ? catalogue.settings.labourPrice
-                    : catalogue.settings.assemblyPrice,
+                    : assemblyUnitPrice(
+                        catalogue.settings,
+                        key === 'desk' ? 'bureau' : key === 'wardrobe' ? 'armoire' : 'lit',
+                      ),
                 )}
               </span>
             </div>

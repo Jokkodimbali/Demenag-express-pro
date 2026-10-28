@@ -6,11 +6,11 @@ import { TransportSettings } from '../components/settings/TransportSettings';
 import { messages } from '../content/fr';
 export type SettingsSection = 'pricing' | 'booking-rules' | 'invoicing';
 export function Settings({ section }: { section: SettingsSection }) {
-  const { catalogue, busy, error, saved, submit } = useSettings(section);
+  const { catalogue, busy, error, saved, submit, onChange, onBlur } = useSettings(section);
   if (!catalogue) return null;
   return (
     <>
-      <form onSubmit={submit} className="settings-form">
+      <form onSubmit={submit} onChange={onChange} onBlur={onBlur} className="settings-form">
         {section === 'pricing' && <TransportSettings catalogue={catalogue} />}
         {section === 'invoicing' && <ContactSettings catalogue={catalogue} />}
         {section === 'booking-rules' && <BookingRulesSettings catalogue={catalogue} />}
@@ -20,14 +20,23 @@ export function Settings({ section }: { section: SettingsSection }) {
           </p>
         )}
         {saved && (
-          <p role="status" className="alert success">
-            {messages.parametresEnregistres}
+          <p role="status" className={section === 'pricing' ? 'sr-only' : 'alert success'}>
+            {section === 'pricing'
+              ? 'Modifications enregistrées automatiquement.'
+              : messages.parametresEnregistres}
           </p>
         )}
-        <button className="button primary" disabled={busy}>
-          <Save size={17} />
-          {busy ? messages.enregistrement : messages.enregistrerLesParametres}
-        </button>
+        {busy && section === 'pricing' && (
+          <p role="status" className="sr-only">
+            Enregistrement…
+          </p>
+        )}
+        {section !== 'pricing' && (
+          <button className="button primary" disabled={busy}>
+            <Save size={17} />
+            {busy ? messages.enregistrement : messages.enregistrerLesParametres}
+          </button>
+        )}
       </form>
     </>
   );

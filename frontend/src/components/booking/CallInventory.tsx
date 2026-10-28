@@ -637,8 +637,7 @@ export function CallInventory({
                               onChange={(format) => setEntry(item.key, { format })}
                             />
                           )}
-                          {(item.assembly || item.canDismantle) && (
-                            <label className="inventory-check">
+                          <label className="inventory-check">
                               <input
                                 type="checkbox"
                                 checked={entry.dismantle}
@@ -647,10 +646,18 @@ export function CallInventory({
                                 }
                               />
                               Démontage / montage
+                          </label>
+                          {['salon', 'chaise'].includes(item.key) && (
+                            <label className="inventory-check">
+                              <input
+                                type="checkbox"
+                                checked={!!entry.menuisier}
+                                onChange={(event) => setEntry(item.key, { menuisier: event.target.checked })}
+                              />
+                              Menuisier
                             </label>
                           )}
-                          {entry.dismantle &&
-                            (item.assembly || item.key === 'salon' || item.key === 'chaise') && (
+                          {(entry.dismantle || entry.menuisier) && !['carton', 'sac', 'gaz', 'pot'].includes(item.key) && (
                               <label className="inventory-check">
                                 Origine du meuble
                                 <select
@@ -706,6 +713,8 @@ export function CallInventory({
                                       quantity: 1,
                                       size: entry.size + 1,
                                       dismantle: entry.dismantle,
+                                      menuisier: entry.menuisier,
+                                      origin: entry.origin,
                                     },
                                   ],
                                 })
@@ -790,8 +799,7 @@ export function CallInventory({
                                   }
                                 />
                               )}
-                              {item.assembly && (
-                                <label className="inventory-check">
+                              <label className="inventory-check">
                                   <input
                                     type="checkbox"
                                     checked={variant.dismantle}
@@ -807,9 +815,27 @@ export function CallInventory({
                                     }
                                   />
                                   Démontage / montage
+                              </label>
+                              {['salon', 'chaise'].includes(item.key) && (
+                                <label className="inventory-check">
+                                  <input
+                                    type="checkbox"
+                                    checked={!!variant.menuisier}
+                                    onChange={(event) =>
+                                      update({
+                                        ...inventory,
+                                        variants: inventory.variants.map((line) =>
+                                          line.id === variant.id
+                                            ? { ...line, menuisier: event.target.checked }
+                                            : line,
+                                        ),
+                                      })
+                                    }
+                                  />
+                                  Menuisier
                                 </label>
                               )}
-                              {variant.dismantle && (
+                              {(variant.dismantle || variant.menuisier) && (
                                 <label className="inventory-check">
                                   Origine du meuble
                                   <select
@@ -914,6 +940,7 @@ export function CallInventory({
                       quantity: 1,
                       format: 'medium',
                       dismantle: false,
+                      origin: 'local',
                     },
                   ],
                 });
@@ -1013,6 +1040,27 @@ export function CallInventory({
                 />
                 Démontage / montage
               </label>
+              {item.dismantle && (
+                <label className="inventory-check inventory-origin">
+                  Origine
+                  <select
+                    value={item.origin ?? 'local'}
+                    onChange={(event) =>
+                      update({
+                        ...inventory,
+                        custom: inventory.custom.map((line) =>
+                          line.id === item.id
+                            ? { ...line, origin: event.target.value as 'local' | 'import' }
+                            : line,
+                        ),
+                      })
+                    }
+                  >
+                    <option value="local">Local</option>
+                    <option value="import">Importé</option>
+                  </select>
+                </label>
+              )}
               <div className="inventory-quantity">
                 <button
                   type="button"

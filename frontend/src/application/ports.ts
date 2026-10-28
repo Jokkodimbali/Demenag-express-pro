@@ -36,6 +36,7 @@ export interface ClientDirectoryRepository {
 export interface CatalogueRepository {
   catalogue(): Promise<Catalogue>;
   updateCatalogue(value: Catalogue): Promise<Catalogue>;
+  deleteVehicle(id: string): Promise<void>;
 }
 export interface TollPointRepository {
   tollPoints(): Promise<TollPoint[]>;

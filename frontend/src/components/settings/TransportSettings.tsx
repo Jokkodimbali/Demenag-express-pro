@@ -5,8 +5,10 @@ import { errorMessage } from '../../application/error-message';
 import { CatalogueService } from '../../application/services/catalogue';
 import type { Catalogue, LabourMatrixScenario } from '../../domain/model';
 import { inventoryItems } from '../../domain/inventory';
+import { referenceInventoryKey } from '../../domain/inventory-assembly';
 import { ReferenceVehicleSettings } from './ReferenceVehicleSettings';
 import { ReferenceWhatsappSettings } from './ReferenceWhatsappSettings';
+import { ReferenceGoogleMapsSettings } from './ReferenceGoogleMapsSettings';
 
 const tiers = ['Moins de 15 km', '15 – 25 km', '25 – 35 km'];
 const scenarios: { id: LabourMatrixScenario; label: string; from: boolean; to: boolean }[] = [
@@ -82,7 +84,7 @@ const lineStyle: CSSProperties = {
 };
 const sizeRanges: Record<string, [number, number]> = {
   salon: [1, 10],
-  'table-manger': [2, 12],
+  tablem: [2, 12],
   lit: [1, 4],
   matelas: [1, 4],
   armoire: [1, 8],
@@ -103,16 +105,23 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
   const rows = inventoryItems
     .filter((item) => item.key !== 'climatiseur')
     .map((item) => {
-      const key = item.key;
-      const pricing = catalogue.settings.montageP?.[key] ?? {};
+      const key = referenceInventoryKey(item.key);
+      const pricing =
+        catalogue.settings.montageP?.[key] ?? catalogue.settings.montageP?.[item.key] ?? {};
       const range = item.sizeLabel
-        ? (sizeRanges[item.key] ?? [1, (item.defaultSize ?? 1) + 3])
+        ? (sizeRanges[key] ?? [1, (item.defaultSize ?? 1) + 3])
         : null;
       return { item, key, pricing, range };
     });
   const floorSupplement = catalogue.settings.labourFloorPrice ?? 500;
   const liftSupplement = catalogue.settings.labourLiftPrice ?? 500;
-  const vehicles = catalogue.vehicles;
+  const referenceVehicleOrder = ['sprinter', 'trafic', 'master'];
+  const vehicles = [...catalogue.vehicles].sort((left, right) => {
+    const leftIndex = referenceVehicleOrder.indexOf(left.id);
+    const rightIndex = referenceVehicleOrder.indexOf(right.id);
+    return (leftIndex < 0 ? referenceVehicleOrder.length : leftIndex) -
+      (rightIndex < 0 ? referenceVehicleOrder.length : rightIndex);
+  });
   const planning = { ...planningDefaults, ...catalogue.settings.movingLaborPlanning };
 
   async function saveVehicleDimensions(vehicle: Catalogue['vehicles'][number]) {
@@ -131,7 +140,7 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
   return (
     <div className="reference-settings-page">
       <div className="reference-settings-grid">
-        {catalogue.vehicles.map((vehicle) => (
+        {vehicles.map((vehicle) => (
           <section style={sectionStyle} key={vehicle.id}>
             <span className="reference-settings-card-title">{vehicle.name} · par aller-retour</span>
             {tiers.map((label, index) => (
@@ -228,6 +237,31 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
                       <div className="reference-settings-size-labels">
                         <span>Local</span>
                         <span>Importé</span>
+                      </div>
+                      <div className="reference-settings-size-increment">
+                        <span>Supplément par {sizeLabel.replace(/s$/u, '')} en plus</span>
+                        <label>
+                          <span>Local</span>
+                          <input
+                            style={inputStyle}
+                            type="number"
+                            min="0"
+                            name={`montageP.${key}.u`}
+                            defaultValue={pricing.u ?? 0}
+                            aria-label={`${item.label}, supplément local par ${sizeLabel.replace(/s$/u, '')}`}
+                          />
+                        </label>
+                        <label>
+                          <span>Importé</span>
+                          <input
+                            style={inputStyle}
+                            type="number"
+                            min="0"
+                            name={`montageP.${key}.uI`}
+                            defaultValue={pricing.uI ?? pricing.u ?? 0}
+                            aria-label={`${item.label}, supplément importé par ${sizeLabel.replace(/s$/u, '')}`}
+                          />
+                        </label>
                       </div>
                       {Array.from({ length: range[1] - range[0] + 1 }, (_, offset) => {
                         const size = range[0] + offset;
@@ -432,6 +466,7 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
         </section>
 
         <ReferenceVehicleSettings catalogue={catalogue} />
+        <ReferenceGoogleMapsSettings />
         <ReferenceWhatsappSettings catalogue={catalogue} />
       </div>
     </div>

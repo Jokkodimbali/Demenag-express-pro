@@ -127,6 +127,7 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
     updateTollPoint: (id, input) => request(`${httpRoutes.tollPoints}/${id}`, 'PUT', input),
     deleteTollPoint: (id) => request(`${httpRoutes.tollPoints}/${id}`, 'DELETE'),
     updateCatalogue: (value) => request(httpRoutes.catalogue, 'PUT', value),
+    deleteVehicle: (id) => request(`${httpRoutes.catalogue}/vehicles/${encodeURIComponent(id)}`, 'DELETE'),
     me: () =>
       sharePendingRead(httpRoutes.authentication.current, () =>
         request(httpRoutes.authentication.current),

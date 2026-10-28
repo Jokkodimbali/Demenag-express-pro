@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { messages } from '../../../domain/messages/fr.js';
 const imageSchema = z
   .string()
-  .max(4_000_000)
+  .max(7_000_000)
   .regex(/^(\/assets\/[a-z0-9-]+\.(png|jpg|jpeg|webp)|data:image\/(png|jpeg|webp);base64,)/i);
 const socialUrlSchema = z
   .string()
@@ -40,6 +40,8 @@ const inventorySnapshotSchema = z.object({
           size: z.number().finite().min(0).max(10000),
           format: z.enum(['small', 'medium', 'large']).optional(),
           dismantle: z.boolean(),
+          menuisier: z.boolean().optional(),
+          origin: z.enum(['local', 'import']).optional(),
         }),
       ),
       variants: z
@@ -51,6 +53,8 @@ const inventorySnapshotSchema = z.object({
             size: z.number().finite().min(0).max(10000),
             format: z.enum(['small', 'medium', 'large']).optional(),
             dismantle: z.boolean(),
+            menuisier: z.boolean().optional(),
+            origin: z.enum(['local', 'import']).optional(),
           }),
         )
         .max(500),
@@ -65,6 +69,7 @@ const inventorySnapshotSchema = z.object({
             quantity: z.number().int().min(0).max(999),
             format: z.enum(['small', 'medium', 'large']).optional(),
             dismantle: z.boolean().optional(),
+            origin: z.enum(['local', 'import']).optional(),
           }),
         )
         .max(500),
@@ -416,16 +421,20 @@ export const catalogueSchema = z.object({
           name: z.string().trim().min(2).max(100),
           shortName: z.string().trim().min(1).max(50).optional(),
           prices: z.tuple([
-            z.number().int().positive().max(10000000),
-            z.number().int().positive().max(10000000),
-            z.number().int().positive().max(10000000),
+            z.number().int().min(0).max(10000000),
+            z.number().int().min(0).max(10000000),
+            z.number().int().min(0).max(10000000),
           ]),
         })
         .superRefine((vehicle, context) => {
           const length = measurementValue(vehicle.length);
           const height = measurementValue(vehicle.height);
           const wheelWidth = measurementValue(vehicle.wheelWidth);
-          if ([length, height, measurementValue(vehicle.width), wheelWidth].some((value) => value <= 0)) {
+          if (
+            [length, height, measurementValue(vehicle.width), wheelWidth].some(
+              (value) => value <= 0,
+            )
+          ) {
             context.addIssue({
               code: 'custom',
               message: 'Les quatre dimensions doivent être positives.',
@@ -505,8 +514,8 @@ export const catalogueSchema = z.object({
             .record(
               z.string(),
               z.object({
-                local: z.number().int().min(0).optional(),
-                import: z.number().int().min(0).optional(),
+                local: z.number().int().min(0).max(10000000).optional(),
+                import: z.number().int().min(0).max(10000000).optional(),
               }),
             )
             .optional(),

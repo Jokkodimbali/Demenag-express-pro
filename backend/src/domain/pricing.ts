@@ -12,8 +12,25 @@ export function assemblyUnitPrice(
   key: string,
   origin: 'local' | 'import' = 'local',
   size?: number,
+  defaultSize = 1,
 ) {
-  const configured = settings.montageP?.[key];
+  const legacyKey =
+    key === 'tablem'
+      ? 'table-manger'
+      : key === 'biblio'
+        ? 'bibliotheque'
+        : key === 'congel'
+          ? 'congelateur'
+          : key === 'mal'
+            ? 'machine-laver'
+            : key === 'micro'
+              ? 'micro-ondes'
+              : key === 'clim'
+                ? 'climatiseur'
+                : key === 'ventilo'
+                  ? 'ventilateur'
+                  : key;
+  const configured = settings.montageP?.[key] ?? settings.montageP?.[legacyKey];
   if (!configured) return settings.assemblyPrice;
   const sized = size == null ? undefined : configured.sz?.[String(size)]?.[origin];
   if (Number.isInteger(sized) && sized! >= 0) return sized!;
@@ -21,10 +38,12 @@ export function assemblyUnitPrice(
   const fallback =
     Number.isInteger(base) && base! >= 0
       ? base!
-      : settings.assemblyPrice * (origin === 'import' ? 1.5 : 1);
+      : origin === 'import'
+        ? Math.round(settings.assemblyPrice * 1.5)
+        : settings.assemblyPrice;
   const increment = origin === 'import' ? (configured.uI ?? configured.u) : configured.u;
   return size != null && increment
-    ? Math.round(fallback + Math.max(0, size - 1) * increment)
+    ? Math.round(fallback + Math.max(0, size - defaultSize) * increment)
     : fallback;
 }
 
@@ -120,7 +139,7 @@ export function calculatePrice(
         Number.isInteger(line.quantity) &&
         line.quantity >= 1 &&
         Number.isInteger(line.unitPrice) &&
-        line.unitPrice > 0,
+        line.unitPrice >= 0,
       messages.chargeSupplementaireInvalide,
     );
     lines.push({

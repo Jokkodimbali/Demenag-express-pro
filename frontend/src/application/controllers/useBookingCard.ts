@@ -38,10 +38,12 @@ export function useBookingCard({
     trips: b.driverFinishedAt ? (b.trips?.length ?? 1) : (last?.price.trips ?? 1),
     customPrice:
       last?.price.lines.find((line) => line.label.includes(b.vehicle.name))?.unitPrice ?? null,
-    discount: last?.price.discount ?? 0,
+    discount: last?.price.discountValue ?? last?.price.discount ?? 0,
+    discountType: last?.price.discountType ?? 'fcfa',
+    discountReason: last?.price.discountReason ?? '',
     options: quotedServiceOptions(b, last),
   }));
-  const quoteSettings = b.pricingSettings ?? catalogue?.settings;
+  const quoteSettings = catalogue?.settings ?? b.pricingSettings;
   const tollPointIds = new Set(tollPoints.map((point) => point.id));
   const billableExtraLines = extraLines.filter((line) => !tollPointIds.has(line.id));
   const quoteTolls = extraLines
@@ -53,17 +55,25 @@ export function useBookingCard({
         : ('one-way' as const),
       quantity: line.quantity,
     }));
-  const quotePreviewTotal = useMemo(
-    () => (quoteSettings ? quoteTotal(b, quoteSettings, quoteDraft, billableExtraLines) : null),
-    [b, billableExtraLines, quoteDraft, quoteSettings],
-  );
+  const quotePreviewTotal = useMemo(() => {
+    if (!quoteSettings) return null;
+    const vehicle = catalogue?.vehicles.find((item) => item.id === b.vehicle.id) ?? b.vehicle;
+    return quoteTotal(
+      vehicle === b.vehicle ? b : { ...b, vehicle },
+      quoteSettings,
+      quoteDraft,
+      billableExtraLines,
+    );
+  }, [b, billableExtraLines, catalogue?.vehicles, quoteDraft, quoteSettings]);
   useEffect(() => {
     setQuoteDraft({
       kind: b.driverFinishedAt ? 'final' : (last?.kind ?? 'provisional'),
       trips: b.driverFinishedAt ? (b.trips?.length ?? 1) : (last?.price.trips ?? 1),
       customPrice:
         last?.price.lines.find((line) => line.label.includes(b.vehicle.name))?.unitPrice ?? null,
-      discount: last?.price.discount ?? 0,
+      discount: last?.price.discountValue ?? last?.price.discount ?? 0,
+      discountType: last?.price.discountType ?? 'fcfa',
+      discountReason: last?.price.discountReason ?? '',
       options: quotedServiceOptions(b, last),
     });
     setExtraLines(extrasFromLast(b, last, tollPoints));
@@ -294,7 +304,10 @@ function extrasFromLast(
     ...tollLines,
     ...quote.price.lines
       .filter(
-        (line) => !isQuotedServiceLine(line.label) && !line.label.includes(booking.vehicle.name),
+        (line) =>
+          !isQuotedServiceLine(line.label) &&
+          !line.label.includes(booking.vehicle.name) &&
+          !line.label.startsWith('Menuisier · démontage / montage '),
       )
       .map((line) => ({
         id: tollPointForLine(line.label, tollPoints)?.id ?? crypto.randomUUID(),

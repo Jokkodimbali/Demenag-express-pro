@@ -75,6 +75,7 @@ export interface SessionRepository {
 export interface CatalogueRepository {
   get(): Promise<Catalogue>;
   update(vehicles: Vehicle[], settings: Settings): Promise<void>;
+  removeVehicle(id: string): Promise<void>;
   listTollPoints(): Promise<TollPoint[]>;
   createTollPoint(input: TollPointInput): Promise<TollPoint>;
   updateTollPoint(id: string, input: TollPointInput): Promise<TollPoint>;

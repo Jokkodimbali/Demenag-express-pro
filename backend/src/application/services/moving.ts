@@ -20,6 +20,10 @@ import {
   requireAdministrator,
 } from '../../domain/policies/access.js';
 import { calculatePrice } from '../../domain/pricing.js';
+import {
+  inventoryAssemblyLines,
+  subtractInventoryAssemblyOptions,
+} from '../../domain/inventory-assembly.js';
 import type {
   BookingRepository,
   CatalogueRepository,
@@ -784,15 +788,17 @@ export class MovingService implements MovingUseCases {
       !['completed', 'cancelled'].includes(booking.status),
       messages.cetteReservationEstCloturee,
     );
-    if (!booking.pricingSettings) throw new AppError(409, messages.tarifsHistoriquesIndisponibles);
-    const [route, fromAddress, toAddress] = await Promise.all([
+    const [catalogue, route, fromAddress, toAddress] = await Promise.all([
+      this.catalogue.get(),
       this.routing.route(from, to),
       this.routing.reverse(from),
       this.routing.reverse(to),
     ]);
+    const vehicle =
+      catalogue.vehicles.find((item) => item.id === booking.vehicle.id) ?? booking.vehicle;
     const estimate = calculatePrice(
-      booking.vehicle,
-      booking.pricingSettings,
+      vehicle,
+      catalogue.settings,
       route.distanceKm,
       booking.options,
       1,
@@ -930,13 +936,22 @@ export class MovingService implements MovingUseCases {
         `Le devis final doit compter ${completedTrips} aller(s)-retour(s), selon les courses enregistrées.`,
       );
     }
-    if (!booking.pricingSettings) throw new AppError(409, messages.tarifsHistoriquesIndisponibles);
-    const options = input.options ?? booking.options;
-    const pricingSettings = booking.pricingSettings;
+    const catalogue = await this.catalogue.get();
+    const vehicle =
+      catalogue.vehicles.find((item) => item.id === booking.vehicle.id) ?? booking.vehicle;
+    const requestedOptions = input.options ?? booking.options;
+    const inventoryLines = inventoryAssemblyLines(
+      booking.inventorySnapshot?.sourceInventory,
+      catalogue.settings,
+    );
+    const options = subtractInventoryAssemblyOptions(
+      requestedOptions,
+      booking.inventorySnapshot?.sourceInventory,
+    );
     const quoteSettings =
       input.kind === 'final'
-        ? { ...pricingSettings, maxTrips: Math.max(pricingSettings.maxTrips, input.trips) }
-        : pricingSettings;
+        ? { ...catalogue.settings, maxTrips: Math.max(catalogue.settings.maxTrips, input.trips) }
+        : catalogue.settings;
     const tollPoints = await this.catalogue.listTollPoints();
     const tolls = (input.tolls ?? []).map((line) => {
       const point = tollPoints.find((item) => item.id === line.tollPointId);
@@ -946,7 +961,7 @@ export class MovingService implements MovingUseCases {
         'Un aller-retour doit compter deux passages par trajet.',
       );
       const prefix = /^péage\b/i.test(point.name) ? point.name : `Péage ${point.name}`;
-      const unitPrice = point.vehiclePrices[booking.vehicle.id] ?? point.heavyPrice;
+      const unitPrice = point.vehiclePrices[vehicle.id] ?? point.heavyPrice;
       requireValue(Number.isSafeInteger(unitPrice) && unitPrice > 0, 'Tarif de péage invalide.');
       return {
         tollPointId: point.id,
@@ -957,14 +972,14 @@ export class MovingService implements MovingUseCases {
     });
     // Les prix du transport sont ceux du véhicule au moment de la réservation.
     const price = calculatePrice(
-      booking.vehicle,
+      vehicle,
       quoteSettings,
       booking.distanceKm,
       options,
       input.trips,
       input.customPrice,
       input.discount,
-      input.extraLines,
+      [...inventoryLines, ...input.extraLines],
       booking.workAccess,
       input.labourUnitPriceOverride,
       input.discountType,
