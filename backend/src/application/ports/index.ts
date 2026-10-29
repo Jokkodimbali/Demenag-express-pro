@@ -1,4 +1,14 @@
 import type {
+  AccountingFinanceConfiguration,
+  AccountingEntry,
+  ManualAccountingInput,
+} from '../../domain/model.js';
+export type {
+  AccountingFinanceConfiguration,
+  AccountingEntry,
+  ManualAccountingInput,
+} from '../../domain/model.js';
+import type {
   Booking,
   Catalogue,
   Driver,
@@ -20,26 +30,12 @@ export type Notification = {
   bookingId?: string;
   readAt?: string | null;
 };
-export type AccountingEntry = {
-  id: string;
-  type: 'charge' | 'revenu';
-  category: string;
-  label: string;
-  amount: number;
-  date: string;
-  automatic: boolean;
-  bookingId?: string;
-  reference?: string;
-  bookingReference?: string;
-};
-export type ManualAccountingInput = Omit<
-  AccountingEntry,
-  'id' | 'automatic' | 'bookingId' | 'reference' | 'bookingReference'
->;
 export interface AccountingRepository {
   list(month?: string): Promise<AccountingEntry[]>;
   create(input: ManualAccountingInput): Promise<AccountingEntry>;
   void(id: string): Promise<boolean>;
+  configuration(): Promise<AccountingFinanceConfiguration | null>;
+  saveConfiguration(value: AccountingFinanceConfiguration): Promise<void>;
 }
 export type NotificationDelivery = { userId: string; notification: Notification };
 export interface NotificationRepository {
@@ -159,8 +155,9 @@ export interface IdGenerator {
 export interface AdministrationRepository {
   listUsers(): Promise<User[]>;
   listHiddenClients(): Promise<{ phone: string; hiddenAt: string }[]>;
+  listClientProfiles(): Promise<{ phone: string; name: string; address: string }[]>;
   hideClient(phone: string): Promise<{ phone: string; hiddenAt: string }>;
-  updateClient(phone: string, name: string, nextPhone: string): Promise<void>;
+  updateClient(phone: string, name: string, nextPhone: string, address: string): Promise<void>;
   transaction<T>(work: (repository: AdministrationTransaction) => Promise<T>): Promise<T>;
 }
 export interface AdministrationTransaction {

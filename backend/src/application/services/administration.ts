@@ -21,6 +21,10 @@ export class AdministrationService implements AdministrationUseCases {
     requireAdministrator(actor);
     return this.repository.listUsers();
   }
+  listClientProfiles(actor: User) {
+    requireAdministrator(actor);
+    return this.repository.listClientProfiles();
+  }
   listHiddenClients(actor: User) {
     requireAdministrator(actor);
     return this.repository.listHiddenClients();
@@ -29,9 +33,14 @@ export class AdministrationService implements AdministrationUseCases {
     requireAdministrator(actor);
     return this.repository.hideClient(phone);
   }
-  updateClient(actor: User, phone: string, name: string, nextPhone: string) {
+  updateClient(actor: User, phone: string, name: string, nextPhone: string, address: string) {
     requireAdministrator(actor);
-    return this.repository.updateClient(phone, name.trim(), normalizePhone(nextPhone));
+    return this.repository.updateClient(
+      phone,
+      name.trim(),
+      normalizePhone(nextPhone),
+      address.trim(),
+    );
   }
   updateUser(actor: User, user: User) {
     requireAdministrator(actor);

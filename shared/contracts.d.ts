@@ -1,4 +1,45 @@
 export type Role = 'client' | 'admin' | 'driver';
+export type AccountingFinanceConfiguration = {
+  regime: 'auto' | 'informel' | 'suarl';
+  suarlFrom: string;
+  isRate: number;
+  start: string;
+  debt: number;
+  debtMonths: number;
+  fleetValue: number;
+  fleetYears: number;
+  newVehicleTarget: number;
+  profitCapPercent: number;
+  moverCostPerMove: number;
+  menuPrices: Record<
+    string,
+    {
+      local?: number;
+      import?: number;
+      sz?: Record<string, { local?: number; import?: number }>;
+    }
+  >;
+  salaries: { id: string; name: string; amount: number }[];
+  annexes: { id: string; label: string; value: number; years: number }[];
+  vehiclePurchases: { id: string; month: string; price: number }[];
+  advertising: Record<string, Record<string, number>>;
+};
+export type AccountingEntry = {
+  id: string;
+  type: 'charge' | 'revenu';
+  category: string;
+  label: string;
+  amount: number;
+  date: string;
+  automatic: boolean;
+  bookingId?: string;
+  reference?: string;
+  bookingReference?: string;
+};
+export type ManualAccountingInput = Pick<
+  AccountingEntry,
+  'type' | 'category' | 'label' | 'amount' | 'date'
+>;
 export type User = {
   id: string;
   name: string;
@@ -287,6 +328,12 @@ export type Quote = {
   notes: string;
   options?: Options;
   tolls?: QuoteTollLine[];
+  accountingCosts?: {
+    movers: number;
+    moverAmount: number;
+    carpenters: number;
+    carpenterAmount: number;
+  };
 };
 export type QuoteTollLine = {
   tollPointId: string;

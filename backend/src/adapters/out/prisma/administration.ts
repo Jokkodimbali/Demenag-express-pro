@@ -53,6 +53,13 @@ function transactionRepository(tx: Prisma.TransactionClient): AdministrationTran
 }
 export class PrismaAdministration implements AdministrationRepository {
   constructor(private db: PrismaClient) {}
+  async listClientProfiles() {
+    return (await this.db.profilClient.findMany({ orderBy: { modifieLe: 'desc' } })).map((row) => ({
+      phone: row.telephone,
+      name: row.nom,
+      address: row.adresse,
+    }));
+  }
   async listHiddenClients() {
     const rows = await this.db.clientMasque.findMany();
     return rows.map((row) => ({
@@ -71,7 +78,7 @@ export class PrismaAdministration implements AdministrationRepository {
     });
     return { phone: row.telephoneNormalise, hiddenAt: row.masqueLe.toISOString() };
   }
-  async updateClient(phone: string, name: string, nextPhone: string) {
+  async updateClient(phone: string, name: string, nextPhone: string, address: string) {
     const nextKey = phoneKey(nextPhone);
     try {
       await this.db.$transaction(
@@ -97,6 +104,7 @@ export class PrismaAdministration implements AdministrationRepository {
           }
           for (const row of matches) {
             const booking = row.donnees as Booking;
+            if (booking.customerName === name && booking.phone === nextPhone) continue;
             const result = await tx.reservation.updateMany({
               where: { id: row.id, version: row.version },
               data: {
@@ -112,6 +120,21 @@ export class PrismaAdministration implements AdministrationRepository {
             if (result.count !== 1)
               throw new AppError(409, 'La réservation a été modifiée. Actualisez la page.');
           }
+          const previousProfile = await tx.profilClient.findUnique({
+            where: { telephoneNormalise: phone },
+          });
+          await tx.profilClient.upsert({
+            where: { telephoneNormalise: nextKey },
+            create: {
+              telephoneNormalise: nextKey,
+              nom: name,
+              telephone: nextPhone,
+              adresse: address,
+            },
+            update: { nom: name, telephone: nextPhone, adresse: address },
+          });
+          if (phone !== nextKey && previousProfile)
+            await tx.profilClient.deleteMany({ where: { telephoneNormalise: phone } });
           await tx.clientMasque.deleteMany({ where: { telephoneNormalise: nextKey } });
         },
         { isolationLevel: 'Serializable' },

@@ -1,4 +1,7 @@
 import type {
+  AccountingEntry,
+  AccountingFinanceConfiguration,
+  ManualAccountingInput,
   Booking,
   BookingInput,
   BookingStatus,
@@ -18,6 +21,12 @@ import type {
   WorkPlanCompliance,
   WorkPlanReview,
 } from '../domain/model';
+import type { FinanceMonth } from '../domain/accounting-forecast';
+export type {
+  AccountingEntry,
+  AccountingFinanceConfiguration,
+  ManualAccountingInput,
+} from '../domain/model';
 export interface UserRepository {
   users(): Promise<User[]>;
   updateUser(user: User): Promise<User>;
@@ -30,7 +39,11 @@ export interface AdminProfileRepository {
 }
 export interface ClientDirectoryRepository {
   hiddenClients(): Promise<{ phone: string; hiddenAt: string }[]>;
-  updateClient(phone: string, input: { name: string; phone: string }): Promise<void>;
+  clientProfiles(): Promise<{ phone: string; name: string; address: string }[]>;
+  updateClient(
+    phone: string,
+    input: { name: string; phone: string; address: string },
+  ): Promise<void>;
   hideClient(phone: string): Promise<{ phone: string; hiddenAt: string }>;
 }
 export interface CatalogueRepository {
@@ -92,26 +105,12 @@ export interface BookingRepository {
     },
   ): Promise<Booking>;
 }
-export type AccountingEntry = {
-  id: string;
-  type: 'charge' | 'revenu';
-  category: string;
-  label: string;
-  amount: number;
-  date: string;
-  automatic: boolean;
-  bookingId?: string;
-  reference?: string;
-  bookingReference?: string;
-};
-export type ManualAccountingInput = Pick<
-  AccountingEntry,
-  'type' | 'category' | 'label' | 'amount' | 'date'
->;
 export interface AccountingRepository {
   accountingEntries(month?: string): Promise<AccountingEntry[]>;
   createAccountingEntry(input: ManualAccountingInput): Promise<AccountingEntry>;
   voidAccountingEntry(id: string): Promise<void>;
+  accountingConfiguration(): Promise<AccountingFinanceConfiguration | null>;
+  saveAccountingConfiguration(value: AccountingFinanceConfiguration): Promise<void>;
 }
 export type DriverCreation = Omit<Driver, 'id' | 'userId' | 'active'> & { password?: string };
 export type InspectionLevels = Record<string, 'good' | 'low' | 'empty'>;
@@ -218,3 +217,12 @@ export type QuoteExporter = (
   quote: Quote | undefined,
   settings: Settings,
 ) => Promise<Blob>;
+export type AccountingDocumentKind =
+  'journal' | 'gl' | 'bal' | 'cr' | 'bilan' | 'amort' | 'dette' | 'smt' | 'all';
+export type AccountingDocumentExporter = (
+  document: AccountingDocumentKind,
+  config: AccountingFinanceConfiguration,
+  months: FinanceMonth[],
+  entries: AccountingEntry[],
+  endMonth: string,
+) => Promise<void>;

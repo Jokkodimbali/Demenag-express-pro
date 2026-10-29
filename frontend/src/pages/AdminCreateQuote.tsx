@@ -46,6 +46,11 @@ const trafficDuration = (minutes: number) => {
 export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: boolean }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const initialClient = (
+    location.state as {
+      initialClient?: { name: string; phone: string; address: string };
+    } | null
+  )?.initialClient;
   const editingReservation = new URLSearchParams(location.search).has('modifier');
   const startNewRequest = Boolean(
     publicRequest &&
@@ -193,6 +198,18 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
     restoredDraft.current = true;
     skipInitialSave.current = true;
   }, [editingReservation, publicRequest, setDraft, setTollLines]);
+
+  useEffect(() => {
+    if (!initialClient) return;
+    setDraft((current) => ({
+      ...current,
+      customerName: initialClient.name,
+      customerPhone: initialClient.phone,
+      fromAddress: initialClient.address || current.fromAddress,
+    }));
+    setOpenQuoteSections((current) => ({ ...current, client: true }));
+    navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
+  }, [initialClient, location.pathname, location.search, navigate, setDraft]);
   useEffect(() => {
     if (!restoredDraft.current) return;
     if (skipInitialSave.current) {

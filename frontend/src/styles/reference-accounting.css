@@ -1,0 +1,506 @@
+.accounting-finance-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.accounting-history-warning {
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  color: #f8dfa0;
+  line-height: 1.5;
+  background: #342d1c;
+  border: 1px solid #806a2a;
+  border-radius: 10px;
+}
+.accounting-finance-save {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+.accounting-finance-accordion {
+  min-width: 0;
+  overflow: hidden;
+  background: #272a2e;
+  border: 1px solid #3b4046;
+  border-radius: clamp(14px, 4vw, 20px);
+}
+.accounting-finance-accordion-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 56px;
+  padding: 12px 18px;
+  color: #fff;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  flex-wrap: wrap;
+}
+.accounting-finance-accordion-head svg {
+  flex: 0 0 17px;
+  color: #f6d73c;
+  transition: transform 0.2s;
+  transform: rotate(-90deg);
+}
+.accounting-finance-accordion-head svg.open {
+  transform: rotate(0deg);
+}
+.accounting-finance-accordion-head strong {
+  font-size: 15px;
+}
+.accounting-finance-accordion-head span {
+  flex: 1 1 120px;
+  min-width: 120px;
+  color: #d5d9de;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: right;
+}
+.accounting-finance-accordion-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  padding: 0 18px 18px;
+}
+.accounting-finance-regimes {
+  display: flex;
+  align-self: flex-start;
+  gap: 4px;
+  max-width: 100%;
+  padding: 3px;
+  background: #1e2023;
+  border: 1px solid #3b4046;
+  border-radius: 12px;
+  flex-wrap: wrap;
+}
+.accounting-finance-regimes button {
+  min-height: 40px;
+  padding: 0 16px;
+  color: #d5d9de;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+  background: transparent;
+  border: 0;
+  border-radius: 9px;
+  cursor: pointer;
+}
+.accounting-finance-regimes button.active {
+  color: #1e2023;
+  background: #f6d73c;
+}
+.accounting-finance-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+.accounting-finance-fields label {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+  color: #aeb4bb;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.accounting-finance-fields input,
+.accounting-finance-edit-row input,
+.accounting-assembly-table input,
+.accounting-advertising-table input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 9px 11px;
+  color: #fff;
+  font: inherit;
+  font-size: 15px;
+  background: #1e2023;
+  border: 1px solid #3b4046;
+  border-radius: 10px;
+  outline: none;
+  color-scheme: dark;
+}
+.accounting-finance-fields input:focus,
+.accounting-finance-edit-row input:focus,
+.accounting-assembly-table input:focus,
+.accounting-advertising-table input:focus {
+  border-color: #f6d73c;
+}
+.accounting-finance-note {
+  margin: 0;
+  color: #d5d9de;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.accounting-finance-documents,
+.accounting-finance-documents > div {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.accounting-finance-documents > span,
+.accounting-finance-subheading,
+.accounting-assembly-table .assembly-head {
+  color: #aeb4bb;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+.accounting-finance-documents > div {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr));
+}
+.accounting-finance-documents button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 10px 12px;
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 700;
+  text-align: left;
+  background: #1e2023;
+  border: 1px solid #3b4046;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.accounting-finance-documents button svg {
+  flex: 0 0 16px;
+  color: #f6d73c;
+}
+.accounting-finance-documents .accounting-finance-download-all {
+  justify-content: center;
+  color: #1e2023;
+  font-size: 14.5px;
+  background: #f6d73c;
+  border: 0;
+  border-radius: 12px;
+}
+.accounting-finance-rule {
+  margin: 0;
+  color: #3ddc84;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.accounting-finance-rule.negative {
+  color: #ff5a5f;
+}
+.accounting-finance-rule.warning {
+  color: #ffd23f;
+}
+.accounting-finance-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  gap: 8px;
+}
+.accounting-finance-kpis article {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  background: #1e2023;
+  border-radius: 12px;
+}
+.accounting-finance-kpis article span {
+  color: #aeb4bb;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.accounting-finance-kpis article strong {
+  overflow-wrap: anywhere;
+  font-size: 16px;
+}
+.accounting-finance-obligations {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #30343a;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.accounting-finance-obligations > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #30343a;
+  flex-wrap: wrap;
+}
+.accounting-finance-obligations > div:last-child {
+  border-bottom: 0;
+}
+.accounting-finance-obligations > div > div {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 200px;
+  flex-direction: column;
+  gap: 2px;
+}
+.accounting-finance-obligations strong {
+  font-size: 14px;
+}
+.accounting-finance-obligations span {
+  color: #aeb4bb;
+  font-size: 12.5px;
+}
+.accounting-finance-obligations b {
+  padding: 3px 10px;
+  border: 1.5px solid currentColor;
+  border-radius: 999px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.accounting-finance-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.accounting-finance-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.accounting-finance-progress > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #d5d9de;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+.accounting-finance-track {
+  height: 8px;
+  overflow: hidden;
+  background: #1e2023;
+  border-radius: 4px;
+}
+.accounting-finance-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+.accounting-finance-buy {
+  min-height: 48px;
+  color: #1e2023;
+  font-size: 14.5px;
+  font-weight: 800;
+  background: #3ddc84;
+  border: 0;
+  border-radius: 12px;
+  cursor: pointer;
+}
+.accounting-finance-history-scroll,
+.accounting-assembly-scroll,
+.accounting-advertising-scroll {
+  min-width: 0;
+  overflow-x: auto;
+  border: 1px solid #30343a;
+  border-radius: 12px;
+}
+.accounting-finance-history {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.accounting-finance-history th {
+  padding: 8px 10px;
+  color: #aeb4bb;
+  text-align: left;
+  background: #1e2023;
+}
+.accounting-finance-history td {
+  padding: 8px 10px;
+  border-top: 1px solid #30343a;
+}
+.accounting-finance-subheading {
+  margin-top: 2px;
+}
+.accounting-finance-edit-row {
+  display: grid;
+  gap: 8px;
+  align-items: center;
+}
+.accounting-finance-edit-row.annex {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.3fr) minmax(0, 0.8fr) 44px;
+}
+.accounting-finance-edit-row.salary {
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) 44px;
+}
+.accounting-finance-remove {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  color: #ff5a5f;
+  background: transparent;
+  border: 1px solid #3b4046;
+  border-radius: 10px;
+  place-items: center;
+  cursor: pointer;
+}
+.accounting-finance-add {
+  display: flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  color: #f6d73c;
+  font-size: 13.5px;
+  font-weight: 800;
+  background: transparent;
+  border: 1.5px solid #f6d73c;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.accounting-assembly-table {
+  min-width: 380px;
+  font-size: 13px;
+}
+.accounting-assembly-table .assembly-head,
+.accounting-assembly-table .assembly-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1.4fr) minmax(110px, 1fr) minmax(110px, 1fr);
+  align-items: center;
+}
+.accounting-assembly-table .assembly-head > span {
+  padding: 8px 10px;
+  background: #1e2023;
+}
+.accounting-assembly-table .assembly-section {
+  display: block;
+  padding: 10px 10px 4px;
+  color: #f6d73c;
+  border-top: 1px solid #30343a;
+  font-size: 11.5px;
+  letter-spacing: 0.08em;
+}
+.accounting-assembly-table .assembly-row > span,
+.accounting-assembly-table .assembly-row > div:not(.assembly-sizes) {
+  padding: 6px 8px;
+  border-top: 1px solid #30343a;
+}
+.accounting-assembly-table .assembly-row > span {
+  font-weight: 700;
+}
+.accounting-assembly-table input {
+  min-height: 38px;
+  padding: 7px 9px;
+  font-size: 14px;
+}
+.accounting-assembly-table .assembly-sizes {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 6px;
+  padding: 0 8px 8px;
+  overflow-x: auto;
+}
+.accounting-assembly-table .assembly-sizes > span {
+  display: none;
+}
+.accounting-assembly-table .assembly-sizes article {
+  display: flex;
+  flex: 0 0 110px;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid #3b4046;
+  border-radius: 10px;
+}
+.accounting-assembly-table .assembly-sizes article > strong {
+  color: #fff;
+  text-align: center;
+  white-space: nowrap;
+}
+.accounting-assembly-table .assembly-sizes article label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.accounting-assembly-table .assembly-sizes article small {
+  color: #aeb4bb;
+  font-size: 11px;
+  font-weight: 800;
+}
+.accounting-finance-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 12px;
+  color: #d5d9de;
+  font-size: 14px;
+  background: #1e2023;
+  border-radius: 12px;
+}
+.accounting-finance-summary strong {
+  color: #fff;
+}
+.accounting-advertising-table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.accounting-advertising-table th,
+.accounting-advertising-table td {
+  padding: 7px 8px;
+  border-top: 1px solid #30343a;
+  text-align: left;
+  white-space: nowrap;
+}
+.accounting-advertising-table thead th {
+  color: #aeb4bb;
+  background: #1e2023;
+  border-top: 0;
+}
+.accounting-advertising-table tbody th {
+  font-weight: 800;
+}
+.accounting-advertising-table input {
+  min-height: 40px;
+  width: 130px;
+  font-size: 14px;
+}
+.accounting-finance-accordion button:focus-visible,
+.accounting-finance-accordion input:focus-visible {
+  outline: 2px solid #f6d73c;
+  outline-offset: 2px;
+}
+@media (max-width: 540px) {
+  .accounting-finance-accordion-head {
+    padding: 12px 14px;
+  }
+  .accounting-finance-accordion-head span {
+    flex-basis: 100%;
+    min-width: 0;
+    padding-left: 27px;
+    text-align: left;
+  }
+  .accounting-finance-accordion-body {
+    padding: 0 14px 14px;
+  }
+  .accounting-finance-edit-row.annex {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.7fr) 40px;
+  }
+  .accounting-finance-edit-row.annex input:first-child {
+    grid-column: 1 / -1;
+  }
+  .accounting-finance-remove {
+    width: 40px;
+    height: 42px;
+  }
+}

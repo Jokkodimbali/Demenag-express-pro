@@ -14,6 +14,8 @@
 @import './styles/reference-calendar.css';
 @import './styles/reference-plan.css';
 @import './styles/reference-employee.css';
+@import './styles/reference-admin-clients.css';
+@import './styles/reference-accounting.css';
 /* Journal comptable de l'administration */
 .accounting-page {
   display: grid;
@@ -58,7 +60,7 @@
 }
 .accounting-stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
   gap: 12px;
 }
 .accounting-stats article,
@@ -77,6 +79,9 @@
 .accounting-stats article:last-child {
   border-color: #f6d73c;
 }
+.accounting-stats article:last-child .accounting-positive {
+  color: #f6d73c;
+}
 .accounting-stats span {
   font-size: 12px;
   font-weight: 700;
@@ -92,14 +97,14 @@
   color: #aeb4bb;
 }
 .accounting-positive {
-  color: #7fd8a0;
+  color: #3ddc84;
 }
 .accounting-negative {
-  color: #ff8a8f;
+  color: #ff5a5f;
 }
 .accounting-columns {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
   gap: 16px;
   align-items: start;
 }
@@ -132,8 +137,13 @@
   cursor: pointer;
 }
 .accounting-type button.active {
-  background: #f6d73c;
   color: #1e2023;
+}
+.accounting-type button.active.charge {
+  background: #ff5a5f;
+}
+.accounting-type button.active.revenu {
+  background: #3ddc84;
 }
 .accounting-form-grid {
   display: grid;
@@ -190,7 +200,7 @@
   display: block;
   height: 100%;
   border-radius: 5px;
-  background: #ff8a8f;
+  background: #ff5a5f;
 }
 .accounting-journal-head {
   display: flex;
@@ -278,9 +288,6 @@
 }
 @media (max-width: 780px) {
   .accounting-columns {
-    grid-template-columns: 1fr;
-  }
-  .accounting-stats {
     grid-template-columns: 1fr;
   }
 }

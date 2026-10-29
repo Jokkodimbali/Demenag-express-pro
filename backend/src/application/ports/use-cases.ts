@@ -20,6 +20,7 @@ import type {
 } from '../../domain/model.js';
 import type {
   AccountingEntry,
+  AccountingFinanceConfiguration,
   BreakdownInput,
   ManualAccountingInput,
   VehicleInspectionInput,
@@ -29,6 +30,8 @@ export interface AccountingUseCases {
   list(actor: User, month?: string): Promise<AccountingEntry[]>;
   create(actor: User, input: ManualAccountingInput): Promise<AccountingEntry>;
   void(actor: User, id: string): Promise<void>;
+  configuration(actor: User): Promise<AccountingFinanceConfiguration | null>;
+  saveConfiguration(actor: User, value: AccountingFinanceConfiguration): Promise<void>;
 }
 export type AuthSession = { user: User; token: string };
 export interface AuthUseCases {
@@ -110,8 +113,15 @@ export interface MovingUseCases {
 export interface AdministrationUseCases {
   listUsers(actor: User): Promise<User[]>;
   listHiddenClients(actor: User): Promise<{ phone: string; hiddenAt: string }[]>;
+  listClientProfiles(actor: User): Promise<{ phone: string; name: string; address: string }[]>;
   hideClient(actor: User, phone: string): Promise<{ phone: string; hiddenAt: string }>;
-  updateClient(actor: User, phone: string, name: string, nextPhone: string): Promise<void>;
+  updateClient(
+    actor: User,
+    phone: string,
+    name: string,
+    nextPhone: string,
+    address: string,
+  ): Promise<void>;
   updateUser(actor: User, user: User): Promise<User>;
   createUser(actor: User, input: Omit<User, 'id'> & { password: string }): Promise<User>;
   resetClientPassword(actor: User, userId: string, password: string): Promise<void>;

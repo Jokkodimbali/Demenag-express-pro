@@ -1,4 +1,5 @@
 import type {
+  AccountingFinanceConfiguration,
   AccountingEntry,
   AccountingRepository,
   ManualAccountingInput,
@@ -95,5 +96,18 @@ export class PrismaAccounting implements AccountingRepository {
       data: { annuleLe: new Date() },
     });
     return result.count > 0;
+  }
+
+  async configuration(): Promise<AccountingFinanceConfiguration | null> {
+    const row = await this.db.configurationComptable.findUnique({ where: { identifiant: 'main' } });
+    return row ? (row.donnees as AccountingFinanceConfiguration) : null;
+  }
+
+  async saveConfiguration(value: AccountingFinanceConfiguration): Promise<void> {
+    await this.db.configurationComptable.upsert({
+      where: { identifiant: 'main' },
+      create: { identifiant: 'main', donnees: value },
+      update: { donnees: value },
+    });
   }
 }

@@ -14,18 +14,110 @@ import { apiRoutes } from './routes.js';
 import { adminPasswordResetSchema } from './validation/auth.js';
 import { accountSchema, createAccountSchema, userIdSchema } from './validation/administration.js';
 import { z } from 'zod';
+const accountingMonthValue = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
 const clientPhoneSchema = z.string().regex(/^\d{9}$/);
 const clientUpdateSchema = z.object({
   name: z.string().trim().min(2).max(100),
   phone: z.string().min(9).max(25),
+  address: z.string().trim().max(300).default(''),
 });
 const accountingMonthSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
-const accountingEntrySchema = z.object({
-  type: z.enum(['charge', 'revenu']),
-  category: z.string().trim().min(2).max(100),
+const accountingEntryFields = {
   label: z.string().trim().min(2).max(200),
   amount: z.number().int().positive().max(1_000_000_000),
   date: z.iso.date(),
+};
+const accountingEntrySchema = z.discriminatedUnion('type', [
+  z.object({
+    ...accountingEntryFields,
+    type: z.literal('charge'),
+    category: z.enum([
+      'Salaires',
+      'Manœuvres',
+      'Menuisier',
+      'Carburant',
+      'Entretien véhicule',
+      'Assurance',
+      'Loyer',
+      'Téléphone / Internet',
+      'Publicité',
+      'Péage / Parking',
+      'Impôts et taxes',
+      'Autre charge',
+    ]),
+  }),
+  z.object({
+    ...accountingEntryFields,
+    type: z.literal('revenu'),
+    category: z.enum(['Déménagement', 'Location véhicule', 'Autre revenu']),
+  }),
+]);
+const accountingConfigurationSchema = z.object({
+  regime: z.enum(['auto', 'informel', 'suarl']),
+  suarlFrom: z.union([z.literal(''), accountingMonthValue]),
+  isRate: z.number().min(0).max(100),
+  start: accountingMonthValue,
+  debt: z.number().int().min(0).max(10_000_000_000),
+  debtMonths: z.number().int().min(1).max(600),
+  fleetValue: z.number().int().min(0).max(10_000_000_000),
+  fleetYears: z.number().int().min(1).max(100),
+  newVehicleTarget: z.number().int().min(0).max(10_000_000_000),
+  profitCapPercent: z.number().min(0).max(100),
+  moverCostPerMove: z.number().int().min(0).max(1_000_000_000),
+  menuPrices: z.record(
+    z.string().max(80),
+    z.object({
+      local: z.number().int().min(0).max(1_000_000_000).optional(),
+      import: z.number().int().min(0).max(1_000_000_000).optional(),
+      sz: z
+        .record(
+          z.string().regex(/^\d{1,2}$/),
+          z.object({
+            local: z.number().int().min(0).max(1_000_000_000).optional(),
+            import: z.number().int().min(0).max(1_000_000_000).optional(),
+          }),
+        )
+        .optional(),
+    }),
+  ),
+  salaries: z
+    .array(
+      z.object({
+        id: z.string().min(1).max(64),
+        name: z.string().trim().max(120),
+        amount: z.number().int().min(0).max(1_000_000_000),
+      }),
+    )
+    .max(100),
+  annexes: z
+    .array(
+      z.object({
+        id: z.string().min(1).max(64),
+        label: z.string().trim().max(120),
+        value: z.number().int().min(0).max(10_000_000_000),
+        years: z.number().int().min(1).max(100),
+      }),
+    )
+    .max(100),
+  vehiclePurchases: z
+    .array(
+      z.object({
+        id: z.string().min(1).max(64),
+        month: accountingMonthValue,
+        price: z.number().int().min(0).max(10_000_000_000),
+      }),
+    )
+    .max(100),
+  advertising: z
+    .record(
+      accountingMonthValue,
+      z.record(z.string().max(80), z.number().int().min(0).max(1_000_000_000)),
+    )
+    .refine(
+      (entries) => Object.values(entries).every((value) => Object.keys(value).length <= 30),
+      'Trop de canaux publicitaires pour un mois.',
+    )
+    .refine((entries) => Object.keys(entries).length <= 240, 'Trop de périodes publicitaires.'),
 });
 export function registerAdminRoutes(
   app: Express,
@@ -38,6 +130,24 @@ export function registerAdminRoutes(
       req.query.month === undefined ? undefined : accountingMonthSchema.parse(req.query.month);
     res.json(await deps.accounting.list(getActor(res), month));
   });
+  app.get(
+    apiRoutes.administration.accountingConfiguration,
+    authenticate,
+    admin,
+    async (_req, res) => res.json(await deps.accounting.configuration(getActor(res))),
+  );
+  app.put(
+    apiRoutes.administration.accountingConfiguration,
+    authenticate,
+    admin,
+    async (req, res) => {
+      await deps.accounting.saveConfiguration(
+        getActor(res),
+        accountingConfigurationSchema.parse(req.body),
+      );
+      res.status(204).end();
+    },
+  );
   app.post(apiRoutes.administration.accounting, authenticate, admin, async (req, res) =>
     res
       .status(201)
@@ -63,6 +173,9 @@ export function registerAdminRoutes(
   app.get(apiRoutes.administration.users, authenticate, admin, async (_req, res) =>
     res.json(await deps.administration.listUsers(getActor(res))),
   );
+  app.get(apiRoutes.administration.clients, authenticate, admin, async (_req, res) =>
+    res.json(await deps.administration.listClientProfiles(getActor(res))),
+  );
   app.get(`${apiRoutes.administration.clients}/hidden`, authenticate, admin, async (_req, res) =>
     res.json(await deps.administration.listHiddenClients(getActor(res))),
   );
@@ -73,6 +186,7 @@ export function registerAdminRoutes(
       clientPhoneSchema.parse(req.params.phone),
       input.name,
       input.phone,
+      input.address,
     );
     res.status(204).end();
   });
@@ -114,7 +228,10 @@ export function registerAdminRoutes(
     res.json(await deps.catalogue.get());
   });
   app.delete(`${apiRoutes.catalogue}/vehicles/:id`, authenticate, admin, async (req, res) => {
-    const id = z.string().regex(/^[a-z0-9-]{1,30}$/).parse(req.params.id);
+    const id = z
+      .string()
+      .regex(/^[a-z0-9-]{1,30}$/)
+      .parse(req.params.id);
     await deps.catalogue.removeVehicle(getActor(res), id);
     res.status(204).end();
   });

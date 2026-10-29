@@ -1,7 +1,11 @@
 import { AppError } from '../../domain/errors.js';
 import type { User } from '../../domain/model.js';
 import { requireAdministrator } from '../../domain/policies/access.js';
-import type { AccountingRepository, ManualAccountingInput } from '../ports/index.js';
+import type {
+  AccountingFinanceConfiguration,
+  AccountingRepository,
+  ManualAccountingInput,
+} from '../ports/index.js';
 
 export class AccountingService {
   constructor(private repository: AccountingRepository) {}
@@ -20,5 +24,15 @@ export class AccountingService {
     requireAdministrator(actor);
     const changed = await this.repository.void(id);
     if (!changed) throw new AppError(404, 'Écriture manuelle introuvable ou déjà annulée.');
+  }
+
+  configuration(actor: User) {
+    requireAdministrator(actor);
+    return this.repository.configuration();
+  }
+
+  saveConfiguration(actor: User, value: AccountingFinanceConfiguration) {
+    requireAdministrator(actor);
+    return this.repository.saveConfiguration(value);
   }
 }

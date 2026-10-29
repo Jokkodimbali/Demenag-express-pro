@@ -91,6 +91,7 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
     requestPasswordReset: (phone) =>
       request(httpRoutes.authentication.passwordResetRequest, 'POST', { phone }),
     users: () => request(httpRoutes.users),
+    clientProfiles: () => request(httpRoutes.clients),
     hiddenClients: () => request(`${httpRoutes.clients}/hidden`),
     updateClient: (phone, input) => request(`${httpRoutes.clients}/${phone}`, 'PATCH', input),
     hideClient: (phone) => request(`${httpRoutes.clients}/${phone}`, 'DELETE'),
@@ -99,6 +100,9 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
       request(`${httpRoutes.accounting}${month ? `?month=${month}` : ''}`),
     createAccountingEntry: (input) => request(httpRoutes.accounting, 'POST', input),
     voidAccountingEntry: (id) => request(`${httpRoutes.accounting}/${id}`, 'DELETE'),
+    accountingConfiguration: () => request(httpRoutes.accountingConfiguration),
+    saveAccountingConfiguration: (value) =>
+      request(httpRoutes.accountingConfiguration, 'PUT', value),
     updateAdminProfile: (input) => request(httpRoutes.adminProfile, 'PUT', input),
     updateUser: (user) => request(`${httpRoutes.users}/${user.id}`, 'PUT', user),
     createUser: (user) => request(httpRoutes.users, 'POST', user),

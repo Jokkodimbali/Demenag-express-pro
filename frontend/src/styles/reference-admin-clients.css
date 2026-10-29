@@ -1,0 +1,226 @@
+.reference-clients-page {
+  width: 100%;
+  min-width: 0;
+  color: #fff;
+}
+.reference-clients-card {
+  background: #272a2e;
+  border: 1px solid #3b4046;
+  border-radius: clamp(14px, 4vw, 20px);
+  padding: clamp(14px, 4vw, 22px);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.reference-clients-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.reference-clients-heading > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.reference-clients-heading > div > span {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #f6d73c;
+}
+.reference-clients-heading small {
+  font-size: 13px;
+  color: #aeb4bb;
+}
+.reference-clients-heading > input {
+  flex: 0 1 340px;
+  min-width: 0;
+  background: #1e2023;
+  border: 1px solid #3b4046;
+  border-radius: 10px;
+  padding: 11px 12px;
+  color: #fff;
+  font-size: 14px;
+  outline: none;
+}
+.reference-clients-heading > input:focus {
+  border-color: #f6d73c;
+}
+.reference-clients-empty {
+  color: #aeb4bb;
+  font-size: 14px;
+}
+.reference-client-table-scroll {
+  overflow-x: auto;
+}
+.reference-clients-card table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  min-width: 1080px;
+  table-layout: auto;
+}
+.reference-clients-card th:nth-child(1),
+.reference-clients-card td:nth-child(1) {
+  width: 16%;
+}
+.reference-clients-card th:nth-child(2),
+.reference-clients-card td:nth-child(2) {
+  width: 19%;
+}
+.reference-clients-card th:nth-child(3),
+.reference-clients-card td:nth-child(3) {
+  width: 18%;
+}
+.reference-clients-card th:nth-child(4),
+.reference-clients-card td:nth-child(4) {
+  width: 12%;
+}
+.reference-clients-card th:nth-child(5),
+.reference-clients-card td:nth-child(5) {
+  width: 14%;
+}
+.reference-clients-card th:nth-child(6),
+.reference-clients-card td:nth-child(6) {
+  width: 10%;
+}
+.reference-clients-card th:nth-child(7),
+.reference-clients-card td:nth-child(7) {
+  width: 11%;
+}
+.reference-clients-card th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #aeb4bb;
+  border-bottom: 1px solid #3b4046;
+  white-space: nowrap;
+}
+.reference-clients-card td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #30343a;
+  vertical-align: middle;
+}
+.reference-client-edit {
+  display: block;
+  width: 100%;
+  min-width: 120px;
+  box-sizing: border-box;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 6px 8px;
+  color: #fff;
+  font-size: 14px;
+  outline: none;
+}
+.reference-client-edit.name {
+  width: auto;
+  max-width: none;
+  font-weight: 800;
+}
+.reference-client-edit.address {
+  min-width: 180px;
+}
+.reference-client-edit:focus {
+  border-color: #4a5057;
+  background: #1e2023;
+}
+.reference-client-phone {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.reference-client-phone > a {
+  color: #3ddc84;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.reference-client-reset {
+  background: transparent;
+  border: 1px solid #3b4046;
+  border-radius: 8px;
+  padding: 4px 8px;
+  color: #ffd23f;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.reference-client-number {
+  font-weight: 800;
+}
+.reference-client-amount {
+  white-space: nowrap;
+}
+.reference-client-amount strong,
+.reference-client-amount span {
+  display: block;
+}
+.reference-client-amount strong {
+  font-weight: 800;
+}
+.reference-client-amount span {
+  color: #3ddc84;
+  font-size: 12px;
+}
+.reference-client-last {
+  white-space: nowrap;
+  color: #d5d9de;
+}
+.reference-client-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+.reference-clients-card .pagination {
+  margin: 0;
+}
+.reference-client-quote {
+  white-space: nowrap;
+  background: #f6d73c;
+  color: #1e2023;
+  border: 0;
+  border-radius: 9px;
+  padding: 0 12px;
+  min-height: 36px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.reference-client-delete {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: 9px;
+  border: 1px solid #3b4046;
+  background: transparent;
+  color: #ff6b6b;
+  font-size: 16px;
+  cursor: pointer;
+}
+.reference-client-error {
+  display: block;
+  color: #ff6b6b;
+  font-size: 12px;
+  font-weight: 700;
+}
+.reference-clients-card button:focus-visible,
+.reference-clients-card input:focus-visible {
+  outline: 2px solid #f6d73c;
+  outline-offset: 2px;
+}
+@media (max-width: 640px) {
+  .reference-clients-heading > input {
+    flex: 1 1 100%;
+  }
+}

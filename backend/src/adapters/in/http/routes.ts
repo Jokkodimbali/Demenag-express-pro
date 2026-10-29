@@ -24,6 +24,7 @@ export const apiRoutes = {
   },
   administration: {
     accounting: '/api/admin/accounting',
+    accountingConfiguration: '/api/admin/accounting/configuration',
     users: '/api/admin/users',
     userPasswordReset: '/api/admin/users/:id/password-reset',
     clients: '/api/admin/clients',

@@ -293,6 +293,15 @@ model EcritureComptable {
   @@schema("demenag")
 }
 
+model ConfigurationComptable {
+  identifiant String   @id @default("main") @map("id")
+  donnees     Json     @default("{}") @map("data")
+  modifieLe   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("accounting_configuration")
+  @@schema("demenag")
+}
+
 model PointPeage {
   id              String   @id @default(uuid()) @db.Uuid
   nom             String   @map("name")
@@ -306,6 +315,17 @@ model PointPeage {
   modifieLe       DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("toll_points")
+  @@schema("demenag")
+}
+
+model ProfilClient {
+  telephoneNormalise String   @id @map("normalized_phone")
+  nom                String   @map("name")
+  telephone          String   @map("phone")
+  adresse            String   @default("") @map("address")
+  modifieLe          DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("client_profiles")
   @@schema("demenag")
 }
 

@@ -2,12 +2,13 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import type { Catalogue, TollPoint, User } from '../domain/model';
 import { blankDraft, type Draft } from './booking-draft';
 import { errorMessage } from './error-message';
-import type { ApplicationApi, QuoteExporter } from './ports';
+import type { AccountingDocumentExporter, ApplicationApi, QuoteExporter } from './ports';
 export { blankDraft } from './booking-draft';
 export type { Draft } from './booking-draft';
 type AppContextValue = {
   api: ApplicationApi;
   exportQuote: QuoteExporter;
+  exportAccounting: AccountingDocumentExporter;
   user: User | null;
   setUser: (value: User | null) => void;
   authLoading: boolean;
@@ -25,10 +26,12 @@ const AppContext = createContext<AppContextValue | null>(null);
 export function AppProvider({
   api,
   exportQuote,
+  exportAccounting,
   children,
 }: {
   api: ApplicationApi;
   exportQuote: QuoteExporter;
+  exportAccounting: AccountingDocumentExporter;
   children: ReactNode;
 }) {
   const [user, setUser] = useState<User | null>(null),
@@ -99,6 +102,7 @@ export function AppProvider({
       value={{
         api,
         exportQuote,
+        exportAccounting,
         user,
         setUser,
         authLoading,
