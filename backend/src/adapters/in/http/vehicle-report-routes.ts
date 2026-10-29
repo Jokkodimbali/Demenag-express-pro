@@ -2,7 +2,7 @@ import type { Express } from 'express';
 import type { Access } from './access.js';
 import { getActor } from './actor.js';
 import type { Dependencies } from './dependencies.js';
-import { breakdownSchema, vehicleInspectionSchema } from './schemas.js';
+import { breakdownSchema, vehicleInspectionSchema, employeeInspectionSchema } from './schemas.js';
 import { apiRoutes } from './routes.js';
 
 export function registerVehicleReportRoutes(
@@ -10,6 +10,16 @@ export function registerVehicleReportRoutes(
   deps: Pick<Dependencies, 'vehicleReports'>,
   access: Pick<Access, 'authenticate' | 'admin'>,
 ) {
+  app.post(`${apiRoutes.driver.inspections}/employee`, access.authenticate, async (req, res) =>
+    res
+      .status(201)
+      .json(
+        await deps.vehicleReports.submitInspection(
+          getActor(res),
+          employeeInspectionSchema.parse(req.body),
+        ),
+      ),
+  );
   app.get(apiRoutes.driver.inspections, access.authenticate, async (_req, res) =>
     res.json(await deps.vehicleReports.driverReports(getActor(res))),
   );

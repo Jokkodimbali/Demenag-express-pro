@@ -159,6 +159,11 @@ export interface DriverRepository {
   updateDriverProfile(input: Pick<Driver, 'name' | 'phone' | 'photo'>): Promise<Driver>;
   updateDriverAvailability(availability: NonNullable<Driver['availability']>): Promise<Driver>;
   driverBookings(): Promise<Booking[]>;
+  addEmployeeProofs(id: string, kind: 'retrait' | 'depot', photos: string[]): Promise<Booking>;
+  submitEmployeeInspection(input: {
+    vehicleId: string;
+    items: Record<string, { image: string; ok: boolean }>;
+  }): Promise<VehicleInspection>;
   driverReports(): Promise<VehicleReports>;
   submitVehicleInspection(
     input: Omit<

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useState } from 'react';
 import { useAccount } from '../application/controllers/useAccount';
 import { AdminProfileForm } from '../components/AdminProfileForm';
 import { ClientBookingCard } from '../components/ClientBookingCard';
@@ -6,6 +7,7 @@ import { messages } from '../content/fr';
 import { routes } from '../routing/routes';
 export function Account() {
   const { user, bookings, setBookings, loading, error, setRetry } = useAccount();
+  const [notice, setNotice] = useState('');
   if (user?.role === 'admin')
     return (
       <section className="container workspace-page">
@@ -21,12 +23,19 @@ export function Account() {
     );
   return (
     <section className="reference-client" data-screen-label="Espace client">
+      {notice && (
+        <div className="reference-client-toast" role="status">
+          {notice}
+        </div>
+      )}
       <div className="reference-client-heading">
         <div>
           <span>ESPACE CLIENT</span>
           <h1>MES DÉMÉNAGEMENTS</h1>
         </div>
-        <Link to={routes.booking}>Nouvelle réservation</Link>
+        <Link to={routes.booking} state={{ newRequest: true }}>
+          Nouvelle réservation
+        </Link>
       </div>
       {error && (
         <p className="reference-client-error" role="alert">
@@ -48,6 +57,7 @@ export function Account() {
             onChange={(next) =>
               setBookings((rows) => rows.map((row) => (row.id === next.id ? next : row)))
             }
+            onReminder={setNotice}
           />
         ))}
     </section>

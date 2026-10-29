@@ -2,7 +2,7 @@ import type { Express } from 'express';
 import type { Access } from './access.js';
 import { getActor } from './actor.js';
 import type { Dependencies } from './dependencies.js';
-import { driverAvailabilitySchema, driverProfileSchema } from './schemas.js';
+import { driverAvailabilitySchema, driverProfileSchema, employeeProofSchema } from './schemas.js';
 import { apiRoutes } from './routes.js';
 
 export function registerDriverRoutes(
@@ -10,6 +10,12 @@ export function registerDriverRoutes(
   deps: Pick<Dependencies, 'drivers'>,
   access: Pick<Access, 'authenticate'>,
 ) {
+  app.post(`${apiRoutes.driver.bookings}/:id/proofs`, access.authenticate, async (req, res) => {
+    const input = employeeProofSchema.parse(req.body);
+    res.json(
+      await deps.drivers.addProofs(getActor(res), String(req.params.id), input.kind, input.photos),
+    );
+  });
   app.get(apiRoutes.driver.profile, access.authenticate, async (_req, res) =>
     res.json(await deps.drivers.profile(getActor(res))),
   );

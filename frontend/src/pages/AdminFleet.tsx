@@ -282,6 +282,7 @@ export function AdminFleet() {
   const [newEmployee, setNewEmployee] = useState({
     name: '',
     phone: '',
+    password: '',
     address: '',
     role: 'manoeuvre' as TeamRole,
     authorizedVehicleIds: [] as string[],
@@ -646,11 +647,14 @@ export function AdminFleet() {
     const phone = newEmployee.phone.trim();
     if (!name) return setPageError('Indiquez le nom.');
     if (phone.replace(/\D/g, '').length < 9) return setPageError('Indiquez le téléphone.');
+    if (newEmployee.password.length < 10)
+      return setPageError('Choisissez un mot de passe initial d’au moins 10 caractères.');
     setPageError('');
     try {
       const created = await api.createDriver({
         name,
         phone,
+        password: newEmployee.password,
         photo: null,
         vehicleId: null,
         role: newEmployee.role,
@@ -667,6 +671,7 @@ export function AdminFleet() {
       setNewEmployee({
         name: '',
         phone: '',
+        password: '',
         address: '',
         role: 'manoeuvre',
         authorizedVehicleIds: [],
@@ -1715,6 +1720,17 @@ export function AdminFleet() {
                 value={newEmployee.phone}
                 onChange={(event) =>
                   setNewEmployee((value) => ({ ...value, phone: event.target.value }))
+                }
+              />
+              <input
+                placeholder="Mot de passe initial (10 caractères minimum)"
+                type="password"
+                autoComplete="new-password"
+                minLength={10}
+                maxLength={128}
+                value={newEmployee.password}
+                onChange={(event) =>
+                  setNewEmployee((value) => ({ ...value, password: event.target.value }))
                 }
               />
               <input

@@ -62,7 +62,9 @@ export function Home() {
                     >
                       <img src={item.image} alt="" />
                       <span>
-                        <strong>{item.name}</strong>
+                        <strong>
+                          {item.shortName || item.name.replace(/\s+(?:III|IV)$/i, '')}
+                        </strong>
                         <small>
                           {item.volume} · dès {money(item.prices[0])}
                         </small>
@@ -108,7 +110,7 @@ export function Home() {
                 <button
                   type="button"
                   className="button primary"
-                  onClick={() => navigate(routes.booking)}
+                  onClick={() => navigate(routes.booking, { state: { newRequest: true } })}
                 >
                   Continuer ma réservation
                 </button>
@@ -121,7 +123,7 @@ export function Home() {
       </section>
       {catalogue?.settings.bookingsEnabled !== false && vehicle && (
         <div className="reference-mobile-action">
-          <Link className="button primary" to={routes.booking}>
+          <Link className="button primary" to={routes.booking} state={{ newRequest: true }}>
             Continuer ma réservation
           </Link>
         </div>

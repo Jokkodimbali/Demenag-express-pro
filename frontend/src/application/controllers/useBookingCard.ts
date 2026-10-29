@@ -236,14 +236,16 @@ export function useBookingCard({
       setError(errorMessage(e));
     }
   }
-  async function recordReminder() {
-    if (busy) return;
+  async function recordReminder(): Promise<boolean> {
+    if (busy) return false;
     setError('');
     setBusy(true);
     try {
       onChange(await api.recordBookingReminder(b.id));
+      return true;
     } catch (e) {
       setError(errorMessage(e));
+      return false;
     } finally {
       setBusy(false);
     }

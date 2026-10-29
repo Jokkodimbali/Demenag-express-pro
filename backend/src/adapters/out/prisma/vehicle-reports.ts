@@ -20,24 +20,11 @@ export class PrismaVehicleReports implements VehicleReportRepository {
     date: string,
     input: VehicleInspectionInput,
   ) {
-    const row = await this.db.controleVehicule.upsert({
-      where: {
-        chauffeurId_dateControle: {
-          chauffeurId: driverId,
-          dateControle: new Date(`${date}T00:00:00.000Z`),
-        },
-      },
-      create: {
+    const row = await this.db.controleVehicule.create({
+      data: {
         chauffeurId: driverId,
         vehiculeId: vehicleId,
         dateControle: new Date(`${date}T00:00:00.000Z`),
-        niveaux: input.levels,
-        etatVehicule: input.condition,
-        observations: input.notes,
-        photos: input.photos,
-      },
-      update: {
-        vehiculeId: vehicleId,
         niveaux: input.levels,
         etatVehicule: input.condition,
         observations: input.notes,
@@ -86,7 +73,6 @@ export class PrismaVehicleReports implements VehicleReportRepository {
         where: { chauffeurId: driverId },
         include: inspectionInclude,
         orderBy: { creeLe: 'desc' },
-        take: 30,
       })
     ).map((r) => this.inspection(r));
   }
@@ -101,13 +87,9 @@ export class PrismaVehicleReports implements VehicleReportRepository {
     ).map((r) => this.breakdown(r));
   }
   async findInspection(driverId: string, date: string) {
-    const row = await this.db.controleVehicule.findUnique({
-      where: {
-        chauffeurId_dateControle: {
-          chauffeurId: driverId,
-          dateControle: new Date(`${date}T00:00:00.000Z`),
-        },
-      },
+    const row = await this.db.controleVehicule.findFirst({
+      where: { chauffeurId: driverId, dateControle: new Date(`${date}T00:00:00.000Z`) },
+      orderBy: { creeLe: 'desc' },
       include: inspectionInclude,
     });
     return row ? this.inspection(row) : null;

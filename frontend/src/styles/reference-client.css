@@ -7,6 +7,14 @@
   gap: clamp(14px, 4vw, 24px);
   color: #fff;
 }
+.reference-client-toast {
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #0e9f4a;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+}
 .reference-client-heading {
   display: flex;
   justify-content: space-between;
@@ -52,6 +60,7 @@
 }
 .reference-client-empty {
   color: #aeb4bb;
+  padding: clamp(14px, 4vw, 30px);
 }
 .reference-client-card {
   border: 1px solid #3b4046;
@@ -82,19 +91,19 @@
   font-weight: 800;
   overflow-wrap: anywhere;
 }
-.reference-client-status {
+.reference-client-card-top .reference-client-status {
   border-radius: 999px;
   padding: 7px 14px;
   font-size: 13px;
   font-weight: 800;
-  background: #f6d73c;
-  color: #1e2023;
+  border: 1px solid #ffd23f;
+  background: #3a3420;
+  color: #ffd23f;
 }
 .reference-client-status.completed {
-  background: #3ddc84;
-}
-.reference-client-status.cancelled {
-  background: #ff6b6b;
+  border-color: #3ddc84;
+  background: #0e3a22;
+  color: #3ddc84;
 }
 .reference-client-map {
   position: relative;
@@ -240,6 +249,73 @@
   border-radius: 10px;
   margin-top: 6px;
 }
+.reference-client-final-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 6px;
+}
+.reference-client-tolls {
+  margin-top: 6px;
+  overflow: hidden;
+  border: 1px solid #3b4046;
+  border-radius: 12px;
+}
+.reference-client-tolls-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 9px 12px;
+  background: #1e2023;
+}
+.reference-client-tolls-heading strong {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+.reference-client-tolls-heading span {
+  padding: 3px 9px;
+  border: 1px solid #4a5057;
+  border-radius: 999px;
+  color: #aeb4bb;
+  font-size: 10.5px;
+  font-weight: 800;
+}
+.reference-client-toll-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  padding: 8px 12px;
+  border-top: 1px solid #30343a;
+  color: #d5d9de;
+  font-size: 13.5px;
+}
+.reference-client-toll-line > span:first-child {
+  overflow-wrap: anywhere;
+}
+.reference-client-toll-line > span:nth-child(2),
+.reference-client-toll-line > strong {
+  white-space: nowrap;
+}
+.reference-client-toll-line > span:nth-child(2) {
+  color: #aeb4bb;
+}
+.reference-client-toll-line > strong {
+  color: #fff;
+}
+.reference-client-toll-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  border-top: 1px solid #30343a;
+  font-size: 14px;
+}
+.reference-client-toll-total strong:last-child {
+  color: #f6d73c;
+  white-space: nowrap;
+}
 .reference-client-error {
   color: #ffb2b2;
 }
@@ -254,6 +330,10 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+.reference-client-card-top > .reference-client-actions {
+  flex-direction: row;
+  align-items: center;
 }
 .reference-client-edit {
   display: inline-flex;

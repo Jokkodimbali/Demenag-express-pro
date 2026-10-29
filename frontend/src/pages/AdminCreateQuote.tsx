@@ -1,8 +1,8 @@
 import { ChevronDown, Warehouse } from 'lucide-react';
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useBookingForm } from '../application/useBookingForm';
-import { useApp } from '../application/context';
+import { blankDraft, useApp } from '../application/context';
 import {
   readAdminQuoteDraft,
   saveAdminQuoteDraft,
@@ -10,6 +10,7 @@ import {
 } from '../application/admin-quote-draft-storage';
 import { normalizedClientPhone } from '../application/services/client-summary';
 import { CallInventory } from '../components/booking/CallInventory';
+import { FleetVehicleImagePreview } from '../components/FleetVehicleDimensions';
 import { ClientQuestionnaire } from '../components/booking/ClientQuestionnaire';
 import { TollRateSelector } from '../components/TollRateSelector';
 import {
@@ -29,6 +30,8 @@ import { bookingInventorySnapshot, estimateMovingWork } from '../domain/moving-e
 import { defaultClientQuestions } from '../domain/questionnaire';
 import { quoteNotificationUrl } from '../application/services/quote-notification';
 import { whatsappNumber } from '../application/services/whatsapp';
+import { BookingConfirmation } from '../components/booking/BookingConfirmation';
+import { routes } from '../routing/routes';
 
 const RouteMap = lazy(() => import('../components/RouteMap'));
 const trafficDuration = (minutes: number) => {
@@ -40,9 +43,16 @@ const trafficDuration = (minutes: number) => {
     : `${remaining} min`;
 };
 
-export function AdminCreateQuote() {
+export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: boolean }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const editingReservation = new URLSearchParams(location.search).has('modifier');
+  const startNewRequest = Boolean(
+    publicRequest &&
+    !editingReservation &&
+    (location.state as { newRequest?: boolean } | null)?.newRequest,
+  );
+  const requestInitialized = useRef(false);
   const restoredDraft = useRef(false);
   const skipInitialSave = useRef(false);
   const [quoteConfig, setQuoteConfig] = useState<AdminQuoteConfig>({
@@ -60,7 +70,7 @@ export function AdminCreateQuote() {
   const whatsappWindow = useRef<Window | null>(null);
   const sendWhatsAppAfterSave = useRef(false);
   const [openQuoteSections, setOpenQuoteSections] = useState({
-    client: false,
+    client: publicRequest,
     route: false,
     tolls: false,
     options: false,
@@ -75,9 +85,9 @@ export function AdminCreateQuote() {
   const [trafficBusy, setTrafficBusy] = useState(false);
   const [trafficError, setTrafficError] = useState(false);
   const trafficRequest = useRef(0);
-  const { exportQuote, catalogue: appCatalogue } = useApp();
+  const { exportQuote, catalogue: appCatalogue, user } = useApp();
   const state = useBookingForm({
-    mode: 'admin-quote',
+    mode: publicRequest && user?.role !== 'admin' ? 'booking' : 'admin-quote',
     quoteConfig,
     quoteKind,
     onQuoteSaved: (booking) => {
@@ -118,6 +128,7 @@ export function AdminCreateQuote() {
     estimateError,
     submitError,
     submitting,
+    done,
     submit,
     tollLines,
     setTollLines,
@@ -128,6 +139,25 @@ export function AdminCreateQuote() {
     editLoading,
     editError,
   } = state;
+  useEffect(() => {
+    if (!startNewRequest || requestInitialized.current) return;
+    requestInitialized.current = true;
+    setDraft((current) => ({
+      ...blankDraft(),
+      vehicleId: current.vehicleId,
+      customerName: user?.role === 'client' ? user.name : '',
+      customerPhone: user?.role === 'client' ? user.phone : '',
+    }));
+    setQuoteConfig({
+      trips: 1,
+      discount: 0,
+      discountType: 'fcfa',
+      discountReason: '',
+      customPrice: null,
+      labourUnitPriceOverride: null,
+    });
+    navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
+  }, [location.pathname, location.search, navigate, setDraft, startNewRequest, user]);
   const canCreateFinal = Boolean(
     editingBooking?.status !== 'cancelled' &&
     !editingBooking?.quotes.some((quote) => quote.kind === 'final') &&
@@ -154,7 +184,7 @@ export function AdminCreateQuote() {
           : (draft.inventory.stairs ?? ('' as const)),
   };
   useEffect(() => {
-    const saved = editingReservation ? null : readAdminQuoteDraft();
+    const saved = editingReservation || publicRequest ? null : readAdminQuoteDraft();
     if (saved) {
       setDraft(saved.draft);
       setQuoteConfig(saved.quoteConfig);
@@ -162,15 +192,24 @@ export function AdminCreateQuote() {
     }
     restoredDraft.current = true;
     skipInitialSave.current = true;
-  }, [editingReservation, setDraft, setTollLines]);
+  }, [editingReservation, publicRequest, setDraft, setTollLines]);
   useEffect(() => {
     if (!restoredDraft.current) return;
     if (skipInitialSave.current) {
       skipInitialSave.current = false;
       return;
     }
-    saveAdminQuoteDraft({ draft, quoteConfig, tollLines });
-  }, [draft, quoteConfig, tollLines]);
+    if (!publicRequest) saveAdminQuoteDraft({ draft, quoteConfig, tollLines });
+  }, [draft, publicRequest, quoteConfig, tollLines]);
+
+  useEffect(() => {
+    if (!publicRequest || !user) return;
+    setDraft((current) => ({
+      ...current,
+      customerName: current.customerName || user.name || '',
+      customerPhone: current.customerPhone || user.phone || '',
+    }));
+  }, [publicRequest, setDraft, user]);
   useEffect(() => {
     const booking = state.editingBooking;
     if (!booking) return;
@@ -662,9 +701,41 @@ export function AdminCreateQuote() {
         </button>
       </div>
     );
+  if (publicRequest && catalogue.settings.bookingsEnabled === false && !editingReservation)
+    return (
+      <section className="reference-request-page">
+        <div className="booking-closed" role="status" aria-live="polite">
+          <p className="eyebrow">FORMULAIRE DE RÉSERVATION</p>
+          <h3>Les réservations sont temporairement fermées.</h3>
+          <Link className="button secondary" to={routes.home}>
+            Retour à l’accueil
+          </Link>
+        </div>
+      </section>
+    );
+  if (publicRequest && done)
+    return (
+      <div className="reference-request-page">
+        <BookingConfirmation booking={done} settings={catalogue.settings} isClient />
+      </div>
+    );
 
   return (
-    <div className="admin-quote-page">
+    <div className={`admin-quote-page${publicRequest ? ' reference-request-page' : ''}`}>
+      {publicRequest && (
+        <div className="reference-request-heading">
+          <div>
+            <span>RÉSERVATION</span>
+            <h2>MA DEMANDE DE DÉMÉNAGEMENT</h2>
+          </div>
+          <Link
+            className="reference-request-back"
+            to={editingReservation ? routes.account : routes.home}
+          >
+            {editingReservation ? 'Retour à mon espace' : 'Retour à l’accueil'}
+          </Link>
+        </div>
+      )}
       {editLoading && (
         <p className="panel loading" role="status">
           Chargement de la réservation…
@@ -688,6 +759,12 @@ export function AdminCreateQuote() {
             event.preventDefault();
             setOpenQuoteSections((current) => ({ ...current, client: true }));
             setStageError('Indiquez votre numéro de téléphone (9 chiffres).');
+            return;
+          }
+          if (publicRequest && !draft.date) {
+            event.preventDefault();
+            setOpenQuoteSections((current) => ({ ...current, client: true }));
+            setStageError('Choisissez une date.');
             return;
           }
           if (quoteKind === 'final' && (!draft.date || draft.noDate)) {
@@ -721,6 +798,63 @@ export function AdminCreateQuote() {
         className="admin-quote-layout"
       >
         <div className="admin-quote-fields">
+          {publicRequest && (
+            <section className="reference-request-vehicle">
+              <span>VÉHICULE</span>
+              <div className="reference-vehicle-list">
+                {catalogue.vehicles
+                  .filter((vehicle) => vehicle.active !== false)
+                  .map((vehicle) => (
+                    <button
+                      type="button"
+                      key={vehicle.id}
+                      className={draft.vehicleId === vehicle.id ? 'selected' : ''}
+                      aria-pressed={draft.vehicleId === vehicle.id}
+                      onClick={() => setDraft((current) => ({ ...current, vehicleId: vehicle.id }))}
+                    >
+                      <img src={vehicle.image} alt="" />
+                      <span>
+                        <strong>
+                          {vehicle.shortName || vehicle.name.replace(/\s+(?:III|IV)$/i, '')}
+                        </strong>
+                        <small>
+                          {vehicle.volume} · dès {money(vehicle.prices[0])}
+                        </small>
+                      </span>
+                    </button>
+                  ))}
+              </div>
+              <div className="reference-vehicle-detail reference-request-vehicle-detail">
+                <FleetVehicleImagePreview vehicle={selected} />
+                <strong>{selected.name.toUpperCase()}</strong>
+                <div className="reference-vehicle-facts">
+                  <span className="volume">{selected.volume}</span>
+                  <span>Longueur {selected.length}</span>
+                  <span>Hauteur {selected.height}</span>
+                  <span>Largeur {selected.width}</span>
+                  <span>Passages de roue {selected.wheelWidth}</span>
+                </div>
+                <div className="reference-prices">
+                  {selected.prices.map((amount, index) => (
+                    <span key={index}>
+                      {referenceTierLabels(catalogue.settings.distanceBounds)[index]} :{' '}
+                      <strong>{money(amount)}</strong>
+                    </span>
+                  ))}
+                  <span>
+                    {referenceTierLabels(catalogue.settings.distanceBounds)[3]} :{' '}
+                    <strong>Sur devis</strong>
+                  </span>
+                  <span>
+                    Manœuvre : <strong>{money(catalogue.settings.labourPrice)}</strong> / pers.
+                  </span>
+                  <span>
+                    Menuisier : <strong>{money(catalogue.settings.assemblyPrice)}</strong> / meuble
+                  </span>
+                </div>
+              </div>
+            </section>
+          )}
           <section className="admin-quote-card">
             <button
               className="admin-quote-section-toggle"
@@ -733,7 +867,9 @@ export function AdminCreateQuote() {
               <span>
                 {state.editingBooking
                   ? `DEVIS POUR ${state.editingBooking.reference}`
-                  : 'NOUVEAU DEVIS · CLIENT EN AGENCE'}
+                  : publicRequest
+                    ? 'VOS INFORMATIONS'
+                    : 'NOUVEAU DEVIS · CLIENT EN AGENCE'}
               </span>
             </button>
             {openQuoteSections.client && (
@@ -764,39 +900,41 @@ export function AdminCreateQuote() {
                       aria-label="Téléphone"
                     />
                   </div>
-                  <div className="admin-quote-source">
-                    <span>COMMENT LE CLIENT NOUS A CONNUS ?</span>
-                    <div>
-                      {[
-                        'Facebook',
-                        'YouTube',
-                        'Instagram',
-                        'Snapchat',
-                        'TikTok',
-                        'Autre pub',
-                        'Bouche-à-oreille',
-                        'Client fidèle',
-                        'Autre',
-                      ].map((source) => {
-                        const selected = draft.source === source;
-                        return (
-                          <button
-                            type="button"
-                            key={source}
-                            className={selected ? 'selected' : ''}
-                            onClick={() =>
-                              setDraft((current) => ({
-                                ...current,
-                                source: selected ? '' : source,
-                              }))
-                            }
-                          >
-                            {source}
-                          </button>
-                        );
-                      })}
+                  {!publicRequest && (
+                    <div className="admin-quote-source">
+                      <span>COMMENT LE CLIENT NOUS A CONNUS ?</span>
+                      <div>
+                        {[
+                          'Facebook',
+                          'YouTube',
+                          'Instagram',
+                          'Snapchat',
+                          'TikTok',
+                          'Autre pub',
+                          'Bouche-à-oreille',
+                          'Client fidèle',
+                          'Autre',
+                        ].map((source) => {
+                          const selected = draft.source === source;
+                          return (
+                            <button
+                              type="button"
+                              key={source}
+                              className={selected ? 'selected' : ''}
+                              onClick={() =>
+                                setDraft((current) => ({
+                                  ...current,
+                                  source: selected ? '' : source,
+                                }))
+                              }
+                            >
+                              {source}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
+                  )}
                   <div className="admin-quote-date-control">
                     {!draft.noDate && (
                       <input
@@ -855,22 +993,24 @@ export function AdminCreateQuote() {
                       }
                     />
                   </label>
-                  <div className="admin-quote-vehicles" role="group" aria-label="Véhicule">
-                    {catalogue.vehicles.map((vehicle) => (
-                      <button
-                        type="button"
-                        key={vehicle.id}
-                        disabled={vehicle.active === false}
-                        aria-pressed={draft.vehicleId === vehicle.id}
-                        className={draft.vehicleId === vehicle.id ? 'active' : ''}
-                        onClick={() =>
-                          setDraft((current) => ({ ...current, vehicleId: vehicle.id }))
-                        }
-                      >
-                        {vehicle.name.replace(/^(Mercedes|Renault) /, '')}
-                      </button>
-                    ))}
-                  </div>
+                  {!publicRequest && (
+                    <div className="admin-quote-vehicles" role="group" aria-label="Véhicule">
+                      {catalogue.vehicles.map((vehicle) => (
+                        <button
+                          type="button"
+                          key={vehicle.id}
+                          disabled={vehicle.active === false}
+                          aria-pressed={draft.vehicleId === vehicle.id}
+                          className={draft.vehicleId === vehicle.id ? 'active' : ''}
+                          onClick={() =>
+                            setDraft((current) => ({ ...current, vehicleId: vehicle.id }))
+                          }
+                        >
+                          {vehicle.name.replace(/^(Mercedes|Renault) /, '')}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 {recognizingClient && (
                   <p className="muted" role="status">
@@ -888,7 +1028,9 @@ export function AdminCreateQuote() {
             )}
           </section>
 
-          <section className="admin-quote-card">
+          <section
+            className={`admin-quote-card${publicRequest ? ' reference-request-route-card' : ''}`}
+          >
             <button
               className="admin-quote-section-toggle"
               type="button"
@@ -903,11 +1045,10 @@ export function AdminCreateQuote() {
               <div id="admin-quote-route-fields">
                 <Suspense fallback={<div className="map loading">Chargement de la carte…</div>}>
                   <RouteMap
-                    tollLines={tollLines}
-                    onTollToggle={onTollToggle}
+                    {...(!publicRequest ? { tollLines, onTollToggle } : {})}
+                    adminQuote
                     fromNote={draft.fromNote}
                     toNote={draft.toNote}
-                    adminQuote
                     onNoteChange={(side, value) =>
                       setDraft((current) => ({
                         ...current,
@@ -920,7 +1061,7 @@ export function AdminCreateQuote() {
                   className="button secondary small admin-quote-map-link"
                   target="_blank"
                   rel="noreferrer"
-                  href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(draft.fromAddress)}&destination=${encodeURIComponent(draft.toAddress)}`}
+                  href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(draft.from?.join(',') || draft.fromAddress || 'Dakar')}&destination=${encodeURIComponent(draft.to?.join(',') || draft.toAddress || 'Dakar')}&travelmode=driving`}
                 >
                   Vérifier dans Google Maps
                 </a>
@@ -932,7 +1073,7 @@ export function AdminCreateQuote() {
                     step="0.1"
                     placeholder="Distance km"
                     value={effectiveDistance ?? ''}
-                    disabled={!draft.route}
+                    disabled={!draft.route && !publicRequest}
                     aria-label="Distance du trajet en kilomètres"
                     onChange={(event) =>
                       setDraft((current) => ({
@@ -970,7 +1111,7 @@ export function AdminCreateQuote() {
                     </small>
                     <button
                       type="button"
-                      disabled={!googleMapsKey || !route || trafficBusy}
+                      disabled={!publicRequest && (!googleMapsKey || !route || trafficBusy)}
                       onClick={() => void refreshTraffic()}
                     >
                       Actualiser
@@ -985,7 +1126,7 @@ export function AdminCreateQuote() {
                     type="number"
                     min={1}
                     max={10000000}
-                    required
+                    required={!publicRequest}
                     value={quoteConfig.customPrice ?? ''}
                     onChange={(event) =>
                       setQuoteConfig((current) => ({
@@ -1001,32 +1142,36 @@ export function AdminCreateQuote() {
             )}
           </section>
 
-          <section className="admin-quote-card">
-            <div className="admin-quote-card-head">
-              <button
-                className="admin-quote-section-toggle"
-                type="button"
-                aria-expanded={openQuoteSections.tolls}
-                aria-controls="admin-quote-toll-fields"
-                onClick={() => toggleQuoteSection('tolls')}
-              >
-                <ChevronDown size={16} aria-hidden="true" />
-                <span>PÉAGES</span>
-              </button>
-              <strong>{totalTolls ? money(totalTolls) : ''}</strong>
-            </div>
-            {openQuoteSections.tolls && (
-              <div id="admin-quote-toll-fields">
-                <TollRateSelector
-                  lines={tollLines}
-                  onToggle={onTollToggle}
-                  roundTrips={quoteConfig.trips}
-                />
+          {!publicRequest && (
+            <section className="admin-quote-card">
+              <div className="admin-quote-card-head">
+                <button
+                  className="admin-quote-section-toggle"
+                  type="button"
+                  aria-expanded={openQuoteSections.tolls}
+                  aria-controls="admin-quote-toll-fields"
+                  onClick={() => toggleQuoteSection('tolls')}
+                >
+                  <ChevronDown size={16} aria-hidden="true" />
+                  <span>PÉAGES</span>
+                </button>
+                <strong>{totalTolls ? money(totalTolls) : ''}</strong>
               </div>
-            )}
-          </section>
+              {openQuoteSections.tolls && (
+                <div id="admin-quote-toll-fields">
+                  <TollRateSelector
+                    lines={tollLines}
+                    onToggle={onTollToggle}
+                    roundTrips={quoteConfig.trips}
+                  />
+                </div>
+              )}
+            </section>
+          )}
 
-          <section className="admin-quote-card admin-quote-services">
+          <section
+            className={`admin-quote-card admin-quote-services${publicRequest ? ' reference-request-options' : ''}`}
+          >
             <button
               className="admin-quote-section-toggle"
               type="button"
@@ -1046,12 +1191,12 @@ export function AdminCreateQuote() {
                       type="button"
                       aria-label="Retirer un aller-retour"
                       disabled={quoteConfig.trips <= 1}
-                      onClick={() =>
-                        setQuoteConfig((current) => ({
-                          ...current,
-                          trips: Math.max(1, current.trips - 1),
-                        }))
-                      }
+                      onClick={() => {
+                        const trips = Math.max(1, quoteConfig.trips - 1);
+                        setQuoteConfig((current) => ({ ...current, trips }));
+                        if (publicRequest)
+                          setDraft((current) => ({ ...current, estimatedTrips: trips }));
+                      }}
                     >
                       −
                     </button>
@@ -1060,12 +1205,12 @@ export function AdminCreateQuote() {
                       type="button"
                       aria-label="Ajouter un aller-retour"
                       disabled={quoteConfig.trips >= catalogue.settings.maxTrips}
-                      onClick={() =>
-                        setQuoteConfig((current) => ({
-                          ...current,
-                          trips: Math.min(catalogue.settings.maxTrips, current.trips + 1),
-                        }))
-                      }
+                      onClick={() => {
+                        const trips = Math.min(catalogue.settings.maxTrips, quoteConfig.trips + 1);
+                        setQuoteConfig((current) => ({ ...current, trips }));
+                        if (publicRequest)
+                          setDraft((current) => ({ ...current, estimatedTrips: trips }));
+                      }}
                     >
                       +
                     </button>
@@ -1108,86 +1253,104 @@ export function AdminCreateQuote() {
                     </div>
                   </div>
                 ))}
-                <div className="admin-quote-options-bottom">
-                  <div className="admin-quote-discount-panel">
-                    <div className="admin-quote-discount-heading">
-                      <strong>REMISE</strong>
-                      {quoteConfig.discount > 0 && (
-                        <span>
-                          − {money(previewDiscount)} sur {money(previewSubtotal)}
-                        </span>
-                      )}
-                    </div>
-                    <div className="admin-quote-discount-entry">
+                {!publicRequest && (
+                  <div className="admin-quote-options-bottom">
+                    <div className="admin-quote-discount-panel">
+                      <div className="admin-quote-discount-heading">
+                        <strong>REMISE</strong>
+                        {quoteConfig.discount > 0 && (
+                          <span>
+                            − {money(previewDiscount)} sur {money(previewSubtotal)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="admin-quote-discount-entry">
+                        <input
+                          type="number"
+                          min={0}
+                          value={quoteConfig.discount || ''}
+                          aria-label="Remise"
+                          placeholder={
+                            quoteConfig.discountType === 'pct' ? 'Remise en %' : 'Remise en FCFA'
+                          }
+                          onChange={(event) =>
+                            setQuoteConfig((current) => ({
+                              ...current,
+                              discount: Math.max(0, Number(event.target.value) || 0),
+                            }))
+                          }
+                        />
+                        <div
+                          className="admin-quote-discount-types"
+                          role="group"
+                          aria-label="Type de remise"
+                        >
+                          {(['fcfa', 'pct'] as const).map((type) => (
+                            <button
+                              key={type}
+                              type="button"
+                              className={quoteConfig.discountType === type ? 'selected' : ''}
+                              aria-pressed={quoteConfig.discountType === type}
+                              onClick={() =>
+                                setQuoteConfig((current) => ({ ...current, discountType: type }))
+                              }
+                            >
+                              {type === 'fcfa' ? 'FCFA' : '%'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                       <input
-                        type="number"
-                        min={0}
-                        value={quoteConfig.discount || ''}
-                        aria-label="Remise"
-                        placeholder={
-                          quoteConfig.discountType === 'pct' ? 'Remise en %' : 'Remise en FCFA'
-                        }
+                        className="admin-quote-discount-reason-input"
+                        type="text"
+                        maxLength={200}
+                        value={quoteConfig.discountReason}
+                        placeholder="Motif de la remise"
+                        aria-label="Motif de la remise"
                         onChange={(event) =>
                           setQuoteConfig((current) => ({
                             ...current,
-                            discount: Math.max(0, Number(event.target.value) || 0),
+                            discountReason: event.target.value,
                           }))
                         }
                       />
                       <div
-                        className="admin-quote-discount-types"
-                        role="group"
-                        aria-label="Type de remise"
+                        className="admin-quote-discount-reasons"
+                        aria-label="Motifs de remise proposés"
                       >
-                        {(['fcfa', 'pct'] as const).map((type) => (
-                          <button
-                            key={type}
-                            type="button"
-                            className={quoteConfig.discountType === type ? 'selected' : ''}
-                            aria-pressed={quoteConfig.discountType === type}
-                            onClick={() =>
-                              setQuoteConfig((current) => ({ ...current, discountType: type }))
-                            }
-                          >
-                            {type === 'fcfa' ? 'FCFA' : '%'}
-                          </button>
-                        ))}
+                        {['Client fidèle', 'Promotion', 'Geste commercial', 'Parrainage'].map(
+                          (reason) => (
+                            <button
+                              type="button"
+                              key={reason}
+                              aria-pressed={quoteConfig.discountReason === reason}
+                              onClick={() =>
+                                setQuoteConfig((current) => ({
+                                  ...current,
+                                  discountReason: reason,
+                                }))
+                              }
+                            >
+                              {reason}
+                            </button>
+                          ),
+                        )}
                       </div>
                     </div>
-                    <input
-                      className="admin-quote-discount-reason-input"
-                      type="text"
-                      maxLength={200}
-                      value={quoteConfig.discountReason}
-                      placeholder="Motif de la remise"
-                      aria-label="Motif de la remise"
+                    <textarea
+                      className="admin-quote-free-note"
+                      aria-label="Remarque libre"
+                      rows={3}
+                      maxLength={2000}
+                      value={draft.notes}
                       onChange={(event) =>
-                        setQuoteConfig((current) => ({
-                          ...current,
-                          discountReason: event.target.value,
-                        }))
+                        setDraft((current) => ({ ...current, notes: event.target.value }))
                       }
+                      placeholder="Remarque libre (ajoutée sous l'inventaire de la fiche d'appel)"
                     />
-                    <div
-                      className="admin-quote-discount-reasons"
-                      aria-label="Motifs de remise proposés"
-                    >
-                      {['Client fidèle', 'Promotion', 'Geste commercial', 'Parrainage'].map(
-                        (reason) => (
-                          <button
-                            type="button"
-                            key={reason}
-                            aria-pressed={quoteConfig.discountReason === reason}
-                            onClick={() =>
-                              setQuoteConfig((current) => ({ ...current, discountReason: reason }))
-                            }
-                          >
-                            {reason}
-                          </button>
-                        ),
-                      )}
-                    </div>
                   </div>
+                )}
+                {publicRequest && (
                   <textarea
                     className="admin-quote-free-note"
                     aria-label="Remarque libre"
@@ -1197,9 +1360,9 @@ export function AdminCreateQuote() {
                     onChange={(event) =>
                       setDraft((current) => ({ ...current, notes: event.target.value }))
                     }
-                    placeholder="Remarque libre (ajoutée sous l'inventaire de la fiche d'appel)"
+                    placeholder="Précisions utiles : étages, ascenseur, accès au camion, objets fragiles…"
                   />
-                </div>
+                )}
               </div>
             )}
           </section>
@@ -1212,57 +1375,64 @@ export function AdminCreateQuote() {
             quoteTrips={quoteConfig.trips}
             maxTrips={catalogue.settings.maxTrips}
             laborPlanning={catalogue.settings.movingLaborPlanning}
+            trafficDurationMinutes={traffic?.minutes}
+            audience={publicRequest ? 'client' : 'admin'}
+            referenceMode={publicRequest}
             labourPriceEditor={
-              <div className="admin-quote-labour-override">
-                <label htmlFor="admin-labour-unit-price">Prix par manœuvre (FCFA)</label>
-                <input
-                  id="admin-labour-unit-price"
-                  type="number"
-                  min="0"
-                  value={quoteConfig.labourUnitPriceOverride ?? ''}
-                  placeholder={String(labourPrice)}
-                  onChange={(event) =>
-                    setQuoteConfig((current) => ({
-                      ...current,
-                      labourUnitPriceOverride: event.target.value
-                        ? Math.max(0, Number(event.target.value)) || null
-                        : null,
-                    }))
-                  }
-                />
-                <small>Vide = grille admin ({money(labourPrice)})</small>
-              </div>
+              publicRequest ? undefined : (
+                <div className="admin-quote-labour-override">
+                  <label htmlFor="admin-labour-unit-price">Prix par manœuvre (FCFA)</label>
+                  <input
+                    id="admin-labour-unit-price"
+                    type="number"
+                    min="0"
+                    value={quoteConfig.labourUnitPriceOverride ?? ''}
+                    placeholder={String(labourPrice)}
+                    onChange={(event) =>
+                      setQuoteConfig((current) => ({
+                        ...current,
+                        labourUnitPriceOverride: event.target.value
+                          ? Math.max(0, Number(event.target.value)) || null
+                          : null,
+                      }))
+                    }
+                  />
+                  <small>Vide = grille admin ({money(labourPrice)})</small>
+                </div>
+              )
             }
             estimateInventory={estimateInventory}
             onApplyEstimate={(vehicleId, trips) => {
-              setDraft((current) => ({ ...current, vehicleId }));
+              setDraft((current) => ({ ...current, vehicleId, estimatedTrips: trips }));
               setQuoteConfig((current) => ({ ...current, trips }));
             }}
           />
-          <ClientQuestionnaire
-            questions={questionnaire}
-            answers={draft.questionnaireAnswers}
-            autoAnswers={questionnaireAutoAnswers}
-            autoQuestionIds={[
-              'name',
-              'phone',
-              'date',
-              'time',
-              'from',
-              'to',
-              'rep',
-              'dwelling',
-              'items',
-            ]}
-            open={questionnaireOpen}
-            onToggle={() => setQuestionnaireOpen((value) => !value)}
-            onChange={(id, value) =>
-              setDraft((current) => ({
-                ...current,
-                questionnaireAnswers: { ...current.questionnaireAnswers, [id]: value },
-              }))
-            }
-          />
+          {!publicRequest && (
+            <ClientQuestionnaire
+              questions={questionnaire}
+              answers={draft.questionnaireAnswers}
+              autoAnswers={questionnaireAutoAnswers}
+              autoQuestionIds={[
+                'name',
+                'phone',
+                'date',
+                'time',
+                'from',
+                'to',
+                'rep',
+                'dwelling',
+                'items',
+              ]}
+              open={questionnaireOpen}
+              onToggle={() => setQuestionnaireOpen((value) => !value)}
+              onChange={(id, value) =>
+                setDraft((current) => ({
+                  ...current,
+                  questionnaireAnswers: { ...current.questionnaireAnswers, [id]: value },
+                }))
+              }
+            />
+          )}
         </div>
 
         <aside className="admin-quote-aside">
@@ -1407,82 +1577,84 @@ export function AdminCreateQuote() {
                 : `Devis temporaire, calculé sur ${quoteConfig.trips} aller(s)-retour(s) estimé(s). Le transport est facturé par aller-retour effectué : le devis final, basé sur le nombre réel d'allers-retours, sera envoyé par Demenag Express à la fin du déménagement.`}
             </p>
           </div>
-          <section className="admin-quote-stage" aria-label="Étape actuelle du devis">
-            <span className="admin-quote-stage-label">ÉTAPE ACTUELLE</span>
-            <div className="admin-quote-stage-switch" role="group" aria-label="Type de devis">
-              <button
-                type="button"
-                aria-pressed={quoteKind === 'provisional'}
-                className={quoteKind === 'provisional' ? 'active provisional' : ''}
-                onClick={() => setQuoteKind('provisional')}
-              >
-                Provisoire
-              </button>
-              <button
-                type="button"
-                aria-pressed={quoteKind === 'final'}
-                className={quoteKind === 'final' ? 'active final' : ''}
-                disabled={Boolean(editingBooking?.quotes.some((quote) => quote.kind === 'final'))}
-                title={
-                  canCreateFinal
-                    ? undefined
-                    : 'Une date est nécessaire pour enregistrer un devis final.'
-                }
-                onClick={() => {
-                  setQuoteKind('final');
-                  setStageError('');
-                }}
-              >
-                Final
-              </button>
-            </div>
-            {quoteKind === 'final' && (
-              <span className="admin-quote-stage-instruction">
-                Indiquez le nombre réel d'allers-retours, puis enregistrez.
-              </span>
-            )}
-            <div className="admin-quote-stage-actions">
-              <button
-                type="button"
-                className="admin-quote-action-whatsapp"
-                disabled={submitting || estimating || editingLocked}
-                onClick={sendCurrentQuoteOnWhatsApp}
-              >
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
+          {!publicRequest && (
+            <section className="admin-quote-stage" aria-label="Étape actuelle du devis">
+              <span className="admin-quote-stage-label">ÉTAPE ACTUELLE</span>
+              <div className="admin-quote-stage-switch" role="group" aria-label="Type de devis">
+                <button
+                  type="button"
+                  aria-pressed={quoteKind === 'provisional'}
+                  className={quoteKind === 'provisional' ? 'active provisional' : ''}
+                  onClick={() => setQuoteKind('provisional')}
                 >
-                  <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
-                </svg>
-                Envoyer le devis {quoteKind === 'final' ? 'final' : 'provisoire'} sur WhatsApp
-              </button>
-            </div>
-            <span className="admin-quote-recipient">
-              Destinataire :{' '}
-              <strong>
-                {canSendQuoteWhatsApp
-                  ? `+${whatsappNumber(draft.customerPhone, catalogue?.settings.whatsappCountryCode ?? '221')}`
-                  : 'aucun numéro'}
-              </strong>
-            </span>
-            {stageError && (
-              <span className="admin-quote-stage-error" role="alert">
-                {stageError}
+                  Provisoire
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={quoteKind === 'final'}
+                  className={quoteKind === 'final' ? 'active final' : ''}
+                  disabled={Boolean(editingBooking?.quotes.some((quote) => quote.kind === 'final'))}
+                  title={
+                    canCreateFinal
+                      ? undefined
+                      : 'Une date est nécessaire pour enregistrer un devis final.'
+                  }
+                  onClick={() => {
+                    setQuoteKind('final');
+                    setStageError('');
+                  }}
+                >
+                  Final
+                </button>
+              </div>
+              {quoteKind === 'final' && (
+                <span className="admin-quote-stage-instruction">
+                  Indiquez le nombre réel d'allers-retours, puis enregistrez.
+                </span>
+              )}
+              <div className="admin-quote-stage-actions">
+                <button
+                  type="button"
+                  className="admin-quote-action-whatsapp"
+                  disabled={submitting || estimating || editingLocked}
+                  onClick={sendCurrentQuoteOnWhatsApp}
+                >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
+                  </svg>
+                  Envoyer le devis {quoteKind === 'final' ? 'final' : 'provisoire'} sur WhatsApp
+                </button>
+              </div>
+              <span className="admin-quote-recipient">
+                Destinataire :{' '}
+                <strong>
+                  {canSendQuoteWhatsApp
+                    ? `+${whatsappNumber(draft.customerPhone, catalogue?.settings.whatsappCountryCode ?? '221')}`
+                    : 'aucun numéro'}
+                </strong>
               </span>
-            )}
-            {pdfError && (
-              <span className="admin-quote-stage-error" role="alert">
-                {pdfError}
-              </span>
-            )}
-          </section>
+              {stageError && (
+                <span className="admin-quote-stage-error" role="alert">
+                  {stageError}
+                </span>
+              )}
+              {pdfError && (
+                <span className="admin-quote-stage-error" role="alert">
+                  {pdfError}
+                </span>
+              )}
+            </section>
+          )}
           {estimateError && (
             <p className="alert error" role="alert">
               {estimateError}
@@ -1494,24 +1666,37 @@ export function AdminCreateQuote() {
             </p>
           )}
           <button
-            className="button primary admin-quote-submit"
+            className={`button primary admin-quote-submit${publicRequest ? ' reference-request-submit' : ''}`}
             disabled={
-              submitting || estimating || editLoading || Boolean(editError) || editingLocked
+              submitting ||
+              estimating ||
+              editLoading ||
+              Boolean(editError) ||
+              editingLocked ||
+              (publicRequest && !editingReservation && catalogue.settings.bookingsEnabled === false)
             }
           >
-            {submitting
-              ? 'Enregistrement…'
-              : editingReservation
-                ? 'Enregistrer les modifications'
-                : 'Enregistrer'}
+            {publicRequest
+              ? submitting
+                ? 'Envoi…'
+                : editingReservation
+                  ? 'Envoyer les modifications'
+                  : 'Envoyer ma demande'
+              : submitting
+                ? 'Enregistrement…'
+                : editingReservation
+                  ? 'Enregistrer les modifications'
+                  : 'Enregistrer'}
           </button>
-          <button
-            type="button"
-            className="admin-quote-action-pdf"
-            onClick={() => void downloadCurrentQuote()}
-          >
-            {`Télécharger le PDF ${quoteKind === 'final' ? 'final' : 'provisoire'}`}
-          </button>
+          {!publicRequest && (
+            <button
+              type="button"
+              className="admin-quote-action-pdf"
+              onClick={() => void downloadCurrentQuote()}
+            >
+              {`Télécharger le PDF ${quoteKind === 'final' ? 'final' : 'provisoire'}`}
+            </button>
+          )}
         </aside>
       </form>
     </div>

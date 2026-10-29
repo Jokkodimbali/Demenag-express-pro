@@ -52,6 +52,86 @@ const overlayStyle = (position: number[], width: number, height: number) => ({
   transform: 'translate(-50%, -50%)',
 });
 
+export function FleetVehicleImagePreview({ vehicle }: { vehicle: Vehicle }) {
+  const dimensions = valuesOf(vehicle);
+  const overlays = vehicleOverlays[vehicle.id];
+  const profileDimensions: [number, number] = vehicle.id === 'trafic' ? [960, 365] : [960, 355];
+  const interiorDimensions: [number, number] = vehicle.id === 'trafic' ? [590, 342] : [560, 500];
+  const volume = vehicleCapacity(
+    dimensions.length,
+    dimensions.height,
+    dimensions.width,
+    dimensions.wheelWidth,
+  );
+
+  return (
+    <div className="fleet-dimension-images reference-request-vehicle-images">
+      <div
+        className="fleet-dimension-profile"
+        style={{ aspectRatio: assetRatio(vehicle.image, '960 / 355') }}
+      >
+        <img src={vehicle.image} alt={`Profil du ${vehicle.name}`} />
+        <span
+          className={`fleet-dimension-length${overlays ? ' is-asset-annotated' : ''}`}
+          style={
+            overlays
+              ? overlayStyle(overlays.profile, profileDimensions[0], profileDimensions[1])
+              : undefined
+          }
+        >
+          LONGUEUR <strong>{formatted(dimensions.length)} m</strong>
+        </span>
+        <span className="fleet-dimension-volume-chip">VOLUME ~{volume} m³</span>
+      </div>
+      <div
+        className="fleet-dimension-interior"
+        style={{ aspectRatio: assetRatio(vehicle.interior, '560 / 500') }}
+      >
+        <img src={vehicle.interior} alt={`Intérieur du ${vehicle.name}`} />
+        {!overlays && <span className="fleet-interior-view-label">VUE INTÉRIEURE</span>}
+        <span
+          className={`fleet-dimension-height${overlays ? ' is-asset-annotated' : ''}`}
+          style={
+            overlays
+              ? overlayStyle(
+                  [overlays.height[0], overlays.height[1], 171, 39],
+                  ...interiorDimensions,
+                )
+              : undefined
+          }
+        >
+          HAUTEUR <strong>{formatted(dimensions.height)} m</strong>
+        </span>
+        <span
+          className="fleet-dimension-width"
+          style={
+            overlays
+              ? overlayStyle([overlays.width[0], overlays.width[1], 169, 39], ...interiorDimensions)
+              : undefined
+          }
+        >
+          LARGEUR <strong>{formatted(dimensions.width)} m</strong>
+        </span>
+        <span
+          className="fleet-wheel-width"
+          style={
+            overlays
+              ? {
+                  ...overlayStyle(overlays.wheel, ...interiorDimensions),
+                  background: '#17191de8',
+                  color: '#fff',
+                  whiteSpace: 'nowrap',
+                }
+              : undefined
+          }
+        >
+          {formatted(dimensions.wheelWidth)} m entre passages de roue
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export function FleetVehicleDimensions({
   vehicle,
   disabled,
@@ -108,7 +188,18 @@ export function FleetVehicleDimensions({
     } catch {
       setSaved(false);
     }
-  }, [disabled, dirty, height, invalid, length, onSave, vehicle, volume, wheelWidth, width]);
+  }, [
+    dimensions.height,
+    dimensions.length,
+    dimensions.wheelWidth,
+    dimensions.width,
+    disabled,
+    dirty,
+    invalid,
+    onSave,
+    vehicle,
+    volume,
+  ]);
 
   useEffect(() => {
     if (invalid || !dirty || disabled) return;
@@ -220,14 +311,18 @@ export function FleetVehicleDimensions({
             {displayedLength} m × {displayedHeight} m × {displayedWidth} m = {shown(gross)} m³
           </span>
           <span>
-            Passages de roue : ({displayedWidth} m − {displayedWheelWidth} m) × 0,30 m ×{' '}
-            1,90 m = − {shown(wheelSpace)} m³
+            Passages de roue : ({displayedWidth} m − {displayedWheelWidth} m) × 0,30 m × 1,90 m = −{' '}
+            {shown(wheelSpace)} m³
           </span>
           <span>Parois et toit arrondis : × 0,95 = {volume}</span>
         </div>
       </div>
       <div className="fleet-dimension-management">{management}</div>
-      {saved && <span role="status" className="sr-only">Dimensions enregistrées.</span>}
+      {saved && (
+        <span role="status" className="sr-only">
+          Dimensions enregistrées.
+        </span>
+      )}
     </article>
   );
 }

@@ -29,8 +29,6 @@ export class DriverService implements DriverUseCases {
   async create(actor: User, input: DriverCreation) {
     requireAdministrator(actor);
     const phone = normalizePhone(input.phone);
-    if (input.password && input.role && input.role !== 'chauffeur')
-      throw new AppError(400, 'Seul un chauffeur peut recevoir un compte de connexion.');
     if (input.password && (await this.users.findByPhone(phone)))
       throw new AppError(409, messages.unCompteUtiliseDejaCeNumero);
     const user = input.password
@@ -71,11 +69,6 @@ export class DriverService implements DriverUseCases {
     requireAdministrator(actor);
     const current = await this.drivers.find(input.id);
     if (!current) throw new AppError(404, messages.chauffeurIntrouvable);
-    if (current.userId && (input.role ?? current.role ?? 'chauffeur') !== 'chauffeur')
-      throw new AppError(
-        400,
-        'Un compte de connexion ne peut rester associé qu’au rôle chauffeur.',
-      );
     const phone = await this.availablePhone(input.phone, current.userId);
     await this.releaseVehicle(input.vehicleId, current.id);
     const updated = await this.drivers.update({
@@ -151,14 +144,52 @@ export class DriverService implements DriverUseCases {
   }
   async bookings(actor: User) {
     const profile = await this.requireProfile(actor);
-    if (!profile.vehicleId) return [];
-    return this.bookingsRepository.list(undefined, profile.vehicleId);
+    const bookings = await this.bookingsRepository.list(undefined, undefined, false);
+    return bookings
+      .filter(
+        (booking) =>
+          booking.status !== 'cancelled' &&
+          (booking.driverId === profile.id ||
+            Object.values(booking.crew ?? {})
+              .flat()
+              .includes(profile.id)),
+      )
+      .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''));
+  }
+  async addProofs(actor: User, bookingId: string, kind: 'retrait' | 'depot', photos: string[]) {
+    const profile = await this.requireProfile(actor);
+    if ((profile.role ?? 'chauffeur') !== 'chauffeur')
+      throw new AppError(
+        403,
+        'Les photos de retrait et de dépôt sont réservées aux chauffeurs affectés.',
+      );
+    const booking = (await this.bookings(actor)).find((item) => item.id === bookingId);
+    if (!booking) throw new AppError(404, 'Mission introuvable.');
+    const createdAt = new Date().toISOString();
+    return this.bookingsRepository.update(
+      {
+        ...booking,
+        employeeProofs: [
+          ...photos.map((image) => ({
+            id: this.ids.next(),
+            employeeId: profile.id,
+            kind,
+            image,
+            createdAt,
+            note: '',
+          })),
+          ...(booking.employeeProofs ?? []),
+        ],
+      },
+      booking.version,
+    );
   }
   private async requireProfile(actor: User) {
     requireActiveUser(actor);
     if (actor.role !== 'driver') throw new AppError(403, messages.actionReserveeAuxChauffeurs);
     const profile = await this.drivers.findByUserId(actor.id);
     if (!profile) throw new AppError(404, messages.profilChauffeurIntrouvable);
+    if (!profile.active) throw new AppError(403, 'Ce compte employé est désactivé.');
     return profile;
   }
   private async availablePhone(value: string, userId: string | null) {

@@ -140,6 +140,12 @@ export interface DriverUseCases {
     availability: NonNullable<Driver['availability']>,
   ): Promise<Driver>;
   bookings(actor: User): Promise<Booking[]>;
+  addProofs(
+    actor: User,
+    bookingId: string,
+    kind: 'retrait' | 'depot',
+    photos: string[],
+  ): Promise<Booking>;
 }
 export interface VehicleReportUseCases {
   submitInspection(actor: User, input: VehicleInspectionInput): Promise<VehicleReportRecord>;

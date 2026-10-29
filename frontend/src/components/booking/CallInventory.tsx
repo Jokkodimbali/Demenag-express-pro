@@ -40,7 +40,10 @@ const inventorySizeRanges: Record<string, [number, number]> = {
 };
 const inventorySizeRange = (key: string, historicalMaximum?: number): [number, number] => {
   const item = inventoryItems.find((entry) => entry.key === key);
-  const [minimum, maximum] = inventorySizeRanges[key] ?? [1, item?.defaultSize ? item.defaultSize + 3 : 1];
+  const [minimum, maximum] = inventorySizeRanges[key] ?? [
+    1,
+    item?.defaultSize ? item.defaultSize + 3 : 1,
+  ];
   return [minimum, Math.max(maximum, historicalMaximum ?? maximum)];
 };
 
@@ -235,11 +238,13 @@ function InventoryHoverCard({
         Math.max(minimumSize, Math.min(size - 1, maximumSize - 2)),
         Math.max(minimumSize, Math.min(size - 1, maximumSize - 2)) + 1,
         Math.max(minimumSize, Math.min(size - 1, maximumSize - 2)) + 2,
-      ].filter((value) => value <= maximumSize).map((value) => ({
-        value,
-        label: `${value} ${value === 1 ? sizeLabel.replace(/s$/u, '') : sizeLabel}`,
-        hint: item.sizeName?.(value) ?? `${value} ${sizeLabel}`,
-      }))
+      ]
+        .filter((value) => value <= maximumSize)
+        .map((value) => ({
+          value,
+          label: `${value} ${value === 1 ? sizeLabel.replace(/s$/u, '') : sizeLabel}`,
+          hint: item.sizeName?.(value) ?? `${value} ${sizeLabel}`,
+        }))
     : [];
   const hasDismantleVolumeReduction = item.key !== 'climatiseur';
   const canDismantle = true;
@@ -278,7 +283,17 @@ function InventoryHoverCard({
     return () => {
       active = false;
     };
-  }, [scope, item.key, item.hasFormat, item.sizeLabel, size, minimumSize, maximumSize, hasVariants, defaultImageKey]);
+  }, [
+    scope,
+    item.key,
+    item.hasFormat,
+    item.sizeLabel,
+    size,
+    minimumSize,
+    maximumSize,
+    hasVariants,
+    defaultImageKey,
+  ]);
 
   const upload = async (key: string, file: File | undefined) => {
     if (!file) return;
@@ -332,7 +347,9 @@ function InventoryHoverCard({
               ? `${size} ${size === 1 ? item.sizeLabel.replace(/s$/u, '') : item.sizeLabel}${item.sizeName ? ` · ${item.sizeName(size)}` : ''}`
               : item.hasFormat
                 ? inventoryFormatHint(item.key, format) ||
-                  (inventoryFormats.find((option) => option.value === format)?.label.toLowerCase() ??
+                  (inventoryFormats
+                    .find((option) => option.value === format)
+                    ?.label.toLowerCase() ??
                     'standard')
                 : ''}
           </span>
@@ -342,87 +359,91 @@ function InventoryHoverCard({
               : 'Non démontable'}
           </small>
         </strong>
-      {(formatOptions.length > 0 || sizeOptions.length > 0) && (
-        <div className="inventory-hover-variants">
-          {formatOptions.map((option) => {
-            const active = option.value === format;
-            const imageKey = `${scope}:format:${option.value}`;
-            return (
+        {(formatOptions.length > 0 || sizeOptions.length > 0) && (
+          <div className="inventory-hover-variants">
+            {formatOptions.map((option) => {
+              const active = option.value === format;
+              const imageKey = `${scope}:format:${option.value}`;
+              return (
+                <div
+                  key={option.value}
+                  className={active ? 'active' : ''}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={active}
+                  onClick={() => onSelectFormat(option.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') onSelectFormat(option.value);
+                  }}
+                >
+                  {illustration(imageKey, `${item.label} ${option.label.toLowerCase()}`)}
+                  <strong>{option.label}</strong>
+                  <small>{inventoryFormatHint(item.key, option.value) || option.label}</small>
+                </div>
+              );
+            })}
+            {sizeOptions.map((option) => (
               <div
+                className={option.value === size ? 'active' : ''}
                 key={option.value}
-                className={active ? 'active' : ''}
                 role="button"
                 tabIndex={0}
-                aria-pressed={active}
-                onClick={() => onSelectFormat(option.value)}
+                aria-pressed={option.value === size}
+                onClick={() => onSelectSize(option.value)}
                 onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') onSelectFormat(option.value);
+                  if (event.key === 'Enter' || event.key === ' ') onSelectSize(option.value);
                 }}
               >
-                {illustration(imageKey, `${item.label} ${option.label.toLowerCase()}`)}
+                {illustration(`${scope}:size:${option.value}`, `${item.label} ${option.label}`)}
                 <strong>{option.label}</strong>
-                <small>{inventoryFormatHint(item.key, option.value) || option.label}</small>
+                <small>{option.hint}</small>
               </div>
-            );
-          })}
-          {sizeOptions.map((option) => (
-            <div
-              className={option.value === size ? 'active' : ''}
-              key={option.value}
-              role="button"
-              tabIndex={0}
-              aria-pressed={option.value === size}
-              onClick={() => onSelectSize(option.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') onSelectSize(option.value);
-              }}
-            >
-              {illustration(`${scope}:size:${option.value}`, `${item.label} ${option.label}`)}
-              <strong>{option.label}</strong>
-              <small>{option.hint}</small>
-            </div>
-          ))}
+            ))}
+          </div>
+        )}
+        {uploadError && (
+          <p className="inventory-image-error" role="alert">
+            {uploadError}
+          </p>
+        )}
+        {!item.hasFormat && !item.sizeLabel && (
+          <div className="inventory-hover-detail">
+            <strong>Volume moyen</strong>
+            <span>{volumeLabel(currentVolume)} / unité</span>
+          </div>
+        )}
+        {dismantle && canDismantle && item.key !== 'climatiseur' && (
+          <div className="inventory-hover-detail">
+            <strong>Démonté</strong>
+            <span>
+              {hasDismantleVolumeReduction ? `−${dismantlePercent} % appliqué` : 'volume inchangé'}
+            </span>
+          </div>
+        )}
+        {item.key === 'salon' && (
+          <div className="inventory-hover-detail">
+            <strong>Non empilable</strong>
+            <span>+25 % (rien ne se pose dessus)</span>
+          </div>
+        )}
+        <div className="inventory-hover-selection">
+          <strong>Votre sélection</strong>
+          <span>
+            {Math.max(1, quantity)} ×{' '}
+            {item.sizeLabel
+              ? `${size} ${size === 1 ? item.sizeLabel.replace(/s$/u, '') : item.sizeLabel}`
+              : item.hasFormat
+                ? inventoryFormatHint(item.key, format) ||
+                  (inventoryFormats
+                    .find((option) => option.value === format)
+                    ?.label.toLowerCase() ??
+                    'standard')
+                : 'standard'}
+            {dismantle && item.key !== 'climatiseur' ? ', démonté' : ''} ={' '}
+            {volumeLabel(currentVolume * Math.max(1, quantity))}
+          </span>
         </div>
-      )}
-      {uploadError && (
-        <p className="inventory-image-error" role="alert">
-          {uploadError}
-        </p>
-      )}
-      {!item.hasFormat && !item.sizeLabel && (
-        <div className="inventory-hover-detail">
-          <strong>Volume moyen</strong>
-          <span>{volumeLabel(currentVolume)} / unité</span>
-        </div>
-      )}
-      {dismantle && canDismantle && item.key !== 'climatiseur' && (
-        <div className="inventory-hover-detail">
-          <strong>Démonté</strong>
-          <span>{hasDismantleVolumeReduction ? `−${dismantlePercent} % appliqué` : 'volume inchangé'}</span>
-        </div>
-      )}
-      {item.key === 'salon' && (
-        <div className="inventory-hover-detail">
-          <strong>Non empilable</strong>
-          <span>+25 % (rien ne se pose dessus)</span>
-        </div>
-      )}
-      <div className="inventory-hover-selection">
-        <strong>Votre sélection</strong>
-        <span>
-          {Math.max(1, quantity)} ×{' '}
-          {item.sizeLabel
-            ? `${size} ${size === 1 ? item.sizeLabel.replace(/s$/u, '') : item.sizeLabel}`
-            : item.hasFormat
-              ? inventoryFormatHint(item.key, format) ||
-                (inventoryFormats.find((option) => option.value === format)?.label.toLowerCase() ??
-                  'standard')
-              : 'standard'}
-          {dismantle && item.key !== 'climatiseur' ? ', démonté' : ''} ={' '}
-          {volumeLabel(currentVolume * Math.max(1, quantity))}
-        </span>
-      </div>
-      {item.tip && <p>{item.tip}</p>}
+        {item.tip && <p>{item.tip}</p>}
       </div>
     </div>
   );
@@ -438,9 +459,11 @@ export function CallInventory({
   maxTrips,
   onApplyEstimate,
   laborPlanning,
+  trafficDurationMinutes,
   labourPriceEditor,
   estimateInventory,
   audience = 'admin',
+  referenceMode = false,
 }: {
   draft: Draft;
   setDraft: React.Dispatch<React.SetStateAction<Draft>>;
@@ -451,13 +474,15 @@ export function CallInventory({
   maxTrips: number;
   onApplyEstimate: (vehicleId: string, trips: number) => void;
   laborPlanning?: MovingLaborPlanningSettings;
+  trafficDurationMinutes?: number;
   labourPriceEditor?: ReactNode;
   estimateInventory?: Inventory;
   audience?: 'admin' | 'client';
+  referenceMode?: boolean;
 }) {
   const [customLabel, setCustomLabel] = useState('');
   const [inventoryError, setInventoryError] = useState('');
-  const [open, setOpen] = useState(audience === 'client');
+  const [open, setOpen] = useState(audience === 'client' && !referenceMode);
   const [openCustom, setOpenCustom] = useState(false);
   const [activeWidget, setActiveWidget] = useState<string | null>(null);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -471,7 +496,9 @@ export function CallInventory({
   };
   const dwellingTypes = ['Studio', 'F2', 'F3', 'F4', 'F5 et plus', 'Villa'];
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(sections.map((section) => [section, audience === 'client'])),
+    Object.fromEntries(
+      sections.map((section) => [section, audience === 'client' && !referenceMode]),
+    ),
   );
   const inventory = draft.inventory;
   const { api } = useApp();
@@ -480,20 +507,23 @@ export function CallInventory({
   useEffect(() => {
     if (audience !== 'admin' || !open || historyRequested.current) return;
     historyRequested.current = true;
-    void api.bookings().then((bookings) => {
-      const maximum: Record<string, number> = {};
-      bookings.forEach((booking) => {
-        const source = booking.inventorySnapshot?.sourceInventory;
-        if (!source) return;
-        Object.entries(source.entries).forEach(([key, entry]) => {
-          maximum[key] = Math.max(maximum[key] ?? 0, entry.size);
+    void api
+      .bookings()
+      .then((bookings) => {
+        const maximum: Record<string, number> = {};
+        bookings.forEach((booking) => {
+          const source = booking.inventorySnapshot?.sourceInventory;
+          if (!source) return;
+          Object.entries(source.entries).forEach(([key, entry]) => {
+            maximum[key] = Math.max(maximum[key] ?? 0, entry.size);
+          });
+          source.variants.forEach((entry) => {
+            maximum[entry.itemKey] = Math.max(maximum[entry.itemKey] ?? 0, entry.size);
+          });
         });
-        source.variants.forEach((entry) => {
-          maximum[entry.itemKey] = Math.max(maximum[entry.itemKey] ?? 0, entry.size);
-        });
-      });
-      setHistoricalSizeMaximum(maximum);
-    }).catch(() => undefined);
+        setHistoricalSizeMaximum(maximum);
+      })
+      .catch(() => undefined);
   }, [api, audience, open]);
   const update = (next: Inventory) => {
     if (
@@ -532,7 +562,7 @@ export function CallInventory({
     if (estimate?.trips) onApplyEstimate(selectedVehicleId, estimate.trips);
   };
   const clearInventory = () => {
-    if (audience === 'admin' && !window.confirm("Vider la fiche d'appel ?")) return;
+    if (!window.confirm("Vider la fiche d'appel ?")) return;
     setInventoryError('');
     setCustomLabel('');
     setActiveWidget(null);
@@ -585,20 +615,64 @@ export function CallInventory({
         crew: inventory.crew,
         startTime: draft.timeSlot,
         laborPlanning,
+        trafficDurationMinutes,
       })
     : null;
   const hasVolume = currentEstimate ? currentEstimate.volume > 0 : total > 0;
   const annexVolume = referenceAnnexVolume(inventory);
+  const countedObjectVolume =
+    Object.entries(inventory.entries).reduce(
+      (sum, [key, entry]) =>
+        sum + estimatedInventoryItemVolume(key, entry.size, !!entry.dismantle, entry.format) * entry.quantity,
+      0,
+    ) +
+    inventory.variants.reduce(
+      (sum, item) =>
+        sum +
+        estimatedInventoryItemVolume(item.itemKey, item.size, !!item.dismantle, item.format) *
+          item.quantity,
+      0,
+    ) +
+    inventory.custom.reduce(
+      (sum, item) =>
+        sum +
+        estimatedInventoryItemVolume('custom', 1, !!item.dismantle, item.format) * item.quantity,
+      0,
+    );
+  const volumeDetail = `Meubles et objets comptés ≈ ${countedObjectVolume.toFixed(1).replace('.', ',')} m³${annexVolume > 0 ? ` · effets annexes ≈ ${annexVolume.toFixed(1).replace('.', ',')} m³` : ''}`;
+  const quantityOf = (key: string) =>
+    (inventory.entries[key]?.quantity ?? 0) +
+    inventory.variants
+      .filter((item) => item.itemKey === key)
+      .reduce((sum, item) => sum + item.quantity, 0);
+  const inventoryChecks = [
+    ...(quantityOf('lit') > quantityOf('matelas')
+      ? [`${quantityOf('lit') - quantityOf('matelas')} lit(s) sans matelas compté : ajoutez-les si le client les emporte.`]
+      : []),
+    ...(quantityOf('table-manger') > 0 && quantityOf('chaise') === 0
+      ? ['Table à manger sans chaises : à vérifier avec le client.']
+      : []),
+    ...(!inventory.ready ? ['Demandez si le matériel sera prêt à être chargé.'] : []),
+    ...(!inventory.stairs ? ['Demandez si tout le matériel passe dans les escaliers.'] : []),
+    ...(inventory.stairs === 'non'
+      ? ['Objets qui ne passent pas les escaliers : prévoir démontage, corde ou monte-meuble.']
+      : []),
+    ...(!inventory.dwellingType
+      ? ["Type de logement non précisé : les sacs d'habits, la vaisselle et le linge ne sont pas estimés."]
+      : []),
+  ];
 
   return (
-    <section className="panel call-inventory">
+    <section className={`panel call-inventory${referenceMode ? ' reference-call-inventory' : ''}`}>
       <div className="inventory-heading">
         <div>
           <strong>
-            {audience === 'client' ? 'VOTRE INVENTAIRE' : "FICHE D'APPEL · INVENTAIRE"}
+            {audience === 'client' && !referenceMode
+              ? 'VOTRE INVENTAIRE'
+              : "FICHE D'APPEL · INVENTAIRE"}
           </strong>
           <span>
-            {audience === 'client'
+            {audience === 'client' && !referenceMode
               ? 'Indiquez les objets à déménager pour estimer le volume et les allers-retours.'
               : "Cochez et comptez pendant l'appel, le devis se remplit tout seul."}
           </span>
@@ -608,7 +682,7 @@ export function CallInventory({
           className="inventory-collapse"
           onClick={() => setOpen((value) => !value)}
         >
-          {audience === 'client'
+          {audience === 'client' && !referenceMode
             ? open
               ? 'Réduire'
               : 'Développer'
@@ -619,7 +693,7 @@ export function CallInventory({
       </div>
       {open && (
         <div className="inventory-content">
-          {audience === 'client' && (
+          {audience === 'client' && !referenceMode && (
             <p className="muted">
               Les montages de lit, armoire et bureau sélectionnés alimentent directement votre
               estimation.
@@ -701,7 +775,7 @@ export function CallInventory({
               <strong>
                 Type de logement <span>(facultatif)</span>
               </strong>
-              {annexVolume > 0 && audience === 'admin' && (
+              {annexVolume > 0 && (audience === 'admin' || referenceMode) && (
                 <span className="inventory-annex-volume">
                   + ≈ {annexVolume.toFixed(1).replace('.', ',')} m³ annexes
                 </span>
@@ -799,7 +873,7 @@ export function CallInventory({
                             onMouseEnter={() => enterInventoryItem(item.key)}
                             onMouseLeave={() => leaveInventoryItem(item.key)}
                           >
-                            {audience === 'client' && (
+                            {audience === 'client' && !referenceMode && (
                               <label className="inventory-item">
                                 <input
                                   type="checkbox"
@@ -815,7 +889,7 @@ export function CallInventory({
                               </label>
                             )}
                             <InventoryItemLabel
-                              estimate={(audience === 'admin'
+                              estimate={(audience === 'admin' || referenceMode
                                 ? referenceItemSubline
                                 : inventoryItemEstimate)(
                                 item,
@@ -830,13 +904,15 @@ export function CallInventory({
                                   className="inventory-item-name"
                                   aria-expanded={activeWidget === item.key}
                                   aria-label={
-                                    audience === 'admin'
+                                    audience === 'admin' || referenceMode
                                       ? `Ajouter ${item.label}`
                                       : `Voir les formats de ${item.label}`
                                   }
                                   onClick={() => {
-                                    if (audience === 'admin') {
-                                      setEntry(item.key, { quantity: Math.min(999, entry.quantity + 1) });
+                                    if (audience === 'admin' || referenceMode) {
+                                      setEntry(item.key, {
+                                        quantity: Math.min(999, entry.quantity + 1),
+                                      });
                                     } else {
                                       setActiveWidget((value) =>
                                         value === item.key ? null : item.key,
@@ -868,7 +944,7 @@ export function CallInventory({
                               sizeLabel={item.sizeLabel}
                               value={entry.size}
                               onChange={(size) => setEntry(item.key, { size })}
-                              showLabel={audience === 'admin'}
+                              showLabel={audience === 'admin' || referenceMode}
                               historicalMaximum={historicalSizeMaximum[item.key]}
                             />
                           )}
@@ -964,7 +1040,7 @@ export function CallInventory({
                                 })
                               }
                             >
-                              {audience === 'admin'
+                              {audience === 'admin' || referenceMode
                                 ? `+ Ajouter ${['table-basse', 'table-manger', 'chaise', 'bibliotheque', 'vitrine', 'coiffeuse', 'commode', 'television', 'cuisiniere', 'machine-laver'].includes(item.key) ? 'une' : 'un'} ${item.label.toLowerCase()}`
                                 : '+ Autre taille'}
                             </button>
@@ -987,7 +1063,7 @@ export function CallInventory({
                                 onMouseLeave={() => leaveInventoryItem(variant.id)}
                               >
                                 <InventoryItemLabel
-                                  estimate={(audience === 'admin'
+                                  estimate={(audience === 'admin' || referenceMode
                                     ? referenceItemSubline
                                     : inventoryItemEstimate)(
                                     item,
@@ -1002,12 +1078,15 @@ export function CallInventory({
                                       className="inventory-item-name"
                                       aria-expanded={activeWidget === variant.id}
                                       onClick={() => {
-                                        if (audience === 'admin') {
+                                        if (audience === 'admin' || referenceMode) {
                                           update({
                                             ...inventory,
                                             variants: inventory.variants.map((line) =>
                                               line.id === variant.id
-                                                ? { ...line, quantity: Math.min(999, line.quantity + 1) }
+                                                ? {
+                                                    ...line,
+                                                    quantity: Math.min(999, line.quantity + 1),
+                                                  }
                                                 : line,
                                             ),
                                           });
@@ -1055,7 +1134,7 @@ export function CallInventory({
                                   itemLabel={item.label}
                                   sizeLabel={item.sizeLabel}
                                   value={variant.size}
-                                  showLabel={audience === 'admin'}
+                                  showLabel={audience === 'admin' || referenceMode}
                                   historicalMaximum={historicalSizeMaximum[item.key]}
                                   onChange={(size) =>
                                     update({
@@ -1180,7 +1259,7 @@ export function CallInventory({
               </div>
             </details>
           ))}
-          {audience === 'admin' && inventory.custom.length > 0 && (
+          {(audience === 'admin' || referenceMode) && inventory.custom.length > 0 && (
             <button
               type="button"
               className="inventory-custom-section-toggle"
@@ -1198,7 +1277,7 @@ export function CallInventory({
           )}
           <div
             className={
-              audience === 'admin' && !openCustom
+              (audience === 'admin' || referenceMode) && !openCustom
                 ? 'inventory-custom-items is-closed'
                 : 'inventory-custom-items'
             }
@@ -1214,7 +1293,7 @@ export function CallInventory({
                   onMouseLeave={() => leaveInventoryItem(item.id)}
                 >
                   <InventoryItemLabel
-                    estimate={(audience === 'admin' ? referenceItemSubline : inventoryItemEstimate)(
+                    estimate={(audience === 'admin' || referenceMode ? referenceItemSubline : inventoryItemEstimate)(
                       {
                         key: 'custom',
                         label: item.label,
@@ -1233,7 +1312,7 @@ export function CallInventory({
                         className="inventory-item-name"
                         aria-expanded={activeWidget === item.id}
                         onClick={() => {
-                          if (audience === 'admin') {
+                          if (audience === 'admin' || referenceMode) {
                             update({
                               ...inventory,
                               custom: inventory.custom.map((line) =>
@@ -1259,7 +1338,7 @@ export function CallInventory({
                         plural: item.label,
                         section: 'Autres objets',
                         hasFormat: true,
-                        canDismantle: true,
+                    canDismantle: true,
                         volumeByFormat: [0.3, 0.5, 0.8],
                       }}
                       imageScope={`custom:${item.id}`}
@@ -1354,9 +1433,11 @@ export function CallInventory({
                 <button
                   type="button"
                   className={
-                    audience === 'admin' ? 'inventory-variant-add' : 'button secondary small'
+                    audience === 'admin' || referenceMode
+                      ? 'inventory-variant-add'
+                      : 'button secondary small'
                   }
-                  title={audience === 'admin' ? 'Retirer' : undefined}
+                  title={audience === 'admin' || referenceMode ? 'Retirer' : undefined}
                   onClick={() =>
                     update({
                       ...inventory,
@@ -1364,14 +1445,14 @@ export function CallInventory({
                     })
                   }
                 >
-                  {audience === 'admin' ? '×' : 'Supprimer'}
+                  {audience === 'admin' || referenceMode ? '×' : 'Supprimer'}
                 </button>
               </div>
             ))}
           </div>
           <div className="inventory-custom">
             <label>
-              {audience === 'client' && 'Autre objet'}
+              {audience === 'client' && !referenceMode && 'Autre objet'}
               <input
                 maxLength={120}
                 value={customLabel}
@@ -1391,7 +1472,7 @@ export function CallInventory({
           </div>
           <div className="inventory-flags">
             {inventoryFlags.map((flag) =>
-              audience === 'admin' ? (
+              audience === 'admin' || referenceMode ? (
                 <button
                   type="button"
                   key={flag.key}
@@ -1424,7 +1505,7 @@ export function CallInventory({
               ),
             )}
           </div>
-          {audience === 'admin' ? (
+          {audience === 'admin' || referenceMode ? (
             <div className="inventory-note-preview">
               {referenceInventoryNote(inventory, draft.fromAddress, draft.toAddress)}
               {currentEstimate?.volume
@@ -1451,12 +1532,15 @@ export function CallInventory({
               maxTrips={maxTrips}
               onApply={onApplyEstimate}
               laborPlanning={laborPlanning}
+              trafficDurationMinutes={trafficDurationMinutes}
+              volumeDetail={volumeDetail}
+              inventoryChecks={inventoryChecks}
               labourPriceEditor={labourPriceEditor}
               estimateInventory={estimateInventory}
             />
           )}
           <div className="inventory-footer">
-            {audience === 'client' && (
+            {audience === 'client' && !referenceMode && (
               <span>
                 Les lits, armoires et bureaux cochés « Démontage / montage » sont facturés.
               </span>

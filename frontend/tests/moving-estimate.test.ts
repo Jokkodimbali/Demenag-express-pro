@@ -30,6 +30,12 @@ test('l’estimation affichée sous un objet reprend le volume utilisé par le d
   assert.equal(inventoryFormatHint('custom', 'large'), 'plus grand que la moyenne');
 });
 
+test('les objets sans sélecteur de format gardent leur volume de référence', () => {
+  assert.equal(estimatedInventoryItemVolume('micro-ondes', 1, false, 'large'), 0.1);
+  assert.equal(estimatedInventoryItemVolume('ventilateur', 1, false, 'small'), 0.15);
+  assert.equal(estimatedInventoryItemVolume('gaz', 1, false, 'large'), 0.08);
+});
+
 test('les objets qui dépassent le gabarit sont signalés séparément pour chaque véhicule', () => {
   const inventory = blankInventory();
   inventory.entries.frigo = {
@@ -169,6 +175,27 @@ test('le nombre de manœuvres se recalcule automatiquement quand l’inventaire 
   assert.equal(smallInventory.recommendedCrew, 2);
   assert.equal(largerInventory.recommendedCrew, 3);
   assert.equal(largerInventory.crew, largerInventory.recommendedCrew);
+});
+
+test('deux véhicules en parallèle reprennent la solution proposée par la référence', () => {
+  const inventory = blankInventory();
+  inventory.dwellingType = 'Villa';
+  inventory.entries.salon = {
+    quantity: 15,
+    size: 5,
+    format: 'medium',
+    dismantle: false,
+  };
+  const single = estimateMovingWork(inventory, vehicle);
+  const parallel = estimateMovingWork(inventory, vehicle, null, {
+    parallelVehicles: 2,
+  });
+
+  assert.equal(single.trips, 6);
+  assert.equal(single.totalMinutes, 505);
+  assert.equal(parallel.crew, 12);
+  assert.equal(Math.round(parallel.handlingMinutes / 5) * 5, 225);
+  assert.equal(Math.round(parallel.rawTotalMinutes / 5) * 5, 250);
 });
 
 test('le choix manuel est conservé et reste comparé à la recommandation automatique', () => {

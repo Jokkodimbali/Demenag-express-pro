@@ -100,6 +100,8 @@ export interface DriverRepository {
   delete?(id: string): Promise<void>;
 }
 export type VehicleInspectionInput = {
+  vehicleId?: string;
+  reference?: boolean;
   levels: Record<string, 'good' | 'low' | 'empty'>;
   condition: 'good' | 'attention' | 'unsafe';
   notes: string;

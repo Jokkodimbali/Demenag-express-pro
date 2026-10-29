@@ -113,6 +113,13 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
     updateDriverAvailability: (availability) =>
       request(httpRoutes.driver.availability, 'PUT', availability),
     driverBookings: () => request(httpRoutes.driver.bookings),
+    addEmployeeProofs: (id, kind, photos) =>
+      request(`${httpRoutes.driver.bookings}/${encodeURIComponent(id)}/proofs`, 'POST', {
+        kind,
+        photos,
+      }),
+    submitEmployeeInspection: (input) =>
+      request(`${httpRoutes.driver.inspections}/employee`, 'POST', input),
     driverReports: () => request(httpRoutes.driver.inspections),
     submitVehicleInspection: (input) => request(httpRoutes.driver.inspections, 'POST', input),
     reportBreakdown: (input) => request(httpRoutes.driver.breakdowns, 'POST', input),

@@ -2,6 +2,156 @@
   color: #fff;
   position: relative;
 }
+.reference-request-page {
+  width: 100%;
+  max-width: 1320px;
+  margin-inline: auto;
+  padding: clamp(20px, 5vw, 40px) 14px 64px;
+}
+.reference-request-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: clamp(14px, 4vw, 24px);
+  flex-wrap: wrap;
+}
+.reference-request-heading > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.reference-request-heading > div > span {
+  color: #f6d73c;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+.reference-request-heading h2 {
+  margin: 0;
+  font-family: Anton, Impact, sans-serif;
+  font-size: clamp(30px, 8vw, 46px);
+  font-weight: 400;
+  line-height: 1;
+}
+.reference-request-heading > .reference-request-back {
+  border: 1.5px solid #4a5057;
+  border-radius: 12px;
+  padding: 12px 18px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.reference-request-vehicle > span {
+  color: #aeb4bb;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+.reference-request-vehicle {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: clamp(14px, 4vw, 22px);
+  background: #272a2e;
+  border: 1px solid #3b4046;
+  border-radius: clamp(14px, 4vw, 20px);
+}
+.reference-request-page .reference-vehicle-list {
+  max-width: none;
+}
+.reference-request-page .reference-vehicle-list button {
+  align-items: stretch;
+  flex-direction: column;
+  padding: 10px;
+  cursor: pointer;
+}
+.reference-request-page .reference-vehicle-list button.selected {
+  background: #30343a;
+}
+.reference-request-page .reference-vehicle-list img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 960 / 355;
+  background: #222428;
+}
+.reference-request-page .reference-vehicle-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: none;
+  margin: 0;
+  padding: 12px;
+  background: #1e2023;
+}
+.reference-request-page .reference-vehicle-images img {
+  min-width: 0;
+  align-self: start;
+}
+.reference-request-vehicle-images {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+}
+.reference-request-vehicle-images .fleet-dimension-interior {
+  width: 100%;
+}
+.reference-request-page .reference-vehicle-detail > strong {
+  margin-top: 0;
+}
+.reference-request-options {
+  padding: 6px 22px 18px !important;
+}
+.reference-request-route-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.reference-request-route-card > #admin-quote-route-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.reference-request-route-card .route-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 0;
+}
+.reference-request-route-card .map-shell {
+  border: 1px solid #3b4046;
+  border-radius: 14px;
+  background: #30343a;
+}
+.reference-request-route-card .admin-quote-map-link {
+  align-self: flex-start;
+  margin: 0;
+  border: 1.5px solid #4a5057;
+  border-radius: 10px;
+  padding: 10px 16px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.reference-request-route-card .admin-quote-distance-editor {
+  margin: 0;
+}
+.reference-request-submit {
+  position: fixed;
+  right: clamp(14px, 3vw, 28px);
+  bottom: clamp(14px, 3vw, 28px);
+  z-index: 1400;
+  width: auto;
+  min-height: 54px;
+  padding: 0 26px;
+  border: 0;
+  border-radius: 14px;
+  background: #f6d73c;
+  color: #1e2023;
+  font-size: 16px;
+  box-shadow: 0 6px 20px #0007;
+}
 .reference-toll-point-host {
   border: 0;
   background: transparent;
@@ -179,6 +329,11 @@
 .admin-quote-page .call-inventory .inventory-dwelling-type > div:first-child {
   justify-content: space-between;
   flex-wrap: wrap;
+  min-width: 0;
+}
+.admin-quote-page .call-inventory .inventory-dwelling-type,
+.admin-quote-page .call-inventory .inventory-dwelling-options {
+  min-width: 0;
 }
 .admin-quote-page .call-inventory .inventory-dwelling-type .inventory-annex-volume {
   color: #f6d73c;
@@ -187,6 +342,8 @@
 }
 .admin-quote-page .call-inventory .inventory-dwelling-type .inventory-check {
   align-items: flex-start;
+  min-width: 0;
+  white-space: normal;
 }
 .admin-quote-page .call-inventory .inventory-dwelling-type .inventory-check input {
   width: 22px;
@@ -402,6 +559,127 @@
   font-size: 14px;
   line-height: 1.6;
   white-space: pre-wrap;
+}
+.admin-quote-page .call-inventory .inventory-heading {
+  min-height: 40px;
+  gap: 12px;
+}
+.admin-quote-page .call-inventory .inventory-heading > div > strong {
+  letter-spacing: 0.12em;
+}
+.admin-quote-page .reference-call-inventory .inventory-item-name {
+  cursor: pointer;
+}
+.admin-quote-page .call-inventory .inventory-custom {
+  flex-wrap: nowrap;
+  margin-top: 0;
+}
+.admin-quote-page .call-inventory .inventory-custom label {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+}
+.admin-quote-page .call-inventory .inventory-custom input {
+  min-height: 0;
+  height: 44px;
+  margin-top: 0;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 400;
+}
+.admin-quote-page .call-inventory .inventory-custom > button {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1.5px solid #4a5057;
+  border-radius: 10px;
+  background: transparent;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+}
+.admin-quote-page .call-inventory .inventory-access-card .inventory-check {
+  margin: 0;
+  color: #d5d9de;
+  font-size: 14px;
+  font-weight: 400;
+}
+.admin-quote-page .call-inventory .inventory-access-card .inventory-check input {
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  border: 1.5px solid #4a5057;
+  border-radius: 6px;
+  background: transparent;
+}
+.admin-quote-page .call-inventory .inventory-access-card .inventory-check input:checked {
+  border-color: #f6d73c;
+  background: #f6d73c;
+}
+.admin-quote-page .call-inventory .inventory-access-card .inventory-check input:checked::after {
+  display: block;
+  color: #1e2023;
+  content: '✓';
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 19px;
+  text-align: center;
+}
+.admin-quote-page .call-inventory .inventory-footer > button {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1.5px solid #3b4046;
+  border-radius: 10px;
+  background: transparent;
+  color: #aeb4bb;
+  font-size: 14px;
+  font-weight: 700;
+}
+.admin-quote-page .call-inventory .inventory-footer {
+  margin-top: 0;
+}
+.admin-quote-page .call-inventory .inventory-item-name {
+  cursor: pointer;
+}
+.admin-quote-page .call-inventory .inventory-size-stepper button {
+  width: 32px;
+  height: 32px;
+}
+.admin-quote-page .call-inventory .inventory-size-stepper output {
+  min-width: 78px;
+}
+.admin-quote-page .call-inventory .inventory-format-selector button {
+  min-height: 32px;
+  padding-inline: 10px;
+  font-size: 13px;
+  font-weight: 800;
+}
+.admin-quote-page .call-inventory .inventory-quantity {
+  gap: 6px;
+}
+.admin-quote-page .call-inventory .inventory-quantity button {
+  width: 40px;
+  height: 40px;
+  border-radius: 9px;
+}
+.admin-quote-page .call-inventory .inventory-quantity output {
+  min-width: 26px;
+}
+.admin-quote-page .call-inventory .inventory-variant-add {
+  min-height: 40px;
+}
+.admin-quote-page .moving-estimate-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  background: #272a2e;
+  color: #f6d73c;
+  font-size: 12.5px;
+  line-height: 1.4;
 }
 .admin-workspace:has(.admin-quote-page) {
   width: 100%;
@@ -1678,14 +1956,28 @@
   font-size: 20px;
 }
 .moving-vehicle-warning {
-  padding: 8px;
-  border: 1px solid #ff8a8f;
-  border-radius: 8px;
-  background: #3a2528;
-  color: #ff8a8f;
-  font-size: 11px;
+  color: #ff5a5f;
+  font-size: 11.5px;
   font-weight: 700;
-  line-height: 1.4;
+  line-height: 1.35;
+}
+.moving-vehicle-apply {
+  min-height: 40px;
+  border: 1.5px solid #f6d73c;
+  border-radius: 9px;
+  background: #f6d73c;
+  color: #1e2023;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.moving-vehicle-apply.applied {
+  background: transparent;
+  color: #f6d73c;
+}
+.moving-vehicle-apply:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 .moving-vehicle-current {
   min-height: 14px;
@@ -1843,6 +2135,62 @@
   color: #aeb4bb;
   font-size: 12px;
   line-height: 1.5;
+}
+.moving-method > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.moving-plan-late {
+  color: #ff5a5f;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.moving-alternatives {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid #3b4046;
+  border-radius: 10px;
+  background: #272a2e;
+}
+.moving-alternatives > strong {
+  color: #ff5a5f;
+  font-size: 13px;
+}
+.moving-alternative {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding-top: 8px;
+  border-top: 1px solid #3b4046;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.moving-alternative > span {
+  flex: 1 1 200px;
+}
+.moving-alternative > strong {
+  color: #f6d73c;
+}
+.moving-alternative > strong.success {
+  color: #3ddc84;
+}
+.moving-alternative > button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1.5px solid #f6d73c;
+  border-radius: 9px;
+  background: transparent;
+  color: #f6d73c;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
 }
 @media (max-width: 520px) {
   .moving-plan-row {
@@ -2131,6 +2479,31 @@
 @media (max-width: 700px) {
   .admin-quote-aside {
     position: static;
+  }
+  .reference-request-page .reference-vehicle-list button {
+    align-items: center;
+    flex-direction: row;
+  }
+  .reference-request-page .reference-vehicle-list img {
+    width: 108px;
+    max-width: 35%;
+    flex: 0 0 108px;
+    aspect-ratio: 90 / 66;
+    object-fit: contain;
+  }
+  .reference-request-vehicle-images {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: 90%;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+  }
+  .reference-request-vehicle-images > div {
+    scroll-snap-align: start;
+  }
+  .reference-request-submit {
+    right: 14px;
+    bottom: max(14px, env(safe-area-inset-bottom));
   }
 }
 @media (max-width: 620px) {

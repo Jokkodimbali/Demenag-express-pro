@@ -7,9 +7,6 @@ import { Guard } from './Guard';
 import { routes } from './routes';
 const Auth = lazy(() => import('../pages/Auth').then((m) => ({ default: m.Auth })));
 const Home = lazy(() => import('../pages/Home').then((m) => ({ default: m.Home })));
-const BookingPage = lazy(() =>
-  import('../pages/BookingPage').then((m) => ({ default: m.BookingPage })),
-);
 const Account = lazy(() => import('../pages/Account').then((m) => ({ default: m.Account })));
 const Admin = lazy(() => import('../pages/Admin').then((m) => ({ default: m.Admin })));
 const AdminCreateQuote = lazy(() =>
@@ -84,7 +81,7 @@ export function AppRoutes() {
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<Home />} />
-          <Route path={routes.booking.slice(1)} element={<BookingPage />} />
+          <Route path={routes.booking.slice(1)} element={<AdminCreateQuote publicRequest />} />
           <Route path={routes.login.slice(1)} element={<Auth />} />
           <Route
             path={routes.account.slice(1)}

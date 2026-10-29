@@ -295,6 +295,14 @@ export type QuoteTollLine = {
   unitPrice: number;
 };
 export type Booking = {
+  employeeProofs?: {
+    id: string;
+    employeeId: string;
+    kind: 'retrait' | 'depot';
+    image: string;
+    createdAt: string;
+    note: string;
+  }[];
   id: string;
   reference: string;
   userId: string;

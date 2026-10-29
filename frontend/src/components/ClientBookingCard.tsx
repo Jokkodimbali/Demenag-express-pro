@@ -1,36 +1,112 @@
-import { Link } from 'react-router-dom';
+import { useApp } from '../application/context';
 import { useBookingCard } from '../application/controllers/useBookingCard';
-import { money } from '../domain/format';
+import { whatsappNumber, whatsappUrl } from '../application/services/whatsapp';
+import { money, referenceTierLabels } from '../domain/format';
 import type { Booking } from '../domain/model';
 import { routes } from '../routing/routes';
 import { BookingRouteMap } from './BookingRouteMap';
+import { Link } from 'react-router-dom';
 
 export function ClientBookingCard({
   booking,
   onChange,
+  onReminder,
 }: {
   booking: Booking;
   onChange: (booking: Booking) => void;
+  onReminder?: (message: string) => void;
 }) {
-  const { pdf, busy, error } = useBookingCard({ booking, onChange });
+  const { catalogue } = useApp();
+  const { pdf, busy, error, recordReminder } = useBookingCard({ booking, onChange });
   const provisionalQuote = booking.quotes.filter((quote) => quote.kind === 'provisional').at(-1);
   const finalQuote = booking.quotes.filter((quote) => quote.kind === 'final').at(-1);
   const displayedEstimate =
     finalQuote?.price.total ?? provisionalQuote?.price.total ?? booking.estimate.total;
   const referenceDate = booking.date ? booking.date.split('-').reverse().join('/') : '—';
-  const distanceTier =
-    booking.distanceKm < 15
-      ? 'Moins de 15 km'
-      : booking.distanceKm <= 25
-        ? '15 – 25 km'
-        : booking.distanceKm <= 35
-          ? '25 – 35 km'
-          : 'Plus de 35 km';
+  const distanceBounds = catalogue?.settings.distanceBounds ??
+    booking.pricingSettings?.distanceBounds ?? [15, 25, 35];
+  const tierIndex =
+    booking.distanceKm < distanceBounds[0]
+      ? 0
+      : booking.distanceKm <= distanceBounds[1]
+        ? 1
+        : booking.distanceKm <= distanceBounds[2]
+          ? 2
+          : 3;
+  const distanceTier = referenceTierLabels(distanceBounds)[tierIndex];
+  const isFinal = booking.status === 'completed';
+  const canEdit = ['pending', 'confirmed', 'cancelled'].includes(booking.status) && !finalQuote;
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Dakar' }).format(new Date());
+  const daysBefore = booking.date
+    ? Math.round(
+        (+new Date(`${booking.date}T12:00:00Z`) - +new Date(`${today}T12:00:00Z`)) / 86400000,
+      )
+    : -1;
+  const reminderPhone = whatsappNumber(
+    booking.phone,
+    catalogue?.settings.whatsappCountryCode ?? '221',
+  );
+  const canRemind =
+    daysBefore >= 0 &&
+    !['completed', 'cancelled'].includes(booking.status) &&
+    reminderPhone.length >= 10;
+  const reminderWhen =
+    daysBefore === 0
+      ? 'aujourd’hui'
+      : daysBefore === 1
+        ? 'demain'
+        : daysBefore % 7 === 0
+          ? `dans ${daysBefore / 7} semaine${daysBefore > 7 ? 's' : ''}`
+          : `dans ${daysBefore} jours`;
+  const reminderLabel =
+    daysBefore === 0 ? 'aujourd’hui' : daysBefore === 1 ? 'demain' : `J-${daysBefore}`;
+  const reminderDate = booking.date
+    ? new Date(`${booking.date}T12:00:00Z`).toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        timeZone: 'Africa/Dakar',
+      })
+    : '';
+  const reminderMessage =
+    `Bonjour ${booking.customerName}, petit rappel de Demenag Express : votre déménagement (${booking.reference}) est prévu ${reminderWhen}, le ${reminderDate}` +
+    (booking.timeSlot && booking.timeSlot !== 'À définir' ? ` à ${booking.timeSlot}` : '') +
+    `.\n` +
+    (booking.fromAddress ? `Départ : ${booking.fromAddress}\n` : '') +
+    (booking.toAddress ? `Arrivée : ${booking.toAddress}\n` : '') +
+    `Merci de préparer vos affaires pour le chargement. Pour toute question, contactez-nous au ${catalogue?.settings.businessPhone ?? ''}. À bientôt !`;
+  const reminderUrl = whatsappUrl(booking.phone, reminderMessage, catalogue?.settings);
+  const lastReminder = booking.reminders?.at(-1);
+  const lastReminderDate = lastReminder
+    ? (() => {
+        const parts = new Intl.DateTimeFormat('en-GB', {
+          day: '2-digit',
+          month: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          hourCycle: 'h23',
+          timeZone: 'Africa/Dakar',
+        }).formatToParts(new Date(lastReminder.at));
+        const part = (type: Intl.DateTimeFormatPartTypes) =>
+          parts.find((entry) => entry.type === type)?.value ?? '';
+        return `${part('day')}/${part('month')} à ${part('hour')}:${part('minute')}`;
+      })()
+    : '';
+  const tolls = finalQuote?.tolls ?? [];
+  const tollTotal = tolls.reduce((total, toll) => total + toll.unitPrice * toll.quantity, 0);
   const mapsUrl = new URL('https://www.google.com/maps/dir/');
   mapsUrl.searchParams.set('api', '1');
   mapsUrl.searchParams.set('origin', booking.from.join(','));
   mapsUrl.searchParams.set('destination', booking.to.join(','));
   mapsUrl.searchParams.set('travelmode', 'driving');
+
+  async function sendReminder() {
+    if (await recordReminder())
+      onReminder?.(
+        `Rappel WhatsApp envoyé à ${booking.customerName || 'client'} (${reminderWhen}).`,
+      );
+  }
+
   return (
     <article className="reference-client-card">
       <div className="reference-client-card-top">
@@ -43,7 +119,7 @@ export function ClientBookingCard({
           </strong>
         </div>
         <div className="reference-client-actions">
-          {!finalQuote && ['pending', 'confirmed', 'cancelled'].includes(booking.status) && (
+          {canEdit && (
             <Link
               className="reference-client-edit"
               to={`${routes.booking}?modifier=${encodeURIComponent(booking.id)}`}
@@ -52,9 +128,39 @@ export function ClientBookingCard({
             </Link>
           )}
           <div className="reference-client-status-group">
-            <span className={`reference-client-status ${finalQuote ? 'completed' : 'pending'}`}>
-              {finalQuote ? 'Final' : 'Provisoire'}
+            <span className={`reference-client-status ${isFinal ? 'completed' : 'pending'}`}>
+              {isFinal ? 'Final' : 'Provisoire'}
             </span>
+            {canRemind && (
+              <a
+                className="reference-client-reminder"
+                href={reminderUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={`Message : rendez-vous ${reminderWhen}`}
+                onClick={() => void sendReminder()}
+              >
+                <svg
+                  aria-hidden="true"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
+                </svg>
+                {`Rappel · ${reminderLabel}`}
+              </a>
+            )}
+            {lastReminderDate && (
+              <small>
+                {canRemind ? 'Dernier rappel :' : 'Rappel envoyé le'} {lastReminderDate}
+              </small>
+            )}
           </div>
         </div>
       </div>
@@ -82,7 +188,7 @@ export function ClientBookingCard({
       <div className="reference-client-facts">
         <div>
           <span>VÉHICULE</span>
-          <strong>{booking.vehicle.name}</strong>
+          <strong>{booking.vehicle.shortName || booking.vehicle.name}</strong>
         </div>
         <div>
           <span>CRÉNEAU</span>
@@ -115,9 +221,32 @@ export function ClientBookingCard({
               <span>{money(line.total)}</span>
             </div>
           ))}
-          <button type="button" disabled={busy} onClick={() => void pdf(finalQuote)}>
-            Télécharger le devis final (PDF)
-          </button>
+          {tolls.length > 0 && (
+            <div className="reference-client-tolls">
+              <div className="reference-client-tolls-heading">
+                <strong>PÉAGES À VOTRE CHARGE</strong>
+                <span>NON INCLUS DANS LE TOTAL</span>
+              </div>
+              {tolls.map((toll) => (
+                <div className="reference-client-toll-line" key={toll.tollPointId}>
+                  <span>{toll.label.replace(/^Péage · /i, '')}</span>
+                  <span>
+                    {toll.quantity} × {toll.unitPrice ? money(toll.unitPrice) : 'prix à confirmer'}
+                  </span>
+                  <strong>{toll.unitPrice ? money(toll.unitPrice * toll.quantity) : '—'}</strong>
+                </div>
+              ))}
+              <div className="reference-client-toll-total">
+                <strong>Total péages</strong>
+                <strong>{money(tollTotal)}</strong>
+              </div>
+            </div>
+          )}
+          <div className="reference-client-final-actions">
+            <button type="button" disabled={busy} onClick={() => void pdf(finalQuote)}>
+              Télécharger le devis final (PDF)
+            </button>
+          </div>
         </div>
       )}
       {error && (

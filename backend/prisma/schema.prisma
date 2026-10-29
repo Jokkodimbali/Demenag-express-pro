@@ -124,7 +124,7 @@ model ControleVehicule {
   photos       Json
   creeLe       DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
-  @@unique([chauffeurId, dateControle])
+  @@index([chauffeurId, dateControle])
   @@index([dateControle, creeLe])
   @@map("vehicle_inspections")
   @@schema("demenag")

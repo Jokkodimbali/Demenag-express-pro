@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Booking, Driver, DriverAvailabilityDay } from '../../domain/model';
 import { useApp } from '../context';
 import { errorMessage } from '../error-message';
 import { dataUrl } from '../validation/forms';
-import { subscribeToBookingNotifications } from './booking-notification-refresh';
 
 export function useDriverWorkspace(loadBookings = true) {
   const { api, user, setUser } = useApp();
@@ -13,10 +12,25 @@ export function useDriverWorkspace(loadBookings = true) {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [availabilitySaving, setAvailabilitySaving] = useState(false);
+  const pendingAvailability = useRef<DriverAvailabilityDay[] | null>(null);
+  const availabilityRunning = useRef(false);
   const [retry, setRetry] = useState(0);
   useEffect(() => {
     if (!loadBookings) return;
-    return subscribeToBookingNotifications(api, setBookings);
+    let active = true;
+    const refresh = () => {
+      void api
+        .driverBookings()
+        .then((next) => {
+          if (active) setBookings(next);
+        })
+        .catch(() => undefined);
+    };
+    window.addEventListener('demenag:notification', refresh);
+    return () => {
+      active = false;
+      window.removeEventListener('demenag:notification', refresh);
+    };
   }, [api, loadBookings]);
   useEffect(() => {
     let active = true;
@@ -57,22 +71,37 @@ export function useDriverWorkspace(loadBookings = true) {
     }
   }
   async function saveAvailability(availability: DriverAvailabilityDay[]) {
-    if (availabilitySaving) return false;
+    let confirmed = profile;
+    pendingAvailability.current = availability;
+    setProfile((current) => (current ? { ...current, availability } : current));
+    if (availabilityRunning.current) return true;
+    availabilityRunning.current = true;
     setAvailabilitySaving(true);
     setError('');
     try {
-      setProfile(await api.updateDriverAvailability(availability));
+      while (pendingAvailability.current) {
+        const next = pendingAvailability.current;
+        pendingAvailability.current = null;
+        const updated = await api.updateDriverAvailability(next);
+        confirmed = updated;
+        if (!pendingAvailability.current) setProfile(updated);
+      }
       return true;
     } catch (reason) {
+      pendingAvailability.current = null;
+      setProfile(confirmed);
       setError(errorMessage(reason));
       return false;
     } finally {
+      availabilityRunning.current = false;
       setAvailabilitySaving(false);
     }
   }
+
   return {
     profile,
     bookings,
+    setBookings,
     loading,
     error,
     saving,

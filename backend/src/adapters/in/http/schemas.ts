@@ -563,3 +563,35 @@ export const catalogueSchema = z.object({
       .default([]),
   }),
 });
+
+export const employeeProofSchema = z.object({
+  kind: z.enum(['retrait', 'depot']),
+  photos: z.array(imageSchema).min(1).max(20),
+});
+const employeeCheckItem = z.object({ image: imageSchema, ok: z.boolean() });
+export const employeeInspectionSchema = z
+  .object({
+    vehicleId: z.string().min(1),
+    items: z.object({
+      engineOil: employeeCheckItem,
+      brakeFluid: employeeCheckItem,
+      coolant: employeeCheckItem,
+      washerFluid: employeeCheckItem,
+      fuel: employeeCheckItem,
+    }),
+  })
+  .transform(({ vehicleId, items }) => ({
+    vehicleId,
+    reference: true,
+    levels: Object.fromEntries(
+      Object.entries(items).map(([key, item]) => [
+        key,
+        item.ok ? ('good' as const) : ('low' as const),
+      ]),
+    ),
+    condition: Object.values(items).every((item) => item.ok)
+      ? ('good' as const)
+      : ('attention' as const),
+    notes: '',
+    photos: Object.values(items).map((item) => item.image),
+  }));

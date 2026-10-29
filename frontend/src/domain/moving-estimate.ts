@@ -81,8 +81,10 @@ export function estimatedInventoryItemVolume(
   const definition = inventoryItems.find((item) => item.key === key);
   const volume = definition?.sizeLabel
     ? base * Math.max(1, size)
-    : (definition?.volumeByFormat?.[formatIndexes[format]] ??
-      base * (genericFormatFactors[formatIndexes[format]] ?? 1));
+    : definition?.hasFormat
+      ? (definition.volumeByFormat?.[formatIndexes[format]] ??
+        base * (genericFormatFactors[formatIndexes[format]] ?? 1))
+      : base;
   const nonStackable = key === 'salon' ? 1.25 : 1;
   return volume * nonStackable * (dismantle ? inventoryDismantleFactor(key) : 1);
 }
@@ -175,17 +177,22 @@ export type MovingEstimate = {
   crew: number;
   recommendedCrew: number;
   carpenterCount: number;
+  dismantleFromMinutes: number;
+  dismantleToMinutes: number;
   loadingMinutes: number;
   unloadingMinutes: number;
+  handlingMinutes: number;
   packingMinutes: number;
   travelMinutes: number;
   travelLegMinutes: number;
   totalMinutes: number;
+  rawTotalMinutes: number;
   lowDurationMinutes: number;
   highDurationMinutes: number;
   minimumDays: number;
   startTime: string;
   endTime: string;
+  endLate: boolean;
   planning: PlanningStep[];
   warnings: string[];
   vehicleWarnings: string[];
@@ -197,6 +204,7 @@ type EstimateOptions = {
   startTime?: string;
   laborPlanning?: MovingLaborPlanningSettings;
   trafficDurationMinutes?: number;
+  parallelVehicles?: 1 | 2;
 };
 
 export function estimateMovingWork(
@@ -212,6 +220,7 @@ export function estimateMovingWork(
   const trips = volume > 0 ? Math.max(1, Math.ceil(volume / (capacity * fillRate))) : 0;
   const requestedTrips = Math.max(1, Math.min(99, (options.trips ?? trips) || 1));
   const labor = { ...defaultMovingLaborPlanning, ...options.laborPlanning };
+  const parallelVehicles = options.parallelVehicles ?? 1;
   const categoryRates = {
     light: { rate: 1.4, stairs: 0.1, lift: 0.03 },
     furniture: { rate: 1, stairs: 0.15, lift: 0.05 },
@@ -286,8 +295,11 @@ export function estimateMovingWork(
     heavyCount > 0 &&
     ((inventory.fromFloor >= 2 && !inventory.fromLift) ||
       (inventory.toFloor >= 2 && !inventory.toLift));
-  const minimumCrew = stairsRequireExtra ? 3 : 2;
-  const efficiency = (crew: number) => (crew <= 4 ? crew : 4 + 0.6 * (crew - 4));
+  const minimumCrew = Math.max(stairsRequireExtra ? 3 : 2, 2 * parallelVehicles);
+  const efficiency = (crew: number) => {
+    const perVehicle = crew / parallelVehicles;
+    return parallelVehicles * (perVehicle <= 4 ? perVehicle : 4 + 0.6 * (perVehicle - 4));
+  };
   const loadingBase = siteHours(inventory.fromFloor, inventory.fromLift);
   const unloadingBase = siteHours(inventory.toFloor, inventory.toLift, true);
   const loadingWithCrew = (crew: number, carpenter: number) =>
@@ -295,7 +307,8 @@ export function estimateMovingWork(
   const unloadingWithCrew = (crew: number, carpenter: number) =>
     Math.max(unloadingBase / efficiency(crew), carpenter ? dismantlingBySide.to / carpenter : 0);
   let recommendedCrew = minimumCrew;
-  let recommendedCarpenters = dismantlingBySide.from + dismantlingBySide.to > 0 ? 1 : 0;
+  let recommendedCarpenters =
+    dismantlingBySide.from + dismantlingBySide.to > 0 ? parallelVehicles : 0;
   let recommendationPass = 0;
   while (
     loadingWithCrew(recommendedCrew, recommendedCarpenters) +
@@ -307,8 +320,10 @@ export function estimateMovingWork(
       recommendedCarpenters > 0 &&
       (dismantlingBySide.from / recommendedCarpenters > loadingBase / efficiency(recommendedCrew) ||
         dismantlingBySide.to / recommendedCarpenters > unloadingBase / efficiency(recommendedCrew));
-    if (carpentryIsBottleneck && recommendedCarpenters < 3) recommendedCarpenters += 1;
-    else if (recommendedCrew < labor.maxMoversPerVehicle) recommendedCrew += 1;
+    if (carpentryIsBottleneck && recommendedCarpenters < 3 * parallelVehicles)
+      recommendedCarpenters += 1;
+    else if (recommendedCrew < Math.round(labor.maxMoversPerVehicle * parallelVehicles))
+      recommendedCrew += 1;
     else break;
   }
   const crew = Math.min(20, Math.max(1, options.crew || recommendedCrew));
@@ -341,7 +356,7 @@ export function estimateMovingWork(
   const routeMinutes = routeBaseMinutes * vehicleRouteFactor;
   const legLoaded = routeMinutes ? 10 + routeMinutes : 0;
   const legEmpty = routeMinutes ? 10 + routeMinutes * 0.85 : 0;
-  const journeyCount = requestedTrips;
+  const journeyCount = Math.ceil(requestedTrips / parallelVehicles);
   const loadingMinutes = loadingHours * 60;
   const unloadingMinutes = unloadingHours * 60;
   const packingOnPreviousDay = packingMinutes > 90;
@@ -391,14 +406,10 @@ export function estimateMovingWork(
       );
     }
   }
-  addStep('Vérification finale', 'État des lieux et signature', 10);
+  addStep('Vérification finale', 'État des lieux, signature', 10);
   const startForPause = startAt;
-  let elapsed = 0;
-  planning.forEach((step) => {
-    elapsed += step.minutes;
-  });
   if (pauseMinutes) {
-    const target = (elapsed + pauseMinutes) / 2;
+    const target = activeWorkMinutes / 2;
     let running = 0;
     let position = Math.max(1, planning.length - 1);
     let closest = Number.POSITIVE_INFINITY;
@@ -468,17 +479,26 @@ export function estimateMovingWork(
     crew,
     recommendedCrew,
     carpenterCount,
+    dismantleFromMinutes: recommendedCarpenters
+      ? (dismantlingBySide.from / recommendedCarpenters) * 60
+      : 0,
+    dismantleToMinutes: recommendedCarpenters
+      ? (dismantlingBySide.to / recommendedCarpenters) * 60
+      : 0,
     loadingMinutes,
     unloadingMinutes,
+    handlingMinutes: loadingMinutes + unloadingMinutes,
     packingMinutes,
     travelMinutes: driveMinutes,
     travelLegMinutes: legLoaded,
     totalMinutes,
+    rawTotalMinutes: activeWorkMinutes + pauseMinutes,
     lowDurationMinutes: totalMinutes * 0.85,
     highDurationMinutes: totalMinutes * 1.3,
     minimumDays: Math.max(1, Math.ceil(totalMinutes / (labor.maxDayHours * 60))),
     startTime: formatTime(startAt),
     endTime: formatTime(endAt),
+    endLate: endAt > 19 * 60,
     planning,
     warnings,
     vehicleWarnings: dimensionsWarnings,

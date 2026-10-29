@@ -124,7 +124,7 @@ test('Changer un chauffeur de véhicule libère automatiquement le chauffeur dé
   assert.equal(values.find((driver) => driver.id === second.id)?.vehicleId, null);
 });
 
-test('Un chauffeur ne voit que les réservations du véhicule qui lui est affecté', async () => {
+test('Un employé voit ses missions affectées, indépendamment du véhicule', async () => {
   const driver: Driver = { ...first, vehicleId: 'vehicle-a' };
   const actor: User = {
     id: driver.userId!,
@@ -193,9 +193,7 @@ test('Un chauffeur ne voit que les réservations du véhicule qui lui est affect
   const bookings: BookingRepository = {
     list: async (_userId, vehicleId) => {
       requestedVehicleId = vehicleId;
-      return [sameVehicleBooking, otherVehicleBooking].filter(
-        (booking) => booking.vehicle.id === vehicleId,
-      );
+      return [sameVehicleBooking, otherVehicleBooking];
     },
     find: async () => sameVehicleBooking,
     create: async (value) => value,
@@ -212,6 +210,22 @@ test('Un chauffeur ne voit que les réservations du véhicule qui lui est affect
     { next: () => 'driver-3' },
   );
 
-  assert.deepEqual(await service.bookings(actor), [sameVehicleBooking]);
-  assert.equal(requestedVehicleId, driver.vehicleId);
+  assert.deepEqual(await service.bookings(actor), [otherVehicleBooking]);
+  assert.equal(requestedVehicleId, undefined);
+  await assert.rejects(
+    service.addProofs(actor, sameVehicleBooking.id, 'retrait', ['photo']),
+    /Mission introuvable/,
+  );
+  const updated = await service.addProofs(actor, otherVehicleBooking.id, 'retrait', ['photo']);
+  assert.equal(updated.employeeProofs?.[0].image, 'photo');
+  driver.role = 'menuisier';
+  otherVehicleBooking.driverId = null;
+  otherVehicleBooking.crew = { chauffeur: [], menuisier: [driver.id], manoeuvre: [], chef: '' };
+  assert.deepEqual(await service.bookings(actor), [otherVehicleBooking]);
+  await assert.rejects(
+    service.addProofs(actor, otherVehicleBooking.id, 'depot', ['photo']),
+    /réservées aux chauffeurs/,
+  );
+  otherVehicleBooking.status = 'cancelled';
+  assert.deepEqual(await service.bookings(actor), []);
 });
