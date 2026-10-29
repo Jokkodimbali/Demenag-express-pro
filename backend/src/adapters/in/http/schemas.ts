@@ -108,6 +108,7 @@ const inventorySnapshotSchema = z.object({
   unloadingMinutes: z.number().finite().min(0).max(100000),
   packingMinutes: z.number().finite().min(0).max(100000),
   travelMinutes: z.number().finite().min(0).max(100000),
+  travelLegMinutes: z.number().finite().min(0).max(100000).optional(),
   totalMinutes: z.number().finite().min(0).max(100000),
   lowDurationMinutes: z.number().finite().min(0).max(100000),
   highDurationMinutes: z.number().finite().min(0).max(100000),
@@ -509,21 +510,24 @@ export const catalogueSchema = z.object({
     montageP: z
       .record(
         z.string().min(1).max(60),
-        z.object({
-          local: z.number().int().min(0).max(10000000).optional(),
-          import: z.number().int().min(0).max(10000000).optional(),
-          u: z.number().int().min(0).max(10000000).optional(),
-          uI: z.number().int().min(0).max(10000000).optional(),
-          sz: z
-            .record(
-              z.string(),
-              z.object({
-                local: z.number().int().min(0).max(10000000).optional(),
-                import: z.number().int().min(0).max(10000000).optional(),
-              }),
-            )
-            .optional(),
-        }),
+        z.union([
+          z.number().int().min(0).max(10000000),
+          z.object({
+            local: z.number().int().min(0).max(10000000).optional(),
+            import: z.number().int().min(0).max(10000000).optional(),
+            u: z.number().int().min(0).max(10000000).optional(),
+            uI: z.number().int().min(0).max(10000000).optional(),
+            sz: z
+              .record(
+                z.string(),
+                z.object({
+                  local: z.number().int().min(0).max(10000000).optional(),
+                  import: z.number().int().min(0).max(10000000).optional(),
+                }),
+              )
+              .optional(),
+          }),
+        ]),
       )
       .default({}),
     businessPhone: z.string().regex(/^\+221[0-9]{9}$/),

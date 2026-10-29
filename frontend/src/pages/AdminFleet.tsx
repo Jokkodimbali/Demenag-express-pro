@@ -59,13 +59,6 @@ const weekStart = (day: string) => {
   date.setDate(date.getDate() - ((date.getDay() + 6) % 7));
   return iso(date);
 };
-const prettyDate = (day: string) =>
-  new Date(`${day}T12:00:00`).toLocaleDateString('fr-FR', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
 const referenceVehicleName = (name: string) => {
   const normalized = name.toLocaleLowerCase('fr');
   if (normalized.includes('sprinter')) return 'Mercedes Sprinter';
@@ -94,6 +87,41 @@ const slotTimes = (slot: string): [string, string] =>
     : slot === 'aprem'
       ? ['13:00', '17:00']
       : ['08:00', '17:00'];
+type JobSpan = { s: number; e: number; real: boolean };
+type AvailabilityResult = { ok: boolean; why: string; note?: string };
+const timeMinutes = (value: string) => {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(value);
+  return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+};
+const formatMinutes = (value: number) =>
+  `${String(Math.floor(value / 60) % 24).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`;
+const jobSpan = (booking: Booking): JobSpan => {
+  const snapshot = booking.inventorySnapshot;
+  const snapshotStart = snapshot?.startTime ? timeMinutes(snapshot.startTime) : null;
+  const snapshotEnd = snapshot?.endTime ? timeMinutes(snapshot.endTime) : null;
+  if (snapshotStart !== null && snapshotEnd !== null) {
+    if (snapshotEnd > snapshotStart) return { s: snapshotStart, e: snapshotEnd, real: true };
+    if ((snapshot?.totalMinutes ?? 0) > 0)
+      return {
+        s: snapshotStart,
+        e: snapshotStart + (snapshot?.totalMinutes ?? 0),
+        real: true,
+      };
+  }
+  const specified = timeMinutes(booking.timeSlot);
+  if (specified !== null) return { s: specified, e: specified + 240, real: false };
+  const [start, end] = slotTimes(slotKey(booking.timeSlot));
+  return { s: timeMinutes(start) ?? 480, e: timeMinutes(end) ?? 1020, real: false };
+};
+const dayDistance = (from: string, to: string) =>
+  Math.round(
+    (new Date(`${to}T12:00:00`).getTime() - new Date(`${from}T12:00:00`).getTime()) / 86400000,
+  );
+const spanOverlaps = (left: JobSpan, right: JobSpan, dayOffset = 0) => {
+  const start = right.s + dayOffset * 1440;
+  const end = right.e + dayOffset * 1440;
+  return left.s < end && start < left.e;
+};
 const overlaps = (left: string, right: string) =>
   left === 'journee' || right === 'journee' || left === right;
 const activeBookings = (bookings: Booking[]) =>
@@ -312,13 +340,21 @@ export function AdminFleet() {
   const dayIndex = (day: string) => (new Date(`${day}T12:00:00`).getDay() + 6) % 7;
   const availabilityOf = (employee: Driver) =>
     employee.availability?.length === 7 ? employee.availability : blankAvailability();
-  const busyBooking = (id: string, current: Booking) =>
-    currentBookings.find(
+  const busyBooking = (id: string, current: Booking, source = currentBookings) => {
+    if (!current.date) return undefined;
+    const currentSpan = jobSpan(current);
+    return source.find((booking) => {
+      if (booking.id === current.id || !booking.date || !teamIds(booking).includes(id))
+        return false;
+      const offset = dayDistance(current.date!, booking.date);
+      if (Math.abs(offset) > 1) return false;
+      return spanOverlaps(currentSpan, jobSpan(booking), offset);
+    });
+  };
+  const sameDayJobs = (id: string, current: Booking, source = currentBookings) =>
+    source.filter(
       (booking) =>
-        booking.id !== current.id &&
-        booking.date === current.date &&
-        overlaps(slotKey(booking.timeSlot), slotKey(current.timeSlot)) &&
-        teamIds(booking).includes(id),
+        booking.id !== current.id && booking.date === current.date && teamIds(booking).includes(id),
     );
   const weekLoad = (id: string, day: string) => {
     const start = weekStart(day);
@@ -329,15 +365,30 @@ export function AdminFleet() {
         teamIds(booking).includes(id),
     ).length;
   };
-  const availableOn = (employee: Driver, day: string, slot: string) => {
-    if (!employee.active) return 'indisponible';
+  const availableOn = (employee: Driver, day: string, booking: Booking): AvailabilityResult => {
+    if (!employee.active) return { ok: false, why: 'indisponible' };
     const availability = availabilityOf(employee)[dayIndex(day)];
-    const [start, end] = slotTimes(slot);
     if (!availability?.available)
-      return `repos le ${['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'][dayIndex(day)]}`;
-    if (availability.startTime > start || availability.endTime < end)
-      return `dispo ${availability.startTime}–${availability.endTime}`;
-    return '';
+      return {
+        ok: false,
+        why: `repos le ${['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'][dayIndex(day)]}`,
+      };
+    const span = jobSpan(booking);
+    const start = timeMinutes(availability.startTime) ?? 480;
+    const end = timeMinutes(availability.endTime) || 1440;
+    const estimatedEnd = Math.min(span.e, 1440);
+    if (span.s < start || span.s >= end)
+      return {
+        ok: false,
+        why: `hors horaires : dispo ${availability.startTime}-${availability.endTime}, début ${formatMinutes(span.s)}`,
+      };
+    if (span.real && estimatedEnd > end)
+      return {
+        ok: true,
+        why: '',
+        note: `fin estimée ${formatMinutes(span.e)}, après ${availability.endTime}`,
+      };
+    return { ok: true, why: '' };
   };
   const refusalCount = (employee: Driver) =>
     Math.max(0, (employee.refusals?.length ?? 0) - (employee.clearedRefusals ?? 0));
@@ -691,7 +742,7 @@ export function AdminFleet() {
     const autoJobs = dayBookings
       .filter((booking) => booking.status !== 'completed')
       .sort((a, b) => {
-        const slotOrder = (slot: string) => ({ journee: 0, matin: 1, aprem: 2 })[slotKey(slot)];
+        const slotOrder = (slot: string) => (slotKey(slot) === 'journee' ? 0 : 1);
         return (
           slotOrder(a.timeSlot) - slotOrder(b.timeSlot) ||
           needsOf(b).manoeuvre - needsOf(a).manoeuvre
@@ -714,15 +765,8 @@ export function AdminFleet() {
                 return false;
               if ((currentBooking.crewRefusedBy ?? []).includes(employee.id) || isSuspect(employee))
                 return false;
-              const collision = plannedBookings.find(
-                (item) =>
-                  item.id !== currentBooking.id &&
-                  item.date === currentBooking.date &&
-                  overlaps(slotKey(item.timeSlot), slotKey(currentBooking.timeSlot)) &&
-                  teamIds(item).includes(employee.id),
-              );
-              if (collision || availableOn(employee, selectedDay, slotKey(currentBooking.timeSlot)))
-                return false;
+              const collision = busyBooking(employee.id, currentBooking, plannedBookings);
+              if (collision || !availableOn(employee, selectedDay, currentBooking).ok) return false;
               if (
                 role.id === 'chauffeur' &&
                 employee.authorizedVehicleIds?.length &&
@@ -1181,8 +1225,8 @@ export function AdminFleet() {
                 warningSet.add(
                   `${member.name} n'est pas habilité(e) à conduire le ${booking.vehicle.name}.`,
                 );
-              const reason = availableOn(member, selectedDay, slotKey(booking.timeSlot));
-              if (reason) warningSet.add(`${member.name} : ${reason}.`);
+              const availability = availableOn(member, selectedDay, booking);
+              if (!availability.ok) warningSet.add(`${member.name} : ${availability.why}.`);
             }
             const messageText = editMember
               ? (customMessages[`${booking.id}|${editMember.id}`] ??
@@ -1279,19 +1323,38 @@ export function AdminFleet() {
                                 · {selectedIds.length} / {needs[role.id]}
                               </strong>
                               <div className="teams-chips">
-                                {selectedIds.map((id) => (
-                                  <span className="teams-person-chip" key={id}>
-                                    {employeeById.get(id)?.name ?? 'Employé supprimé'}
-                                    <button
-                                      title="Retirer"
-                                      onClick={() =>
-                                        void setMemberRole(booking, role.id, id, false)
-                                      }
+                                {selectedIds.map((id) => {
+                                  const member = employeeById.get(id);
+                                  const conflict = busyBooking(id, booking);
+                                  const availability = member
+                                    ? availableOn(member, selectedDay, booking)
+                                    : { ok: true, why: '' };
+                                  const warning = !availability.ok
+                                    ? availability.why
+                                    : conflict
+                                      ? `déjà sur ${conflict.reference}`
+                                      : '';
+                                  return (
+                                    <span
+                                      className="teams-person-chip"
+                                      key={id}
+                                      style={warning ? { borderColor: '#ff6b6b' } : undefined}
                                     >
-                                      ×
-                                    </button>
-                                  </span>
-                                ))}
+                                      {member?.name ?? 'Employé supprimé'}
+                                      {warning && (
+                                        <small className="teams-person-warning">{warning}</small>
+                                      )}
+                                      <button
+                                        title="Retirer"
+                                        onClick={() =>
+                                          void setMemberRole(booking, role.id, id, false)
+                                        }
+                                      >
+                                        ×
+                                      </button>
+                                    </span>
+                                  );
+                                })}
                                 <button
                                   className="team-chip add"
                                   onClick={() =>
@@ -1311,10 +1374,10 @@ export function AdminFleet() {
                                     .filter((employee) => !teamIds(booking).includes(employee.id))
                                     .map((employee) => {
                                       const busy = busyBooking(employee.id, booking);
-                                      const unavailable = availableOn(
+                                      const availability = availableOn(
                                         employee,
                                         selectedDay,
-                                        slotKey(booking.timeSlot),
+                                        booking,
                                       );
                                       const cannotDrive =
                                         role.id === 'chauffeur' &&
@@ -1329,16 +1392,26 @@ export function AdminFleet() {
                                           item.crewReplies?.[employee.id] === 'ok',
                                       ).length;
                                       const refusalTotal = employee.refusals?.length ?? 0;
+                                      const dayJobs = sameDayJobs(employee.id, booking);
                                       const availabilityText = busy
                                         ? `Déjà sur ${busy.reference}`
-                                        : unavailable ||
-                                          (cannotDrive
-                                            ? `Non habilité ${booking.vehicle.name}`
-                                            : `${weekLoad(employee.id, selectedDay)} déménagement${weekLoad(employee.id, selectedDay) > 1 ? 's' : ''} cette semaine`);
+                                        : !availability.ok
+                                          ? availability.why
+                                          : availability.note ||
+                                            (cannotDrive
+                                              ? `Non habilité ${booking.vehicle.name}`
+                                              : dayJobs.length
+                                                ? `Déjà ${dayJobs
+                                                    .map((item) => {
+                                                      const span = jobSpan(item);
+                                                      return `${item.reference.replace(/^DEM-/u, '')} ${formatMinutes(span.s)}–${formatMinutes(span.e)}`;
+                                                    })
+                                                    .join(', ')}, sans chevauchement`
+                                                : `${weekLoad(employee.id, selectedDay)} déménagement${weekLoad(employee.id, selectedDay) > 1 ? 's' : ''} cette semaine`);
                                       return (
                                         <button
                                           key={employee.id}
-                                          disabled={!employee.active || !!busy || !!unavailable}
+                                          disabled={!employee.active || !!busy || !availability.ok}
                                           onClick={() =>
                                             void setMemberRole(booking, role.id, employee.id, true)
                                           }
@@ -1348,15 +1421,26 @@ export function AdminFleet() {
                                             {employee.name}
                                           </strong>
                                           <span>
-                                            {wasRefused ? 'a déjà refusé cette mission · ' : ''}
-                                            {isSuspect(employee)
-                                              ? `suspect, ${refusalCount(employee)} refus · `
-                                              : ''}
-                                            {availabilityText} · {acceptedCount} acceptée(s)
-                                            {refusalTotal ? ` · ${refusalTotal} refus` : ''}
-                                            {employee.tags?.length
-                                              ? ` · ${employee.tags.join(', ')}`
-                                              : ''}
+                                            <span
+                                              style={{
+                                                color:
+                                                  !availability.ok || busy
+                                                    ? '#ff6b6b'
+                                                    : wasRefused || isSuspect(employee)
+                                                      ? '#ffd23f'
+                                                      : '#aeb4bb',
+                                              }}
+                                            >
+                                              {wasRefused ? 'a déjà refusé cette mission · ' : ''}
+                                              {isSuspect(employee)
+                                                ? `suspect, ${refusalCount(employee)} refus · `
+                                                : ''}
+                                              {availabilityText} · {acceptedCount} acceptée(s)
+                                              {refusalTotal ? ` · ${refusalTotal} refus` : ''}
+                                              {employee.tags?.length
+                                                ? ` · ${employee.tags.join(', ')}`
+                                                : ''}
+                                            </span>
                                           </span>
                                         </button>
                                       );
@@ -1702,7 +1786,9 @@ export function AdminFleet() {
             ))}
           </div>
           {employeesLoading && !employees.length && (
-            <p className="teams-empty" role="status">Chargement des employés…</p>
+            <p className="teams-empty" role="status">
+              Chargement des employés…
+            </p>
           )}
           {!employeesLoading && !visibleEmployees.length && (
             <p className="teams-empty">
@@ -1714,7 +1800,8 @@ export function AdminFleet() {
           {visibleEmployees.map((employee) => {
             const role = employee.role ?? 'chauffeur';
             const availability = availabilityOf(employee);
-            const activeToday = employee.active && availability[dayIndex(selectedDay)]?.available;
+            const employeeDayAvailability = availability[dayIndex(selectedDay)];
+            const activeToday = employee.active && employeeDayAvailability?.available;
             const notesOpen = Boolean(openNotes[employee.id]);
             const infoOpen = Boolean(openInfo[employee.id]);
             const hoursOpen = Boolean(openHours[employee.id]);
@@ -1802,7 +1889,9 @@ export function AdminFleet() {
                     className={activeToday ? 'team-status-pill online' : 'team-status-pill offline'}
                     onClick={() => void applyMemberPatch(employee, { active: !employee.active })}
                   >
-                    {activeToday ? 'Disponible' : 'Repos'}
+                    {activeToday
+                      ? `Disponible ${employeeDayAvailability.startTime}–${employeeDayAvailability.endTime}`
+                      : 'Repos'}
                   </button>
                   <button
                     className="team-delete"

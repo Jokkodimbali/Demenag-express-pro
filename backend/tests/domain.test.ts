@@ -60,6 +60,9 @@ test('Les limites tarifaires respectent les tranches annoncées', () => {
     [0, 1, 1, 2, 2, 3],
   );
 });
+test('Une distance corrigée à zéro conserve la première tranche du modèle', () => {
+  assert.equal(tierOf(0, settings.distanceBounds), 0);
+});
 test('Le transport, les options et la remise sont calculés en FCFA entiers', () => {
   const price = calculatePrice(
     vehicle,
@@ -288,6 +291,23 @@ test('La matrice de menuiserie applique local, import et taille comme la référ
   assert.equal(assemblyUnitPrice(configured, 'armoire', 'import'), 18000);
   assert.equal(assemblyUnitPrice(configured, 'armoire', 'local', 4), 15000);
   assert.equal(assemblyUnitPrice(configured, 'armoire', 'local', 5), 16000);
+});
+test('Les tarifs importés reprennent le local configuré ou le forfait majoré de 50 %', () => {
+  assert.equal(assemblyUnitPrice(settings, 'table-basse', 'local'), 15000);
+  assert.equal(assemblyUnitPrice(settings, 'table-basse', 'import'), 22500);
+  assert.equal(
+    assemblyUnitPrice(
+      { ...settings, montageP: { armoire: { local: 12000 } } },
+      'armoire',
+      'import',
+    ),
+    12000,
+  );
+  assert.equal(assemblyUnitPrice({ ...settings, montageP: { armoire: 10000 } }, 'armoire'), 10000);
+  assert.equal(
+    assemblyUnitPrice({ ...settings, montageP: { armoire: 10000 } }, 'armoire', 'import'),
+    15000,
+  );
 });
 test('La date passée et la date invalide sont refusées, l’heure reste libre', () => {
   const now = new Date('2026-10-15T10:00:00Z');

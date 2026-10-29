@@ -66,6 +66,36 @@ test('le démontage d’un objet personnalisé réduit son volume comme dans la 
   assert.equal(dismantled.volume, 0.4);
 });
 
+test('la recommandation ne rajoute pas de menuisiers quand la manutention reste limitante', () => {
+  const inventory = blankInventory();
+  inventory.entries.carton = {
+    quantity: 1000,
+    size: 1,
+    format: 'medium',
+    dismantle: false,
+  };
+  inventory.entries.armoire = {
+    quantity: 1,
+    size: 3,
+    format: 'medium',
+    dismantle: true,
+  };
+  const estimate = estimateMovingWork(inventory, vehicle, null, {
+    trips: 1,
+    laborPlanning: {
+      maxHandlingHours: 3,
+      maxDayHours: 8,
+      defaultStartHour: 8,
+      maxMoversPerVehicle: 2,
+      cubicMetersPerHourPerMover: 2.5,
+      pauseMinutes: 30,
+    },
+  });
+
+  assert.equal(estimate.recommendedCrew, 2);
+  assert.equal(estimate.carpenterCount, 1);
+});
+
 test('une réponse « pas prêt » ajoute le temps d’emballage au planning', () => {
   const inventory = blankInventory();
   inventory.custom = [{ id: 'objet', label: 'Objet', quantity: 1, format: 'medium' }];
@@ -88,6 +118,23 @@ test('le trajet utilise la correction de circulation et le facteur du véhicule 
   );
 
   assert.ok(Math.abs(estimate.travelMinutes - 58.86632769355671) < 0.001);
+});
+
+test('la durée Google avec bouchons remplace la correction de trajet du modèle', () => {
+  const inventory = blankInventory();
+  inventory.custom = [{ id: 'objet', label: 'Objet', quantity: 1, format: 'medium' }];
+  const route = { distanceKm: 20, durationMinutes: 35 };
+  const sprinter = estimateMovingWork(inventory, vehicle, route, {
+    trips: 1,
+    trafficDurationMinutes: 60,
+  });
+  const trafic = estimateMovingWork(inventory, { ...vehicle, id: 'trafic' }, route, {
+    trips: 1,
+    trafficDurationMinutes: 60,
+  });
+
+  assert.equal(sprinter.travelMinutes, 76);
+  assert.equal(trafic.travelMinutes, 73);
 });
 
 test('l’heure et les cadences de planning peuvent être réglées dans les paramètres admin', () => {

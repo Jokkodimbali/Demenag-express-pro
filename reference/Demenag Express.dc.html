@@ -1664,9 +1664,9 @@ select option{background:#272A2E;color:#fff}
                     </div>
                     <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
                       <sc-for list="{{ r.chips }}" as="c" hint-placeholder-count="1">
-                        <div style="display:flex;align-items:center;gap:4px;background:#272A2E;border:1px solid #3B4046;border-radius:999px;padding:3px 4px 3px 4px">
-                          
+                        <div style="display:flex;align-items:center;gap:4px;background:#272A2E;border:1px solid {{ c.bd }};border-radius:999px;padding:3px 4px 3px 4px">
                           <span style="font-size:13.5px;font-weight:700;padding:0 2px;white-space:nowrap">{{ c.name }}</span>
+                          <sc-if value="{{ c.hasHz }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;font-weight:700;color:#FF6B6B;white-space:nowrap">{{ c.hz }}</span></sc-if>
                           <button onClick="{{ c.del }}" title="Retirer" style="width:26px;height:26px;border-radius:50%;border:0;background:#30343A;color:#AEB4BB;font-size:14px;cursor:pointer">×</button>
                         </div>
                       </sc-for>
@@ -3286,18 +3286,22 @@ class Component extends DCLogic {
   crewOf(r) { const c = (r && r.crew) || {}; return { chauffeur: c.chauffeur || [], menuisier: c.menuisier || [], manoeuvre: c.manoeuvre || [], chef: c.chef || '' }; }
   crewIds(r) { const c = this.crewOf(r); return [...c.chauffeur, ...c.menuisier, ...c.manoeuvre]; }
   activeJobs(data) { return (data.res || []).filter(r => r.status !== 'annule' && r.date); }
-  busyJob(data, id, r) { const sl = this.slotOf(r.time); return this.activeJobs(data).find(x => x.id !== r.id && x.date === r.date && this.slotsOverlap(sl, this.slotOf(x.time)) && this.crewIds(x).includes(id)); }
+  busyJob(data, id, r) { const A = this.jobSpan(r), d0 = new Date(r.date + 'T12:00:00'); return this.activeJobs(data).find(x => { if (x.id === r.id || !this.crewIds(x).includes(id)) return false; const dd = Math.round((new Date(x.date + 'T12:00:00') - d0) / 864e5); if (Math.abs(dd) > 1) return false; const B = this.jobSpan(x), bs = B.s + dd * 1440, be = B.e + dd * 1440; return A.s < be && bs < A.e; }); }
   weekKey(iso) { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() - (d.getDay() + 6) % 7); return this.iso(d); }
   weekLoad(data, id, iso) { const wk = this.weekKey(iso); return this.activeJobs(data).filter(x => this.weekKey(x.date) === wk && this.crewIds(x).includes(id)).length; }
   coWork(data, id, ids) { if (!ids.length) return 0; return this.activeJobs(data).filter(x => { const c = this.crewIds(x); return c.includes(id) && ids.some(k => c.includes(k)); }).length; }
   DAYN = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
   SLOTH = { matin: ['08:00', '12:00'], aprem: ['13:00', '17:00'], journee: ['08:00', '17:00'] };
   hrsOf(p) { const d = p.hours || {}; return this.DAYN.map((x, i) => ({ on: i < 6, s: '08:00', e: '18:00', ...(d[i] || {}) })); }
-  availOn(p, iso, slot) {
+  dayJobs(data, id, r) { return this.activeJobs(data).filter(x => x.id !== r.id && x.date === r.date && this.crewIds(x).includes(id)); }
+  availOn(p, iso, slot, span) {
     if (p.active === false) return { ok: false, why: 'indisponible' };
     const di = (new Date(iso + 'T12:00:00').getDay() + 6) % 7, h = this.hrsOf(p)[di], [a, b] = this.SLOTH[slot] || this.SLOTH.journee;
     if (!h.on) return { ok: false, why: 'repos le ' + ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'][di] };
-    if (h.s > a || h.e < b) return { ok: false, why: 'dispo ' + h.s + '–' + h.e };
+    if (span) { const m = x => +String(x).slice(0, 2) * 60 + +String(x).slice(3, 5), hs = m(h.s), he = m(h.e) || 1440, en = Math.min(span.e, 1440);
+      if (span.s < hs || span.s >= he) return { ok: false, why: 'hors horaires : dispo ' + h.s + '-' + h.e + ', début ' + this.fT(span.s) };
+      if (span.real && en > he) return { ok: true, why: '', note: 'fin estimée ' + this.fT(span.e) + ', après ' + h.e }; }
+    else if (h.s > a || h.e < b) return { ok: false, why: 'dispo ' + h.s + '–' + h.e };
     return { ok: true, why: '' };
   }
   canDrive(p, veh) { return !p.veh || !p.veh.length || p.veh.includes(veh); }
@@ -3452,7 +3456,7 @@ class Component extends DCLogic {
     let le = null; try { le = src.inv ? this.laborEst(src) : null; } catch (e) {}
     if (le) return { s: le.start, e: le.end, real: true, over: le.overD };
     const [a, b] = this.SLOTH[sl] || this.SLOTH.journee, toM = x => +x.slice(0, 2) * 60 + +x.slice(3, 5), dS = String(src.start || ''), st = /^\d{1,2}:\d{2}/.test(dS) ? toM(dS.padStart(5, '0')) : mm ? +mm[1] * 60 + (+mm[2] || 0) : toM(a);
-    return { s: st, e: Math.max(st + 60, mm ? st + (toM(b) - toM(a)) : toM(b)), real: false, over: false };
+    return { s: st, e: (mm || /^\d{1,2}:\d{2}/.test(dS)) ? st + 240 : Math.max(st + 60, toM(b)), real: false, over: false };
   }
   calViewVals(MO, STC, byDay, shiftCal, cal, today) {
     const s = this.state, view = s.calView || 'mois', ZL = [28, 40, 56, 80, 112, 160], zi = s.calZoom ?? 2, hp = ZL[zi];
@@ -3792,7 +3796,7 @@ class Component extends DCLogic {
       let lack = this.jobNeeds(j)[role] - this.crewOf(data.res.find(x => x.id === j.id))[role].length;
       while (lack > 0) {
         const cur = data.res.find(x => x.id === j.id), team = this.crewIds(cur);
-        const cand = staff.filter(p => p.role === role && !team.includes(p.id) && !(cur.refusedBy || []).includes(p.id) && !this.isSuspect(p) && !this.busyJob(data, p.id, cur) && this.availOn(p, day, this.slotOf(cur.time)).ok && (role !== 'chauffeur' || this.canDrive(p, this.jobVeh(cur))))
+        const cand = staff.filter(p => p.role === role && !team.includes(p.id) && !(cur.refusedBy || []).includes(p.id) && !this.isSuspect(p) && !this.busyJob(data, p.id, cur) && this.availOn(p, day, this.slotOf(cur.time), this.jobSpan(cur)).ok && (role !== 'chauffeur' || this.canDrive(p, this.jobVeh(cur))))
           .map(p => ({ p, co: this.coWork(data, p.id, team), wl: this.weekLoad(data, p.id, day) })).sort((a, b) => b.co - a.co || a.wl - b.wl || a.p.name.localeCompare(b.p.name));
         if (!cand.length) { missing += lack; break; }
         const pid = cand[0].p.id; data = this.setCrew(data, j.id, cc => ({ ...cc, [role]: [...cc[role], pid] })); added++; lack--;
@@ -3819,11 +3823,11 @@ class Component extends DCLogic {
           if (b) warns.push(p.name + ' est aussi affecté(e) au déménagement ' + b.ref + ' au même créneau.');
           if (k === 'chauffeur' && byId[id] && !this.canDrive(p, veh)) warns.push(p.name + " n'est pas habilité(e) à conduire le " + V.tag + '.');
           if (byId[id] && this.isSuspect(p)) warns.push(p.name + ' est signalé(e) suspect (' + p.refusals.length + ' refus) : à remplacer.');
-          if (byId[id]) { const av = this.availOn(p, r.date, sl); if (!av.ok) warns.push(p.name + ' : ' + av.why + ' (créneau ' + this.SLOTH[sl].join('–') + ').'); }
-          return { name: p.name, chef: chef ? '★ Chef' : '☆', chefC: chef ? D : '#AEB4BB', chefBg: chef ? Y : 'transparent', setChef: () => save(this.setCrew(this.state.data, r.id, cc => ({ ...cc, chef: id }))),
+          const sp = this.jobSpan(r), av = byId[id] ? this.availOn(p, r.date, sl, sp) : { ok: true }, hz = !av.ok ? av.why : b ? 'déjà sur ' + b.ref.replace('DEM-', '') : '';
+          return { hz, hasHz: !!hz, bd: hz ? '#FF6B6B' : '#3B4046', name: p.name, chef: chef ? '★ Chef' : '☆', chefC: chef ? D : '#AEB4BB', chefBg: chef ? Y : 'transparent', setChef: () => save(this.setCrew(this.state.data, r.id, cc => ({ ...cc, chef: id }))),
             del: () => save(this.setCrew(this.state.data, r.id, cc => ({ ...cc, [k]: cc[k].filter(x => x !== id), chef: cc.chef === id ? '' : cc.chef }))) }; });
-        const opts = staff.filter(p => p.role === k && !team.includes(p.id)).map(p => { const rf = (r.refusedBy || []).includes(p.id), sus = this.isSuspect(p), b = this.busyJob(data, p.id, r), avl = this.availOn(p, r.date, sl), off = !avl.ok, nq = k === 'chauffeur' && !this.canDrive(p, veh), wl = this.weekLoad(data, p.id, day);
-          const lblFull = (sus ? '⚠ ' : '') + p.name + (rf ? ' · a déjà refusé cette mission' : '') + (sus ? ' · suspect, ' + this.refSince(p) + ' refus' : '') + (off ? ' (' + avl.why + ')' : b ? ' (déjà sur ' + b.ref + ')' : nq ? ' (non habilité ' + V.tag + ')' : ' · ' + wl + ' déménagement' + (wl > 1 ? 's' : '') + ' cette semaine') + ' · ' + this.empStats(data, p.id).ok + ' acceptée(s)' + ((p.tags || []).length ? ' · ' + p.tags.join(', ') : ''), dis = off || !!b, rest = lblFull.slice(lblFull.indexOf(p.name) + p.name.length).replace(/^\s*·\s*/, '').replace(/^\(([^)]*)\)/, '$1');
+        const opts = staff.filter(p => p.role === k && !team.includes(p.id)).map(p => { const rf = (r.refusedBy || []).includes(p.id), sus = this.isSuspect(p), b = this.busyJob(data, p.id, r), avl = this.availOn(p, r.date, sl, this.jobSpan(r)), off = !avl.ok, nq = k === 'chauffeur' && !this.canDrive(p, veh), wl = this.weekLoad(data, p.id, day);
+          const lblFull = (sus ? '⚠ ' : '') + p.name + (rf ? ' · a déjà refusé cette mission' : '') + (sus ? ' · suspect, ' + this.refSince(p) + ' refus' : '') + (off ? ' (' + avl.why + ')' : avl.note ? ' · ' + avl.note : b ? ' (déjà sur ' + b.ref + ' ' + (() => { const q = this.jobSpan(b); return this.fT(q.s) + '–' + this.fT(q.e); })() + ')' : this.dayJobs(data, p.id, r).length ? ' · déjà ' + this.dayJobs(data, p.id, r).map(x => { const q = this.jobSpan(x); return x.ref.replace('DEM-', '') + ' ' + this.fT(q.s) + '–' + this.fT(q.e); }).join(', ') + ', sans chevauchement' : nq ? ' (non habilité ' + V.tag + ')' : ' · ' + wl + ' déménagement' + (wl > 1 ? 's' : '') + ' cette semaine') + ' · ' + this.empStats(data, p.id).ok + ' acceptée(s)' + ((p.tags || []).length ? ' · ' + p.tags.join(', ') : ''), dis = off || !!b, rest = lblFull.slice(lblFull.indexOf(p.name) + p.name.length).replace(/^\s*·\s*/, '').replace(/^\(([^)]*)\)/, '$1');
           return { v: p.id, name: (sus ? '⚠ ' : '') + p.name, sub: rest || 'Disponible', subC: dis ? '#FF6B6B' : rf || sus ? '#FFD23F' : '#AEB4BB', dis, cur: dis ? 'not-allowed' : 'pointer', op: dis ? '0.5' : '1',
             pick: () => { if (dis) return; this.setState({ eqAddOpen: null }); save(this.setCrew(this.state.data, r.id, cc => ({ ...cc, [k]: [...cc[k], p.id], chef: cc.chef || p.id }))); } }; });
         return { lbl: (n[k] > 1 || c[k].length > 1 ? lbp : lb) + ' · ' + c[k].length + ' / ' + n[k], col, lc: c[k].length >= n[k] ? '#3DDC84' : '#FF6B6B', chips, opts, hasOpts: opts.length > 0, addOpen: this.state.eqAddOpen === r.id + k, addLbl: this.state.eqAddOpen === r.id + k ? 'Fermer' : '+ Ajouter', addBg: this.state.eqAddOpen === r.id + k ? '#F6D73C' : 'transparent', addC: this.state.eqAddOpen === r.id + k ? '#1E2023' : '#D5D9DE', addBd: this.state.eqAddOpen === r.id + k ? '#F6D73C' : '#4A5057',
@@ -3911,7 +3915,7 @@ class Component extends DCLogic {
           toggle: () => setH(i, { on: !x.on }), onS: e => setH(i, { s: e.target.value || '08:00' }), onE: e => setH(i, { e: e.target.value || '18:00' }) })),
         name: p.name, phone: p.phone || '', role: RL[p.role][1], col: RL[p.role][3], tel: 'tel:' + dg, hasTel: !!dg, load: wl + ' déménagement' + (wl > 1 ? 's' : '') + ' cette semaine', isDriver: p.role === 'chauffeur',
         vehs: vehKeys.map(k => { const sel = (p.veh || []).includes(k); return { lbl: this.VEH[k].tag, bg: sel ? Y : 'transparent', c: sel ? D : '#AEB4BB', bd: sel ? Y : '#3B4046', pick: () => upd(p.id, { veh: sel ? (p.veh || []).filter(x => x !== k) : [...(p.veh || []), k] }) }; }),
-        ...(() => { const dd = s.eqDay || this.iso(new Date()), di = (new Date(dd + 'T12:00:00').getDay() + 6) % 7, okD = p.active !== false && this.hrsOf(p)[di].on; return { stLbl: okD ? 'Disponible' : 'Repos', stC: okD ? '#3DDC84' : '#FF6B6B' }; })(), toggle: () => upd(p.id, { active: !on }), op: on ? '1' : '0.6',
+        ...(() => { const dd = s.eqDay || this.iso(new Date()), di = (new Date(dd + 'T12:00:00').getDay() + 6) % 7, hd = this.hrsOf(p)[di], okD = p.active !== false && hd.on; return { stLbl: okD ? 'Disponible ' + hd.s + '–' + hd.e : 'Repos', stC: okD ? '#3DDC84' : '#FF6B6B' }; })(), toggle: () => upd(p.id, { active: !on }), op: on ? '1' : '0.6',
         onName: e => upd(p.id, { name: e.target.value }), onPhone: e => upd(p.id, { phone: e.target.value }),
         del: () => { if (!window.confirm('Supprimer ' + p.name + ' ?')) return; const d2 = this.state.data;
           save({ ...d2, staff: (d2.staff || []).filter(x => x.id !== p.id), res: d2.res.map(x => { if (!x.crew) return x; const cc = this.crewOf(x), f = a => a.filter(i => i !== p.id); return { ...x, crew: { chauffeur: f(cc.chauffeur), menuisier: f(cc.menuisier), manoeuvre: f(cc.manoeuvre), chef: cc.chef === p.id ? '' : cc.chef } }; }) }); } };

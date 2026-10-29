@@ -125,7 +125,11 @@ export async function catalogueFromForm(
       if (!match) continue;
       const [, formKey, baseOrigin, , size, sizeOrigin] = match;
       const key = referenceInventoryKey(formKey);
-      const current = montageP[key] ?? {};
+      const configured = montageP[key];
+      const current =
+        typeof configured === 'number'
+          ? { local: configured, import: Math.round(configured * 1.5) }
+          : (configured ?? {});
       if (size && sizeOrigin) {
         montageP[key] = {
           ...current,

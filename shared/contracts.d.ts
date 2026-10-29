@@ -83,13 +83,14 @@ export type Settings = BookingRules & {
   assemblyPrice: number;
   montageP?: Record<
     string,
-    {
-      local?: number;
-      import?: number;
-      u?: number;
-      uI?: number;
-      sz?: Record<string, { local?: number; import?: number }>;
-    }
+    | number
+    | {
+        local?: number;
+        import?: number;
+        u?: number;
+        uI?: number;
+        sz?: Record<string, { local?: number; import?: number }>;
+      }
   >;
   businessPhone: string;
   whatsappPhone: string;
@@ -156,6 +157,7 @@ export type Route = {
   distanceKm: number;
   durationMinutes: number;
   geometry: Point[];
+  fallback?: boolean;
 };
 export type RouteTicket = Route & { id: string; expiresAt: string };
 export type BookingStatus = 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
@@ -261,6 +263,7 @@ export type BookingInventorySnapshot = {
   unloadingMinutes: number;
   packingMinutes: number;
   travelMinutes: number;
+  travelLegMinutes?: number;
   totalMinutes: number;
   lowDurationMinutes: number;
   highDurationMinutes: number;

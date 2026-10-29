@@ -1,4 +1,5 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useApp } from '../../application/context';
 import type { Draft } from '../../application/booking-draft';
 import {
   readInventoryIllustration,
@@ -30,6 +31,18 @@ import {
 } from '../../domain/reference-inventory-note';
 
 const sections = [...new Set(inventoryItems.map((item) => item.section))];
+const inventorySizeRanges: Record<string, [number, number]> = {
+  salon: [1, 10],
+  'table-manger': [2, 12],
+  lit: [1, 4],
+  matelas: [1, 4],
+  armoire: [1, 8],
+};
+const inventorySizeRange = (key: string, historicalMaximum?: number): [number, number] => {
+  const item = inventoryItems.find((entry) => entry.key === key);
+  const [minimum, maximum] = inventorySizeRanges[key] ?? [1, item?.defaultSize ? item.defaultSize + 3 : 1];
+  return [minimum, Math.max(maximum, historicalMaximum ?? maximum)];
+};
 
 function assemblyCount(inventory: Inventory, key: 'desk' | 'wardrobe' | 'bed'): number {
   return inventoryItems
@@ -121,6 +134,7 @@ function InventorySizeStepper({
   value,
   onChange,
   showLabel = false,
+  historicalMaximum,
 }: {
   itemKey: string;
   itemLabel: string;
@@ -128,15 +142,9 @@ function InventorySizeStepper({
   value: number;
   onChange: (value: number) => void;
   showLabel?: boolean;
+  historicalMaximum?: number;
 }) {
-  const ranges: Record<string, [number, number]> = {
-    salon: [1, 10],
-    'table-manger': [2, 12],
-    lit: [1, 4],
-    matelas: [1, 4],
-    armoire: [1, 8],
-  };
-  const [minimum, maximum] = ranges[itemKey] ?? [1, 99];
+  const [minimum, maximum] = inventorySizeRange(itemKey, historicalMaximum);
   const label = value === 1 ? sizeLabel.replace(/s$/, '') : sizeLabel;
   return (
     <div className="inventory-size-stepper" role="group" aria-label={`Taille de ${itemLabel}`}>
@@ -204,6 +212,7 @@ function InventoryHoverCard({
   onSelectFormat,
   onSelectSize,
   imageScope,
+  historicalMaximum,
 }: {
   item: (typeof inventoryItems)[number];
   format: InventoryFormat;
@@ -213,31 +222,45 @@ function InventoryHoverCard({
   onSelectFormat: (format: InventoryFormat) => void;
   onSelectSize: (size: number) => void;
   imageScope?: string;
+  historicalMaximum?: number;
 }) {
   const [images, setImages] = useState<Record<string, string>>({});
   const [uploadError, setUploadError] = useState('');
   const formatOptions = item.hasFormat ? inventoryFormats : [];
-  const sizeOptions = item.sizeLabel
-    ? [Math.max(1, size - 1), size, size + 1].map((value) => ({
+  const displayLabel = item.label.charAt(0).toLocaleUpperCase('fr-FR') + item.label.slice(1);
+  const sizeLabel = item.sizeLabel;
+  const [minimumSize, maximumSize] = inventorySizeRange(item.key, historicalMaximum);
+  const sizeOptions = sizeLabel
+    ? [
+        Math.max(minimumSize, Math.min(size - 1, maximumSize - 2)),
+        Math.max(minimumSize, Math.min(size - 1, maximumSize - 2)) + 1,
+        Math.max(minimumSize, Math.min(size - 1, maximumSize - 2)) + 2,
+      ].filter((value) => value <= maximumSize).map((value) => ({
         value,
-        label: `${value} ${item.sizeLabel}`,
-        hint: item.sizeName?.(value) ?? `${value} ${item.sizeLabel}`,
+        label: `${value} ${value === 1 ? sizeLabel.replace(/s$/u, '') : sizeLabel}`,
+        hint: item.sizeName?.(value) ?? `${value} ${sizeLabel}`,
       }))
     : [];
   const hasDismantleVolumeReduction = item.key !== 'climatiseur';
-  const canDismantle = item.canDismantle || item.key === 'custom';
+  const canDismantle = true;
   const currentVolume = estimatedInventoryItemVolume(item.key, size, dismantle, format);
   const dismantlePercent = Math.round((1 - inventoryDismantleFactor(item.key)) * 100);
   const volumeLabel = (volume: number) => `≈ ${volume.toFixed(2).replace('.', ',')} m³`;
   const scope = imageScope ?? item.key;
+  const hasVariants = formatOptions.length > 0 || sizeOptions.length > 0;
+  const defaultImageKey = `${scope}:default`;
   useEffect(() => {
     const imageKeys = [
       ...(item.hasFormat
         ? inventoryFormats.map((option) => `${scope}:format:${option.value}`)
         : []),
       ...(item.sizeLabel
-        ? [Math.max(1, size - 1), size, size + 1].map((value) => `${scope}:size:${value}`)
+        ? [Math.max(minimumSize, Math.min(size - 1, maximumSize - 2))]
+            .flatMap((first) => [first, first + 1, first + 2])
+            .filter((value) => value <= maximumSize)
+            .map((value) => `${scope}:size:${value}`)
         : []),
+      ...(!hasVariants ? [defaultImageKey] : []),
     ];
     let active = true;
     void Promise.all(
@@ -255,7 +278,7 @@ function InventoryHoverCard({
     return () => {
       active = false;
     };
-  }, [scope, item.key, item.hasFormat, item.sizeLabel, size]);
+  }, [scope, item.key, item.hasFormat, item.sizeLabel, size, minimumSize, maximumSize, hasVariants, defaultImageKey]);
 
   const upload = async (key: string, file: File | undefined) => {
     if (!file) return;
@@ -272,7 +295,7 @@ function InventoryHoverCard({
 
   const illustration = (key: string, label: string) => (
     <label
-      className="inventory-hover-image-upload"
+      className={`inventory-hover-image-upload${key === defaultImageKey ? ' inventory-hover-default-image' : ''}`}
       title={images[key] ? 'Remplacer cette image' : 'Choisir et enregistrer une image'}
       onClick={(event) => event.stopPropagation()}
     >
@@ -300,18 +323,25 @@ function InventoryHoverCard({
 
   return (
     <div className="inventory-hover-card" role="tooltip">
-      <strong className="inventory-hover-title">
-        {item.label} ·{' '}
-        {item.sizeLabel
-          ? `${size} ${item.sizeLabel}`
-          : (inventoryFormats.find((option) => option.value === format)?.label.toLowerCase() ??
-            'standard')}
-        {dismantle && canDismantle && (
+      {!hasVariants && illustration(defaultImageKey, item.label)}
+      <div className="inventory-hover-body">
+        <strong className="inventory-hover-title">
+          <span>
+            {displayLabel} ·{' '}
+            {item.sizeLabel
+              ? `${size} ${size === 1 ? item.sizeLabel.replace(/s$/u, '') : item.sizeLabel}${item.sizeName ? ` · ${item.sizeName(size)}` : ''}`
+              : item.hasFormat
+                ? inventoryFormatHint(item.key, format) ||
+                  (inventoryFormats.find((option) => option.value === format)?.label.toLowerCase() ??
+                    'standard')
+                : ''}
+          </span>
           <small>
-            {hasDismantleVolumeReduction ? `Démontable · −${dismantlePercent} %` : 'Démontable'}
+            {canDismantle
+              ? `Démontable${hasDismantleVolumeReduction ? ` · −${dismantlePercent} %` : ''}`
+              : 'Non démontable'}
           </small>
-        )}
-      </strong>
+        </strong>
       {(formatOptions.length > 0 || sizeOptions.length > 0) && (
         <div className="inventory-hover-variants">
           {formatOptions.map((option) => {
@@ -359,18 +389,41 @@ function InventoryHoverCard({
           {uploadError}
         </p>
       )}
+      {!item.hasFormat && !item.sizeLabel && (
+        <div className="inventory-hover-detail">
+          <strong>Volume moyen</strong>
+          <span>{volumeLabel(currentVolume)} / unité</span>
+        </div>
+      )}
+      {dismantle && canDismantle && item.key !== 'climatiseur' && (
+        <div className="inventory-hover-detail">
+          <strong>Démonté</strong>
+          <span>{hasDismantleVolumeReduction ? `−${dismantlePercent} % appliqué` : 'volume inchangé'}</span>
+        </div>
+      )}
+      {item.key === 'salon' && (
+        <div className="inventory-hover-detail">
+          <strong>Non empilable</strong>
+          <span>+25 % (rien ne se pose dessus)</span>
+        </div>
+      )}
       <div className="inventory-hover-selection">
         <strong>Votre sélection</strong>
         <span>
-          {quantity} ×{' '}
+          {Math.max(1, quantity)} ×{' '}
           {item.sizeLabel
-            ? `${size} ${item.sizeLabel}`
-            : (inventoryFormats.find((option) => option.value === format)?.label.toLowerCase() ??
-              'standard')}{' '}
-          = {volumeLabel(currentVolume * quantity)}
+            ? `${size} ${size === 1 ? item.sizeLabel.replace(/s$/u, '') : item.sizeLabel}`
+            : item.hasFormat
+              ? inventoryFormatHint(item.key, format) ||
+                (inventoryFormats.find((option) => option.value === format)?.label.toLowerCase() ??
+                  'standard')
+              : 'standard'}
+          {dismantle && item.key !== 'climatiseur' ? ', démonté' : ''} ={' '}
+          {volumeLabel(currentVolume * Math.max(1, quantity))}
         </span>
       </div>
       {item.tip && <p>{item.tip}</p>}
+      </div>
     </div>
   );
 }
@@ -407,11 +460,41 @@ export function CallInventory({
   const [open, setOpen] = useState(audience === 'client');
   const [openCustom, setOpenCustom] = useState(false);
   const [activeWidget, setActiveWidget] = useState<string | null>(null);
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const enterInventoryItem = (id: string) => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    hoverTimer.current = setTimeout(() => setActiveWidget(id), 250);
+  };
+  const leaveInventoryItem = (id: string) => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    setActiveWidget((current) => (current === id ? null : current));
+  };
   const dwellingTypes = ['Studio', 'F2', 'F3', 'F4', 'F5 et plus', 'Villa'];
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(sections.map((section) => [section, audience === 'client'])),
   );
   const inventory = draft.inventory;
+  const { api } = useApp();
+  const [historicalSizeMaximum, setHistoricalSizeMaximum] = useState<Record<string, number>>({});
+  const historyRequested = useRef(false);
+  useEffect(() => {
+    if (audience !== 'admin' || !open || historyRequested.current) return;
+    historyRequested.current = true;
+    void api.bookings().then((bookings) => {
+      const maximum: Record<string, number> = {};
+      bookings.forEach((booking) => {
+        const source = booking.inventorySnapshot?.sourceInventory;
+        if (!source) return;
+        Object.entries(source.entries).forEach(([key, entry]) => {
+          maximum[key] = Math.max(maximum[key] ?? 0, entry.size);
+        });
+        source.variants.forEach((entry) => {
+          maximum[entry.itemKey] = Math.max(maximum[entry.itemKey] ?? 0, entry.size);
+        });
+      });
+      setHistoricalSizeMaximum(maximum);
+    }).catch(() => undefined);
+  }, [api, audience, open]);
   const update = (next: Inventory) => {
     if (
       ['desk', 'wardrobe', 'bed'].some((key) => {
@@ -713,10 +796,8 @@ export function CallInventory({
                         >
                           <div
                             className={`inventory-item-hover-wrap${activeWidget === item.key ? ' is-open' : ''}`}
-                            onMouseEnter={() => setActiveWidget(item.key)}
-                            onMouseLeave={() =>
-                              setActiveWidget((value) => (value === item.key ? null : value))
-                            }
+                            onMouseEnter={() => enterInventoryItem(item.key)}
+                            onMouseLeave={() => leaveInventoryItem(item.key)}
                           >
                             {audience === 'client' && (
                               <label className="inventory-item">
@@ -755,8 +836,7 @@ export function CallInventory({
                                   }
                                   onClick={() => {
                                     if (audience === 'admin') {
-                                      setEntry(item.key, { quantity: entry.quantity + 1 });
-                                      setActiveWidget(null);
+                                      setEntry(item.key, { quantity: Math.min(999, entry.quantity + 1) });
                                     } else {
                                       setActiveWidget((value) =>
                                         value === item.key ? null : item.key,
@@ -777,6 +857,7 @@ export function CallInventory({
                                 dismantle={entry.dismantle}
                                 onSelectFormat={(format) => setEntry(item.key, { format })}
                                 onSelectSize={(size) => setEntry(item.key, { size })}
+                                historicalMaximum={historicalSizeMaximum[item.key]}
                               />
                             )}
                           </div>
@@ -788,6 +869,7 @@ export function CallInventory({
                               value={entry.size}
                               onChange={(size) => setEntry(item.key, { size })}
                               showLabel={audience === 'admin'}
+                              historicalMaximum={historicalSizeMaximum[item.key]}
                             />
                           )}
                           {item.hasFormat && (
@@ -852,7 +934,7 @@ export function CallInventory({
                               aria-label={`Ajouter ${item.label}`}
                               onClick={() =>
                                 setEntry(item.key, {
-                                  quantity: Math.min(99, entry.quantity + 1),
+                                  quantity: Math.min(999, entry.quantity + 1),
                                   size: entry.size || item.defaultSize || 1,
                                 })
                               }
@@ -901,10 +983,8 @@ export function CallInventory({
                             >
                               <div
                                 className={`inventory-item-hover-wrap${activeWidget === variant.id ? ' is-open' : ''}`}
-                                onMouseEnter={() => setActiveWidget(variant.id)}
-                                onMouseLeave={() =>
-                                  setActiveWidget((value) => (value === variant.id ? null : value))
-                                }
+                                onMouseEnter={() => enterInventoryItem(variant.id)}
+                                onMouseLeave={() => leaveInventoryItem(variant.id)}
                               >
                                 <InventoryItemLabel
                                   estimate={(audience === 'admin'
@@ -927,11 +1007,10 @@ export function CallInventory({
                                             ...inventory,
                                             variants: inventory.variants.map((line) =>
                                               line.id === variant.id
-                                                ? { ...line, quantity: line.quantity + 1 }
+                                                ? { ...line, quantity: Math.min(999, line.quantity + 1) }
                                                 : line,
                                             ),
                                           });
-                                          setActiveWidget(null);
                                         } else {
                                           setActiveWidget((value) =>
                                             value === variant.id ? null : variant.id,
@@ -950,6 +1029,7 @@ export function CallInventory({
                                     size={variant.size}
                                     quantity={variant.quantity}
                                     dismantle={variant.dismantle}
+                                    historicalMaximum={historicalSizeMaximum[item.key]}
                                     onSelectFormat={(format) =>
                                       update({
                                         ...inventory,
@@ -976,6 +1056,7 @@ export function CallInventory({
                                   sizeLabel={item.sizeLabel}
                                   value={variant.size}
                                   showLabel={audience === 'admin'}
+                                  historicalMaximum={historicalSizeMaximum[item.key]}
                                   onChange={(size) =>
                                     update({
                                       ...inventory,
@@ -1068,7 +1149,7 @@ export function CallInventory({
                                       ...inventory,
                                       variants: inventory.variants.map((line) =>
                                         line.id === variant.id
-                                          ? { ...line, quantity: Math.min(99, line.quantity + 1) }
+                                          ? { ...line, quantity: Math.min(999, line.quantity + 1) }
                                           : line,
                                       ),
                                     })
@@ -1129,10 +1210,8 @@ export function CallInventory({
               >
                 <div
                   className={`inventory-item-hover-wrap${activeWidget === item.id ? ' is-open' : ''}`}
-                  onMouseEnter={() => setActiveWidget(item.id)}
-                  onMouseLeave={() =>
-                    setActiveWidget((value) => (value === item.id ? null : value))
-                  }
+                  onMouseEnter={() => enterInventoryItem(item.id)}
+                  onMouseLeave={() => leaveInventoryItem(item.id)}
                 >
                   <InventoryItemLabel
                     estimate={(audience === 'admin' ? referenceItemSubline : inventoryItemEstimate)(
@@ -1159,11 +1238,10 @@ export function CallInventory({
                               ...inventory,
                               custom: inventory.custom.map((line) =>
                                 line.id === item.id
-                                  ? { ...line, quantity: line.quantity + 1 }
+                                  ? { ...line, quantity: Math.min(999, line.quantity + 1) }
                                   : line,
                               ),
                             });
-                            setActiveWidget(null);
                           } else {
                             setActiveWidget((value) => (value === item.id ? null : item.id));
                           }
@@ -1264,7 +1342,7 @@ export function CallInventory({
                         ...inventory,
                         custom: inventory.custom.map((line) =>
                           line.id === item.id
-                            ? { ...line, quantity: Math.min(99, line.quantity + 1) }
+                            ? { ...line, quantity: Math.min(999, line.quantity + 1) }
                             : line,
                         ),
                       })
@@ -1295,7 +1373,7 @@ export function CallInventory({
             <label>
               {audience === 'client' && 'Autre objet'}
               <input
-                maxLength={80}
+                maxLength={120}
                 value={customLabel}
                 onChange={(event) => setCustomLabel(event.target.value)}
                 placeholder="Autre objet (ex. piano, aquarium…)"

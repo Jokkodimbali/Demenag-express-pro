@@ -1,7 +1,9 @@
 import 'leaflet/dist/leaflet.css';
 import { Expand, LocateFixed, Search, X } from 'lucide-react';
 import { useRouteMap } from '../application/controllers/useRouteMap';
+import { useApp } from '../application/context';
 import { messages } from '../content/fr';
+import { referenceTierLabels } from '../domain/format';
 import type { TollExtraLine } from '../domain/toll-selection';
 const EMPTY_TOLL_LINES: TollExtraLine[] = [];
 export default function RouteMap({
@@ -19,6 +21,7 @@ export default function RouteMap({
   onNoteChange?: (side: 'from' | 'to', value: string) => void;
   adminQuote?: boolean;
 }) {
+  const { catalogue } = useApp();
   const {
     draft,
     routeTolls,
@@ -41,7 +44,21 @@ export default function RouteMap({
     route,
     clear,
     locate,
-  } = useRouteMap(tollLines, onTollToggle);
+  } = useRouteMap(tollLines, onTollToggle, adminQuote);
+  const mapDistance = draft.distanceKmOverride ?? draft.route?.distanceKm;
+  const bounds = catalogue?.settings.distanceBounds ?? [15, 25, 35];
+  const mapTier =
+    mapDistance == null
+      ? '—'
+      : referenceTierLabels(bounds)[
+          mapDistance < bounds[0]
+            ? 0
+            : mapDistance < bounds[1]
+              ? 1
+              : mapDistance <= bounds[2]
+                ? 2
+                : 3
+        ];
 
   const addressField = (side: 'from' | 'to') => (
     <div key={side}>
@@ -149,9 +166,23 @@ export default function RouteMap({
       )}
       <div className={'map-shell ' + (full ? 'fullscreen' : '')}>
         <div className="map" ref={host} />
-        <span className="map-hint">
-          {adminQuote ? `Touchez la carte pour placer ${active === 'from' ? 'le départ (A)' : "l'arrivée (B)"}` : <>{messages.placez}{active === 'from' ? messages.leDepartA : messages.lArriveeB}{messages.surLaCarte}</>}
-        </span>
+        {adminQuote ? (
+          <div className="map-hint">
+            <span>
+              {draft.from && draft.to
+                ? `Touchez la carte pour déplacer ${active === 'from' ? 'A' : 'B'}, ou glissez les points`
+                : `Touchez la carte pour placer ${active === 'from' ? 'le départ (A)' : "l'arrivée (B)"}`}
+            </span>
+          </div>
+        ) : (
+          <span className="map-hint">
+            <>
+              {messages.placez}
+              {active === 'from' ? messages.leDepartA : messages.lArriveeB}
+              {messages.surLaCarte}
+            </>
+          </span>
+        )}
         <button
           type="button"
           className="map-expand"
@@ -189,13 +220,38 @@ export default function RouteMap({
         )}
         {adminQuote && full && (
           <div className="admin-quote-map-full-summary">
-            <span>
-              Distance :{' '}
-              <strong>{draft.distanceKmOverride ?? draft.route?.distanceKm ?? '—'} km</strong>
-            </span>
-            <button type="button" onClick={() => setFull(false)}>
-              Valider
-            </button>
+            <div className="admin-quote-map-full-details">
+              <span>
+                Distance :{' '}
+                <strong>
+                  {mapDistance == null
+                    ? 'placez A et B'
+                    : `${String(mapDistance).replace('.', ',')} km${draft.route?.durationMinutes ? ` · ${draft.route.durationMinutes} min` : ''}`}
+                </strong>
+              </span>
+              <span>
+                Tranche : <strong>{mapTier}</strong>
+              </span>
+            </div>
+            <div className="admin-quote-map-full-actions">
+              <button
+                type="button"
+                className={active === 'from' ? 'active' : ''}
+                onClick={() => setActive('from')}
+              >
+                Départ (A)
+              </button>
+              <button
+                type="button"
+                className={active === 'to' ? 'active' : ''}
+                onClick={() => setActive('to')}
+              >
+                Arrivée (B)
+              </button>
+              <button type="button" onClick={() => setFull(false)}>
+                Valider
+              </button>
+            </div>
           </div>
         )}
       </div>

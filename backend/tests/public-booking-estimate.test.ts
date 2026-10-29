@@ -95,6 +95,8 @@ test('a booking keeps its inventory and admin edits preserve or clear planning s
   } satisfies BookingInput;
   await service.create(client, input);
   assert.ok(saved);
+  assert.equal((saved as Booking).fromAddress, input.fromAddress);
+  assert.equal((saved as Booking).toAddress, input.toAddress);
   assert.equal((saved as Booking).estimate.total, 74000);
   assert.deepEqual((saved as Booking).inventorySnapshot, inventory);
   assert.equal((saved as Booking).quotes.length, 1);
@@ -116,6 +118,8 @@ test('a booking keeps its inventory and admin edits preserve or clear planning s
     { ...input, workPlan: [step] },
     created.version,
   );
+  assert.equal(planned.fromAddress, input.fromAddress);
+  assert.equal(planned.toAddress, input.toAddress);
   const checked = await service.reviewWorkPlan(
     administrator,
     planned.id,

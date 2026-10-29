@@ -2,6 +2,7 @@ import { useState, type CSSProperties } from 'react';
 import { FleetVehicleDimensions } from '../FleetVehicleDimensions';
 import { useApp } from '../../application/context';
 import { errorMessage } from '../../application/error-message';
+import { labourUnitPrice } from '../../domain/labour-price';
 import { CatalogueService } from '../../application/services/catalogue';
 import type { Catalogue, LabourMatrixScenario } from '../../domain/model';
 import { inventoryItems } from '../../domain/inventory';
@@ -102,12 +103,21 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
   const [dimensionError, setDimensionError] = useState('');
   const { api, setCatalogue } = useApp();
   const selected = scenarios.find((entry) => entry.id === scenario)!;
+  const customConfigured = catalogue.settings.montageP?.custom;
+  const customPricing =
+    typeof customConfigured === 'number'
+      ? { local: customConfigured, import: Math.round(customConfigured * 1.5) }
+      : (customConfigured ?? {});
   const rows = inventoryItems
     .filter((item) => item.key !== 'climatiseur')
     .map((item) => {
       const key = referenceInventoryKey(item.key);
+      const configured =
+        catalogue.settings.montageP?.[key] ?? catalogue.settings.montageP?.[item.key];
       const pricing =
-        catalogue.settings.montageP?.[key] ?? catalogue.settings.montageP?.[item.key] ?? {};
+        typeof configured === 'number'
+          ? { local: configured, import: Math.round(configured * 1.5) }
+          : (configured ?? {});
       const range = item.sizeLabel ? (sizeRanges[key] ?? [1, (item.defaultSize ?? 1) + 3]) : null;
       return { item, key, pricing, range };
     });
@@ -340,10 +350,7 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
                           type="number"
                           min="0"
                           name="montageP.custom.local"
-                          defaultValue={
-                            catalogue.settings.montageP?.custom?.local ??
-                            catalogue.settings.assemblyPrice
-                          }
+                          defaultValue={customPricing.local ?? catalogue.settings.assemblyPrice}
                           aria-label="Autre objet, local"
                         />
                         <input
@@ -352,7 +359,7 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
                           min="0"
                           name="montageP.custom.import"
                           defaultValue={
-                            catalogue.settings.montageP?.custom?.import ??
+                            customPricing.import ??
                             Math.round(catalogue.settings.assemblyPrice * 1.5)
                           }
                           aria-label="Autre objet, importé"
@@ -399,12 +406,12 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
                 <div className="reference-settings-labour-row" key={fromFloor}>
                   <strong>{fromFloor}</strong>
                   {floors.map((_, toIndex) => {
-                    const extra = (floor: number, hasLift: boolean) =>
-                      floor <= 0 ? 0 : hasLift ? liftSupplement : floor * floorSupplement;
-                    const value =
-                      catalogue.settings.labourPrice +
-                      extra(fromIndex, selected.from) +
-                      extra(toIndex, selected.to);
+                    const value = labourUnitPrice(catalogue.settings, {
+                      fromFloor: fromIndex,
+                      toFloor: toIndex,
+                      fromLift: selected.from,
+                      toLift: selected.to,
+                    });
                     return <span key={toIndex}>{amount(value)}</span>;
                   })}
                 </div>

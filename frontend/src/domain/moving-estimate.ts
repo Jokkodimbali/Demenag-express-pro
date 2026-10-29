@@ -179,6 +179,7 @@ export type MovingEstimate = {
   unloadingMinutes: number;
   packingMinutes: number;
   travelMinutes: number;
+  travelLegMinutes: number;
   totalMinutes: number;
   lowDurationMinutes: number;
   highDurationMinutes: number;
@@ -195,6 +196,7 @@ type EstimateOptions = {
   crew?: number;
   startTime?: string;
   laborPlanning?: MovingLaborPlanningSettings;
+  trafficDurationMinutes?: number;
 };
 
 export function estimateMovingWork(
@@ -243,7 +245,7 @@ export function estimateMovingWork(
     climatiseur: [0.75, 1.25],
   };
   const addDismantling = (key: string, size: number, quantity: number, dismantle: boolean) => {
-    const duration = dismantle ? dismantlingMinutes[key] : undefined;
+    const duration = dismantle ? (dismantlingMinutes[key] ?? [0.2, 0.3]) : undefined;
     if (!duration || quantity <= 0) return;
     const multiplier = key === 'armoire' ? size : 1;
     dismantlingBySide.from += duration[0] * multiplier * quantity;
@@ -294,11 +296,12 @@ export function estimateMovingWork(
     Math.max(unloadingBase / efficiency(crew), carpenter ? dismantlingBySide.to / carpenter : 0);
   let recommendedCrew = minimumCrew;
   let recommendedCarpenters = dismantlingBySide.from + dismantlingBySide.to > 0 ? 1 : 0;
+  let recommendationPass = 0;
   while (
     loadingWithCrew(recommendedCrew, recommendedCarpenters) +
       unloadingWithCrew(recommendedCrew, recommendedCarpenters) >
       labor.maxHandlingHours &&
-    (recommendedCrew < labor.maxMoversPerVehicle || recommendedCarpenters < 3)
+    recommendationPass++ < 80
   ) {
     const carpentryIsBottleneck =
       recommendedCarpenters > 0 &&
@@ -306,7 +309,6 @@ export function estimateMovingWork(
         dismantlingBySide.to / recommendedCarpenters > unloadingBase / efficiency(recommendedCrew));
     if (carpentryIsBottleneck && recommendedCarpenters < 3) recommendedCarpenters += 1;
     else if (recommendedCrew < labor.maxMoversPerVehicle) recommendedCrew += 1;
-    else if (recommendedCarpenters < 3) recommendedCarpenters += 1;
     else break;
   }
   const crew = Math.min(20, Math.max(1, options.crew || recommendedCrew));
@@ -323,10 +325,19 @@ export function estimateMovingWork(
   const routeBaseMinutes =
     routeKm <= 0
       ? 0
-      : routeDuration > 0 && averageSpeed > 8 && averageSpeed < 100
-        ? routeDuration * (1.15 + 0.35 * Math.exp(-routeKm / 30))
-        : (routeKm / (18 + 37 * (1 - Math.exp(-routeKm / 40)))) * 60;
-  const vehicleRouteFactor = vehicle.id === 'trafic' ? 1 : 1.05;
+      : options.trafficDurationMinutes && options.trafficDurationMinutes > 0
+        ? options.trafficDurationMinutes
+        : routeDuration > 0 && averageSpeed > 8 && averageSpeed < 100
+          ? routeDuration * (1.15 + 0.35 * Math.exp(-routeKm / 30))
+          : (routeKm / (18 + 37 * (1 - Math.exp(-routeKm / 40)))) * 60;
+  const vehicleRouteFactor =
+    options.trafficDurationMinutes && options.trafficDurationMinutes > 0
+      ? vehicle.id === 'trafic'
+        ? 1.05
+        : 1.1
+      : vehicle.id === 'trafic'
+        ? 1
+        : 1.05;
   const routeMinutes = routeBaseMinutes * vehicleRouteFactor;
   const legLoaded = routeMinutes ? 10 + routeMinutes : 0;
   const legEmpty = routeMinutes ? 10 + routeMinutes * 0.85 : 0;
@@ -461,6 +472,7 @@ export function estimateMovingWork(
     unloadingMinutes,
     packingMinutes,
     travelMinutes: driveMinutes,
+    travelLegMinutes: legLoaded,
     totalMinutes,
     lowDurationMinutes: totalMinutes * 0.85,
     highDurationMinutes: totalMinutes * 1.3,
@@ -490,14 +502,14 @@ export function bookingInventorySnapshot(
       const format = entry.format ?? 'medium';
       const details = [
         definition.sizeLabel
-          ? `${entry.size} ${definition.sizeLabel}${definition.sizeName ? ` · ${definition.sizeName(entry.size)}` : ''}`
+          ? `${entry.size} ${entry.size === 1 ? definition.sizeLabel.replace(/s$/u, '') : definition.sizeLabel}`
           : definition.hasFormat
-            ? `${inventoryFormats.find((item) => item.value === format)?.label ?? 'Moyen'}${inventoryFormatHint(definition.key, format) ? ` · ${inventoryFormatHint(definition.key, format)}` : ''}`
+            ? `${inventoryFormats.find((item) => item.value === format)?.label ?? 'Moyen'} : ${inventoryFormatHint(definition.key, format)}`
             : '',
         entry.dismantle ? 'démontage et montage' : '',
       ]
         .filter(Boolean)
-        .join(' · ');
+        .join(', ');
       return {
         section: definition.section,
         label: definition.label,
@@ -513,9 +525,9 @@ export function bookingInventorySnapshot(
       const format = item.format ?? 'medium';
       return {
         section: 'Autres objets',
-        label: item.label,
+        label: item.label.charAt(0).toLocaleUpperCase('fr-FR') + item.label.slice(1),
         quantity: item.quantity,
-        details: `${inventoryFormats.find((option) => option.value === format)?.label ?? 'Moyen'} format${item.dismantle ? ' · démontage et montage' : ''}`,
+        details: item.dismantle ? 'démontage et montage' : '—',
         volumeM3: itemVolume('custom', 1, Boolean(item.dismantle), format) * item.quantity,
       };
     });
@@ -556,13 +568,14 @@ export function bookingInventorySnapshot(
     totalVolumeM3: estimate.volume,
     vehicleCapacityM3: estimate.capacity,
     fillRate: estimate.fillRate,
-    estimatedTrips: estimate.plannedTrips,
+    estimatedTrips: estimate.trips,
     moverCount: estimate.crew,
     carpenterCount: estimate.carpenterCount,
     loadingMinutes: estimate.loadingMinutes,
     unloadingMinutes: estimate.unloadingMinutes,
     packingMinutes: estimate.packingMinutes,
     travelMinutes: estimate.travelMinutes,
+    travelLegMinutes: estimate.travelLegMinutes,
     totalMinutes: estimate.totalMinutes,
     lowDurationMinutes: estimate.lowDurationMinutes,
     highDurationMinutes: estimate.highDurationMinutes,

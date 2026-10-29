@@ -31,6 +31,7 @@ declare global {
 }
 
 let sdkPromise: Promise<boolean> | null = null;
+let sdkKey = '';
 
 export function readGoogleMapsKey() {
   try {
@@ -51,25 +52,30 @@ export function saveGoogleMapsKey(value: string) {
 
 async function ensureGoogleMaps(key: string): Promise<boolean> {
   if (window.google?.maps?.DistanceMatrixService) return true;
+  if (sdkKey !== key) {
+    sdkKey = key;
+    sdkPromise = null;
+  }
   if (!sdkPromise) {
     sdkPromise = new Promise((resolve) => {
       const callbackName = '__demenagGoogleMapsReady';
-      const timeout = window.setTimeout(() => resolve(false), 15000);
+      let settled = false;
+      const finish = (ready: boolean) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timeout);
+        if (!ready) sdkPromise = null;
+        resolve(ready);
+      };
+      const timeout = window.setTimeout(() => finish(false), 15000);
       window[callbackName] = () => {
-        window.clearTimeout(timeout);
-        resolve(Boolean(window.google?.maps?.DistanceMatrixService));
+        finish(Boolean(window.google?.maps?.DistanceMatrixService));
       };
-      window.gm_authFailure = () => {
-        window.clearTimeout(timeout);
-        resolve(false);
-      };
+      window.gm_authFailure = () => finish(false);
       const script = document.createElement('script');
       script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&callback=${callbackName}&language=fr&region=SN`;
       script.async = true;
-      script.onerror = () => {
-        window.clearTimeout(timeout);
-        resolve(false);
-      };
+      script.onerror = () => finish(false);
       document.head.appendChild(script);
     });
   }
@@ -85,7 +91,8 @@ export async function googleTrafficDuration(
   if (!key.trim() || !(await ensureGoogleMaps(key.trim()))) return null;
   const maps = window.google?.maps;
   if (!maps) return null;
-  const departure = departureTime && departureTime.getTime() > Date.now() ? departureTime : new Date();
+  const departure =
+    departureTime && departureTime.getTime() > Date.now() ? departureTime : new Date();
   return new Promise((resolve) => {
     new maps.DistanceMatrixService().getDistanceMatrix(
       {

@@ -7,7 +7,7 @@ import { errorMessage } from '../error-message';
 import { quoteFromForm } from '../validation/forms';
 import { quoteNotificationUrl } from '../services/quote-notification';
 import { useMemo } from 'react';
-import { quoteTotal } from '../services/quote-total';
+import { quoteTotal, savedCustomTransportPrice } from '../services/quote-total';
 import { isQuotedServiceLine, quotedServiceOptions } from '../services/quote-service-options';
 type ExtraLine = { id: string; label: string; quantity: number; unitPrice: number };
 export function useBookingCard({
@@ -36,8 +36,7 @@ export function useBookingCard({
   const [quoteDraft, setQuoteDraft] = useState(() => ({
     kind: b.driverFinishedAt ? ('final' as const) : (last?.kind ?? ('provisional' as const)),
     trips: b.driverFinishedAt ? (b.trips?.length ?? 1) : (last?.price.trips ?? 1),
-    customPrice:
-      last?.price.lines.find((line) => line.label.includes(b.vehicle.name))?.unitPrice ?? null,
+    customPrice: savedCustomTransportPrice(b, last),
     discount: last?.price.discountValue ?? last?.price.discount ?? 0,
     discountType: last?.price.discountType ?? 'fcfa',
     discountReason: last?.price.discountReason ?? '',
@@ -69,8 +68,7 @@ export function useBookingCard({
     setQuoteDraft({
       kind: b.driverFinishedAt ? 'final' : (last?.kind ?? 'provisional'),
       trips: b.driverFinishedAt ? (b.trips?.length ?? 1) : (last?.price.trips ?? 1),
-      customPrice:
-        last?.price.lines.find((line) => line.label.includes(b.vehicle.name))?.unitPrice ?? null,
+      customPrice: savedCustomTransportPrice(b, last),
       discount: last?.price.discountValue ?? last?.price.discount ?? 0,
       discountType: last?.price.discountType ?? 'fcfa',
       discountReason: last?.price.discountReason ?? '',
@@ -162,9 +160,12 @@ export function useBookingCard({
     if (!blob) return null;
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `${quote?.reference || b.reference}.pdf`;
+    const kind = quote?.kind === 'final' ? 'final' : 'provisoire';
+    link.download = `Devis-${kind}-${quote?.reference || b.reference}.pdf`;
+    document.body.append(link);
     link.click();
-    window.setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(link.href), 30000);
     return blob;
   }
   async function shareQuote(quote: Quote, whatsappUrl: string) {

@@ -1,5 +1,5 @@
 import { ChevronDown, Warehouse } from 'lucide-react';
-import { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useBookingForm } from '../application/useBookingForm';
 import { useApp } from '../application/context';
@@ -17,7 +17,11 @@ import {
   referenceMovingEstimateNote,
 } from '../domain/reference-inventory-note';
 import { money, referenceTierLabels, today } from '../domain/format';
-import { assemblyUnitPrice, labourUnitPrice } from '../domain/labour-price';
+import {
+  assemblyUnitPrice,
+  labourUnitPrice,
+  labourUnitPriceOverrideFromQuote,
+} from '../domain/labour-price';
 import { inventoryAssemblyLines, inventoryAssemblyOptions } from '../domain/inventory-assembly';
 import { googleTrafficDuration, readGoogleMapsKey } from '../application/google-maps-traffic';
 import type { Booking, Options, Price, Quote } from '../domain/model';
@@ -27,6 +31,14 @@ import { quoteNotificationUrl } from '../application/services/quote-notification
 import { whatsappNumber } from '../application/services/whatsapp';
 
 const RouteMap = lazy(() => import('../components/RouteMap'));
+const trafficDuration = (minutes: number) => {
+  const rounded = Math.max(5, Math.round(minutes / 5) * 5);
+  const hours = Math.floor(rounded / 60);
+  const remaining = rounded % 60;
+  return hours
+    ? `${hours} h${remaining ? ` ${String(remaining).padStart(2, '0')}` : ''}`
+    : `${remaining} min`;
+};
 
 export function AdminCreateQuote() {
   const location = useLocation();
@@ -43,7 +55,6 @@ export function AdminCreateQuote() {
   });
   const [questionnaireOpen, setQuestionnaireOpen] = useState(false);
   const [quoteKind, setQuoteKind] = useState<Quote['kind']>('provisional');
-  const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfError, setPdfError] = useState('');
   const [stageError, setStageError] = useState('');
   const whatsappWindow = useRef<Window | null>(null);
@@ -59,9 +70,11 @@ export function AdminCreateQuote() {
     minutes: number;
     freeMinutes: number;
     fetchedAt: number;
+    future: boolean;
   } | null>(null);
   const [trafficBusy, setTrafficBusy] = useState(false);
   const [trafficError, setTrafficError] = useState(false);
+  const trafficRequest = useRef(0);
   const { exportQuote, catalogue: appCatalogue } = useApp();
   const state = useBookingForm({
     mode: 'admin-quote',
@@ -162,6 +175,11 @@ export function AdminCreateQuote() {
     const booking = state.editingBooking;
     if (!booking) return;
     const quote = booking.quotes.at(-1);
+    const labourOverride = labourUnitPriceOverrideFromQuote(
+      quote?.price,
+      booking.pricingSettings,
+      booking.workAccess,
+    );
     setQuoteConfig({
       trips: quote?.price.trips ?? booking.estimate.trips,
       discount: quote?.price.discountValue ?? quote?.price.discount ?? booking.estimate.discount,
@@ -173,8 +191,7 @@ export function AdminCreateQuote() {
               line.label.startsWith('Transport'),
             )?.unitPrice ?? null)
           : null,
-      labourUnitPriceOverride:
-        quote?.price.lines.find((line) => line.label.startsWith('Manœuvre'))?.unitPrice ?? null,
+      labourUnitPriceOverride: labourOverride,
     });
     setTollLines(
       (quote?.tolls ?? []).map((line) => ({
@@ -191,75 +208,70 @@ export function AdminCreateQuote() {
     draft.toAddress,
   );
   const route = draft.route;
-  useEffect(() => {
-    if (!googleMapsKey || !route) {
-      setTraffic(null);
-      setTrafficError(false);
-      return;
-    }
-    let active = true;
+  const refreshTraffic = useCallback(async () => {
+    if (!googleMapsKey || !route) return;
+    const request = ++trafficRequest.current;
     const timeMatch = /^(\d{1,2}):(\d{2})$/u.exec(draft.timeSlot);
     const departure =
       draft.date && timeMatch
         ? new Date(`${draft.date}T${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}:00`)
         : undefined;
+    const future = Boolean(departure && departure.getTime() > Date.now() + 60000);
     setTrafficBusy(true);
     setTrafficError(false);
-    googleTrafficDuration(route.from, route.to, googleMapsKey, departure)
-      .then((result) => {
-        if (!active) return;
+    try {
+      const result = await googleTrafficDuration(route.from, route.to, googleMapsKey, departure);
+      if (request === trafficRequest.current) {
         setTraffic(
           result
             ? {
                 minutes: result.minutes,
                 freeMinutes: result.freeMinutes,
                 fetchedAt: result.fetchedAt,
+                future,
               }
             : null,
         );
         setTrafficError(!result);
-      })
-      .finally(() => {
-        if (active) setTrafficBusy(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [draft.date, route, draft.timeSlot, googleMapsKey]);
-  async function refreshTraffic() {
-    if (!googleMapsKey || !route) return;
-    const timeMatch = /^(\d{1,2}):(\d{2})$/u.exec(draft.timeSlot);
-    const departure =
-      draft.date && timeMatch
-        ? new Date(`${draft.date}T${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}:00`)
-        : undefined;
-    setTrafficBusy(true);
-    setTrafficError(false);
-    try {
-      const result = await googleTrafficDuration(route.from, route.to, googleMapsKey, departure);
-      setTraffic(
-        result
-          ? {
-              minutes: result.minutes,
-              freeMinutes: result.freeMinutes,
-              fetchedAt: result.fetchedAt,
-            }
-          : null,
-      );
-      setTrafficError(!result);
+      }
     } catch {
-      setTraffic(null);
-      setTrafficError(true);
+      if (request === trafficRequest.current) {
+        setTraffic(null);
+        setTrafficError(true);
+      }
     } finally {
-      setTrafficBusy(false);
+      if (request === trafficRequest.current) setTrafficBusy(false);
     }
-  }
+  }, [draft.date, draft.timeSlot, googleMapsKey, route]);
+  useEffect(() => {
+    if (!googleMapsKey || !route) {
+      trafficRequest.current++;
+      setTraffic(null);
+      setTrafficBusy(false);
+      setTrafficError(false);
+      return;
+    }
+    setTraffic(null);
+    void refreshTraffic();
+    const interval = window.setInterval(() => void refreshTraffic(), 300000);
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [googleMapsKey, route, refreshTraffic]);
   const pricingRoute =
     draft.route && draft.distanceKmOverride != null
       ? { ...draft.route, distanceKm: draft.distanceKmOverride }
       : draft.route;
-  const estimateRoute =
-    pricingRoute && traffic ? { ...pricingRoute, durationMinutes: traffic.minutes } : pricingRoute;
+  const trafficDelay = traffic ? traffic.minutes - traffic.freeMinutes : 0;
+  const trafficColor = !googleMapsKey
+    ? '#6B737B'
+    : !traffic
+      ? '#AEB4BB'
+      : trafficDelay > 15
+        ? '#FF5A5F'
+        : trafficDelay > 5
+          ? '#FFD23F'
+          : '#3DDC84';
   const labourPrice = catalogue
     ? labourUnitPrice(catalogue.settings, {
         fromFloor: draft.inventory.fromFloor,
@@ -269,11 +281,12 @@ export function AdminCreateQuote() {
       })
     : 0;
   const movingEstimate = selected
-    ? estimateMovingWork(estimateInventory, selected, estimateRoute, {
+    ? estimateMovingWork(estimateInventory, selected, pricingRoute, {
         trips: quoteConfig.trips,
         crew: draft.inventory.crew,
         startTime: draft.timeSlot,
         laborPlanning: catalogue?.settings.movingLaborPlanning,
+        trafficDurationMinutes: traffic?.minutes,
       })
     : null;
   const selectedVehicleId = selected?.id ?? '';
@@ -507,14 +520,15 @@ export function AdminCreateQuote() {
     form.requestSubmit();
   }
   async function downloadCurrentQuote() {
-    if (!catalogue || !draft.route || !selected || previewTotal === null) return;
-    setPdfBusy(true);
+    const pdfSettings = catalogue?.settings;
+    if (!pdfSettings || !selected) return;
     setPdfError('');
     try {
       const currentPrice: Price = {
         lines: previewLines.map((line) => ({ ...line })),
-        total: previewTotal,
+        total: previewTotal ?? previewSubtotal - previewDiscount,
         discount: previewDiscount,
+        discountLabel: previewDiscountLabel,
         discountType: quoteConfig.discountType,
         discountValue: quoteConfig.discount,
         discountReason: quoteConfig.discountReason,
@@ -528,7 +542,14 @@ export function AdminCreateQuote() {
         kind: quoteKind,
         createdAt: savedQuote?.createdAt ?? new Date().toISOString(),
         price: currentPrice,
-        notes: [visibleInventoryText, estimateText, questionnaireText, draft.notes]
+        notes: [
+          draft.fromNote.trim() ? `Repère départ : ${draft.fromNote.trim()}` : '',
+          draft.toNote.trim() ? `Repère arrivée : ${draft.toNote.trim()}` : '',
+          visibleInventoryText,
+          estimateText,
+          questionnaireText,
+          draft.notes,
+        ]
           .filter(Boolean)
           .join('\n'),
         options: draft.options,
@@ -549,9 +570,9 @@ export function AdminCreateQuote() {
           vehicle: selected,
           fromAddress: '',
           toAddress: '',
-          from: draft.route.from,
-          to: draft.route.to,
-          distanceKm: draft.route.distanceKm,
+          from: [0, 0],
+          to: [0, 0],
+          distanceKm: 0,
           date: null,
           timeSlot: '',
           options: draft.options,
@@ -567,37 +588,34 @@ export function AdminCreateQuote() {
         vehicle: selected,
         fromAddress: draft.fromAddress,
         toAddress: draft.toAddress,
-        from: draft.route.from,
-        to: draft.route.to,
-        distanceKm: effectiveDistance ?? draft.route.distanceKm,
+        from: draft.route?.from ?? editingBooking?.from ?? [0, 0],
+        to: draft.route?.to ?? editingBooking?.to ?? [0, 0],
+        distanceKm: effectiveDistance ?? editingBooking?.distanceKm ?? 0,
         date: draft.date || null,
         month: draft.month,
         timeSlot: draft.timeSlot,
         options: draft.options,
         notes: quote.notes,
         status: quoteKind === 'final' ? 'completed' : (editingBooking?.status ?? 'pending'),
-        pricingSettings: editingBooking?.pricingSettings ?? catalogue.settings,
+        pricingSettings: pdfSettings,
         inventorySnapshot: movingEstimate?.volume
           ? bookingInventorySnapshot(estimateInventory, movingEstimate)
           : editingBooking?.inventorySnapshot,
         estimate: currentPrice,
         quotes: editingBooking?.quotes ?? [],
       };
-      const blob = await exportQuote(
-        previewBooking,
-        quote,
-        editingBooking?.pricingSettings ?? catalogue.settings,
-      );
+      const blob = await exportQuote(previewBooking, quote, pdfSettings);
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `${editingBooking?.reference ?? 'devis-en-cours'}-${quoteKind}.pdf`;
+      const filenameKind = quoteKind === 'final' ? 'final' : 'provisoire';
+      link.download = `Devis-${filenameKind}-${quote.reference || editingBooking?.reference || 'demande'}.pdf`;
+      document.body.append(link);
       link.click();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 30000);
     } catch {
       setPdfError('Le PDF n’a pas pu être généré. Réessayez.');
-    } finally {
-      setPdfBusy(false);
     }
   }
   const onTollToggle = (line: (typeof tollLines)[number], checked: boolean) =>
@@ -929,53 +947,55 @@ export function AdminCreateQuote() {
                     <strong>{draft.route ? tiers[previewTier] : '—'}</strong>
                   </span>
                 </label>
-                {draft.from && draft.to && (!googleMapsKey ? (
-                  <p className="admin-quote-distance" role="status">
-                    Trafic en direct inactif · ajoutez votre clé Google Maps dans Paramètres.
-                  </p>
-                ) : trafficBusy ? (
-                  <p className="admin-quote-distance" role="status">
-                    Calcul du trafic Google Maps…
-                  </p>
-                ) : traffic ? (
+                {draft.from && draft.to && (
                   <div className="admin-quote-traffic" role="status">
-                    <span aria-hidden="true" />
-                    <strong>Durée avec trafic : {traffic.minutes} min</strong>
+                    <span aria-hidden="true" style={{ background: trafficColor }} />
+                    <strong>
+                      {!googleMapsKey
+                        ? 'Trafic en direct inactif'
+                        : traffic
+                          ? `Trajet avec trafic : ${trafficDuration(traffic.minutes)}`
+                          : trafficError
+                            ? 'Trafic indisponible'
+                            : 'Calcul du trafic…'}
+                    </strong>
                     <small>
-                      {traffic.minutes > traffic.freeMinutes
-                        ? `+${traffic.minutes - traffic.freeMinutes} min de trafic · `
-                        : ''}
-                      Actualisée à{' '}
-                      {new Date(traffic.fetchedAt).toLocaleTimeString('fr-FR', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
+                      {!googleMapsKey
+                        ? 'Ajoutez votre clé Google Maps dans Paramètres.'
+                        : traffic
+                          ? `${traffic.future ? 'Prévision Google pour le départ prévu' : 'Google, trafic actuel'}${trafficDelay > 0 ? ` · +${trafficDuration(trafficDelay)} de bouchons` : ''} · mis à jour à ${new Date(traffic.fetchedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`
+                          : trafficError
+                            ? 'Vérifiez la clé et l’activation de Distance Matrix.'
+                            : ''}
                     </small>
-                    <button type="button" onClick={() => void refreshTraffic()}>
+                    <button
+                      type="button"
+                      disabled={!googleMapsKey || !route || trafficBusy}
+                      onClick={() => void refreshTraffic()}
+                    >
                       Actualiser
                     </button>
                   </div>
-                ) : trafficError ? (
-                  <p className="admin-quote-distance" role="status">
-                    Trafic indisponible · vérifiez la clé et l’activation de Distance Matrix.
-                  </p>
-                ) : null)}
+                )}
                 {draft.route && previewTier === 3 && (
-                    <input className="admin-quote-custom-price" aria-label="Prix par aller-retour (au-delà de 35 km)" placeholder="Prix par aller-retour (au-delà de 35 km)"
-                      type="number"
-                      min={1}
-                      max={10000000}
-                      required
-                      value={quoteConfig.customPrice ?? ''}
-                      onChange={(event) =>
-                        setQuoteConfig((current) => ({
-                          ...current,
-                          customPrice: event.target.value
-                            ? Math.max(1, Number(event.target.value))
-                            : null,
-                        }))
-                      }
-                    />
+                  <input
+                    className="admin-quote-custom-price"
+                    aria-label="Prix par aller-retour (au-delà de 35 km)"
+                    placeholder="Prix par aller-retour (au-delà de 35 km)"
+                    type="number"
+                    min={1}
+                    max={10000000}
+                    required
+                    value={quoteConfig.customPrice ?? ''}
+                    onChange={(event) =>
+                      setQuoteConfig((current) => ({
+                        ...current,
+                        customPrice: event.target.value
+                          ? Math.max(1, Number(event.target.value))
+                          : null,
+                      }))
+                    }
+                  />
                 )}
               </div>
             )}
@@ -1284,11 +1304,9 @@ export function AdminCreateQuote() {
                 <strong>
                   {draft.fromAddress || '—'} → {draft.toAddress || '—'}
                 </strong>
-                {draft.fromNote.trim() && <span>Repère départ : {draft.fromNote.trim()}</span>}
-                {draft.toNote.trim() && <span>Repère arrivée : {draft.toNote.trim()}</span>}
                 <span>
                   {draft.route
-                    ? `${effectiveDistance} km · ${tiers[previewTier]}`
+                    ? `${effectiveDistance} km (itinéraire calculé)`
                     : 'Distance à relever'}
                 </span>
               </div>
@@ -1364,9 +1382,21 @@ export function AdminCreateQuote() {
                 </div>
               </div>
             )}
-            {(visibleInventoryText || estimateText || questionnaireText || draft.notes) && (
+            {(draft.fromNote ||
+              draft.toNote ||
+              visibleInventoryText ||
+              estimateText ||
+              questionnaireText ||
+              draft.notes) && (
               <div className="admin-quote-paper-note">
-                {[visibleInventoryText, estimateText, questionnaireText, draft.notes]
+                {[
+                  draft.fromNote.trim() ? `Repère départ : ${draft.fromNote.trim()}` : '',
+                  draft.toNote.trim() ? `Repère arrivée : ${draft.toNote.trim()}` : '',
+                  visibleInventoryText,
+                  estimateText,
+                  questionnaireText,
+                  draft.notes,
+                ]
                   .filter(Boolean)
                   .join('\n')}
               </div>
@@ -1478,12 +1508,9 @@ export function AdminCreateQuote() {
           <button
             type="button"
             className="admin-quote-action-pdf"
-            disabled={!draft.route || previewTotal === null || pdfBusy}
             onClick={() => void downloadCurrentQuote()}
           >
-            {pdfBusy
-              ? 'Préparation du PDF…'
-              : `Télécharger le PDF ${quoteKind === 'final' ? 'final' : 'provisoire'}`}
+            {`Télécharger le PDF ${quoteKind === 'final' ? 'final' : 'provisoire'}`}
           </button>
         </aside>
       </form>

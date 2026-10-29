@@ -582,6 +582,12 @@
   font-weight: 700;
   white-space: nowrap;
 }
+.teams-person-warning {
+  color: #ff6b6b;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
 .teams-person-chip button {
   width: 26px;
   height: 26px;

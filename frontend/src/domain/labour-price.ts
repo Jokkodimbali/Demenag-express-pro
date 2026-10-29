@@ -1,4 +1,4 @@
-import type { LabourMatrixScenario, LabourPriceMatrix, Settings, WorkAccess } from './model';
+import type { LabourMatrixScenario, LabourPriceMatrix, Price, Settings, WorkAccess } from './model';
 
 export const labourMatrixScenarios: {
   id: LabourMatrixScenario;
@@ -12,7 +12,9 @@ export const labourMatrixScenarios: {
   { id: 'both', label: 'Ascenseur des deux côtés', from: true, to: true },
 ];
 
-const legacyPrice = (settings: Settings, floor: number, lift: boolean) =>
+type LabourSettings = Pick<Settings, 'labourPrice' | 'labourFloorPrice' | 'labourLiftPrice'>;
+
+const legacyPrice = (settings: LabourSettings, floor: number, lift: boolean) =>
   floor <= 0
     ? 0
     : lift
@@ -43,23 +45,21 @@ export function assemblyUnitPrice(
                   ? 'ventilateur'
                   : key;
   const configured = settings.montageP?.[key] ?? settings.montageP?.[legacyKey];
-  if (!configured) return settings.assemblyPrice;
+  if (!configured)
+    return origin === 'import' ? Math.round(settings.assemblyPrice * 1.5) : settings.assemblyPrice;
+  if (typeof configured === 'number')
+    return origin === 'import' ? Math.round(configured * 1.5) : configured;
   const sized = size == null ? undefined : configured.sz?.[String(size)]?.[origin];
   if (Number.isInteger(sized) && sized! >= 0) return sized!;
-  const base = configured[origin];
-  const fallback =
-    Number.isInteger(base) && base! >= 0
-      ? base!
-      : origin === 'import'
-        ? Math.round(settings.assemblyPrice * 1.5)
-        : settings.assemblyPrice;
+  const base = origin === 'import' ? (configured.import ?? configured.local) : configured.local;
+  const fallback = Number.isInteger(base) && base! >= 0 ? base! : 0;
   const increment = origin === 'import' ? (configured.uI ?? configured.u) : configured.u;
   return size != null && increment
     ? Math.round(fallback + Math.max(0, size - defaultSize) * increment)
     : fallback;
 }
 
-export function createLabourPriceMatrix(settings: Settings): LabourPriceMatrix {
+export function createLabourPriceMatrix(settings: LabourSettings): LabourPriceMatrix {
   return Object.fromEntries(
     labourMatrixScenarios.map((scenario) => [
       scenario.id,
@@ -68,26 +68,30 @@ export function createLabourPriceMatrix(settings: Settings): LabourPriceMatrix {
           { length: 6 },
           (_, toFloor) =>
             settings.labourPrice +
-              legacyPrice(settings, fromFloor, scenario.from) +
-              legacyPrice(settings, toFloor, scenario.to),
+            legacyPrice(settings, fromFloor, scenario.from) +
+            legacyPrice(settings, toFloor, scenario.to),
         ),
       ),
     ]),
   ) as LabourPriceMatrix;
 }
 
-export function labourUnitPrice(settings: Settings, access?: WorkAccess) {
+export function labourUnitPrice(settings: LabourSettings, access?: WorkAccess) {
   if (!access) return settings.labourPrice;
-  const scenario = access.fromLift
-    ? access.toLift
-      ? 'both'
-      : 'from'
-    : access.toLift
-      ? 'to'
-      : 'none';
   return (
     settings.labourPrice +
     legacyPrice(settings, access.fromFloor, access.fromLift) +
     legacyPrice(settings, access.toFloor, access.toLift)
   );
+}
+
+export function labourUnitPriceOverrideFromQuote(
+  price: Price | undefined,
+  historicalSettings: LabourSettings | undefined,
+  access?: WorkAccess,
+) {
+  if (!price || !historicalSettings) return null;
+  const savedUnitPrice = price.lines.find((line) => line.label.startsWith('Manœuvre'))?.unitPrice;
+  if (!Number.isInteger(savedUnitPrice) || savedUnitPrice! <= 0) return null;
+  return savedUnitPrice === labourUnitPrice(historicalSettings, access) ? null : savedUnitPrice!;
 }

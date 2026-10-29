@@ -1,5 +1,6 @@
 import { messages } from '../content/fr';
 import { dateLabel, money, referenceTierLabels } from '../domain/format';
+import { referenceInventoryNote } from '../domain/reference-inventory-note';
 import type { Booking, Quote, Settings } from '../domain/model';
 
 function notesForPdf(value: string): string {
@@ -42,8 +43,31 @@ function addressNotesFrom(value: string): { from: string; to: string; remaining:
   return { from, to, remaining };
 }
 
-function withoutInventoryBlock(value: string): string {
+function withoutInventoryBlock(
+  value: string,
+  inventory: NonNullable<Booking['inventorySnapshot']> | undefined,
+  fromAddress: string,
+  toAddress: string,
+): string {
+  if (inventory?.sourceInventory) {
+    const expected = referenceInventoryNote(inventory.sourceInventory, fromAddress, toAddress);
+    const exactStart = value.indexOf(expected);
+    if (exactStart >= 0) {
+      return `${value.slice(0, exactStart)}${value.slice(exactStart + expected.length)}`.trim();
+    }
+  }
   const lines = value.split(/\r?\n/u);
+  const noteStart = lines.findIndex((line) =>
+    /^Déménagement du .+ de .+ \/ au .+$/iu.test(line.trim()),
+  );
+  if (noteStart >= 0) {
+    const estimateStart = lines.findIndex(
+      (line, index) => index > noteStart && /^Estimation\s*:/iu.test(line.trim()),
+    );
+    return [...lines.slice(0, noteStart), ...(estimateStart >= 0 ? lines.slice(estimateStart) : [])]
+      .join('\n')
+      .trim();
+  }
   const start = lines.findIndex((line) =>
     /^FICHE D['’]APPEL\s*·\s*INVENTAIRE$/iu.test(line.trim()),
   );
@@ -57,8 +81,8 @@ function withoutInventoryBlock(value: string): string {
   return [...lines.slice(0, start), ...(end >= 0 ? lines.slice(end) : [])].join('\n').trim();
 }
 
-function durationLabel(minutes: number): string {
-  const rounded = Math.max(0, Math.round(minutes / 5) * 5);
+function durationLabel(minutes: number, step = 5): string {
+  const rounded = Math.max(0, Math.round(minutes / step) * step);
   const hours = Math.floor(rounded / 60);
   const rest = rounded % 60;
   return hours ? `${hours} h${rest ? ` ${String(rest).padStart(2, '0')}` : ''}` : `${rest} min`;
@@ -85,13 +109,19 @@ export async function downloadQuote(
   settings: Settings,
 ): Promise<Blob> {
   const { jsPDF } = await import('jspdf');
-  const finalQuote = booking.quotes.filter((item) => item.kind === 'final').at(-1);
-  const documentQuote = quote ?? finalQuote;
+  const documentQuote = quote;
   const doc = new jsPDF({ format: 'a4', unit: 'mm' });
   const price = documentQuote?.price || booking.estimate;
   const sourceNotes = notesForPdf(documentQuote ? documentQuote.notes : booking.notes);
   const addressNotes = addressNotesFrom(
-    booking.inventorySnapshot ? withoutInventoryBlock(sourceNotes) : sourceNotes,
+    booking.inventorySnapshot
+      ? withoutInventoryBlock(
+          sourceNotes,
+          booking.inventorySnapshot,
+          booking.fromAddress,
+          booking.toAddress,
+        )
+      : sourceNotes,
   );
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 16;
@@ -164,7 +194,7 @@ export async function downloadQuote(
   doc.setFontSize(8.5);
   doc.setTextColor(94, 101, 108);
   doc.text(
-    `Réf. ${documentQuote?.reference || booking.reference}  ·  ${dateLabel((documentQuote?.createdAt || booking.createdAt).slice(0, 10))}`,
+    `Réf. ${documentQuote?.reference || booking.reference}  ·  ${dateLabel(new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Dakar' }).format(new Date()))}`,
     right,
     y + 9,
     { align: 'right' },
@@ -208,14 +238,16 @@ export async function downloadQuote(
   y += 8;
 
   // Tableau des lignes : désignation, quantité, prix unitaire et montant.
-  const qtyX = 120;
-  const unitX = 136;
+  const qtyX = right - 70;
+  const unitX = right - 38;
   const amountX = right;
   paragraph('DÉSIGNATION', margin, y, 96, 8, true);
-  paragraph('QTÉ', qtyX - 3, y, 15, 8, true);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.text('P.U.', unitX + 20, y, { align: 'right' });
+  doc.text('QTÉ', qtyX, y, { align: 'right' });
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('P.U.', unitX, y, { align: 'right' });
   doc.text('MONTANT', amountX, y, { align: 'right' });
   y += 3;
   doc.setDrawColor(35, 38, 41);
@@ -227,15 +259,15 @@ export async function downloadQuote(
   for (const [index, line] of price.lines.entries()) {
     const label =
       index === 0 && documentQuote?.kind !== 'final' ? `${line.label} - estimé` : line.label;
-    const labelLines = doc.splitTextToSize(clean(label), 96) as string[];
+    const labelLines = doc.splitTextToSize(clean(label), qtyX - margin - 14) as string[];
     const rowHeight = Math.max(12, labelLines.length * 4.5 + 5);
     ensureSpace(rowHeight + 35);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     doc.setTextColor(39, 42, 45);
     doc.text(labelLines, margin, y + 4);
-    doc.text(String(line.quantity), qtyX + 5, y + 4, { align: 'center' });
-    doc.text(pdfMoney(line.unitPrice), unitX + 20, y + 4, { align: 'right' });
+    doc.text(String(line.quantity), qtyX, y + 4, { align: 'right' });
+    doc.text(pdfMoney(line.unitPrice), unitX, y + 4, { align: 'right' });
     doc.setFont('helvetica', 'bold');
     doc.text(pdfMoney(line.total), amountX, y + 4, { align: 'right' });
     y += rowHeight;
@@ -259,64 +291,36 @@ export async function downloadQuote(
   doc.setFontSize(11);
   doc.text(isFinal ? 'TOTAL À PAYER' : 'ESTIMATION PROVISOIRE', margin + 5, y + 10);
   doc.setFontSize(17);
-  doc.text(pdfMoney(price.total), right - 5, y + 10, { align: 'right' });
+  const totalLabel =
+    price.tier === 3 &&
+    !price.lines.some((line) => line.label.startsWith('Transport') && line.unitPrice > 0)
+      ? 'Sur devis'
+      : pdfMoney(price.total);
+  doc.text(totalLabel, right - 5, y + 10, { align: 'right' });
   y += 25;
 
   const tolls = documentQuote?.tolls ?? [];
+  const tollTotal = tolls.reduce((total, toll) => total + toll.quantity * toll.unitPrice, 0);
   if (tolls.length) {
-    ensureSpace(14);
     y = paragraph(
-      'PÉAGES · À LA CHARGE DU CLIENT · NON INCLUS DANS LE TOTAL',
+      `Péages à la charge du client (non inclus) : ${pdfMoney(tollTotal)} · détail en page annexe.`,
       margin,
       y,
       contentWidth,
-      8.5,
+      9,
       true,
     );
-    for (const toll of tolls) {
-      const row = `${toll.label} · ${toll.quantity} passage(s) × ${pdfMoney(toll.unitPrice)}`;
-      const rowLines = doc.splitTextToSize(clean(row), contentWidth - 30) as string[];
-      ensureSpace(Math.max(10, rowLines.length * 4.5 + 4));
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.setTextColor(39, 42, 45);
-      doc.text(rowLines, margin, y + 4);
-      doc.setFont('helvetica', 'bold');
-      doc.text(pdfMoney(toll.quantity * toll.unitPrice), right, y + 4, { align: 'right' });
-      y += Math.max(10, rowLines.length * 4.5 + 4);
-      doc.setDrawColor(225, 228, 232);
-      doc.line(margin, y, right, y);
-    }
-    const tollTotal = tolls.reduce((total, toll) => total + toll.quantity * toll.unitPrice, 0);
-    ensureSpace(12);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.setTextColor(39, 42, 45);
-    doc.text('Total péages à régler par le client', margin, y + 5);
-    doc.text(pdfMoney(tollTotal), right, y + 5, { align: 'right' });
-    y += 12;
+    y += 2;
   }
 
-  const explanation =
-    documentQuote?.kind === 'final'
-      ? messages.montantEtabliSurLaBaseDuNombreReel
-      : `Devis temporaire, calculé sur ${price.trips} aller(s)-retour(s) estimé(s). Le transport est facturé par aller-retour effectué ; le devis final, basé sur le nombre réel d'allers-retours, sera envoyé par Demenag Express à la fin du déménagement.`;
-  y = paragraph(explanation, margin, y, contentWidth, 8.5, false, [92, 99, 106]);
   const inventory = booking.inventorySnapshot;
+  const hasInventoryDetails = Boolean(inventory?.items.length);
   const inventorySummary = inventory
     ? [
         ...(addressNotes.from ? [`Repère départ : ${addressNotes.from}`] : []),
         ...(addressNotes.to ? [`Repère arrivée : ${addressNotes.to}`] : []),
-        `Estimation : ${inventory.estimatedTrips} aller${inventory.estimatedTrips > 1 ? 's' : ''}-retour${inventory.estimatedTrips > 1 ? 's' : ''} en ${booking.vehicle.name} (${inventory.vehicleCapacityM3.toFixed(1).replace('.', ',')} m³, chargement à ${Math.round(inventory.fillRate * 100)} %).`,
-        `Main-d’œuvre estimée : ${inventory.moverCount} manœuvre${inventory.moverCount > 1 ? 's' : ''}${inventory.carpenterCount ? ` + ${inventory.carpenterCount} menuisier${inventory.carpenterCount > 1 ? 's' : ''}` : ''}, chargement + déchargement ≈ ${durationLabel(inventory.loadingMinutes + inventory.unloadingMinutes)}.`,
-        ...(inventory.packingMinutes > 0
-          ? [
-              `Emballage ≈ ${durationLabel(inventory.packingMinutes)}${inventory.packingMinutes > 90 ? ', à prévoir la veille.' : ', le jour même avant le chargement.'}`,
-            ]
-          : []),
-        ...(inventory.flags.length ? [`À noter : ${inventory.flags.join(', ')}.`] : []),
         ...(addressNotes.remaining ? [addressNotes.remaining] : []),
-        'Inventaire détaillé en page suivante.',
+        ...(hasInventoryDetails ? ['Inventaire détaillé en page suivante.'] : []),
       ].join('\n')
     : '';
   const quoteNotes = [
@@ -348,63 +352,165 @@ export async function downloadQuote(
     }
     y += 3;
   }
+  const explanation =
+    documentQuote?.kind === 'final'
+      ? messages.montantEtabliSurLaBaseDuNombreReel
+      : `Devis temporaire, calculé sur ${price.trips} aller(s)-retour(s) estimé(s). Le transport est facturé par aller-retour effectué ; le devis final, basé sur le nombre réel d'allers-retours, sera envoyé par Demenag Express à la fin du déménagement.`;
+  y = paragraph(explanation, margin, y, contentWidth, 8.5, false, [92, 99, 106]);
   ensureSpace(12);
   if (settings.invoiceFooter)
     y = paragraph(settings.invoiceFooter, margin, y + 2, contentWidth, 8, false, [92, 99, 106]);
 
   // Espaces de signature et cachet comme sur le document de référence.
   let signatureY = Math.max(y + 16, 181);
+  let deferredSignature = false;
   if (signatureY + 46 > 287) {
-    doc.addPage();
-    signatureY = 30;
+    if (tolls.length || hasInventoryDetails) deferredSignature = true;
+    else {
+      doc.addPage();
+      signatureY = 30;
+    }
   }
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(42, 45, 48);
-  doc.text('Signature client', margin, signatureY);
-  doc.text('Cachet et signature Demenag Express', right, signatureY, { align: 'right' });
-  const stamp = settings.invoiceStamp || (await assetDataUrl('/assets/cachet.png'));
-  const signature = settings.invoiceSignature || (await assetDataUrl('/assets/signature.png'));
-  function addContainedImage(
-    data: string,
-    x: number,
-    top: number,
-    boxWidth: number,
-    boxHeight: number,
-  ) {
-    const dimensions = doc.getImageProperties(data);
-    const scale = Math.min(boxWidth / dimensions.width, boxHeight / dimensions.height);
-    const width = dimensions.width * scale;
-    const height = dimensions.height * scale;
-    addImage(data, x + (boxWidth - width) / 2, top + (boxHeight - height) / 2, width, height);
+  async function drawSignature(top: number) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(42, 45, 48);
+    doc.text('Signature client', margin, top);
+    doc.text('Cachet et signature Demenag Express', right, top, { align: 'right' });
+    const stamp = settings.invoiceStamp || (await assetDataUrl('/assets/cachet.png'));
+    const signature = settings.invoiceSignature || (await assetDataUrl('/assets/signature.png'));
+    function addContainedImage(
+      data: string,
+      x: number,
+      imageTop: number,
+      boxWidth: number,
+      boxHeight: number,
+    ) {
+      const dimensions = doc.getImageProperties(data);
+      const scale = Math.min(boxWidth / dimensions.width, boxHeight / dimensions.height);
+      const width = dimensions.width * scale;
+      const height = dimensions.height * scale;
+      addImage(
+        data,
+        x + (boxWidth - width) / 2,
+        imageTop + (boxHeight - height) / 2,
+        width,
+        height,
+      );
+    }
+    addContainedImage(stamp, right - 40, top + 5, 38, 38);
+    addContainedImage(signature, right - 58, top + 23, 31, 18);
   }
-  addContainedImage(stamp, right - 40, signatureY + 5, 38, 38);
-  addContainedImage(signature, right - 58, signatureY + 23, 31, 18);
+  if (!deferredSignature) await drawSignature(signatureY);
 
-  if (inventory) {
+  if (tolls.length) {
     doc.addPage();
     y = 18;
-    paragraph('Inventaire', margin, y, 110, 14, true);
-    paragraph(
-      `${booking.customerName}${booking.phone ? `  ·  ${booking.phone}` : ''}`,
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(30, 32, 35);
+    doc.text('PÉAGES', margin, y);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(90, 97, 104);
+    doc.text(
+      `${documentQuote?.reference || ''} · ${booking.customerName} · ${booking.vehicle.shortName || booking.vehicle.name}`,
+      right,
+      y,
+      { align: 'right' },
+    );
+    y += 4;
+    doc.setDrawColor(30, 32, 35);
+    doc.setLineWidth(0.5);
+    doc.line(margin, y, right, y);
+    y += 10;
+    const tollBoxHeight = 22 + tolls.length * 7.5;
+    const tollAmountX = right - 5;
+    const tollUnitX = tollAmountX - 38;
+    doc.setDrawColor(201, 206, 211);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(margin, y, contentWidth, tollBoxHeight, 2, 2, 'S');
+    doc.setFillColor(247, 248, 249);
+    doc.rect(margin + 0.2, y + 0.2, contentWidth - 0.4, 9, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(30, 32, 35);
+    doc.text('PÉAGES À LA CHARGE DU CLIENT', margin + 4, y + 6);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(90, 97, 104);
+    doc.text('NON INCLUS DANS LE TOTAL', tollAmountX, y + 6, { align: 'right' });
+    let tollY = y + 15;
+    doc.setFontSize(9.5);
+    tolls.forEach((toll) => {
+      const label = toll.label.replace(/^Péage · /iu, '');
+      doc.setTextColor(30, 32, 35);
+      doc.text(clean(label), margin + 4, tollY);
+      doc.setTextColor(90, 97, 104);
+      doc.text(
+        clean(`${toll.quantity} × ${toll.unitPrice ? pdfMoney(toll.unitPrice) : 'prix à confirmer'}`),
+        tollUnitX,
+        tollY,
+        { align: 'right' },
+      );
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 32, 35);
+      doc.text(toll.unitPrice ? pdfMoney(toll.quantity * toll.unitPrice) : '—', tollAmountX, tollY, {
+        align: 'right',
+      });
+      doc.setFont('helvetica', 'normal');
+      tollY += 7.5;
+    });
+    doc.setFillColor(30, 32, 35);
+    doc.rect(margin + 0.2, tollY - 3.5, contentWidth - 0.4, 8.5, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Total péages à régler par le client', margin + 4, tollY + 2);
+    doc.setTextColor(246, 215, 60);
+    doc.text(pdfMoney(tollTotal), tollAmountX, tollY + 2, { align: 'right' });
+    y += tollBoxHeight + 8;
+    y = paragraph(
+      'Les péages sont réglés directement par le client au passage du véhicule. Ils ne sont pas inclus dans le montant du devis.',
       margin,
-      y + 8,
-      110,
+      y,
+      contentWidth,
       9,
       false,
-      [94, 101, 108],
+      [90, 97, 104],
+    );
+  }
+
+  if (inventory && hasInventoryDetails) {
+    doc.addPage();
+    y = 18;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(30, 32, 35);
+    doc.text('Inventaire', margin, y + 3);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(90, 97, 104);
+    doc.text(
+      clean(`${booking.customerName}${booking.phone ? `  ·  ${booking.phone}` : ''}`),
+      margin,
+      y + 9,
     );
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(94, 101, 108);
-    doc.text(`Réf. ${documentQuote?.reference || booking.reference}`, right, y + 8, {
+    doc.text(
+      `Réf. ${documentQuote?.reference || booking.reference} · ${dateLabel(booking.date ?? '')}`,
+      right,
+      y + 9,
+      {
       align: 'right',
-    });
-    y += 18;
+      },
+    );
+    y += 13;
     doc.setDrawColor(35, 38, 41);
     doc.setLineWidth(0.3);
     doc.line(margin, y, right, y);
-    y += 7;
+    y += 9;
     const halfWidth = contentWidth / 2 - 5;
     const accessLine = (
       x: number,
@@ -447,50 +553,8 @@ export async function downloadQuote(
           inventory.toLift,
           addressNotes.to,
         ),
-      ) + 5;
-    if (inventory.dwellingType) {
-      y = paragraph(
-        `Logement : ${inventory.dwellingType}${inventory.annexIncluded ? ` · effets annexes ≈ ${inventory.annexVolumeM3.toFixed(2).replace('.', ',')} m³` : ' · effets annexes non inclus'}`,
-        margin,
-        y,
-        contentWidth,
-        9,
-        true,
-      );
-    }
-    if (inventory.ready) {
-      y = paragraph(
-        inventory.ready === 'oui'
-          ? 'Matériel prêt à être chargé.'
-          : 'Matériel non prêt : emballage à prévoir par l’équipe.',
-        margin,
-        y,
-        contentWidth,
-        8.5,
-      );
-    }
-    if (inventory.stairs) {
-      y = paragraph(
-        inventory.stairs === 'oui'
-          ? 'Tout le matériel passe dans les escaliers.'
-          : inventory.stairs === 'non'
-            ? 'Certains objets ne passent pas dans les escaliers.'
-            : 'Passage des objets dans les escaliers à vérifier.',
-        margin,
-        y,
-        contentWidth,
-        8.5,
-      );
-    }
-    if (booking.questionnaireAnswers?.length) {
-      y += 2;
-      y = paragraph('Questionnaire client', margin, y, contentWidth, 9, true);
-      for (const answer of booking.questionnaireAnswers) {
-        y = paragraph(`${answer.question} : ${answer.answer}`, margin, y, contentWidth, 8.5);
-      }
-      y += 2;
-    }
-    const columns = { item: margin, quantity: right - 88, details: right - 77, volume: right };
+      ) + 10;
+    const columns = { item: margin, quantity: right - 92, details: right - 80, volume: right };
     const tableHeader = () => {
       ensureSpace(12);
       doc.setFont('helvetica', 'bold');
@@ -500,11 +564,11 @@ export async function downloadQuote(
       doc.text('QTÉ', columns.quantity, y, { align: 'right' });
       doc.text('DÉTAIL', columns.details, y);
       doc.text('VOLUME', columns.volume, y, { align: 'right' });
-      y += 3;
+      y += 2.5;
       doc.setDrawColor(35, 38, 41);
       doc.setLineWidth(0.35);
       doc.line(margin, y, right, y);
-      y += 5;
+      y += 6;
     };
     tableHeader();
     const sections = [...new Set(inventory.items.map((item) => item.section))];
@@ -515,37 +579,31 @@ export async function downloadQuote(
         y = 20;
         tableHeader();
       }
-      y = paragraph(
-        section.toLocaleUpperCase('fr-FR'),
-        margin,
-        y,
-        contentWidth,
-        8,
-        true,
-        [94, 101, 108],
-      );
+      y = paragraph(section, margin, y, contentWidth, 8.5, true, [90, 97, 104]) + 1;
       sectionItems.forEach((item) => {
         const detailLines = doc.splitTextToSize(
           clean(item.details),
-          columns.volume - columns.details - 20,
+          columns.volume - columns.details - 22,
         ) as string[];
         const labelLines = doc.splitTextToSize(
           clean(item.label),
-          columns.quantity - columns.item - 8,
+          columns.quantity - columns.item - 14,
         ) as string[];
-        const height = Math.max(7, Math.max(detailLines.length, labelLines.length) * 4 + 2);
+        const height = Math.max(1, detailLines.length) * 4.4 + 1.5;
         if (y + height > 276) {
           doc.addPage();
           y = 20;
           tableHeader();
         }
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8.5);
+        doc.setFontSize(10);
         doc.setTextColor(36, 40, 44);
         doc.text(labelLines, columns.item, y);
         doc.text(String(item.quantity), columns.quantity, y, { align: 'right' });
+        doc.setFontSize(9);
         doc.setTextColor(94, 101, 108);
         doc.text(detailLines, columns.details, y);
+        doc.setFontSize(10);
         doc.setTextColor(36, 40, 44);
         doc.text(`${item.volumeM3.toFixed(2).replace('.', ',')} m³`, columns.volume, y, {
           align: 'right',
@@ -554,9 +612,13 @@ export async function downloadQuote(
         doc.setDrawColor(225, 228, 231);
         doc.setLineWidth(0.15);
         doc.line(margin, y, right, y);
-        y += 3;
+        y += 5;
       });
     });
+    if (inventory.dwellingType) {
+      const dwelling = inventory.dwellingType === 'F5 et plus' ? 'F5 et +' : inventory.dwellingType;
+      y = paragraph(`Logement : ${dwelling}`, margin, y, contentWidth, 8.5, true, [90, 97, 104]);
+    }
     if (inventory.annexVolumeM3 > 0) {
       if (y + 11 > 278) {
         doc.addPage();
@@ -564,54 +626,78 @@ export async function downloadQuote(
         tableHeader();
       }
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8.5);
+      doc.setFontSize(10);
       doc.setTextColor(36, 40, 44);
       doc.text('Effets annexes', columns.item, y);
-      doc.text('Forfait logement, cartons déduits', columns.details, y);
+      const annexDwelling = inventory.dwellingType === 'F5 et plus' ? 'F5 et +' : inventory.dwellingType;
+      const annexDetails = `Sacs, vaisselle, linge, petits objets (forfait ${annexDwelling} ~${inventory.annexVolumeM3.toFixed(2).replace('.', ',')} m³, cartons et sacs comptés déduits)`;
+      const annexLines = doc.splitTextToSize(
+        clean(annexDetails),
+        columns.volume - columns.details - 22,
+      ) as string[];
+      doc.setFontSize(9);
+      doc.setTextColor(94, 101, 108);
+      doc.text(annexLines, columns.details, y);
+      doc.setFontSize(10);
+      doc.setTextColor(36, 40, 44);
       doc.text(`${inventory.annexVolumeM3.toFixed(2).replace('.', ',')} m³`, columns.volume, y, {
         align: 'right',
       });
-      y += 8;
+      y += Math.max(1, annexLines.length) * 4.4 + 1.5;
+      doc.setDrawColor(225, 228, 231);
+      doc.setLineWidth(0.15);
+      doc.line(margin, y, right, y);
+      y += 5;
     }
-    ensureSpace(52);
+    if (y > 245) {
+      doc.addPage();
+      y = 24;
+    }
     doc.setDrawColor(35, 38, 41);
     doc.line(margin, y, right, y);
-    y += 6;
-    y = paragraph(
-      `Volume total · ${inventory.itemCount} objet${inventory.itemCount > 1 ? 's' : ''} : ${inventory.totalVolumeM3.toFixed(1).replace('.', ',')} m³`,
+    y += 3;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10.5);
+    doc.setTextColor(30, 32, 35);
+    doc.text(
+      `Volume total  ·  ${inventory.itemCount} objet${inventory.itemCount > 1 ? 's' : ''}`,
       margin,
       y,
-      contentWidth,
-      10,
-      true,
     );
+    doc.text(`~ ${inventory.totalVolumeM3.toFixed(1).replace('.', ',')} m³`, right, y, {
+      align: 'right',
+    });
+    y += 9;
     y = paragraph(
-      `Estimation : ${inventory.estimatedTrips} aller-retour${inventory.estimatedTrips > 1 ? 's' : ''} en ${booking.vehicle.name} (${inventory.vehicleCapacityM3.toFixed(1).replace('.', ',')} m³, chargement à ${Math.round(inventory.fillRate * 100)} %).`,
+      `Estimation : volume ~${inventory.totalVolumeM3.toFixed(1).replace('.', ',')} m³, soit ${inventory.estimatedTrips} aller${inventory.estimatedTrips > 1 ? 's' : ''}-retour${inventory.estimatedTrips > 1 ? 's' : ''} en ${booking.vehicle.shortName || booking.vehicle.name}.`,
       margin,
       y,
       contentWidth,
       8.5,
     );
-    y = paragraph(
-      `Main-d’œuvre estimée : ${inventory.moverCount} manœuvre${inventory.moverCount > 1 ? 's' : ''}${inventory.carpenterCount ? ` + ${inventory.carpenterCount} menuisier${inventory.carpenterCount > 1 ? 's' : ''}` : ''} · chargement ≈ ${durationLabel(inventory.loadingMinutes)} · déchargement ≈ ${durationLabel(inventory.unloadingMinutes)}.`,
-      margin,
-      y,
-      contentWidth,
-      8.5,
-    );
-    const quotedMovers = documentQuote?.options?.labour;
-    if (quotedMovers !== undefined && quotedMovers !== inventory.moverCount) {
-      y = paragraph(
-        `Effectif facturé selon les lignes du devis : ${quotedMovers} manœuvre${quotedMovers > 1 ? 's' : ''}.`,
-        margin,
-        y,
-        contentWidth,
-        8.5,
-      );
+    if (y > 248) {
+      doc.addPage();
+      y = 24;
     }
+    y = paragraph(
+      `Main-d’œuvre : ${inventory.moverCount} manœuvres${inventory.carpenterCount ? ` + ${inventory.carpenterCount} menuisier${inventory.carpenterCount > 1 ? 's' : ''}` : ''}, chargement + déchargement ~${durationLabel(inventory.loadingMinutes + inventory.unloadingMinutes)}.`,
+      margin,
+      y,
+      contentWidth,
+      8.5,
+    );
     if (inventory.packingMinutes > 0) {
       y = paragraph(
-        `Emballage : ≈ ${durationLabel(inventory.packingMinutes)}${inventory.packingMinutes > 90 ? ', à prévoir la veille.' : ', le jour même avant le chargement.'}`,
+        `Emballage : ~${durationLabel(inventory.packingMinutes)}${inventory.packingMinutes > 90 ? ', la veille.' : ', le jour même avant le chargement.'}`,
+        margin,
+        y,
+        contentWidth,
+        8.5,
+      );
+    }
+    if (booking.distanceKm > 0) {
+      y = paragraph(
+        `Trajet : ~${durationLabel(inventory.travelLegMinutes ?? inventory.travelMinutes)} par trajet (${String(booking.distanceKm).replace('.', ',')} km)${inventory.estimatedTrips > 1 ? `, ${inventory.estimatedTrips} voyages, trajets ~${durationLabel(inventory.travelMinutes)}` : ''}.`,
         margin,
         y,
         contentWidth,
@@ -619,26 +705,51 @@ export async function downloadQuote(
       );
     }
     y = paragraph(
-      `Trajets : ≈ ${durationLabel(inventory.travelMinutes)} · durée totale : ${durationLabel(inventory.totalMinutes)} (de ${inventory.startTime} à ${inventory.endTime}, entre ${durationLabel(inventory.lowDurationMinutes)} et ${durationLabel(inventory.highDurationMinutes)}).`,
+      `Planning prévisionnel : de ${inventory.startTime} à ${inventory.endTime}, durée ~${durationLabel(inventory.totalMinutes)} (entre ${durationLabel(inventory.lowDurationMinutes, 15)} et ${durationLabel(inventory.highDurationMinutes, 15)}).`,
       margin,
       y,
       contentWidth,
       8.5,
     );
-    if (inventory.flags.length) {
-      y = paragraph(`À noter : ${inventory.flags.join(', ')}.`, margin, y, contentWidth, 8.5);
+    const maxDayHours = booking.pricingSettings?.movingLaborPlanning?.maxDayHours ?? 8;
+    const days = Math.max(2, Math.ceil(inventory.totalMinutes / (maxDayHours * 60)));
+    if (inventory.totalMinutes > maxDayHours * 60 + 1) {
+      y = paragraph(
+        `Au-delà de ${maxDayHours} h : prévoir ${days} jours ou un véhicule supplémentaire.`,
+        margin,
+        y,
+        contentWidth,
+        8.5,
+      );
     }
-    const plan = booking.workPlan ?? [];
-    if (plan.length) {
-      y += 3;
-      ensureSpace(12);
-      y = paragraph('PLANNING PRÉVISIONNEL', margin, y, contentWidth, 9, true);
-      plan.forEach((step) => {
-        const row = `${step.time} · ${step.title} · ${durationLabel(step.minutes)}${step.detail ? ` (${step.detail})` : ''}`;
-        ensureSpace(7);
-        y = paragraph(row, margin, y, contentWidth, 8);
-      });
+    const inventoryFlags = inventory.flags.map((flag) => flag.toLocaleLowerCase('fr-FR'));
+    if (inventory.ready === 'oui') inventoryFlags.push('matériel prêt à être chargé');
+    if (inventory.ready === 'non') inventoryFlags.push("matériel pas prêt, emballage par l'équipe");
+    if (inventory.stairs === 'oui') inventoryFlags.push('tout passe dans les escaliers');
+    if (inventory.stairs === 'non')
+      inventoryFlags.push('certains objets ne passent pas dans les escaliers (démontage, fenêtre ou monte-meuble)');
+    if (inventory.stairs === 'verif') inventoryFlags.push('passage des escaliers à vérifier');
+    if (inventoryFlags.length) {
+      y = paragraph(`À noter : ${inventoryFlags.join(', ')}.`, margin, y, contentWidth, 8.5);
     }
+    y = paragraph(
+      "Volumes estimés à partir de moyennes par meuble, selon le format, la taille et le démontage. Le nombre réel d'allers-retours, de manœuvres et la durée dépendent des accès et de la circulation le jour du déménagement.",
+      margin,
+      y + 3,
+      contentWidth,
+      8.5,
+      false,
+      [90, 97, 104],
+    );
+  }
+
+  if (deferredSignature) {
+    signatureY = Math.max(y + 16, 181);
+    if (signatureY + 46 > 287) {
+      doc.addPage();
+      signatureY = 30;
+    }
+    await drawSignature(signatureY);
   }
 
   const blob = doc.output('blob');

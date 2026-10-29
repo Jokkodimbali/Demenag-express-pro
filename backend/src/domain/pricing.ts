@@ -31,16 +31,14 @@ export function assemblyUnitPrice(
                   ? 'ventilateur'
                   : key;
   const configured = settings.montageP?.[key] ?? settings.montageP?.[legacyKey];
-  if (!configured) return settings.assemblyPrice;
+  if (!configured)
+    return origin === 'import' ? Math.round(settings.assemblyPrice * 1.5) : settings.assemblyPrice;
+  if (typeof configured === 'number')
+    return origin === 'import' ? Math.round(configured * 1.5) : configured;
   const sized = size == null ? undefined : configured.sz?.[String(size)]?.[origin];
   if (Number.isInteger(sized) && sized! >= 0) return sized!;
-  const base = configured[origin];
-  const fallback =
-    Number.isInteger(base) && base! >= 0
-      ? base!
-      : origin === 'import'
-        ? Math.round(settings.assemblyPrice * 1.5)
-        : settings.assemblyPrice;
+  const base = origin === 'import' ? (configured.import ?? configured.local) : configured.local;
+  const fallback = Number.isInteger(base) && base! >= 0 ? base! : 0;
   const increment = origin === 'import' ? (configured.uI ?? configured.u) : configured.u;
   return size != null && increment
     ? Math.round(fallback + Math.max(0, size - defaultSize) * increment)

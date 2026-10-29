@@ -7,6 +7,12 @@ import {
 
 export type QuoteExtraLine = { label: string; quantity: number; unitPrice: number };
 
+export function savedCustomTransportPrice(booking: Booking, quote?: Booking['quotes'][number]) {
+  const price = quote?.price ?? booking.estimate;
+  if (price.tier !== 3) return null;
+  return price.lines.find((line) => line.label.startsWith('Transport'))?.unitPrice ?? null;
+}
+
 export function quoteTotal(
   booking: Booking,
   settings: Settings,
@@ -21,7 +27,7 @@ export function quoteTotal(
   extras: QuoteExtraLine[],
 ) {
   const { tier } = booking.estimate;
-  const transportUnit = draft.customPrice ?? (tier === 3 ? null : booking.vehicle.prices[tier]);
+  const transportUnit = tier === 3 ? draft.customPrice : booking.vehicle.prices[tier];
   const maxTrips = draft.kind === 'final' ? 10000 : settings.maxTrips;
   if (!Number.isInteger(draft.trips) || draft.trips < 1 || draft.trips > maxTrips) return null;
   if (!Number.isInteger(draft.discount) || draft.discount < 0) return null;

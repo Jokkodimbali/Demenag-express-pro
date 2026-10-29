@@ -2,6 +2,161 @@
   color: #fff;
   position: relative;
 }
+.reference-toll-point-host {
+  border: 0;
+  background: transparent;
+}
+.reference-toll-point {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+}
+.reference-toll-point-dot {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border: 2px solid #1e2023;
+  border-radius: 50%;
+  background: var(--toll-color);
+  opacity: 0.85;
+}
+.reference-toll-point.selected {
+  top: auto;
+  bottom: -6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transform: translateX(-50%);
+}
+.reference-toll-point.selected .reference-toll-point-dot {
+  width: 12px;
+  height: 12px;
+  opacity: 1;
+}
+.reference-toll-point-count {
+  padding: 4px 6px;
+  border-radius: 999px;
+  background: var(--toll-color);
+  color: #1e2023;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 1px 4px #0006;
+}
+.reference-toll-leaflet-popup .leaflet-popup-content-wrapper,
+.reference-toll-leaflet-popup .leaflet-popup-tip {
+  background: #272a2e;
+  color: #fff;
+}
+.reference-toll-leaflet-popup .leaflet-popup-content-wrapper {
+  border: 1px solid #3b4046;
+  border-radius: 16px;
+  box-shadow: 0 12px 30px #0007;
+}
+.reference-toll-leaflet-popup .leaflet-popup-content {
+  margin: 14px;
+}
+.reference-toll-leaflet-popup a.leaflet-popup-close-button {
+  color: #aeb4bb;
+}
+.reference-toll-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 240px;
+  color: #fff;
+  font-family: Inter, sans-serif;
+}
+.reference-toll-popup-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.reference-toll-popup-heading > span {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+.reference-toll-popup-heading > strong {
+  font-size: 17px;
+  line-height: 1.2;
+}
+.reference-toll-popup > small {
+  color: #aeb4bb;
+  font-size: 12.5px;
+}
+.reference-toll-popup-price {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #1e2023;
+}
+.reference-toll-popup-price > span {
+  color: #aeb4bb;
+  font-size: 12px;
+  font-weight: 700;
+}
+.reference-toll-popup-price > strong {
+  color: #f6d73c;
+  font-size: 20px;
+  font-weight: 800;
+}
+.reference-toll-popup-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.reference-toll-popup-controls button {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 10px;
+  background: #30343a;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.reference-toll-popup-controls button:last-child {
+  background: #f6d73c;
+  color: #1e2023;
+}
+.reference-toll-popup-controls button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.reference-toll-popup-count {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.reference-toll-popup-count strong {
+  font-size: 22px;
+  font-weight: 800;
+}
+.reference-toll-popup-count span {
+  color: #aeb4bb;
+  font-size: 11.5px;
+}
+.reference-toll-popup-total {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 700;
+}
+.reference-toll-popup-total span {
+  color: #aeb4bb;
+}
 .admin-quote-page .call-inventory .inventory-section {
   margin: 0;
   padding: 0;
@@ -121,6 +276,75 @@
 }
 .admin-quote-page .call-inventory .inventory-custom-items.is-closed {
   display: none;
+}
+.admin-quote-page .call-inventory .inventory-hover-card {
+  width: min(250px, 78vw);
+  padding: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 6px 18px #0006;
+}
+.admin-quote-page .call-inventory .inventory-hover-default-image {
+  height: 70px;
+  min-height: 70px;
+}
+.admin-quote-page .call-inventory .inventory-hover-body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px 9px 9px;
+}
+.admin-quote-page .call-inventory .inventory-hover-title {
+  align-items: baseline;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.3;
+}
+.admin-quote-page .call-inventory .inventory-hover-title small {
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.admin-quote-page .call-inventory .inventory-hover-variants {
+  gap: 4px;
+}
+.admin-quote-page .call-inventory .inventory-hover-variants > button,
+.admin-quote-page .call-inventory .inventory-hover-variants > div {
+  border-width: 1.5px;
+}
+.admin-quote-page .call-inventory .inventory-hover-image-upload {
+  min-height: 56px;
+}
+.admin-quote-page .call-inventory .inventory-hover-image-upload > img {
+  height: 56px;
+}
+.admin-quote-page .call-inventory .inventory-hover-detail {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 6px;
+  border-radius: 5px;
+  font-size: 11px;
+}
+.admin-quote-page .call-inventory .inventory-hover-detail strong {
+  font-weight: 700;
+}
+.admin-quote-page .call-inventory .inventory-hover-detail span {
+  color: #3b4046;
+  text-align: right;
+}
+.admin-quote-page .call-inventory .inventory-hover-selection {
+  flex-direction: row;
+  margin: 0;
+  padding: 4px 6px;
+  border-radius: 5px;
+  font-size: 10px;
+}
+.admin-quote-page .call-inventory .inventory-hover-body > p {
+  margin: 1px;
+  color: #5a6168;
+  font-size: 10.5px;
+  line-height: 1.4;
 }
 .admin-quote-page .call-inventory .inventory-list {
   padding: 0;
@@ -461,12 +685,33 @@
   border-width: 1.5px;
   padding: 0 12px;
 }
+.admin-quote-card .admin-quote-route-grid .point-badge {
+  width: 26px;
+  height: 26px;
+  font-size: 12px;
+}
+.admin-quote-card .admin-quote-route-grid .point-badge.from {
+  background: #0e9f4a;
+}
+.admin-quote-card .admin-quote-route-grid .point-badge.to {
+  background: #e3262f;
+}
 .admin-quote-card .admin-quote-route-grid .address-field.active {
   border-color: #f6d73c;
 }
 .admin-quote-card .admin-quote-route-grid .address-field input {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #fff;
+  font: inherit;
   font-size: 16px;
   padding: 14px 0;
+  outline: none;
 }
 .admin-quote-card .admin-quote-route-grid .route-address-note {
   min-width: 0;
@@ -482,6 +727,31 @@
 .admin-quote-card .map-shell {
   margin-top: 0;
 }
+.admin-quote-card .map.leaflet-container {
+  background: #30343a;
+}
+.admin-quote-card .map-hint {
+  top: 10px;
+  left: 10px;
+  right: 62px;
+  width: auto;
+  max-width: none;
+  padding: 0;
+  border-radius: 0;
+  transform: none;
+  display: flex;
+  justify-content: center;
+  background: transparent;
+}
+.admin-quote-card .map-hint > span {
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgb(30 32 35 / 92%);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
 .admin-quote-card .map-expand {
   width: 44px;
   height: 44px;
@@ -496,25 +766,54 @@
   bottom: calc(14px + env(safe-area-inset-bottom));
   z-index: 500;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  border-radius: 12px;
-  background: rgb(30 32 35 / 94%);
+  flex-direction: column;
+  gap: 8px;
+  max-width: 560px;
+  margin: 0 auto;
   color: #d5d9de;
   font-size: 14px;
 }
+.admin-quote-map-full-details,
+.admin-quote-map-full-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgb(30 32 35 / 94%);
+  flex-wrap: wrap;
+}
+.admin-quote-map-full-details strong {
+  color: #fff;
+}
+.admin-quote-map-full-details span:last-child strong {
+  color: #f6d73c;
+}
+.admin-quote-map-full-actions {
+  padding: 8px;
+  gap: 8px;
+}
 .admin-quote-map-full-summary button {
   min-height: 46px;
-  padding: 0 16px;
-  border: 0;
+  flex: 1;
+  padding: 0 8px;
+  border: 1.5px solid #3b4046;
   border-radius: 10px;
-  background: #f6d73c;
-  color: #1e2023;
+  background: transparent;
+  color: #fff;
   font: inherit;
   font-weight: 800;
   cursor: pointer;
+}
+.admin-quote-map-full-summary button.active,
+.admin-quote-map-full-summary button:last-child {
+  border-color: #f6d73c;
+  background: #f6d73c;
+  color: #1e2023;
+}
+.admin-quote-map-full-summary button:last-child {
+  flex: 0 0 auto;
+  padding: 0 16px;
 }
 .admin-quote-card .admin-quote-distance-editor {
   display: grid;
@@ -557,8 +856,12 @@
   outline: 2px solid rgb(246 215 60 / 20%);
 }
 .admin-quote-card .map {
-  height: clamp(200px, 45vw, 320px);
-  min-height: 200px;
+  height: clamp(280px, 46vh, 400px);
+  min-height: 280px;
+}
+.admin-quote-card .map-shell.fullscreen .map {
+  height: 100dvh;
+  min-height: 100dvh;
 }
 .admin-quote-distance {
   color: #aeb4bb;
@@ -623,6 +926,10 @@
   font-size: 12.5px;
   font-weight: 700;
   cursor: pointer;
+}
+.admin-quote-traffic button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 .admin-quote-card .toll-rate-selector {
   display: grid;
@@ -1237,10 +1544,6 @@
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
-}
-.admin-quote-action-pdf:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 .admin-quote-stage-hint,
 .admin-quote-stage-error {

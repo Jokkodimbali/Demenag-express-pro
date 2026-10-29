@@ -620,8 +620,8 @@ textarea {
   height: 100dvh;
 }
 .map-pin {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -629,15 +629,19 @@ textarea {
   border-radius: 50% 50% 50% 0;
   transform: rotate(-45deg);
   font-family: Montserrat, sans-serif;
+  font-size: 13px;
   font-weight: 800;
   color: white;
-  box-shadow: 0 2px 8px #0005;
+  box-shadow: 0 2px 6px #0006;
+}
+.map-pin > span {
+  transform: rotate(45deg);
 }
 .map-pin.from {
-  background: var(--green);
+  background: #0e9f4a;
 }
 .map-pin.to {
-  background: #bc3038;
+  background: #e3262f;
 }
 .leaflet-container {
   font-family: Montserrat, sans-serif;

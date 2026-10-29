@@ -93,18 +93,21 @@ export function MovingPlanningPanel({
                     )}{' '}
                     % de remplissage
                   </span>
-                  {estimate.trips > 1 && (
-                    <span className="moving-vehicle-fill">
-                      Dernier voyage : ≈{' '}
-                      {Math.round(
-                        ((estimate.volume -
-                          (estimate.trips - 1) * estimate.capacity * estimate.fillRate) /
-                          (estimate.capacity * estimate.fillRate)) *
-                          100,
-                      )}
-                      % du chargement conseillé
-                    </span>
-                  )}
+                  {estimate.trips > 1 &&
+                    (estimate.volume - (estimate.trips - 1) * estimate.capacity * estimate.fillRate) /
+                      (estimate.capacity * estimate.fillRate) <
+                      0.2 && (
+                      <span className="moving-vehicle-fill">
+                        Dernier voyage : ≈{' '}
+                        {Math.round(
+                          ((estimate.volume -
+                            (estimate.trips - 1) * estimate.capacity * estimate.fillRate) /
+                            (estimate.capacity * estimate.fillRate)) *
+                            100,
+                        )}
+                        % · peut tenir en {estimate.trips - 1} si chargé serré
+                      </span>
+                    )}
                   {estimate.vehicleWarnings.map((warning) => (
                     <span className="moving-vehicle-warning" key={warning} role="status">
                       ⚠ Objet hors gabarit : {warning}

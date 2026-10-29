@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { messages } from '../content/fr';
-import { tierLabels } from '../domain/format';
+import { referenceTierLabels, tierLabels } from '../domain/format';
 import type {
   Booking,
   BookingInput,
@@ -64,6 +64,18 @@ export function useBookingForm({
   const autofilledName = useRef<{ phone: string; name: string } | null>(null);
   const adminQuoteInitialized = useRef(false);
   const tiers = tierLabels(catalogue?.settings.distanceBounds);
+  const bounds = catalogue?.settings.distanceBounds ?? [15, 25, 35];
+  const distance = draft.distanceKmOverride ?? draft.route?.distanceKm;
+  const quoteTier =
+    distance == null
+      ? 0
+      : distance < bounds[0]
+        ? 0
+        : distance <= bounds[1]
+          ? 1
+          : distance <= bounds[2]
+            ? 2
+            : 3;
   const selected = catalogue?.vehicles.find((v) => v.id === draft.vehicleId);
   const administrativeQuote = mode === 'admin-quote' && user?.role === 'admin';
   useEffect(() => {
@@ -409,7 +421,7 @@ export function useBookingForm({
           const savedQuoteBooking = await api.quote(booking.id, {
             kind: quoteKind ?? 'provisional',
             trips: quoteConfig?.trips ?? 1,
-            customPrice: price.tier === 3 ? (quoteConfig?.customPrice ?? null) : null,
+            customPrice: quoteTier === 3 ? (quoteConfig?.customPrice ?? null) : null,
             labourUnitPriceOverride: quoteConfig?.labourUnitPriceOverride ?? null,
             discount: quoteConfig?.discount ?? 0,
             discountType: quoteConfig?.discountType ?? 'fcfa',
@@ -459,26 +471,21 @@ export function useBookingForm({
     ['wardrobe', messages.montageDemontageDArmoire, messages.demontageEtRemontageSurPlace],
     ['bed', messages.montageDemontageDeLit, messages.litDeuxPlaces],
   ];
-  const transport = price?.lines[0];
   const trips = quoteConfig?.trips ?? 1;
   const transportUnit =
-    price?.tier === 3 ? (quoteConfig?.customPrice ?? 0) : (transport?.unitPrice ?? 0);
+    quoteTier === 3 ? (quoteConfig?.customPrice ?? 0) : (selected?.prices[quoteTier] ?? 0);
   const quoteLinesRaw =
-    price?.tier === 3 && quoteConfig?.customPrice
+    quoteConfig && selected && draft.route
       ? [
           {
-            label: `Transport ${selected?.name ?? ''} · aller-retour`,
+            label: `Transport ${selected.shortName || selected.name} · ${referenceTierLabels(bounds)[quoteTier].toLowerCase()} (aller-retour)`,
             quantity: trips,
-            unitPrice: quoteConfig.customPrice,
-            total: quoteConfig.customPrice * trips,
+            unitPrice: transportUnit,
+            total: transportUnit * trips,
           },
-          ...price.lines,
+          ...(price?.lines.filter((line) => !line.label.startsWith('Transport ')) ?? []),
         ]
-      : (price?.lines.map((line, index) =>
-          index === 0 && quoteConfig
-            ? { ...line, quantity: trips, unitPrice: transportUnit, total: transportUnit * trips }
-            : line,
-        ) ?? []);
+      : (price?.lines ?? []);
   const quoteLines = quoteLinesRaw.map((line) =>
     quoteConfig?.labourUnitPriceOverride && /^Manœuvre/u.test(line.label)
       ? {
@@ -489,7 +496,7 @@ export function useBookingForm({
       : line,
   );
   const baseTotal =
-    price?.total === null && (price.tier !== 3 || quoteConfig?.customPrice == null)
+    quoteTier === 3 && quoteConfig?.customPrice == null
       ? null
       : quoteLines.reduce((sum, line) => sum + line.total, 0);
   const rawDiscount = quoteConfig?.discount ?? 0;
@@ -502,6 +509,7 @@ export function useBookingForm({
   const quotePreviewPrice = price
     ? {
         ...price,
+        tier: quoteTier,
         lines: quoteLines,
         total: baseTotal === null ? null : baseTotal - effectiveDiscount,
         discount: effectiveDiscount,

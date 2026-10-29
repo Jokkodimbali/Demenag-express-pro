@@ -52,12 +52,12 @@ export function TollRateSelector({
     const pointLabel = /^péage/i.test(point.name) ? point.name : `Péage · ${point.name}`;
     const line: TollExtraLine = {
       id: point.id,
-      label: `${pointLabel} (${vehicleLabel})`,
+      label: selectedLine?.label ?? `${pointLabel} (${vehicleLabel})`,
       quantity: selected ? quantity : Math.max(1, roundTrips) * 2,
       unitPrice,
     };
     const setQuantity = (next: number) =>
-      onToggle({ ...line, quantity: Math.max(1, Math.min(100, next)) }, true);
+      onToggle({ ...line, quantity: Math.max(1, Math.min(99, next)) }, true);
 
     return (
       <div className={`toll-rate-row${selected ? ' is-selected' : ''}`} key={point.id}>
@@ -89,7 +89,7 @@ export function TollRateSelector({
               <button
                 type="button"
                 aria-label={`Ajouter un passage à ${point.name}`}
-                disabled={quantity >= 100}
+                disabled={quantity >= 99}
                 onClick={() => setQuantity(quantity + 1)}
               >
                 +
