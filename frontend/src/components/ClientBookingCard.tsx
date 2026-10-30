@@ -1,3 +1,4 @@
+import { uiText } from '../content/reference-ui-text';
 import { useApp } from '../application/context';
 import { useBookingCard } from '../application/controllers/useBookingCard';
 import { whatsappNumber, whatsappUrl } from '../application/services/whatsapp';
@@ -131,7 +132,7 @@ export function ClientBookingCard({
               className="reference-client-edit"
               to={`${routes.booking}?modifier=${encodeURIComponent(booking.id)}`}
             >
-              Modifier ma demande
+              {uiText['modifierMaDemande']}
             </Link>
           )}
           <div className="reference-client-status-group">
@@ -182,27 +183,27 @@ export function ClientBookingCard({
               distanceTier}
           </span>
           <a href={mapsUrl.toString()} target="_blank" rel="noopener noreferrer">
-            Ouvrir dans Google Maps
+            {uiText['ouvrirDansGoogleMaps']}
           </a>
         </div>
       </div>
       <div className="reference-client-addresses">
-        <span>A</span>
+        <span>{uiText['a2']}</span>
         <p>{booking.fromAddress}</p>
-        <span>B</span>
+        <span>{uiText['b']}</span>
         <p>{booking.toAddress}</p>
       </div>
       <div className="reference-client-facts">
         <div>
-          <span>VÉHICULE</span>
+          <span>{uiText['vehicule']}</span>
           <strong>{booking.vehicle.shortName || booking.vehicle.name}</strong>
         </div>
         <div>
-          <span>CRÉNEAU</span>
+          <span>{uiText['creneau']}</span>
           <strong>{booking.timeSlot || '—'}</strong>
         </div>
         <div>
-          <span>ESTIMATION</span>
+          <span>{uiText['estimation']}</span>
           <strong>{money(displayedEstimate)}</strong>
         </div>
       </div>
@@ -212,24 +213,27 @@ export function ClientBookingCard({
         disabled={busy}
         onClick={() => void pdf(provisionalQuote)}
       >
-        Télécharger le devis provisoire (PDF)
+        {uiText['telechargerLeDevisProvisoirePDF']}
       </button>
       {finalQuote && (
         <div className="reference-client-final">
           <div className="reference-client-final-heading">
-            <strong>Devis final {finalQuote.reference}</strong>
+            <strong>
+              {uiText['devisFinal']}
+              {finalQuote.reference}
+            </strong>
             <strong>{money(finalQuote.price.total)}</strong>
           </div>
           {paymentText && (
             <div className="reference-client-payment">
               <div>
-                <span>MODE DE PAIEMENT</span>
+                <span>{uiText['modeDEPAIEMENT']}</span>
                 <strong>
                   {paymentText.replace(/^Mode de paiement : /u, '').replace(/\.$/u, '')}
                 </strong>
               </div>
               {catalogue?.settings.paymentWave !== false && catalogue?.settings.paymentQr && (
-                <img src={catalogue.settings.paymentQr} alt="QR code Wave marchand" />
+                <img src={catalogue.settings.paymentQr} alt={uiText['qrCodeWaveMarchand']} />
               )}
             </div>
           )}
@@ -244,8 +248,8 @@ export function ClientBookingCard({
           {tolls.length > 0 && (
             <div className="reference-client-tolls">
               <div className="reference-client-tolls-heading">
-                <strong>PÉAGES À VOTRE CHARGE</strong>
-                <span>NON INCLUS DANS LE TOTAL</span>
+                <strong>{uiText['peagesAVOTRECHARGE']}</strong>
+                <span>{uiText['nonINCLUSDANSLETOTAL']}</span>
               </div>
               {tolls.map((toll) => (
                 <div className="reference-client-toll-line" key={toll.tollPointId}>
@@ -257,14 +261,14 @@ export function ClientBookingCard({
                 </div>
               ))}
               <div className="reference-client-toll-total">
-                <strong>Total péages</strong>
+                <strong>{uiText['totalPeages']}</strong>
                 <strong>{money(tollTotal)}</strong>
               </div>
             </div>
           )}
           <div className="reference-client-final-actions">
             <button type="button" disabled={busy} onClick={() => void pdf(finalQuote)}>
-              Télécharger le devis final (PDF)
+              {uiText['telechargerLeDevisFinalPDF']}
             </button>
           </div>
         </div>

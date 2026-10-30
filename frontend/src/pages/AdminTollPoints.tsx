@@ -1,3 +1,4 @@
+import { uiText } from '../content/reference-ui-text';
 import {
   ChevronDown,
   ChevronUp,
@@ -11,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useRef, useState, type FormEvent } from 'react';
 import { useApp } from '../application/context';
+import { useTollPointCommands } from '../application/controllers/useTollPointCommands';
 import { errorMessage } from '../application/error-message';
 import { ConfirmationDialog } from '../components/ConfirmationDialog';
 import { TollPointEditorMap } from '../components/TollPointEditorMap';
@@ -29,7 +31,8 @@ const emptyPoint: TollPointInput = {
 };
 
 export function AdminTollPoints() {
-  const { api, catalogue, tollPoints, setTollPoints } = useApp();
+  const { catalogue, tollPoints, setTollPoints } = useApp();
+  const commands = useTollPointCommands();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<TollPointInput>(emptyPoint);
   const [formOpen, setFormOpen] = useState(false);
@@ -90,7 +93,7 @@ export function AdminTollPoints() {
     setLocationError('');
     setLocationResults([]);
     try {
-      const results = await api.search(locationQuery.trim());
+      const results = await commands.searchAddress(locationQuery.trim());
       if (request !== searchRequest.current) return;
       setLocationResults(results);
       if (!results.length)
@@ -126,8 +129,8 @@ export function AdminTollPoints() {
         },
       };
       const point = editingId
-        ? await api.updateTollPoint(editingId, input)
-        : await api.createTollPoint(input);
+        ? await commands.updateTollPoint(editingId, input)
+        : await commands.createTollPoint(input);
       setTollPoints((current) =>
         [...current.filter((item) => item.id !== point.id), point].sort((a, b) =>
           a.name.localeCompare(b.name),
@@ -151,7 +154,7 @@ export function AdminTollPoints() {
     setBusy(true);
     setError('');
     try {
-      await api.deleteTollPoint(pendingDelete.id);
+      await commands.deleteTollPoint(pendingDelete.id);
       setTollPoints((current) => current.filter((point) => point.id !== pendingDelete.id));
       if (editingId === pendingDelete.id) reset();
       setPendingDelete(null);
@@ -168,7 +171,7 @@ export function AdminTollPoints() {
       <section
         ref={mapPanel}
         className="toll-admin-map-panel"
-        aria-label="Carte des points de péage"
+        aria-label={uiText['carteDesPointsDePeage']}
       >
         <TollPointEditorMap
           points={tollPoints}
@@ -200,8 +203,8 @@ export function AdminTollPoints() {
                   void searchLocation();
                 }
               }}
-              aria-label="Rechercher un lieu pour le péage"
-              placeholder="Rechercher un lieu pour le péage"
+              aria-label={uiText['rechercherUnLieuPourLePeage']}
+              placeholder={uiText['rechercherUnLieuPourLePeage']}
             />
             <button
               className="button secondary small"
@@ -218,7 +221,7 @@ export function AdminTollPoints() {
             </p>
           )}
           {locationResults.length > 0 && (
-            <div className="toll-admin-location-results" aria-label="Lieux trouvés">
+            <div className="toll-admin-location-results" aria-label={uiText['lieuxTrouves']}>
               {locationResults.map((result, index) => (
                 <button
                   type="button"
@@ -239,9 +242,7 @@ export function AdminTollPoints() {
               ))}
             </div>
           )}
-          <p>
-            La recherche propose une zone. Vérifiez le point exact sur la carte avant d’enregistrer.
-          </p>
+          <p>{uiText['laRechercheProposeUneZoneVerifiezLePointExactSurLaCart']}</p>
         </div>
       </section>
       <div className="toll-admin-side">
@@ -249,14 +250,12 @@ export function AdminTollPoints() {
           <div className="section-heading">
             <div>
               <h3>{editingId ? 'Modifier un point de péage' : 'Ajouter un point de péage'}</h3>
-              <p>
-                Tarif par passage pour les poids lourds. Cliquez sur la carte pour placer le repère.
-              </p>
+              <p>{uiText['tarifParPassagePourLesPoidsLourdsCliquezSurLaCartePour']}</p>
             </div>
             <div className="toll-admin-form-actions">
               {editingId && formOpen && (
                 <button type="button" className="button secondary small" onClick={reset}>
-                  <X size={16} /> Annuler
+                  <X size={16} /> {uiText['annuler2']}
                 </button>
               )}
               <button
@@ -288,7 +287,7 @@ export function AdminTollPoints() {
             onSubmit={(event) => void save(event)}
           >
             <label>
-              Nom du point
+              {uiText['nomDuPoint']}
               <input
                 required
                 minLength={2}
@@ -297,30 +296,30 @@ export function AdminTollPoints() {
                 onChange={(event) =>
                   setForm((current) => ({ ...current, name: event.target.value }))
                 }
-                placeholder="Ex. Péage de Rufisque"
+                placeholder={uiText['exPeageDeRufisque']}
               />
             </label>
             <label>
-              Région
+              {uiText['region']}
               <input
                 maxLength={80}
                 value={form.region}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, region: event.target.value }))
                 }
-                placeholder="Ex. Thiès"
+                placeholder={uiText['exThies']}
                 list="toll-admin-regions"
               />
             </label>
             <label>
-              Axe routier
+              {uiText['axeRoutier']}
               <input
                 maxLength={120}
                 value={form.axis}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, axis: event.target.value }))
                 }
-                placeholder="Ex. Autoroute Ila Touba"
+                placeholder={uiText['exAutorouteIlaTouba']}
                 list="toll-admin-axes"
               />
             </label>
@@ -356,7 +355,7 @@ export function AdminTollPoints() {
                 ))}
             </datalist>
             <label>
-              Tarif poids lourd / passage (FCFA)
+              {uiText['tarifPoidsLourdPassageFCFA']}
               <input
                 required
                 type="number"
@@ -369,7 +368,11 @@ export function AdminTollPoints() {
                 }
               />
             </label>
-            <div className="toll-admin-vehicle-prices" role="group" aria-label="Tarif par véhicule">
+            <div
+              className="toll-admin-vehicle-prices"
+              role="group"
+              aria-label={uiText['tarifParVehicule']}
+            >
               {(catalogue?.vehicles ?? []).map((vehicle) => (
                 <label key={vehicle.id}>
                   {vehicle.name}
@@ -391,14 +394,14 @@ export function AdminTollPoints() {
                         }))
                       }
                     />
-                    <span>FCFA</span>
+                    <span>{uiText['fcfa']}</span>
                   </span>
                 </label>
               ))}
             </div>
             <div className="toll-admin-coordinate-fields">
               <label>
-                Latitude
+                {uiText['latitude']}
                 <input
                   type="number"
                   min={12}
@@ -411,11 +414,11 @@ export function AdminTollPoints() {
                       latitude: event.target.value === '' ? null : Number(event.target.value),
                     }))
                   }
-                  placeholder="14.6928"
+                  placeholder={uiText['146928']}
                 />
               </label>
               <label>
-                Longitude
+                {uiText['longitude']}
                 <input
                   type="number"
                   min={-18.5}
@@ -428,7 +431,7 @@ export function AdminTollPoints() {
                       longitude: event.target.value === '' ? null : Number(event.target.value),
                     }))
                   }
-                  placeholder="-17.4467"
+                  placeholder={uiText['174467']}
                 />
               </label>
             </div>
@@ -445,8 +448,11 @@ export function AdminTollPoints() {
         <section className="panel toll-admin-list-panel">
           <div className="section-heading">
             <div>
-              <h3>Points de péage ({tollPoints.length})</h3>
-              <p>Les tarifs définis ici sont proposés lors de la réservation.</p>
+              <h3>
+                {uiText['pointsDePeage']}
+                {tollPoints.length})
+              </h3>
+              <p>{uiText['lesTarifsDefinisIciSontProposesLorsDeLaReservation']}</p>
             </div>
             <Plus size={18} aria-hidden="true" />
           </div>
@@ -473,7 +479,7 @@ export function AdminTollPoints() {
                       className="button secondary small"
                       onClick={() => edit(point)}
                       aria-label={`Modifier ${point.name}`}
-                      title="Modifier les informations"
+                      title={uiText['modifierLesInformations']}
                     >
                       <Pencil size={16} />
                     </button>
@@ -507,7 +513,9 @@ export function AdminTollPoints() {
                 </p>
               </article>
             ))}
-            {tollPoints.length === 0 && <p className="muted">Aucun point de péage enregistré.</p>}
+            {tollPoints.length === 0 && (
+              <p className="muted">{uiText['aucunPointDePeageEnregistre']}</p>
+            )}
           </div>
         </section>
       </div>
@@ -515,7 +523,7 @@ export function AdminTollPoints() {
         <ConfirmationDialog
           titleId="delete-toll-title"
           eyebrow="Péages"
-          title="Supprimer ce point de péage ?"
+          title={uiText['supprimerCePointDePeage']}
           description={`« ${pendingDelete.name} » disparaîtra des cartes et des nouveaux devis. Les devis déjà enregistrés restent inchangés.`}
           confirmLabel="Supprimer le péage"
           busy={busy}

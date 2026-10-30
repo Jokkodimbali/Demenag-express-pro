@@ -21,7 +21,11 @@ export function AdminPlanning() {
       {loading ? (
         <p className="panel loading">{messages.chargementDesReservations}</p>
       ) : (
-        <ReferenceCalendar bookings={bookings} vehicles={catalogue?.vehicles ?? []} onSelect={select} />
+        <ReferenceCalendar
+          bookings={bookings}
+          vehicles={catalogue?.vehicles ?? []}
+          onSelect={select}
+        />
       )}
     </div>
   );

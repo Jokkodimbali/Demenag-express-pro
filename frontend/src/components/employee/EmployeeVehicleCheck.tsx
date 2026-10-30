@@ -1,5 +1,7 @@
+import { uiText } from '../../content/reference-ui-text';
 import { useEffect, useState } from 'react';
 import { useApp } from '../../application/context';
+import { useEmployeeCommands } from '../../application/controllers/useEmployeeCommands';
 import { showHeaderSuccess } from '../../application/header-notice';
 import { errorMessage } from '../../application/error-message';
 import type { VehicleInspection } from '../../application/ports';
@@ -20,7 +22,8 @@ export function EmployeeVehicleCheck({
   profile: Driver;
   onView: (src: string) => void;
 }) {
-  const { api, catalogue } = useApp();
+  const { catalogue } = useApp();
+  const { submitInspection, driverReports } = useEmployeeCommands();
   const vehicles = (catalogue?.vehicles ?? []).filter(
     (v) => !profile.authorizedVehicleIds?.length || profile.authorizedVehicleIds.includes(v.id),
   );
@@ -32,8 +35,7 @@ export function EmployeeVehicleCheck({
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     let active = true;
-    api
-      .driverReports()
+    driverReports()
       .then((r) => {
         if (active) setReports(r.inspections);
       })
@@ -43,7 +45,7 @@ export function EmployeeVehicleCheck({
     return () => {
       active = false;
     };
-  }, [api]);
+  }, [driverReports]);
   function update(key: string, patch: Item) {
     setItems((old) => ({ ...old, [key]: { ...old[key], ...patch } }));
     setError('');
@@ -72,7 +74,7 @@ export function EmployeeVehicleCheck({
     setBusy(true);
     setError('');
     try {
-      const report = await api.submitEmployeeInspection({
+      const report = await submitInspection({
         vehicleId,
         items: Object.fromEntries(
           checks.map(([key]) => [key, { image: items[key].image!, ok: items[key].ok! }]),
@@ -89,7 +91,7 @@ export function EmployeeVehicleCheck({
   }
   return (
     <section className="employee-panel">
-      <h2>CONTRÔLE TECHNIQUE DU VÉHICULE</h2>
+      <h2>{uiText['controleTECHNIQUEDUVEHICULE']}</h2>
       <div className="employee-actions">
         {vehicles.map((v) => (
           <button
@@ -111,7 +113,7 @@ export function EmployeeVehicleCheck({
               {items[key]?.image ? (
                 <img src={items[key].image} alt={label} />
               ) : (
-                <span>Prendre la photo</span>
+                <span>{uiText['prendreLaPhoto']}</span>
               )}
               <input
                 aria-label={`Photo · ${label}`}
@@ -129,7 +131,7 @@ export function EmployeeVehicleCheck({
             </label>
             {items[key]?.image ? (
               <button className="employee-enlarge" onClick={() => onView(items[key].image!)}>
-                Agrandir
+                {uiText['agrandir']}
               </button>
             ) : null}
             <div className="employee-check-status">
@@ -161,8 +163,8 @@ export function EmployeeVehicleCheck({
           <table>
             <thead>
               <tr>
-                <th>DATE</th>
-                <th>VÉHICULE</th>
+                <th>{uiText['date']}</th>
+                <th>{uiText['vehicule']}</th>
                 {checks.map(([key, label]) => (
                   <th key={key}>{label.toUpperCase()}</th>
                 ))}

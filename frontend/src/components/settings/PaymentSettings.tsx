@@ -1,3 +1,4 @@
+import { uiText } from '../../content/reference-ui-text';
 import { useEffect, useRef, useState } from 'react';
 import type { Catalogue } from '../../domain/model';
 
@@ -32,7 +33,7 @@ export function PaymentSettings({ catalogue }: { catalogue: Catalogue }) {
       aria-labelledby="payment-settings-title"
     >
       <span className="reference-settings-card-title" id="payment-settings-title">
-        Paiement client
+        {uiText['paiementClient']}
       </span>
       <div className="payment-settings-options">
         <label>
@@ -42,7 +43,7 @@ export function PaymentSettings({ catalogue }: { catalogue: Catalogue }) {
             checked={waveEnabled}
             onChange={(event) => setWaveEnabled(event.currentTarget.checked)}
           />
-          Wave
+          {uiText['wave']}
         </label>
         <label>
           <input
@@ -51,11 +52,12 @@ export function PaymentSettings({ catalogue }: { catalogue: Catalogue }) {
             checked={cashEnabled}
             onChange={(event) => setCashEnabled(event.currentTarget.checked)}
           />
-          Espèces
+          {uiText['especes']}
         </label>
       </div>
       <span className="payment-settings-preview" aria-live="polite">
-        Affiché sur les devis et dans les messages : <strong>{paymentLabel}</strong>
+        {uiText['afficheSurLesDevisEtDansLesMessages']}
+        <strong>{paymentLabel}</strong>
       </span>
       {waveEnabled && (
         <div className="payment-qr-panel">
@@ -63,13 +65,13 @@ export function PaymentSettings({ catalogue }: { catalogue: Catalogue }) {
             <img
               className="payment-qr-preview"
               src={catalogue.settings.paymentQr}
-              alt="QR code Wave"
+              alt={uiText['qrCodeWave']}
             />
           )}
           <div className="payment-qr-content">
-            <strong>QR CODE WAVE MARCHAND</strong>
+            <strong>{uiText['qrCODEWAVEMARCHAND']}</strong>
             {catalogue.settings.paymentQr && !qrRemoved && (
-              <span className="payment-qr-filename">QR code marchand enregistré</span>
+              <span className="payment-qr-filename">{uiText['qrCodeMarchandEnregistre']}</span>
             )}
             <label className="payment-qr-upload" htmlFor="payment-qr">
               {catalogue.settings.paymentQr && !qrRemoved
@@ -100,7 +102,7 @@ export function PaymentSettings({ catalogue }: { catalogue: Catalogue }) {
             />
             {catalogue.settings.paymentQr && !qrRemoved && (
               <label className="payment-qr-remove" htmlFor="remove-payment-qr">
-                Retirer
+                {uiText['retirer']}
               </label>
             )}
           </div>

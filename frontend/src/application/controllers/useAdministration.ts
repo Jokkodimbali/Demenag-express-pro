@@ -13,8 +13,8 @@ export function useAdministration() {
   const userId = user?.id ?? '';
   const [params] = useSearchParams();
   const [bookings, setLocalBookings] = useState<Booking[]>(
-    () => bookingCache.get(userId)?.bookings ?? [],
-  ),
+      () => bookingCache.get(userId)?.bookings ?? [],
+    ),
     [loading, setLoading] = useState(() => !bookingCache.has(userId)),
     [error, setError] = useState(''),
     [retry, setRetry] = useState(0),
@@ -72,6 +72,21 @@ export function useAdministration() {
       `${b.reference} ${b.customerName} ${b.phone}`.toLowerCase().includes(query.toLowerCase())
     );
   });
+  const recordBookingReminder = useCallback(
+    async (bookingId: string) => {
+      const updated = await api.recordBookingReminder(bookingId);
+      setBookings((rows) => rows.map((row) => (row.id === updated.id ? updated : row)));
+      return updated;
+    },
+    [api, setBookings],
+  );
+  const removeBooking = useCallback(
+    async (bookingId: string) => {
+      await api.deleteBooking(bookingId);
+      setBookings((rows) => rows.filter((row) => row.id !== bookingId));
+    },
+    [api, setBookings],
+  );
   const stats = [
     { label: messages.demandesRecues, status: 'pending', Icon: ClipboardList },
     { label: messages.aPreparer, status: 'confirmed', Icon: CalendarDays },
@@ -94,5 +109,7 @@ export function useAdministration() {
     setQuery,
     visible,
     stats,
+    recordBookingReminder,
+    removeBooking,
   };
 }

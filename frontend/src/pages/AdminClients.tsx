@@ -1,7 +1,8 @@
+import { uiText } from '../content/reference-ui-text';
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAdministration } from '../application/controllers/useAdministration';
-import { useApp } from '../application/context';
+import { useAdminClients } from '../application/controllers/useAdminClients';
 import { errorMessage } from '../application/error-message';
 import { normalizedClientPhone } from '../application/services/client-summary';
 import { usePagination } from '../application/usePagination';
@@ -105,14 +106,14 @@ function ClientRow({
             onBlur={() => void save()}
             className="reference-client-edit"
           />
-          <a href={`tel:${digitsOnly(phone)}`}>Appeler</a>
+          <a href={`tel:${digitsOnly(phone)}`}>{uiText['appeler']}</a>
           {value.account?.passwordResetRequestedAt ? (
             <button
               className="reference-client-reset"
-              title="Réinitialiser le mot de passe"
+              title={uiText['reinitialiserLeMotDePasse']}
               onClick={onReset}
             >
-              Demande de réinit. · Réinitialiser
+              {uiText['demandeDeReinitReinitialiser']}
             </button>
           ) : null}
         </div>
@@ -128,24 +129,27 @@ function ClientRow({
           value={address}
           onChange={update(setAddress)}
           onBlur={() => void save()}
-          placeholder="—"
+          placeholder={uiText['texte']}
           className="reference-client-edit address"
         />
       </td>
       <td className="reference-client-number">{value.moves}</td>
       <td className="reference-client-amount">
         <strong>{money(value.total)}</strong>
-        <span>dont final {money(value.final)}</span>
+        <span>
+          {uiText['dontFinal']}
+          {money(value.final)}
+        </span>
       </td>
       <td className="reference-client-last">{value.last}</td>
       <td>
         <div className="reference-client-actions">
           <button className="reference-client-quote" onClick={onQuote}>
-            Nouveau devis
+            {uiText['nouveauDevis']}
           </button>
           <button
             className="reference-client-delete"
-            title="Supprimer"
+            title={uiText['supprimer']}
             aria-label={`Supprimer ${value.name}`}
             onClick={onHide}
           >
@@ -157,7 +161,7 @@ function ClientRow({
   );
 }
 export function AdminClients() {
-  const { api } = useApp();
+  const { loadDirectory, updateClient, hideClientProfile, resetClientPassword } = useAdminClients();
   const { bookings, loading, error, setRetry } = useAdministration();
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
@@ -171,7 +175,7 @@ export function AdminClients() {
   const [resetBusy, setResetBusy] = useState(false);
   useEffect(() => {
     let active = true;
-    Promise.all([api.clientProfiles(), api.hiddenClients(), api.users()])
+    loadDirectory()
       .then(([p, h, u]) => {
         if (!active) return;
         setProfiles(p);
@@ -184,7 +188,7 @@ export function AdminClients() {
     return () => {
       active = false;
     };
-  }, [api]);
+  }, [loadDirectory]);
   const rows = useMemo(() => {
     const summaries = new Map<string, Booking[]>();
     for (const booking of bookings) {
@@ -242,7 +246,7 @@ export function AdminClients() {
   ) {
     setBusyKey(initial.key);
     try {
-      await api.updateClient(initial.key, next);
+      await updateClient(initial.key, next);
       const newKey = digitsOnly(next.phone);
       setProfiles((old) => [
         ...old.filter(
@@ -259,7 +263,7 @@ export function AdminClients() {
   async function hideClient(client: ClientRowValue) {
     if (!window.confirm(`Supprimer ${client.name} de la liste des clients ?`)) return;
     try {
-      const entry = await api.hideClient(client.key);
+      const entry = await hideClientProfile(client.key);
       setHidden((old) => [...old.filter((value) => digitsOnly(value.phone) !== client.key), entry]);
     } catch (e) {
       setDirectoryError(errorMessage(e));
@@ -272,7 +276,7 @@ export function AdminClients() {
     setResetError('');
     try {
       const password = String(new FormData(event.currentTarget).get('password'));
-      await api.resetClientPassword(resetTarget.id, password);
+      await resetClientPassword(resetTarget.id, password);
       setUsers((old) =>
         old.map((user) =>
           user.id === resetTarget.id ? { ...user, passwordResetRequestedAt: null } : user,
@@ -296,14 +300,14 @@ export function AdminClients() {
       <div className="reference-clients-card">
         <div className="reference-clients-heading">
           <div>
-            <span>CLIENTS</span>
+            <span>{uiText['clients']}</span>
             <small>{countLabel}</small>
           </div>
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Rechercher un nom, un numéro, une adresse"
-            aria-label="Rechercher un nom, un numéro, une adresse"
+            placeholder={uiText['rechercherUnNomUnNumeroUneAdresse']}
+            aria-label={uiText['rechercherUnNomUnNumeroUneAdresse']}
           />
         </div>
         {error || directoryError ? (
@@ -311,9 +315,9 @@ export function AdminClients() {
             {error || directoryError}
           </p>
         ) : null}
-        {loading ? <p role="status">Chargement des clients…</p> : null}
+        {loading ? <p role="status">{uiText['chargementDesClients']}</p> : null}
         {!loading && filtered.length === 0 ? (
-          <span className="reference-clients-empty">Aucun client.</span>
+          <span className="reference-clients-empty">{uiText['aucunClient']}</span>
         ) : null}
         <div className="reference-client-table-scroll">
           <table>
@@ -364,12 +368,9 @@ export function AdminClients() {
           onClose={() => setResetTarget(null)}
         >
           <form className="confirmation-dialog" onSubmit={resetPassword}>
-            <h2 id="reference-client-reset-title">Réinitialiser le mot de passe</h2>
-            <p>
-              Vérifiez l’identité du client par téléphone avant de lui communiquer son nouveau mot
-              de passe.
-            </p>
-            <label htmlFor="reference-client-new-password">Nouveau mot de passe</label>
+            <h2 id="reference-client-reset-title">{uiText['reinitialiserLeMotDePasse']}</h2>
+            <p>{uiText['verifiezLIdentiteDuClientParTelephoneAvantDeLuiCommuni']}</p>
+            <label htmlFor="reference-client-new-password">{uiText['nouveauMotDePasse']}</label>
             <input
               id="reference-client-new-password"
               name="password"
@@ -391,7 +392,7 @@ export function AdminClients() {
                 className="button secondary"
                 onClick={() => setResetTarget(null)}
               >
-                Annuler
+                {uiText['annuler']}
               </button>
               <button className="button primary" disabled={resetBusy}>
                 {resetBusy ? 'Enregistrement…' : 'Réinitialiser'}

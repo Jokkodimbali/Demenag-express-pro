@@ -1,3 +1,4 @@
+import { uiText } from '../content/reference-ui-text';
 import { ChevronLeft, ChevronRight, FilePenLine, MessageCircle } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import {
@@ -202,7 +203,9 @@ function DailyBookings({
       <div className="section-heading">
         <div>
           <h2>{messages.reservationsDuJour(dateLabel(selectedDay))}</h2>
-          <p>{bookings.length} réservation(s)</p>
+          <p>
+            {bookings.length} {uiText['reservationS']}
+          </p>
         </div>
       </div>
       {bookings.length ? (
@@ -216,7 +219,10 @@ function DailyBookings({
               <span>
                 <span className="daily-booking-title">
                   <strong>{booking.customerName}</strong>
-                  <small className="calendar-client-id">ID {clientIdentifier(booking.phone)}</small>
+                  <small className="calendar-client-id">
+                    {uiText['id']}
+                    {clientIdentifier(booking.phone)}
+                  </small>
                 </span>
                 <small>{booking.timeSlot || 'Créneau à convenir'}</small>
               </span>
@@ -391,7 +397,8 @@ function BookingCalendar({
                   <span className="calendar-booking-title">
                     <strong>{booking.customerName}</strong>
                     <small className="calendar-client-id">
-                      ID {clientIdentifier(booking.phone)}
+                      {uiText['id']}
+                      {clientIdentifier(booking.phone)}
                     </small>
                   </span>
                   <span>{booking.timeSlot || 'Créneau à convenir'}</span>
@@ -408,17 +415,25 @@ function BookingCalendar({
             return (
               <section
                 className="calendar-undated"
-                aria-label="Réservations sans date de rendez-vous"
+                aria-label={uiText['reservationsSansDateDeRendezVous']}
               >
                 <h3>
-                  Sans date de rendez-vous <span>{undatedBookings.length}</span>
+                  {uiText['sansDateDeRendezVous']}
+                  <span>{undatedBookings.length}</span>
                 </h3>
                 <div className="calendar-undated-totals">
                   <span className="provisional">
-                    Provisoire : {money(undatedRevenue.provisional)}
+                    {uiText['provisoire2']}
+                    {money(undatedRevenue.provisional)}
                   </span>
-                  <span className="definitive">Définitif : {money(undatedRevenue.definitive)}</span>
-                  <strong>Total : {money(undatedRevenue.total)}</strong>
+                  <span className="definitive">
+                    {uiText['definitif']}
+                    {money(undatedRevenue.definitive)}
+                  </span>
+                  <strong>
+                    {uiText['total']}
+                    {money(undatedRevenue.total)}
+                  </strong>
                 </div>
                 <div>
                   {undatedBookings.map((booking) => (
@@ -428,8 +443,8 @@ function BookingCalendar({
                       onClick={() => onSelect(booking)}
                     >
                       <span>
-                        {booking.customerName} · ID client : {clientIdentifier(booking.phone)} ·{' '}
-                        {booking.timeSlot || 'Heure à convenir'}
+                        {booking.customerName} {uiText['idClient']}
+                        {clientIdentifier(booking.phone)} · {booking.timeSlot || 'Heure à convenir'}
                       </span>
                       <strong>{money(bookingRevenueAmount(booking))}</strong>
                     </button>

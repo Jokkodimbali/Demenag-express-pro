@@ -1,6 +1,8 @@
+import { uiText } from '../content/reference-ui-text';
 import { useState } from 'react';
 import { useApp } from '../application/context';
 import { useDriverWorkspace } from '../application/controllers/useDriverWorkspace';
+import { useEmployeeCommands } from '../application/controllers/useEmployeeCommands';
 import { showHeaderSuccess } from '../application/header-notice';
 import { errorMessage } from '../application/error-message';
 import type { DriverAvailabilityDay } from '../domain/model';
@@ -12,7 +14,8 @@ const defaults = days.map((_, i) => ({ available: i < 6, startTime: '08:00', end
 const roles = { chauffeur: 'CHAUFFEUR', menuisier: 'MENUISIER', manoeuvre: 'MANŒUVRE' };
 export function DriverWorkspace() {
   const { profile, bookings, setBookings, loading, error, saveAvailability } = useDriverWorkspace();
-  const { api, user } = useApp();
+  const { user } = useApp();
+  const { addProofs } = useEmployeeCommands();
   const [photo, setPhoto] = useState('');
   const [uploadError, setUploadError] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -27,7 +30,7 @@ export function DriverWorkspace() {
     setUploadError('');
     try {
       const images = await Promise.all(files.map(employeePhoto));
-      const updated = await api.addEmployeeProofs(id, kind, images);
+      const updated = await addProofs(id, kind, images);
       setBookings((old) => old.map((b) => (b.id === id ? updated : b)));
       showHeaderSuccess(
         `${images.length} photo${images.length > 1 ? 's' : ''} de ${kind === 'retrait' ? 'retrait' : 'dépôt'} enregistrée${images.length > 1 ? 's' : ''}.`,
@@ -41,7 +44,10 @@ export function DriverWorkspace() {
   return (
     <section className="reference-employee" data-screen-label="Espace employé">
       <header>
-        <span>ESPACE EMPLOYÉ{profile ? ` · ${roles[profile.role ?? 'chauffeur']}` : ''}</span>
+        <span>
+          {uiText['espaceEMPLOYE']}
+          {profile ? ` · ${roles[profile.role ?? 'chauffeur']}` : ''}
+        </span>
         <h1>{profile?.name ?? user?.name ?? ''}</h1>
       </header>
       {error || uploadError ? (
@@ -50,13 +56,13 @@ export function DriverWorkspace() {
         </p>
       ) : null}
       {loading ? (
-        <p>Chargement…</p>
+        <p>{uiText['chargement']}</p>
       ) : !profile ? (
-        <div className="employee-panel">Ce numéro n’est pas enregistré dans l’équipe.</div>
+        <div className="employee-panel">{uiText['ceNumeroNEstPasEnregistreDansLEquipe']}</div>
       ) : (
         <>
           <section className="employee-panel">
-            <h2>MES DISPONIBILITÉS</h2>
+            <h2>{uiText['mesDISPONIBILITES']}</h2>
             <div className="employee-days">
               {availability.map((day, index) => (
                 <div className="employee-day" key={days[index]}>
@@ -76,7 +82,7 @@ export function DriverWorkspace() {
                         value={day.startTime}
                         onChange={(e) => updateDay(index, { startTime: e.target.value || '08:00' })}
                       />
-                      <span>à</span>
+                      <span>{uiText['a']}</span>
                       <input
                         type="time"
                         aria-label={`Fin · ${days[index]}`}
@@ -91,9 +97,9 @@ export function DriverWorkspace() {
           </section>
           {driver ? <EmployeeVehicleCheck profile={profile} onView={setPhoto} /> : null}
           <section className="employee-panel">
-            <h2>MES MISSIONS</h2>
+            <h2>{uiText['mesMISSIONS']}</h2>
             {!bookings.length ? (
-              <span className="employee-muted">Aucune mission affectée.</span>
+              <span className="employee-muted">{uiText['aucuneMissionAffectee']}</span>
             ) : (
               bookings.map((booking) => (
                 <article className="employee-mission" key={booking.id}>
@@ -105,7 +111,10 @@ export function DriverWorkspace() {
                         : 'Date à définir'}
                       {booking.timeSlot ? ` · ${booking.timeSlot}` : ''}
                     </strong>
-                    <a href={`tel:${booking.phone}`}>Client : {booking.phone || '-'}</a>
+                    <a href={`tel:${booking.phone}`}>
+                      {uiText['client2']}
+                      {booking.phone || '-'}
+                    </a>
                   </div>
                   <span>
                     {booking.fromAddress || '-'} → {booking.toAddress || '-'}
@@ -118,7 +127,8 @@ export function DriverWorkspace() {
                             className={`employee-pill ${kind === 'retrait' ? 'selected' : 'outlined'}`}
                             key={kind}
                           >
-                            + Photo {kind === 'retrait' ? 'retrait' : 'dépôt'}
+                            {uiText['photo2']}
+                            {kind === 'retrait' ? 'retrait' : 'dépôt'}
                             <input
                               type="file"
                               accept="image/*"

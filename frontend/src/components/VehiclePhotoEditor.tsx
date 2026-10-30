@@ -1,3 +1,4 @@
+import { uiText } from '../content/reference-ui-text';
 import { useRef, useState } from 'react';
 import { Modal } from './Modal';
 import { dataUrl } from '../application/validation/forms';
@@ -197,10 +198,17 @@ export function VehiclePhotoEditor({
       if (!context) return setError('Le cadrage est indisponible sur ce navigateur.');
       context.fillStyle = '#27292D';
       context.fillRect(0, 0, canvas.width, canvas.height);
-      const scale = Math.max(canvas.width / image.naturalWidth, canvas.height / image.naturalHeight) * zoom;
+      const scale =
+        Math.max(canvas.width / image.naturalWidth, canvas.height / image.naturalHeight) * zoom;
       const width = image.naturalWidth * scale;
       const height = image.naturalHeight * scale;
-      context.drawImage(image, (canvas.width - width) / 2 + offset.x, (canvas.height - height) / 2 + offset.y, width, height);
+      context.drawImage(
+        image,
+        (canvas.width - width) / 2 + offset.x,
+        (canvas.height - height) / 2 + offset.y,
+        width,
+        height,
+      );
       onChange(canvas.toDataURL('image/webp', 0.9));
       setAdjusting(false);
       setOffset({ x: 0, y: 0 });
@@ -221,7 +229,7 @@ export function VehiclePhotoEditor({
           <img src={value} alt={`Aperçu · ${label}`} />
         ) : (
           <span className="vehicle-photo-placeholder">
-            {label} · {dimensions.width} × {dimensions.height} px
+            {label} · {dimensions.width} × {dimensions.height} {uiText['px']}
           </span>
         )}
         {measurements.map((measurement) => (
@@ -245,7 +253,7 @@ export function VehiclePhotoEditor({
         </label>
       </div>
       <p className="muted vehicle-photo-hint">
-        Toute taille d’image acceptée (2,5 Mo maximum). L’image est centrée et cadrée au format
+        {uiText['touteTailleDImageAcceptee25MoMaximumLImageEstCentreeEt']}
         {` ${dimensions.width} × ${dimensions.height} px`}.
       </p>
       {value && (
@@ -260,10 +268,10 @@ export function VehiclePhotoEditor({
                 setAdjusting(true);
               }}
             >
-              Ajuster le cadrage
+              {uiText['ajusterLeCadrage']}
             </button>
             <button type="button" className="button secondary small" onClick={autoCutout}>
-              Détourage automatique
+              {uiText['detourageAutomatique']}
             </button>
             <button
               type="button"
@@ -273,7 +281,7 @@ export function VehiclePhotoEditor({
                 setTracing(true);
               }}
             >
-              Détourer à la main
+              {uiText['detourerALaMain']}
             </button>
           </div>
         </>
@@ -286,11 +294,17 @@ export function VehiclePhotoEditor({
           onClose={() => setAdjusting(false)}
           className="account-dialog vehicle-cutout-dialog"
         >
-          <h2 id="vehicle-crop-title">Ajuster le cadrage · {label}</h2>
-          <p className="muted">Glissez la photo et réglez le zoom pour cadrer le véhicule.</p>
+          <h2 id="vehicle-crop-title">
+            {uiText['ajusterLeCadrage2']}
+            {label}
+          </h2>
+          <p className="muted">{uiText['glissezLaPhotoEtReglezLeZoomPourCadrerLeVehicule']}</p>
           <div
             className="vehicle-cutout-canvas"
-            style={{ aspectRatio: `${dimensions.width} / ${dimensions.height}`, touchAction: 'none' }}
+            style={{
+              aspectRatio: `${dimensions.width} / ${dimensions.height}`,
+              touchAction: 'none',
+            }}
             onPointerDown={(event) => {
               event.currentTarget.setPointerCapture(event.pointerId);
               drag.current = { x: event.clientX, y: event.clientY };
@@ -303,12 +317,16 @@ export function VehiclePhotoEditor({
               drag.current = { x: event.clientX, y: event.clientY };
               setOffset((current) => ({ x: current.x + dx, y: current.y + dy }));
             }}
-            onPointerUp={() => { drag.current = null; }}
-            onPointerCancel={() => { drag.current = null; }}
+            onPointerUp={() => {
+              drag.current = null;
+            }}
+            onPointerCancel={() => {
+              drag.current = null;
+            }}
           >
             <img
               src={value}
-              alt="Cadrage de la photo du véhicule"
+              alt={uiText['cadrageDeLaPhotoDuVehicule']}
               draggable={false}
               style={{
                 position: 'absolute',
@@ -323,12 +341,23 @@ export function VehiclePhotoEditor({
             />
           </div>
           <label className="vehicle-crop-zoom">
-            <span>Zoom</span>
-            <input type="range" min="1" max="3" step="0.01" value={zoom} onChange={(event) => setZoom(Number(event.target.value))} />
+            <span>{uiText['zoom']}</span>
+            <input
+              type="range"
+              min="1"
+              max="3"
+              step="0.01"
+              value={zoom}
+              onChange={(event) => setZoom(Number(event.target.value))}
+            />
           </label>
           <div className="dialog-actions">
-            <button type="button" className="button secondary" onClick={() => setAdjusting(false)}>Annuler</button>
-            <button type="button" className="button primary" onClick={applyCrop}>Valider le cadrage</button>
+            <button type="button" className="button secondary" onClick={() => setAdjusting(false)}>
+              {uiText['annuler']}
+            </button>
+            <button type="button" className="button primary" onClick={applyCrop}>
+              {uiText['validerLeCadrage']}
+            </button>
           </div>
         </Modal>
       )}
@@ -339,10 +368,12 @@ export function VehiclePhotoEditor({
           onClose={() => setTracing(false)}
           className="account-dialog vehicle-cutout-dialog"
         >
-          <h2 id="vehicle-cutout-title">Détourage manuel · {label}</h2>
+          <h2 id="vehicle-cutout-title">
+            {uiText['detourageManuel']}
+            {label}
+          </h2>
           <p className="muted">
-            Maintenez le clic (ou le doigt) et suivez le contour du véhicule. Faites le tour complet
-            avant d’appliquer le détourage.
+            {uiText['maintenezLeClicOuLeDoigtEtSuivezLeContourDuVehiculeFai']}
           </p>
           <div
             className="vehicle-cutout-canvas"
@@ -354,7 +385,7 @@ export function VehiclePhotoEditor({
               if (event.buttons === 1) addTracePoint(event);
             }}
           >
-            <img src={value} alt="Photo du véhicule à détourer" draggable={false} />
+            <img src={value} alt={uiText['photoDuVehiculeADetourer']} draggable={false} />
             <svg viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true">
               {points.length > 0 && (
                 <polyline
@@ -370,7 +401,7 @@ export function VehiclePhotoEditor({
           </div>
           <div className="dialog-actions">
             <button type="button" className="button secondary" onClick={() => setPoints([])}>
-              Effacer le tracé
+              {uiText['effacerLeTrace']}
             </button>
             <button
               type="button"
@@ -378,7 +409,7 @@ export function VehiclePhotoEditor({
               disabled={points.length < 3}
               onClick={applyTrace}
             >
-              Appliquer le détourage
+              {uiText['appliquerLeDetourage']}
             </button>
           </div>
         </Modal>

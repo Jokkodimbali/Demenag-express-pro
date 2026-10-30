@@ -1,3 +1,4 @@
+import { uiText } from '../../content/reference-ui-text';
 import { ArrowRight, ShieldCheck, Truck } from 'lucide-react';
 import type { BookingViewState } from '../../application/contracts/booking-view';
 import { messages } from '../../content/fr';
@@ -72,13 +73,13 @@ export function BookingSummary({
         <div className="summary-details">
           {draft.customerName && (
             <div>
-              <span>Client</span>
+              <span>{uiText['client3']}</span>
               <strong>{draft.customerName}</strong>
             </div>
           )}
           {draft.date && (
             <div>
-              <span>Date souhaitée</span>
+              <span>{uiText['dateSouhaitee']}</span>
               <strong>
                 {draft.date.split('-').reverse().join('/')}
                 {draft.timeSlot ? ` · ${draft.timeSlot}` : ''}
@@ -117,7 +118,7 @@ export function BookingSummary({
       </div>
       {allowWhenBookingsClosed && inventoryNote(draft.inventory) && (
         <details className="summary-inventory">
-          <summary>Inventaire de la fiche d’appel</summary>
+          <summary>{uiText['inventaireDeLaFicheDAppel']}</summary>
           <pre>{inventoryNote(draft.inventory)}</pre>
         </details>
       )}

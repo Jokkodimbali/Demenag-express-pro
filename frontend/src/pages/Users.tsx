@@ -1,3 +1,4 @@
+import { uiText } from '../content/reference-ui-text';
 import { KeyRound, Pencil, Truck, UserRoundPlus } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
@@ -78,7 +79,7 @@ export function Users() {
                 </p>
                 {u.passwordResetRequestedAt && (
                   <p className="user-reset-request" role="status">
-                    Demande de réinitialisation ·{' '}
+                    {uiText['demandeDeReinitialisation']}{' '}
                     {new Date(u.passwordResetRequestedAt).toLocaleString('fr-FR')}
                   </p>
                 )}
@@ -91,7 +92,7 @@ export function Users() {
                     setResetTarget(u);
                   }}
                 >
-                  <KeyRound size={15} /> Réinitialiser
+                  <KeyRound size={15} /> {uiText['reinitialiser']}
                 </button>
               ) : u.role === 'driver' ? (
                 <Link
@@ -221,12 +222,9 @@ export function Users() {
               if (await resetClientPassword(resetTarget.id, password)) setResetTarget(null);
             }}
           >
-            <h2 id="reset-client-password-title">Réinitialiser le mot de passe</h2>
-            <p>
-              Vérifiez d’abord l’identité du client par téléphone. Communiquez le nouveau mot de
-              passe uniquement à son numéro vérifié.
-            </p>
-            <label htmlFor="reset-client-password">Nouveau mot de passe</label>
+            <h2 id="reset-client-password-title">{uiText['reinitialiserLeMotDePasse']}</h2>
+            <p>{uiText['verifiezDAbordLIdentiteDuClientParTelephoneCommuniquez']}</p>
+            <label htmlFor="reset-client-password">{uiText['nouveauMotDePasse']}</label>
             <input
               id="reset-client-password"
               name="password"
@@ -235,7 +233,7 @@ export function Users() {
               pattern="(?=.*[A-Za-z])(?=.*[0-9]).{10,128}"
               minLength={10}
               maxLength={128}
-              title="10 caractères minimum, avec au moins une lettre et un chiffre."
+              title={uiText['10CaracteresMinimumAvecAuMoinsUneLettreEtUnChiffre']}
               required
             />
             {error && (
@@ -250,7 +248,7 @@ export function Users() {
                 disabled={busy}
                 onClick={() => setResetTarget(null)}
               >
-                Annuler
+                {uiText['annuler']}
               </button>
               <button className="button primary" disabled={busy}>
                 {busy ? 'Enregistrement…' : 'Changer le mot de passe'}

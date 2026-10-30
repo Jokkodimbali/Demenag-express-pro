@@ -1,3 +1,4 @@
+import { uiText } from '../../content/reference-ui-text';
 import { useState } from 'react';
 import { Modal } from '../Modal';
 export function EmployeePhotoViewer({ src, onClose }: { src: string; onClose: () => void }) {
@@ -10,18 +11,21 @@ export function EmployeePhotoViewer({ src, onClose }: { src: string; onClose: ()
       className="employee-photo-viewer"
     >
       <div className="employee-photo-toolbar">
-        <span id="employee-photo-title">Photo</span>
-        <button onClick={() => setZoom((z) => Math.max(1, z - 0.5))} aria-label="Réduire">
+        <span id="employee-photo-title">{uiText['photo3']}</span>
+        <button onClick={() => setZoom((z) => Math.max(1, z - 0.5))} aria-label={uiText['reduire']}>
           −
         </button>
         <span>{Math.round(zoom * 100)} %</span>
-        <button onClick={() => setZoom((z) => Math.min(4, z + 0.5))} aria-label="Agrandir">
+        <button
+          onClick={() => setZoom((z) => Math.min(4, z + 0.5))}
+          aria-label={uiText['agrandir']}
+        >
           +
         </button>
         <a href={src} download="photo.jpg">
-          Télécharger
+          {uiText['telecharger']}
         </a>
-        <button onClick={onClose} aria-label="Fermer">
+        <button onClick={onClose} aria-label={uiText['fermer']}>
           ×
         </button>
       </div>
@@ -34,7 +38,11 @@ export function EmployeePhotoViewer({ src, onClose }: { src: string; onClose: ()
           }
         }}
       >
-        <img src={src} alt="Photo agrandie" style={{ width: `${zoom * 100}%`, maxWidth: 'none' }} />
+        <img
+          src={src}
+          alt={uiText['photoAgrandie']}
+          style={{ width: `${zoom * 100}%`, maxWidth: 'none' }}
+        />
       </div>
     </Modal>
   );

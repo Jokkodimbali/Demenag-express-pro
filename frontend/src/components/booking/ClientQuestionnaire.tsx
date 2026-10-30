@@ -1,3 +1,4 @@
+import { uiText } from '../../content/reference-ui-text';
 import { ChevronDown, X } from 'lucide-react';
 import { useState } from 'react';
 import type { ClientQuestion } from '../../domain/model';
@@ -42,23 +43,21 @@ export function ClientQuestionnaire({
   return (
     <div className={`questionnaire-drawer ${open ? 'is-open' : ''}`}>
       <button type="button" className="questionnaire-tab" onClick={onToggle} aria-expanded={open}>
-        QUESTIONNAIRE · {answered}/{totalQuestions}
+        {uiText['questionnaire']}
+        {answered}/{totalQuestions}
       </button>
       {open && (
-        <section className="questionnaire-panel" aria-label="Questionnaire client">
+        <section className="questionnaire-panel" aria-label={uiText['questionnaireClient']}>
           <header>
             <div className="questionnaire-panel-title">
-              <strong>Questionnaire client</strong>
-              <span>
-                Les cases se cochent avec les informations du devis. Vous pouvez les cocher ou les
-                décocher librement.
-              </span>
+              <strong>{uiText['questionnaireClient']}</strong>
+              <span>{uiText['lesCasesSeCochentAvecLesInformationsDuDevisVousPouvezL']}</span>
             </div>
             <button
               type="button"
               className="questionnaire-close"
               onClick={onToggle}
-              aria-label="Fermer le questionnaire"
+              aria-label={uiText['fermerLeQuestionnaire']}
             >
               <X size={18} />
             </button>
@@ -69,19 +68,19 @@ export function ClientQuestionnaire({
               <span style={{ width: `${progress}%` }} />
             </div>
             <strong className="questionnaire-progress-label">
-              {answered}/{totalQuestions} informations réunies
+              {answered}/{totalQuestions} {uiText['informationsReunies']}
             </strong>
           </header>
           <div className="questionnaire-groups">
-            {!activeQuestions.length && <p>Aucune question active.</p>}
+            {!activeQuestions.length && <p>{uiText['aucuneQuestionActive']}</p>}
             <section className="questionnaire-key-questions">
-              <strong>QUESTIONS CLÉS</strong>
+              <strong>{uiText['questionsCLES']}</strong>
               <label>
-                <span>Le matériel sera-t-il prêt à être chargé ?</span>
+                <span>{uiText['leMaterielSeraTIlPretAEtreCharge']}</span>
                 <span
                   className="questionnaire-key-choices"
                   role="group"
-                  aria-label="Le matériel sera-t-il prêt à être chargé ?"
+                  aria-label={uiText['leMaterielSeraTIlPretAEtreCharge']}
                 >
                   {readyChoices.map((choice) => (
                     <button
@@ -98,17 +97,15 @@ export function ClientQuestionnaire({
                   ))}
                 </span>
                 {answers['key-ready'] === readyChoices[1] && (
-                  <small>
-                    Le temps d’emballage est ajouté au planning. Pensez à prévoir cartons et film.
-                  </small>
+                  <small>{uiText['leTempsDEmballageEstAjouteAuPlanningPensezAPrevoirCart']}</small>
                 )}
               </label>
               <label>
-                <span>Tout le matériel passe-t-il dans les escaliers ?</span>
+                <span>{uiText['toutLeMaterielPasseTIlDansLesEscaliers']}</span>
                 <span
                   className="questionnaire-key-choices"
                   role="group"
-                  aria-label="Tout le matériel passe-t-il dans les escaliers ?"
+                  aria-label={uiText['toutLeMaterielPasseTIlDansLesEscaliers']}
                 >
                   {stairsChoices.map((choice) => (
                     <button
@@ -125,13 +122,10 @@ export function ClientQuestionnaire({
                   ))}
                 </span>
                 {answers['key-stairs'] === stairsChoices[1] && (
-                  <small>
-                    Prévoir démontage ou un autre passage. Notez les objets concernés dans la
-                    remarque.
-                  </small>
+                  <small>{uiText['prevoirDemontageOuUnAutrePassageNotezLesObjetsConcerne']}</small>
                 )}
                 {answers['key-stairs'] === stairsChoices[2] && (
-                  <small>Demandez la largeur de l’escalier et des portes, ou une photo.</small>
+                  <small>{uiText['demandezLaLargeurDeLEscalierEtDesPortesOuUnePhoto']}</small>
                 )}
               </label>
             </section>

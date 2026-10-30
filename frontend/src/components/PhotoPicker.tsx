@@ -1,3 +1,4 @@
+import { uiText } from '../content/reference-ui-text';
 import { useEffect, useRef, useState } from 'react';
 import { Camera, ImagePlus, X } from 'lucide-react';
 
@@ -103,7 +104,7 @@ export function PhotoPicker({
           className="button secondary small"
           onClick={() => galleryRef.current?.click()}
         >
-          <ImagePlus size={16} /> Choisir des photos
+          <ImagePlus size={16} /> {uiText['choisirDesPhotos']}
         </button>
         <button
           type="button"
@@ -111,7 +112,7 @@ export function PhotoPicker({
           onClick={() => void openCamera()}
           disabled={openingCamera || files.length >= maxPhotos}
         >
-          <Camera size={16} /> Prendre une photo
+          <Camera size={16} /> {uiText['prendreUnePhoto']}
         </button>
       </div>
       <input
@@ -131,7 +132,7 @@ export function PhotoPicker({
         onChange={(event) => addFiles(event.currentTarget.files)}
       />
       {files.length > 0 && (
-        <div className="report-photo-previews" aria-label="Aperçu des photos ajoutées">
+        <div className="report-photo-previews" aria-label={uiText['apercuDesPhotosAjoutees']}>
           {files.map((file, index) =>
             previews[index] ? (
               <figure key={`${file.name}-${file.lastModified}-${index}`}>
@@ -163,11 +164,12 @@ export function PhotoPicker({
             className="camera-dialog"
             role="dialog"
             aria-modal="true"
-            aria-label="Prendre une photo"
+            aria-label={uiText['prendreUnePhoto2']}
           >
             <video ref={videoRef} autoPlay playsInline muted />
             <p>
-              Cadrez le véhicule puis prenez la photo. {files.length}/{maxPhotos} utilisée(s).
+              {uiText['cadrezLeVehiculePuisPrenezLaPhoto']}
+              {files.length}/{maxPhotos} {uiText['utiliseeS']}
             </p>
             <div>
               <button
@@ -175,7 +177,7 @@ export function PhotoPicker({
                 className="button secondary"
                 onClick={() => setCameraStream(null)}
               >
-                Annuler
+                {uiText['annuler']}
               </button>
               <button
                 type="button"
@@ -183,7 +185,7 @@ export function PhotoPicker({
                 onClick={() => void takePhoto()}
                 disabled={files.length >= maxPhotos}
               >
-                <Camera size={17} /> Capturer la photo
+                <Camera size={17} /> {uiText['capturerLaPhoto']}
               </button>
             </div>
           </section>

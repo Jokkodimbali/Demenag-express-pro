@@ -1,3 +1,4 @@
+import { uiText } from '../content/reference-ui-text';
 import { useSettings } from '../application/controllers/useSettings';
 import { TransportSettings } from '../components/settings/TransportSettings';
 import { messages } from '../content/fr';
@@ -19,7 +20,7 @@ export function Settings() {
       )}
       {busy && (
         <p role="status" className="sr-only">
-          Modifications enregistrées automatiquement…
+          {uiText['modificationsEnregistreesAutomatiquement']}
         </p>
       )}
     </form>

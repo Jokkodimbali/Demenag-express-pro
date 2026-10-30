@@ -1,3 +1,4 @@
+import { uiText } from '../../content/reference-ui-text';
 import { Minus, Plus } from 'lucide-react';
 import type { BookingViewState } from '../../application/contracts/booking-view';
 import { messages } from '../../content/fr';
@@ -36,7 +37,9 @@ export function ScheduleOptions({
           </div>
         </div>
       )}
-      {referenceMode && <h3 className="reference-edit-options-title">OPTIONS ET QUANTITÉS</h3>}
+      {referenceMode && (
+        <h3 className="reference-edit-options-title">{uiText['optionsETQUANTITES']}</h3>
+      )}
       <div className="field-pair">
         <div>
           <label htmlFor="booking-date">{messages.dateSouhaitee}</label>
@@ -56,7 +59,7 @@ export function ScheduleOptions({
           />
         </div>
         <div>
-          <label htmlFor="booking-slot">Heure souhaitée</label>
+          <label htmlFor="booking-slot">{uiText['heureSouhaitee']}</label>
           <input
             id="booking-slot"
             type="time"
@@ -66,7 +69,7 @@ export function ScheduleOptions({
           />
           {!referenceMode && (
             <small className="muted">
-              Choisissez l’heure qui vous convient. L’équipe confirmera le rendez-vous.
+              {uiText['choisissezLHeureQuiVousConvientLEquipeConfirmeraLeRend']}
             </small>
           )}
         </div>

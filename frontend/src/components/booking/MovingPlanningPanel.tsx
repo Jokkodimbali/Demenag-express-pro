@@ -1,3 +1,4 @@
+import { uiText } from '../../content/reference-ui-text';
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import type { Draft } from '../../application/booking-draft';
 import {
@@ -68,8 +69,9 @@ export function MovingPlanningPanel({
       const order = ['sprinter', 'trafic', 'master'];
       const leftOrder = order.indexOf(left.id);
       const rightOrder = order.indexOf(right.id);
-      return (leftOrder < 0 ? order.length : leftOrder) -
-        (rightOrder < 0 ? order.length : rightOrder);
+      return (
+        (leftOrder < 0 ? order.length : leftOrder) - (rightOrder < 0 ? order.length : rightOrder)
+      );
     })
     .map((vehicle) => ({
       vehicle,
@@ -89,8 +91,11 @@ export function MovingPlanningPanel({
     ? comparisons
         .flatMap(({ vehicle, estimate }) =>
           ([1, 2] as const).flatMap((parallelVehicles) => {
-            if ((vehicle.id === selectedVehicleId && parallelVehicles === 1) ||
-                (parallelVehicles === 2 && estimate.trips < 2)) return [];
+            if (
+              (vehicle.id === selectedVehicleId && parallelVehicles === 1) ||
+              (parallelVehicles === 2 && estimate.trips < 2)
+            )
+              return [];
             const proposal = estimateMovingWork(inventory, vehicle, draft.route, {
               trips: estimate.trips,
               parallelVehicles,
@@ -103,21 +108,25 @@ export function MovingPlanningPanel({
               : [];
           }),
         )
-        .sort((left, right) =>
-          Number(right.estimate.handlingMinutes <= laborLimits.maxHandlingHours * 60) -
-            Number(left.estimate.handlingMinutes <= laborLimits.maxHandlingHours * 60) ||
-          left.parallelVehicles - right.parallelVehicles ||
-          left.estimate.rawTotalMinutes - right.estimate.rawTotalMinutes,
+        .sort(
+          (left, right) =>
+            Number(right.estimate.handlingMinutes <= laborLimits.maxHandlingHours * 60) -
+              Number(left.estimate.handlingMinutes <= laborLimits.maxHandlingHours * 60) ||
+            left.parallelVehicles - right.parallelVehicles ||
+            left.estimate.rawTotalMinutes - right.estimate.rawTotalMinutes,
         )
         .slice(0, 3)
     : [];
 
   return (
-    <section className="moving-planning-panel" aria-label="Estimation du déménagement">
+    <section className="moving-planning-panel" aria-label={uiText['estimationDuDemenagement']}>
       <div className="moving-estimate-card">
         <div className="moving-estimate-card-head">
-          <h3>ESTIMATION DES ALLERS-RETOURS</h3>
-          <strong>Volume ≈ {volume.toFixed(1).replace('.', ',')} m³</strong>
+          <h3>{uiText['estimationDESALLERSRETOURS']}</h3>
+          <strong>
+            {uiText['volume2']}
+            {volume.toFixed(1).replace('.', ',')} {uiText['m³']}
+          </strong>
         </div>
         <p className="moving-estimate-volume-detail">
           {volumeDetail ?? 'Volume des meubles, objets et effets annexes de la fiche d’appel.'}
@@ -125,13 +134,16 @@ export function MovingPlanningPanel({
         {!!inventoryChecks.length && (
           <div className="moving-estimate-checks">
             {inventoryChecks.map((check) => (
-              <span key={check}>À vérifier : {check}</span>
+              <span key={check}>
+                {uiText['aVerifier']}
+                {check}
+              </span>
             ))}
           </div>
         )}
         {volume === 0 ? (
           <p className="muted">
-            Cochez les objets ou précisez le type de logement pour afficher les estimations.
+            {uiText['cochezLesObjetsOuPrecisezLeTypeDeLogementPourAfficherL']}
           </p>
         ) : (
           <div className="moving-vehicle-estimates">
@@ -144,23 +156,31 @@ export function MovingPlanningPanel({
                 >
                   <div className="moving-vehicle-estimate-head">
                     <strong>{vehicleLabel(vehicle)}</strong>
-                    <span>{estimate.capacity.toFixed(1).replace('.', ',')} m³</span>
+                    <span>
+                      {estimate.capacity.toFixed(1).replace('.', ',')} {uiText['m³']}
+                    </span>
                   </div>
                   <strong className="moving-vehicle-trip-count">
                     {estimate.trips || '—'}{' '}
                     {estimate.trips ? (estimate.trips > 1 ? 'allers-retours' : 'aller-retour') : ''}
                   </strong>
                   <span className="moving-vehicle-fill">
-                    {Math.round(estimate.volume / (estimate.capacity * estimate.trips || 1) * 100)} % de remplissage
+                    {Math.round(
+                      (estimate.volume / (estimate.capacity * estimate.trips || 1)) * 100,
+                    )}{' '}
+                    {uiText['deRemplissage']}
                     {estimate.trips > 1 &&
-                      (estimate.volume - (estimate.trips - 1) * estimate.capacity * estimate.fillRate) /
-                        (estimate.capacity * estimate.fillRate) < 0.2
-                      ? ` · dernier voyage à ${Math.round((estimate.volume - (estimate.trips - 1) * estimate.capacity * estimate.fillRate) / (estimate.capacity * estimate.fillRate) * 100)} %, peut tenir en ${estimate.trips - 1} si chargé serré`
+                    (estimate.volume -
+                      (estimate.trips - 1) * estimate.capacity * estimate.fillRate) /
+                      (estimate.capacity * estimate.fillRate) <
+                      0.2
+                      ? ` · dernier voyage à ${Math.round(((estimate.volume - (estimate.trips - 1) * estimate.capacity * estimate.fillRate) / (estimate.capacity * estimate.fillRate)) * 100)} %, peut tenir en ${estimate.trips - 1} si chargé serré`
                       : ''}
                   </span>
                   {estimate.vehicleWarnings.map((warning) => (
                     <span className="moving-vehicle-warning" key={warning} role="status">
-                      À vérifier : {warning}
+                      {uiText['aVerifier']}
+                      {warning}
                     </span>
                   ))}
                   <span className="moving-vehicle-current">
@@ -172,9 +192,7 @@ export function MovingPlanningPanel({
                     disabled={!estimate.trips || estimate.trips > maxTrips}
                     onClick={() => onApply(vehicle.id, estimate.trips)}
                   >
-                    {selected && estimate.trips === trips
-                      ? '✓ Appliqué'
-                      : 'Appliquer'}
+                    {selected && estimate.trips === trips ? '✓ Appliqué' : 'Appliquer'}
                   </button>
                 </article>
               );
@@ -186,7 +204,7 @@ export function MovingPlanningPanel({
       {current && volume > 0 && (
         <div className="moving-labor-card">
           <header className="moving-labor-heading">
-            <h3>MAIN-D'ŒUVRE ET DURÉE</h3>
+            <h3>{uiText['mainDŒUVREETDUREE']}</h3>
             <strong className={current.totalMinutes > dayLimitMinutes ? 'warning' : 'success'}>
               {current.totalMinutes > dayLimitMinutes
                 ? `Dépasse ${laborLimits.maxDayHours} h · ${formatDuration(current.totalMinutes)}`
@@ -196,11 +214,11 @@ export function MovingPlanningPanel({
           <div className="moving-labor-summary">
             {labourPriceEditor}
             <div className="moving-crew-control">
-              <span>Manœuvres</span>
+              <span>{uiText['manœuvres']}</span>
               <div>
                 <button
                   type="button"
-                  aria-label="Retirer une manœuvre"
+                  aria-label={uiText['retirerUneManœuvre']}
                   disabled={current.crew <= 1}
                   onClick={() =>
                     setDraft((value) => ({
@@ -215,7 +233,7 @@ export function MovingPlanningPanel({
                 <strong>{current.crew}</strong>
                 <button
                   type="button"
-                  aria-label="Ajouter une manœuvre"
+                  aria-label={uiText['ajouterUneManœuvre']}
                   disabled={current.crew >= 20}
                   onClick={() =>
                     setDraft((value) => ({
@@ -229,8 +247,9 @@ export function MovingPlanningPanel({
                 </button>
               </div>
               <small>
-                Chargement + déchargement ≈ {referenceDuration(current.handlingMinutes)} (plafond{' '}
-                {laborLimits.maxHandlingHours} h)
+                {uiText['chargementDechargement']}
+                {referenceDuration(current.handlingMinutes)} {uiText['plafond']}{' '}
+                {laborLimits.maxHandlingHours} {uiText['h']}
               </small>
               {draft.inventory.crew ? (
                 <button
@@ -244,23 +263,29 @@ export function MovingPlanningPanel({
                     }))
                   }
                 >
-                  Revenir au nombre recommandé ({current.recommendedCrew})
+                  {uiText['revenirAuNombreRecommande']}
+                  {current.recommendedCrew})
                 </button>
               ) : null}
             </div>
             {current.carpenterCount > 0 && (
               <div>
-                <span>Menuisier{current.carpenterCount > 1 ? 's' : ''}</span>
+                <span>
+                  {uiText['menuisier2']}
+                  {current.carpenterCount > 1 ? 's' : ''}
+                </span>
                 <strong>{current.carpenterCount}</strong>
                 <small>
-                  Démontage ≈ {formatDuration(current.dismantleFromMinutes)} · remontage ≈{' '}
-                  {formatDuration(current.dismantleToMinutes)}, en parallèle des manœuvres
+                  {uiText['demontage']}
+                  {formatDuration(current.dismantleFromMinutes)} {uiText['remontage']}{' '}
+                  {formatDuration(current.dismantleToMinutes)}
+                  {uiText['enParalleleDesManœuvres']}
                 </small>
               </div>
             )}
             {current.packingMinutes > 0 && (
               <div>
-                <span>Emballage</span>
+                <span>{uiText['emballage']}</span>
                 <strong>≈ {formatDuration(current.packingMinutes)}</strong>
                 <small>
                   {current.packingMinutes > 90
@@ -270,8 +295,10 @@ export function MovingPlanningPanel({
               </div>
             )}
             <div>
-              <span>Trajet</span>
-              <strong>{draft.route?.distanceKm ? `≈ ${formatDuration(current.travelLegMinutes)}` : '—'}</strong>
+              <span>{uiText['trajet3']}</span>
+              <strong>
+                {draft.route?.distanceKm ? `≈ ${formatDuration(current.travelLegMinutes)}` : '—'}
+              </strong>
               <small>
                 {draft.route?.distanceKm
                   ? `${String(draft.route.distanceKm).replace('.', ',')} km${current.plannedTrips > 1 ? ` · ${current.plannedTrips} allers chargés, ${current.plannedTrips - 1} retour${current.plannedTrips > 2 ? 's' : ''} à vide = ${formatDuration(current.travelMinutes)}` : ', stationnement compris'}`
@@ -279,16 +306,18 @@ export function MovingPlanningPanel({
               </small>
             </div>
             <div>
-              <span>Durée totale</span>
+              <span>{uiText['dureeTotale']}</span>
               <strong>≈ {formatDuration(current.totalMinutes)}</strong>
               <small>
-                Entre {durationQuarterHour(current.lowDurationMinutes)} et{' '}
-                {durationQuarterHour(current.highDurationMinutes)} selon la circulation et les accès
+                {uiText['entre']}
+                {durationQuarterHour(current.lowDurationMinutes)} {uiText['et']}{' '}
+                {durationQuarterHour(current.highDurationMinutes)}{' '}
+                {uiText['selonLaCirculationEtLesAcces']}
               </small>
             </div>
           </div>
           <div className="moving-plan">
-            <h4>PLANNING PRÉVISIONNEL</h4>
+            <h4>{uiText['planningPREVISIONNEL']}</h4>
             {current.planning.map((step, index) => (
               <div className="moving-plan-row" key={`${step.title}-${index}`}>
                 <strong>{step.time}</strong>
@@ -301,71 +330,108 @@ export function MovingPlanningPanel({
             ))}
             <div className="moving-plan-end">
               <strong>{current.endTime}</strong>
-              <span>Fin prévue</span>
+              <span>{uiText['finPrevue']}</span>
             </div>
             {current.endLate && (
-              <span className="moving-plan-late">Fin après 19 h : commencer plus tôt ou répartir sur 2 jours.</span>
+              <span className="moving-plan-late">
+                {uiText['finApres19HCommencerPlusTotOuRepartirSur2Jours']}
+              </span>
             )}
           </div>
-          {needsAlternatives && (alternatives.length > 0 || current.totalMinutes > dayLimitMinutes) && (
-            <div className="moving-alternatives">
-              <strong>
-                {current.totalMinutes > dayLimitMinutes
-                  ? `Au-delà du plafond de ${laborLimits.maxDayHours} h. Solutions :`
-                  : `Chargement + déchargement au-delà de ${laborLimits.maxHandlingHours} h. Solutions :`}
-              </strong>
-              {alternatives.map(({ vehicle, parallelVehicles, estimate }) => (
-                <div className="moving-alternative" key={`${vehicle.id}-${parallelVehicles}`}>
-                  <span>
-                    {parallelVehicles === 2
-                      ? `2 × ${vehicleLabel(vehicle)} en parallèle (si disponibles) · ${Math.ceil(estimate.trips / 2)} AR chacun`
-                      : `${vehicleLabel(vehicle)} · ${estimate.trips} AR`}, {estimate.crew} manœuvres
-                  </span>
-                  <strong className={estimate.handlingMinutes <= laborLimits.maxHandlingHours * 60 ? 'success' : ''}>
-                    ≈ {referenceDuration(estimate.rawTotalMinutes)}
-                    {estimate.handlingMinutes <= laborLimits.maxHandlingHours * 60
-                      ? ' ✓'
-                      : ` · manutention ${referenceDuration(estimate.handlingMinutes)}`}
-                  </strong>
-                  {parallelVehicles === 1 && estimate.trips <= maxTrips && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDraft((value) => ({
-                          ...value,
-                          inventory: { ...value.inventory, crew: 0 },
-                          options: { ...value.options, labour: estimate.crew },
-                        }));
-                        onApply(vehicle.id, estimate.trips);
-                      }}
+          {needsAlternatives &&
+            (alternatives.length > 0 || current.totalMinutes > dayLimitMinutes) && (
+              <div className="moving-alternatives">
+                <strong>
+                  {current.totalMinutes > dayLimitMinutes
+                    ? `Au-delà du plafond de ${laborLimits.maxDayHours} h. Solutions :`
+                    : `Chargement + déchargement au-delà de ${laborLimits.maxHandlingHours} h. Solutions :`}
+                </strong>
+                {alternatives.map(({ vehicle, parallelVehicles, estimate }) => (
+                  <div className="moving-alternative" key={`${vehicle.id}-${parallelVehicles}`}>
+                    <span>
+                      {parallelVehicles === 2
+                        ? `2 × ${vehicleLabel(vehicle)} en parallèle (si disponibles) · ${Math.ceil(estimate.trips / 2)} AR chacun`
+                        : `${vehicleLabel(vehicle)} · ${estimate.trips} AR`}
+                      , {estimate.crew} {uiText['manœuvres2']}
+                    </span>
+                    <strong
+                      className={
+                        estimate.handlingMinutes <= laborLimits.maxHandlingHours * 60
+                          ? 'success'
+                          : ''
+                      }
                     >
-                      Appliquer
-                    </button>
-                  )}
-                </div>
-              ))}
-              {current.totalMinutes > dayLimitMinutes && (
-                <div className="moving-alternative">
-                  <span>
-                    Sur {Math.max(2, current.minimumDays)} jours avec le {selectedVehicle && vehicleLabel(selectedVehicle)} (chargement le 1er jour, fin le lendemain)
-                  </span>
-                  <strong>≈ {formatDuration(current.totalMinutes)} au total</strong>
-                </div>
-              )}
-            </div>
-          )}
+                      ≈ {referenceDuration(estimate.rawTotalMinutes)}
+                      {estimate.handlingMinutes <= laborLimits.maxHandlingHours * 60
+                        ? ' ✓'
+                        : ` · manutention ${referenceDuration(estimate.handlingMinutes)}`}
+                    </strong>
+                    {parallelVehicles === 1 && estimate.trips <= maxTrips && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDraft((value) => ({
+                            ...value,
+                            inventory: { ...value.inventory, crew: 0 },
+                            options: { ...value.options, labour: estimate.crew },
+                          }));
+                          onApply(vehicle.id, estimate.trips);
+                        }}
+                      >
+                        {uiText['appliquer']}
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {current.totalMinutes > dayLimitMinutes && (
+                  <div className="moving-alternative">
+                    <span>
+                      {uiText['sur2']}
+                      {Math.max(2, current.minimumDays)} {uiText['joursAvecLe']}{' '}
+                      {selectedVehicle && vehicleLabel(selectedVehicle)}{' '}
+                      {uiText['chargementLe1erJourFinLeLendemain']}
+                    </span>
+                    <strong>
+                      ≈ {formatDuration(current.totalMinutes)} {uiText['auTotal']}
+                    </strong>
+                  </div>
+                )}
+              </div>
+            )}
           <details className="moving-method">
-            <summary>Méthode de calcul</summary>
+            <summary>{uiText['methodeDeCalcul']}</summary>
             <div>
-              <p>Cadence par manœuvre et par heure au rez-de-chaussée : cartons et sacs ≈ {(laborLimits.cubicMetersPerHourPerMover * 1.4).toFixed(1).replace('.', ',')} m³, meubles ≈ {laborLimits.cubicMetersPerHourPerMover.toFixed(1).replace('.', ',')} m³, canapés et matelas ≈ {(laborLimits.cubicMetersPerHourPerMover * 1.2).toFixed(1).replace('.', ',')} m³, objets lourds (frigo, armoire montée, buffet…) ≈ {(laborLimits.cubicMetersPerHourPerMover * 0.72).toFixed(1).replace('.', ',')} m³. Déchargement 20 % plus rapide.</p>
-              <p>Étages sans ascenseur : de +10 % (cartons) à +25 % (objets lourds) par étage, 40 % de plus si escalier étroit. Avec ascenseur : +5 % d'attente puis +3 % à +15 % par étage, les canapés passant souvent par l'escalier.</p>
-              <p>Accès camion difficile (portage long) : +20 %. Objets fragiles : +10 %.</p>
-              <p>Équipe : 2 manœuvres minimum, 3 si un objet lourd passe 2 étages ou plus sans ascenseur. Au-delà de 4 par véhicule, chacun de plus compte pour 60 % car ils se gênent. Maximum {laborLimits.maxMoversPerVehicle} par véhicule.</p>
-              <p>Menuisier : démontage au départ et remontage à l'arrivée, en parallèle des manœuvres.</p>
-              <p>Emballage : ≈ 0,45 h par m³ de cartons et petits objets, 0,1 h par m³ de meubles. Fait la veille s'il dépasse 1 h 30.</p>
-              <p>Trajet : itinéraire majoré pour un utilitaire chargé et la circulation, +5 % pour Master et Sprinter, +10 min de stationnement par trajet, retour à vide 15 % plus rapide.</p>
-              <p>Temps fixes : 15 min d'arrivée et de protection, 10 min de vérification finale. Pause de {laborLimits.pauseMinutes} min si la journée dépasse 5 h.</p>
-              <p>Plafonds : chargement + déchargement ≤ {laborLimits.maxHandlingHours} h, journée ≤ {laborLimits.maxDayHours} h, début à {laborLimits.defaultStartHour} h si le créneau n’est pas précisé. Modifiables dans Paramètres.</p>
+              <p>
+                {uiText['cadenceParManœuvreEtParHeureAuRezDeChausseeCartonsEtSa']}{' '}
+                {(laborLimits.cubicMetersPerHourPerMover * 1.4).toFixed(1).replace('.', ',')}{' '}
+                {uiText['m³Meubles']}
+                {laborLimits.cubicMetersPerHourPerMover.toFixed(1).replace('.', ',')}{' '}
+                {uiText['m³CanapesEtMatelas']}{' '}
+                {(laborLimits.cubicMetersPerHourPerMover * 1.2).toFixed(1).replace('.', ',')}{' '}
+                {uiText['m³ObjetsLourdsFrigoArmoireMonteeBuffet']}{' '}
+                {(laborLimits.cubicMetersPerHourPerMover * 0.72).toFixed(1).replace('.', ',')}{' '}
+                {uiText['m³Dechargement20PlusRapide']}
+              </p>
+              <p>{uiText['etagesSansAscenseurDe10CartonsA25ObjetsLourdsParEtage4']}</p>
+              <p>{uiText['accesCamionDifficilePortageLong20ObjetsFragiles10']}</p>
+              <p>
+                {uiText['equipe2ManœuvresMinimum3SiUnObjetLourdPasse2EtagesOuPl']}
+                {laborLimits.maxMoversPerVehicle} {uiText['parVehicule']}
+              </p>
+              <p>{uiText['menuisierDemontageAuDepartEtRemontageALArriveeEnParall']}</p>
+              <p>{uiText['emballage045HParM³DeCartonsEtPetitsObjets01HParM³DeMeu']}</p>
+              <p>{uiText['trajetItineraireMajorePourUnUtilitaireChargeEtLaCircul']}</p>
+              <p>
+                {uiText['tempsFixes15MinDArriveeEtDeProtection10MinDeVerificati']}
+                {laborLimits.pauseMinutes} {uiText['minSiLaJourneeDepasse5H']}
+              </p>
+              <p>
+                {uiText['plafondsChargementDechargement']}
+                {laborLimits.maxHandlingHours} {uiText['hJournee']} {laborLimits.maxDayHours}{' '}
+                {uiText['hDebutA']}
+                {laborLimits.defaultStartHour}{' '}
+                {uiText['hSiLeCreneauNEstPasPreciseModifiablesDansParametres']}
+              </p>
             </div>
           </details>
         </div>

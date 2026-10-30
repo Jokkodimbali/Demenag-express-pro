@@ -1,3 +1,4 @@
+import { uiText } from '../content/reference-ui-text';
 import { useState } from 'react';
 import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useAuthentication, type LoginSpace } from '../application/controllers/useAuthentication';
@@ -29,8 +30,8 @@ export function Auth() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <h1>MON COMPTE</h1>
-        <div className="tabs auth-spaces" aria-label="Choisir un espace de connexion">
+        <h1>{uiText['monCOMPTE']}</h1>
+        <div className="tabs auth-spaces" aria-label={uiText['choisirUnEspaceDeConnexion']}>
           {(
             [
               ['client', 'Client'],
@@ -88,7 +89,7 @@ export function Auth() {
           {register && !resetMode && (
             <>
               <label htmlFor="auth-name">
-                <span>NOM COMPLET</span>
+                <span>{uiText['nomCOMPLET']}</span>
               </label>
               <input
                 id="auth-name"
@@ -102,7 +103,7 @@ export function Auth() {
             </>
           )}
           <label htmlFor="auth-phone">
-            <span>TÉLÉPHONE</span>
+            <span>{uiText['telephone2']}</span>
           </label>
           <input
             id="auth-phone"
@@ -112,7 +113,7 @@ export function Auth() {
             inputMode="tel"
             required
             maxLength={25}
-            placeholder="+221 77 123 45 67"
+            placeholder={uiText['221771234567']}
           />
           <p className="caption">
             {space === 'client'
@@ -124,7 +125,7 @@ export function Auth() {
           {!resetMode && (
             <>
               <label htmlFor="auth-password">
-                <span>MOT DE PASSE</span>
+                <span>{uiText['motDEPASSE']}</span>
               </label>
               <div className="auth-password-field">
                 <input
@@ -164,7 +165,7 @@ export function Auth() {
                     <span>{passwordStrengthLabels[passwordStrength]}</span>
                   </div>
                   <label htmlFor="auth-password-confirm">
-                    <span>CONFIRMEZ LE MOT DE PASSE</span>
+                    <span>{uiText['confirmezLEMOTDEPASSE']}</span>
                   </label>
                   <input
                     id="auth-password-confirm"
@@ -174,11 +175,10 @@ export function Auth() {
                     minLength={8}
                     maxLength={128}
                     required
-                    placeholder="••••••••"
+                    placeholder={uiText['texte2']}
                   />
                   <p className="auth-first-password-hint">
-                    Première connexion : créez votre mot de passe (8 caractères minimum, avec une
-                    lettre et un chiffre).
+                    {uiText['premiereConnexionCreezVotreMotDePasse8CaracteresMinimu']}
                   </p>
                 </>
               )}
@@ -217,7 +217,7 @@ export function Auth() {
               setError('');
             }}
           >
-            Mot de passe oublié ?
+            {uiText['motDePasseOublie']}
           </button>
         )}
         {resetMode && (
@@ -230,7 +230,7 @@ export function Auth() {
               setError('');
             }}
           >
-            Retour à la connexion
+            {uiText['retourALaConnexion']}
           </button>
         )}
         {register && (

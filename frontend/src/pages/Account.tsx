@@ -1,3 +1,4 @@
+import { uiText } from '../content/reference-ui-text';
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import { useAccount } from '../application/controllers/useAccount';
@@ -30,24 +31,24 @@ export function Account() {
       )}
       <div className="reference-client-heading">
         <div>
-          <span>ESPACE CLIENT</span>
-          <h1>MES DÉMÉNAGEMENTS</h1>
+          <span>{uiText['espaceCLIENT']}</span>
+          <h1>{uiText['mesDEMENAGEMENTS']}</h1>
         </div>
         <Link to={routes.booking} state={{ newRequest: true }}>
-          Nouvelle réservation
+          {uiText['nouvelleReservation']}
         </Link>
       </div>
       {error && (
         <p className="reference-client-error" role="alert">
           {error}{' '}
           <button type="button" onClick={() => setRetry((n) => n + 1)}>
-            Réessayer
+            {uiText['reessayer']}
           </button>
         </p>
       )}
-      {loading && <p role="status">Chargement…</p>}
+      {loading && <p role="status">{uiText['chargement']}</p>}
       {!loading && !error && bookings.length === 0 && (
-        <div className="reference-client-empty">Aucune réservation pour ce numéro.</div>
+        <div className="reference-client-empty">{uiText['aucuneReservationPourCeNumero']}</div>
       )}
       {!loading &&
         bookings.map((booking) => (

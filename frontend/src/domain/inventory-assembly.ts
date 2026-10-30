@@ -33,7 +33,9 @@ export function inventoryAssemblyLines(
   ) => {
     if (quantity <= 0 || key === 'clim' || key === 'climatiseur') return;
     const normalizedKey = referenceInventoryKey(key);
-    const sizedLabel = sizeLabel ? ` ${size} ${size === 1 ? sizeLabel.replace(/s$/u, '') : sizeLabel}` : '';
+    const sizedLabel = sizeLabel
+      ? ` ${size} ${size === 1 ? sizeLabel.replace(/s$/u, '') : sizeLabel}`
+      : '';
     const originLabel = origin === 'import' ? ' (importé)' : ' (local)';
     const groupKey = `${normalizedKey}|${normalizedKey === 'custom' ? label.trim().toLocaleLowerCase('fr-FR') : ''}|${sizeLabel ? size : ''}|${origin}`;
     const current = grouped.get(groupKey);
@@ -68,7 +70,8 @@ export function inventoryAssemblyLines(
     );
   }
   for (const variant of inventory.variants) {
-    if (!variant.dismantle && !(['salon', 'chaise'].includes(variant.itemKey) && variant.menuisier)) continue;
+    if (!variant.dismantle && !(['salon', 'chaise'].includes(variant.itemKey) && variant.menuisier))
+      continue;
     const item = inventoryItems.find((candidate) => candidate.key === variant.itemKey);
     append(
       variant.itemKey,
@@ -92,12 +95,11 @@ export function inventoryAssemblyOptions(inventory: BookingInventorySource | und
   if (!inventory) return counts;
   for (const item of inventoryItems) {
     if (!item.assembly) continue;
-    const count = inventory.entries[item.key]?.dismantle
-      ? inventory.entries[item.key].quantity
-      : 0;
+    const count = inventory.entries[item.key]?.dismantle ? inventory.entries[item.key].quantity : 0;
     counts[item.assembly] += count;
     for (const variant of inventory.variants) {
-      if (variant.itemKey === item.key && variant.dismantle) counts[item.assembly] += variant.quantity;
+      if (variant.itemKey === item.key && variant.dismantle)
+        counts[item.assembly] += variant.quantity;
     }
   }
   return counts;

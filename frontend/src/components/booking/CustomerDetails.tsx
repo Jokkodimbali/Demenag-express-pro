@@ -1,3 +1,4 @@
+import { uiText } from '../../content/reference-ui-text';
 import type { BookingViewState } from '../../application/contracts/booking-view';
 import { messages } from '../../content/fr';
 
@@ -56,12 +57,13 @@ export function CustomerDetails({
           />
           {!referenceMode && recognizingClient ? (
             <p className="muted" role="status">
-              Vérification du numéro…
+              {uiText['verificationDuNumero']}
             </p>
           ) : !referenceMode && recognition ? (
             <p className="client-recognition" role="status">
-              Client déjà connu : <strong>{recognition.name}</strong> · {recognition.bookingCount}{' '}
-              réservation(s) précédente(s).
+              {uiText['clientDejaConnu']}
+              <strong>{recognition.name}</strong> · {recognition.bookingCount}{' '}
+              {uiText['reservationSPrecedenteS']}
             </p>
           ) : null}
         </div>

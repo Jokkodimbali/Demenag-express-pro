@@ -1,7 +1,9 @@
+import { uiText } from '../content/reference-ui-text';
 import { Bell, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useNotificationSession } from '../application/controllers/useNotificationSession';
+import { useNotificationActions } from '../application/controllers/useNotificationActions';
 import { messages } from '../content/fr';
 import type { User } from '../domain/model';
 import { routes } from '../routing/routes';
@@ -17,6 +19,7 @@ export function NotificationCenter({ user }: { user: User | null }) {
   const streamVersionRef = useRef(0);
   const navigate = useNavigate();
   const verifySession = useNotificationSession();
+  const notificationActions = useNotificationActions();
 
   useEffect(() => {
     if (!open) return;
@@ -49,24 +52,10 @@ export function NotificationCenter({ user }: { user: User | null }) {
     const sync = async (announceNew: boolean) => {
       const streamVersion = streamVersionRef.current;
       try {
-        const response = await fetch(`${base}/notifications`, {
-          credentials: 'include',
-          headers: { 'X-Requested-With': 'DemenagExpress' },
-        });
-        if (!response.ok) return;
-        const data: unknown = await response.json();
-        if (
-          !active ||
-          typeof data !== 'object' ||
-          data === null ||
-          !('items' in data) ||
-          !Array.isArray(data.items) ||
-          !('unreadCount' in data) ||
-          typeof data.unreadCount !== 'number'
-        )
-          return;
+        const data = await notificationActions.loadNotifications();
+        if (!active || !data) return;
         if (streamVersion !== streamVersionRef.current) return;
-        const nextItems = data.items as AppNotification[];
+        const nextItems = data.items;
         if (announceNew) {
           for (const item of nextItems) {
             if (!knownIdsRef.current.has(item.id)) dispatchNotification(item);
@@ -133,7 +122,7 @@ export function NotificationCenter({ user }: { user: User | null }) {
       document.removeEventListener('visibilitychange', onVisibilityChange);
       source.close();
     };
-  }, [base, user, verifySession]);
+  }, [base, notificationActions, user, verifySession]);
 
   if (!user) return null;
   const destination = (bookingId?: string) => {
@@ -163,24 +152,18 @@ export function NotificationCenter({ user }: { user: User | null }) {
                 <button
                   className="notification-read-all"
                   onClick={() => {
-                    void fetch(`${base}/notifications/read-all`, {
-                      method: 'PATCH',
-                      credentials: 'include',
-                      headers: { 'X-Requested-With': 'DemenagExpress' },
-                    }).then((response) => {
-                      if (response.ok) {
-                        setUnreadCount(0);
-                        setItems((current) =>
-                          current.map((item) => ({
-                            ...item,
-                            readAt: item.readAt ?? new Date().toISOString(),
-                          })),
-                        );
-                      }
+                    void notificationActions.markAllNotificationsRead().then(() => {
+                      setUnreadCount(0);
+                      setItems((current) =>
+                        current.map((item) => ({
+                          ...item,
+                          readAt: item.readAt ?? new Date().toISOString(),
+                        })),
+                      );
                     });
                   }}
                 >
-                  Tout marquer comme lu
+                  {uiText['toutMarquerCommeLu']}
                 </button>
               )}
               <button
@@ -200,11 +183,7 @@ export function NotificationCenter({ user }: { user: User | null }) {
                     className={`notification-item${item.readAt ? '' : ' notification-unread'}`}
                     onClick={() => {
                       if (!item.readAt) {
-                        void fetch(`${base}/notifications/${item.id}/read`, {
-                          method: 'PATCH',
-                          credentials: 'include',
-                          headers: { 'X-Requested-With': 'DemenagExpress' },
-                        });
+                        void notificationActions.markNotificationRead(item.id);
                         setUnreadCount((count) => Math.max(0, count - 1));
                         setItems((current) =>
                           current.map((currentItem) =>

@@ -1,0 +1,844 @@
+.admin-quote-page {
+  color: #fff;
+  position: relative;
+}
+.reference-request-page {
+  width: 100%;
+  max-width: 1320px;
+  margin-inline: auto;
+  padding: clamp(20px, 5vw, 40px) 14px 64px;
+}
+.reference-request-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: clamp(14px, 4vw, 24px);
+  flex-wrap: wrap;
+}
+.reference-request-heading > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.reference-request-heading > div > span {
+  color: #f6d73c;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+.reference-request-heading h2 {
+  margin: 0;
+  font-family: Anton, Impact, sans-serif;
+  font-size: clamp(30px, 8vw, 46px);
+  font-weight: 400;
+  line-height: 1;
+}
+.reference-request-heading > .reference-request-back {
+  border: 1.5px solid #4a5057;
+  border-radius: 12px;
+  padding: 12px 18px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.reference-request-vehicle > span {
+  color: #aeb4bb;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+.reference-request-vehicle {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: clamp(14px, 4vw, 22px);
+  background: #272a2e;
+  border: 1px solid #3b4046;
+  border-radius: clamp(14px, 4vw, 20px);
+}
+.reference-request-page .reference-vehicle-list {
+  max-width: none;
+}
+.reference-request-page .reference-vehicle-list button {
+  align-items: stretch;
+  flex-direction: column;
+  padding: 10px;
+  cursor: pointer;
+}
+.reference-request-page .reference-vehicle-list button.selected {
+  background: #30343a;
+}
+.reference-request-page .reference-vehicle-list img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 960 / 355;
+  background: #222428;
+}
+.reference-request-page .reference-vehicle-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: none;
+  margin: 0;
+  padding: 12px;
+  background: #1e2023;
+}
+.reference-request-page .reference-vehicle-images img {
+  min-width: 0;
+  align-self: start;
+}
+.reference-request-vehicle-images {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+}
+.reference-request-vehicle-images .fleet-dimension-interior {
+  width: 100%;
+}
+.reference-request-page .reference-vehicle-detail > strong {
+  margin-top: 0;
+}
+.reference-request-options {
+  padding: 6px 22px 18px !important;
+}
+.reference-request-route-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.reference-request-route-card > #admin-quote-route-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.reference-request-route-card .route-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 0;
+}
+.reference-request-route-card .map-shell {
+  border: 1px solid #3b4046;
+  border-radius: 14px;
+  background: #30343a;
+}
+.reference-request-route-card .admin-quote-map-link {
+  align-self: flex-start;
+  margin: 0;
+  border: 1.5px solid #4a5057;
+  border-radius: 10px;
+  padding: 10px 16px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.reference-request-route-card .admin-quote-distance-editor {
+  margin: 0;
+}
+.reference-request-submit {
+  position: fixed;
+  right: clamp(14px, 3vw, 28px);
+  bottom: clamp(14px, 3vw, 28px);
+  z-index: 1400;
+  width: auto;
+  min-height: 54px;
+  padding: 0 26px;
+  border: 0;
+  border-radius: 14px;
+  background: #f6d73c;
+  color: #1e2023;
+  font-size: 16px;
+  box-shadow: 0 6px 20px #0007;
+}
+.reference-toll-point-host {
+  border: 0;
+  background: transparent;
+}
+.reference-toll-point {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+}
+.reference-toll-point-dot {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border: 2px solid #1e2023;
+  border-radius: 50%;
+  background: var(--toll-color);
+  opacity: 0.85;
+}
+.reference-toll-point.selected {
+  top: auto;
+  bottom: -6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transform: translateX(-50%);
+}
+.reference-toll-point.selected .reference-toll-point-dot {
+  width: 12px;
+  height: 12px;
+  opacity: 1;
+}
+.reference-toll-point-count {
+  padding: 4px 6px;
+  border-radius: 999px;
+  background: var(--toll-color);
+  color: #1e2023;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 1px 4px #0006;
+}
+.reference-toll-leaflet-popup .leaflet-popup-content-wrapper,
+.reference-toll-leaflet-popup .leaflet-popup-tip {
+  background: #272a2e;
+  color: #fff;
+}
+.reference-toll-leaflet-popup .leaflet-popup-content-wrapper {
+  border: 1px solid #3b4046;
+  border-radius: 16px;
+  box-shadow: 0 12px 30px #0007;
+}
+.reference-toll-leaflet-popup .leaflet-popup-content {
+  margin: 14px;
+}
+.reference-toll-leaflet-popup a.leaflet-popup-close-button {
+  color: #aeb4bb;
+}
+.reference-toll-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 240px;
+  color: #fff;
+  font-family: Inter, sans-serif;
+}
+.reference-toll-popup-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.reference-toll-popup-heading > span {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+.reference-toll-popup-heading > strong {
+  font-size: 17px;
+  line-height: 1.2;
+}
+.reference-toll-popup > small {
+  color: #aeb4bb;
+  font-size: 12.5px;
+}
+.reference-toll-popup-price {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #1e2023;
+}
+.reference-toll-popup-price > span {
+  color: #aeb4bb;
+  font-size: 12px;
+  font-weight: 700;
+}
+.reference-toll-popup-price > strong {
+  color: #f6d73c;
+  font-size: 20px;
+  font-weight: 800;
+}
+.reference-toll-popup-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.reference-toll-popup-controls button {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 10px;
+  background: #30343a;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.reference-toll-popup-controls button:last-child {
+  background: #f6d73c;
+  color: #1e2023;
+}
+.reference-toll-popup-controls button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.reference-toll-popup-count {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.reference-toll-popup-count strong {
+  font-size: 22px;
+  font-weight: 800;
+}
+.reference-toll-popup-count span {
+  color: #aeb4bb;
+  font-size: 11.5px;
+}
+.reference-toll-popup-total {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 700;
+}
+.reference-toll-popup-total span {
+  color: #aeb4bb;
+}
+.admin-quote-page .call-inventory .inventory-section {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.admin-quote-page .call-inventory .inventory-access {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+}
+.admin-quote-page .call-inventory .inventory-floor-stepper button {
+  width: 40px;
+  height: 40px;
+}
+.admin-quote-page .call-inventory .inventory-floor-stepper output {
+  min-width: 40px;
+  font-size: 16px;
+  font-weight: 800;
+}
+.admin-quote-page .call-inventory .inventory-dwelling-type > div:first-child {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.admin-quote-page .call-inventory .inventory-dwelling-type,
+.admin-quote-page .call-inventory .inventory-dwelling-options {
+  min-width: 0;
+}
+.admin-quote-page .call-inventory .inventory-dwelling-type .inventory-annex-volume {
+  color: #f6d73c;
+  font-size: 13px;
+  font-weight: 700;
+}
+.admin-quote-page .call-inventory .inventory-dwelling-type .inventory-check {
+  align-items: flex-start;
+  min-width: 0;
+  white-space: normal;
+}
+.admin-quote-page .call-inventory .inventory-dwelling-type .inventory-check input {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+}
+.admin-quote-page .call-inventory .inventory-dwelling-type .inventory-check span {
+  color: #d5d9de;
+  font-size: 14px;
+  font-weight: 700;
+}
+.admin-quote-page .call-inventory .inventory-dwelling-type .inventory-check small {
+  display: block;
+  margin-top: 2px;
+  color: #aeb4bb;
+  font-size: 12px;
+  font-weight: 400;
+}
+.admin-quote-page .call-inventory .inventory-section > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 4px;
+  border-bottom: 1px solid #30343a;
+  font-size: 15px;
+  font-weight: 800;
+  list-style: none;
+  cursor: pointer;
+}
+.admin-quote-page .call-inventory .inventory-section > summary::-webkit-details-marker {
+  display: none;
+}
+.admin-quote-page .call-inventory .inventory-section > summary::before {
+  content: '⌄';
+  color: #f6d73c;
+  font-size: 22px;
+  line-height: 1;
+  transform: rotate(-90deg);
+}
+.admin-quote-page .call-inventory .inventory-section[open] > summary::before {
+  transform: none;
+}
+.admin-quote-page .call-inventory .inventory-section > summary > span:first-child {
+  flex: 1;
+}
+.admin-quote-page .call-inventory .inventory-section-count {
+  color: #f6d73c;
+  font-size: 13px;
+  font-weight: 700;
+}
+.admin-quote-page .call-inventory .inventory-custom-section-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 4px;
+  border: 0;
+  border-bottom: 1px solid #30343a;
+  background: transparent;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.admin-quote-page .call-inventory .inventory-custom-section-toggle::before {
+  content: '⌄';
+  color: #f6d73c;
+  font-size: 22px;
+  line-height: 1;
+  transform: rotate(-90deg);
+}
+.admin-quote-page .call-inventory .inventory-custom-section-toggle[aria-expanded='true']::before {
+  transform: none;
+}
+.admin-quote-page .call-inventory .inventory-custom-section-toggle span:first-child {
+  flex: 1;
+  margin-left: 10px;
+  text-align: left;
+}
+.admin-quote-page .call-inventory .inventory-custom-section-toggle span:last-child {
+  color: #f6d73c;
+  font-size: 13px;
+  font-weight: 700;
+}
+.admin-quote-page .call-inventory .inventory-custom-items.is-closed {
+  display: none;
+}
+.admin-quote-page .call-inventory .inventory-hover-card {
+  width: min(250px, 78vw);
+  padding: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 6px 18px #0006;
+}
+.admin-quote-page .call-inventory .inventory-hover-default-image {
+  height: 70px;
+  min-height: 70px;
+}
+.admin-quote-page .call-inventory .inventory-hover-body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px 9px 9px;
+}
+.admin-quote-page .call-inventory .inventory-hover-title {
+  align-items: baseline;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.3;
+}
+.admin-quote-page .call-inventory .inventory-hover-title small {
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.admin-quote-page .call-inventory .inventory-hover-variants {
+  gap: 4px;
+}
+.admin-quote-page .call-inventory .inventory-hover-variants > button,
+.admin-quote-page .call-inventory .inventory-hover-variants > div {
+  border-width: 1.5px;
+}
+.admin-quote-page .call-inventory .inventory-hover-image-upload {
+  min-height: 56px;
+}
+.admin-quote-page .call-inventory .inventory-hover-image-upload > img {
+  height: 56px;
+}
+.admin-quote-page .call-inventory .inventory-hover-detail {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 6px;
+  border-radius: 5px;
+  font-size: 11px;
+}
+.admin-quote-page .call-inventory .inventory-hover-detail strong {
+  font-weight: 700;
+}
+.admin-quote-page .call-inventory .inventory-hover-detail span {
+  color: #3b4046;
+  text-align: right;
+}
+.admin-quote-page .call-inventory .inventory-hover-selection {
+  flex-direction: row;
+  margin: 0;
+  padding: 4px 6px;
+  border-radius: 5px;
+  font-size: 10px;
+}
+.admin-quote-page .call-inventory .inventory-hover-body > p {
+  margin: 1px;
+  color: #5a6168;
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+.admin-quote-page .call-inventory .inventory-list {
+  padding: 0;
+}
+.admin-quote-page .call-inventory .inventory-row {
+  min-height: 52px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 10px;
+}
+.admin-quote-page .call-inventory .inventory-row.selected {
+  background: #30343a;
+}
+.admin-quote-page .call-inventory .inventory-dismantle > span {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  color: #d5d9de;
+  font-size: 13px;
+  font-weight: 600;
+}
+.admin-quote-page .call-inventory .inventory-dismantle small {
+  color: #aeb4bb;
+  font-size: 11px;
+  font-weight: 400;
+}
+.admin-quote-page .call-inventory .inventory-variant {
+  padding-left: 16px;
+}
+.admin-quote-page .call-inventory .inventory-flags {
+  gap: 8px;
+  margin: 0;
+}
+.admin-quote-page .call-inventory .inventory-flag {
+  padding: 9px 14px;
+  border: 1.5px solid #3b4046;
+  border-radius: 999px;
+  background: transparent;
+  color: #d5d9de;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.admin-quote-page .call-inventory .inventory-flag.active {
+  border-color: #f6d73c;
+  background: #f6d73c;
+  color: #1e2023;
+}
+.admin-quote-page .call-inventory .inventory-note-preview {
+  padding: 12px 14px;
+  border: 1px dashed #4a5057;
+  border-radius: 12px;
+  background: #1e2023;
+  color: #d5d9de;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+.admin-quote-page .call-inventory .inventory-heading {
+  min-height: 40px;
+  gap: 12px;
+}
+.admin-quote-page .call-inventory .inventory-heading > div > strong {
+  letter-spacing: 0.12em;
+}
+.admin-quote-page .reference-call-inventory .inventory-item-name {
+  cursor: pointer;
+}
+.admin-quote-page .call-inventory .inventory-custom {
+  flex-wrap: nowrap;
+  margin-top: 0;
+}
+.admin-quote-page .call-inventory .inventory-custom label {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+}
+.admin-quote-page .call-inventory .inventory-custom input {
+  min-height: 0;
+  height: 44px;
+  margin-top: 0;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 400;
+}
+.admin-quote-page .call-inventory .inventory-custom > button {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1.5px solid #4a5057;
+  border-radius: 10px;
+  background: transparent;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+}
+.admin-quote-page .call-inventory .inventory-access-card .inventory-check {
+  margin: 0;
+  color: #d5d9de;
+  font-size: 14px;
+  font-weight: 400;
+}
+.admin-quote-page .call-inventory .inventory-access-card .inventory-check input {
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  border: 1.5px solid #4a5057;
+  border-radius: 6px;
+  background: transparent;
+}
+.admin-quote-page .call-inventory .inventory-access-card .inventory-check input:checked {
+  border-color: #f6d73c;
+  background: #f6d73c;
+}
+.admin-quote-page .call-inventory .inventory-access-card .inventory-check input:checked::after {
+  display: block;
+  color: #1e2023;
+  content: '✓';
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 19px;
+  text-align: center;
+}
+.admin-quote-page .call-inventory .inventory-footer > button {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1.5px solid #3b4046;
+  border-radius: 10px;
+  background: transparent;
+  color: #aeb4bb;
+  font-size: 14px;
+  font-weight: 700;
+}
+.admin-quote-page .call-inventory .inventory-footer {
+  margin-top: 0;
+}
+.admin-quote-page .call-inventory .inventory-item-name {
+  cursor: pointer;
+}
+.admin-quote-page .call-inventory .inventory-size-stepper button {
+  width: 32px;
+  height: 32px;
+}
+.admin-quote-page .call-inventory .inventory-size-stepper output {
+  min-width: 78px;
+}
+.admin-quote-page .call-inventory .inventory-format-selector button {
+  min-height: 32px;
+  padding-inline: 10px;
+  font-size: 13px;
+  font-weight: 800;
+}
+.admin-quote-page .call-inventory .inventory-quantity {
+  gap: 6px;
+}
+.admin-quote-page .call-inventory .inventory-quantity button {
+  width: 40px;
+  height: 40px;
+  border-radius: 9px;
+}
+.admin-quote-page .call-inventory .inventory-quantity output {
+  min-width: 26px;
+}
+.admin-quote-page .call-inventory .inventory-variant-add {
+  min-height: 40px;
+}
+.admin-quote-page .moving-estimate-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  background: #272a2e;
+  color: #f6d73c;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+.admin-workspace:has(.admin-quote-page) {
+  width: 100%;
+  max-width: 1320px;
+  margin-inline: auto;
+  padding: clamp(20px, 5vw, 40px) 14px 64px;
+}
+.admin-workspace:has(.admin-quote-page) .admin-reference-heading {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+}
+.admin-workspace:has(.admin-quote-page) .admin-reference-heading > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.admin-workspace:has(.admin-quote-page) .admin-reference-heading h1 {
+  margin: 0;
+}
+.admin-workspace:has(.admin-quote-page) .admin-tabs {
+  align-self: flex-start;
+  width: max-content;
+  margin-bottom: 0;
+  border-radius: 14px;
+  background: #272a2e;
+  border: 1px solid #3b4046;
+  padding: 5px;
+}
+.admin-workspace:has(.admin-quote-page) .admin-tabs a {
+  border-radius: 10px;
+}
+.admin-quote-layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr));
+  gap: clamp(14px, 4vw, 24px);
+  align-items: start;
+}
+.admin-quote-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+.admin-quote-card,
+.admin-quote-fields > .call-inventory {
+  background: #272a2e;
+  border: 1px solid #3b4046;
+  border-radius: clamp(14px, 3vw, 20px);
+  padding: clamp(14px, 4vw, 22px);
+  min-width: 0;
+}
+.admin-quote-services {
+  padding: 6px 22px 18px;
+}
+.admin-quote-card > h3,
+.admin-quote-card-head h3 {
+  color: #f6d73c;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  margin: 0 0 14px;
+}
+.admin-quote-section-toggle {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #f6d73c;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-align: left;
+  cursor: pointer;
+}
+.admin-quote-section-toggle span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.admin-quote-section-toggle svg {
+  flex: 0 0 auto;
+  transition: transform 0.2s ease;
+}
+.admin-quote-section-toggle[aria-expanded='false'] svg {
+  transform: rotate(-90deg);
+}
+.admin-quote-section-toggle[aria-expanded='true'] {
+  margin-bottom: 12px;
+}
+.admin-quote-card-head .admin-quote-section-toggle {
+  flex: 1 1 auto;
+  width: auto;
+  margin-bottom: 0;
+}
+.admin-quote-card-head .admin-quote-section-toggle + strong {
+  flex: 0 0 auto;
+}
+.admin-quote-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.admin-quote-card-head strong {
+  font-size: 15px;
+}
+.admin-quote-card .muted {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.admin-quote-card label {
+  display: block;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 700;
+}
+.admin-quote-card input,
+.admin-quote-card textarea,
+.admin-quote-card select {
+  width: 100%;
+  margin-top: 5px;
+  background: #1e2023;
+  border: 1px solid #3b4046;
+  border-radius: 10px;
+  color: #fff;
+  padding: 12px;
+  font: inherit;
+  font-size: 15px;
+}
+.admin-quote-card input:focus-visible,
+.admin-quote-card textarea:focus-visible,
+.admin-quote-card select:focus-visible {
+  outline: 2px solid #f6d73c;
+  outline-offset: 1px;
+}
+.admin-quote-identity {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+  align-items: start;
+  gap: 10px;
+}
+.admin-quote-client-name {
+  position: relative;
+  min-width: 0;
+}
+.admin-quote-date-control {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+.admin-quote-date-control > input {
+  color-scheme: dark;
+}

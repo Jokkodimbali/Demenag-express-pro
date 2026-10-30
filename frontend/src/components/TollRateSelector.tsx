@@ -1,3 +1,4 @@
+import { uiText } from '../content/reference-ui-text';
 import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import { money } from '../domain/format';
@@ -70,7 +71,8 @@ export function TollRateSelector({
           <span>
             <strong>{point.name}</strong>
             <small>
-              {money(unitPrice)} / passage · {vehicleLabel}
+              {money(unitPrice)} {uiText['passage']}
+              {vehicleLabel}
             </small>
           </span>
         </label>
@@ -104,9 +106,9 @@ export function TollRateSelector({
 
   return (
     <div className="toll-rate-selector">
-      <p className="toll-rate-instruction">1 aller-retour = 2 passages</p>
+      <p className="toll-rate-instruction">{uiText['1AllerRetour2Passages']}</p>
       {tollPoints.length === 0 ? (
-        <p className="caption">Aucun péage enregistré. Ajoutez-les dans l’onglet Péages.</p>
+        <p className="caption">{uiText['aucunPeageEnregistreAjoutezLesDansLOngletPeages']}</p>
       ) : (
         <div className="toll-rate-list">
           {[...groups.entries()].map(([region, axes]) => {

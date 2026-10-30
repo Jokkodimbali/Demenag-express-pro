@@ -1,3 +1,4 @@
+import { uiText } from '../content/reference-ui-text';
 import 'leaflet/dist/leaflet.css';
 import { Expand, LocateFixed, Search, X } from 'lucide-react';
 import { useRouteMap } from '../application/controllers/useRouteMap';
@@ -222,7 +223,7 @@ export default function RouteMap({
           <div className="admin-quote-map-full-summary">
             <div className="admin-quote-map-full-details">
               <span>
-                Distance :{' '}
+                {uiText['distance']}{' '}
                 <strong>
                   {mapDistance == null
                     ? 'placez A et B'
@@ -230,7 +231,8 @@ export default function RouteMap({
                 </strong>
               </span>
               <span>
-                Tranche : <strong>{mapTier}</strong>
+                {uiText['tranche']}
+                <strong>{mapTier}</strong>
               </span>
             </div>
             <div className="admin-quote-map-full-actions">
@@ -239,17 +241,17 @@ export default function RouteMap({
                 className={active === 'from' ? 'active' : ''}
                 onClick={() => setActive('from')}
               >
-                Départ (A)
+                {uiText['departA']}
               </button>
               <button
                 type="button"
                 className={active === 'to' ? 'active' : ''}
                 onClick={() => setActive('to')}
               >
-                Arrivée (B)
+                {uiText['arriveeB']}
               </button>
               <button type="button" onClick={() => setFull(false)}>
-                Valider
+                {uiText['valider']}
               </button>
             </div>
           </div>
@@ -263,7 +265,7 @@ export default function RouteMap({
             aria-pressed={active === 'from'}
             onClick={() => setActive('from')}
           >
-            Placer le départ (A)
+            {uiText['placerLeDepartA']}
           </button>
           <button
             type="button"
@@ -271,16 +273,16 @@ export default function RouteMap({
             aria-pressed={active === 'to'}
             onClick={() => setActive('to')}
           >
-            Placer l’arrivée (B)
+            {uiText['placerLArriveeB']}
           </button>
           <button type="button" className="admin-quote-clear-route" onClick={clear}>
-            Effacer
+            {uiText['effacer']}
           </button>
         </div>
       )}
       {!adminQuote && (
         <button type="button" className="admin-quote-clear-route" onClick={clear}>
-          Effacer
+          {uiText['effacer']}
         </button>
       )}
       {!adminQuote && (
@@ -342,10 +344,7 @@ export default function RouteMap({
               );
             })}
           </ul>
-          <p>
-            Repérage indicatif à partir du tracé et des positions enregistrées. L’équipe confirme
-            les péages réellement empruntés.
-          </p>
+          <p>{uiText['reperageIndicatifAPartirDuTraceEtDesPositionsEnregistr']}</p>
         </div>
       )}
       {error && (

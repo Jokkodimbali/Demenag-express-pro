@@ -1,3 +1,4 @@
+import { uiText } from '../content/reference-ui-text';
 import { useEffect, useRef, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useLayout } from '../application/controllers/useLayout';
@@ -41,20 +42,24 @@ export function Layout() {
   return (
     <>
       <a className="skip-link" href="#main">
-        Aller au contenu
+        {uiText['allerAuContenu']}
       </a>
       <header className="reference-header">
         <div className="reference-header-inner">
-          <Link to={routes.home} className="reference-brand" aria-label="Demenag Express Pro MTH">
-            <img src="/assets/logo.png" alt="Demenag Express Pro MTH" />
+          <Link
+            to={routes.home}
+            className="reference-brand"
+            aria-label={uiText['demenagExpressProMTH']}
+          >
+            <img src="/assets/logo.png" alt={uiText['demenagExpressProMTH']} />
             <span>
-              <strong>DEMENAG EXPRESS</strong>
-              <small>PRO · MTH</small>
+              <strong>{uiText['demenagEXPRESS']}</strong>
+              <small>{uiText['proMTH']}</small>
             </span>
           </Link>
-          <nav aria-label="Navigation principale">
+          <nav aria-label={uiText['navigationPrincipale']}>
             <Link className="reference-nav-book" to={`${routes.home}#reserver`}>
-              Réserver
+              {uiText['reserver2']}
             </Link>
             {user ? (
               <>
@@ -66,12 +71,12 @@ export function Layout() {
                   className="reference-nav-logout"
                   onClick={() => void logout()}
                 >
-                  Déconnexion
+                  {uiText['deconnexion']}
                 </button>
               </>
             ) : (
               <Link className="reference-nav-login" to={routes.login}>
-                Mon compte
+                {uiText['monCompte']}
               </Link>
             )}
           </nav>
@@ -101,7 +106,7 @@ export function Layout() {
         <footer className="reference-footer">
           <div className="reference-footer-inner">
             <div>
-              <span>UNE QUESTION ?</span>
+              <span>{uiText['uneQUESTION']}</span>
               <a href={'tel:' + catalogue.settings.businessPhone}>
                 {catalogue.settings.businessPhone === '+221775105104'
                   ? '+221 77 510 51 04'
@@ -109,8 +114,8 @@ export function Layout() {
               </a>
             </div>
             <div className="reference-footer-actions">
-              <a href={'tel:' + catalogue.settings.businessPhone}>Appel</a>
-              <a href={'sms:' + catalogue.settings.businessPhone}>SMS</a>
+              <a href={'tel:' + catalogue.settings.businessPhone}>{uiText['appel']}</a>
+              <a href={'sms:' + catalogue.settings.businessPhone}>{uiText['sms']}</a>
               <a
                 href={whatsappUrl(
                   catalogue.settings.whatsappPhone || catalogue.settings.businessPhone,
@@ -120,7 +125,7 @@ export function Layout() {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                WhatsApp
+                {uiText['whatsapp']}
               </a>
             </div>
           </div>

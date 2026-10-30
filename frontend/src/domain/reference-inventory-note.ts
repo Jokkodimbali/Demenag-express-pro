@@ -71,8 +71,7 @@ export function referenceInventoryNote(
       text += ` de ${size} ${size > 1 ? sizeLabel : singular}`;
     } else if (format === 'small') text += ', petit format';
     else if (format === 'large') text += ', grand format';
-    if (origin === 'import' && !['carton', 'sac', 'gaz', 'pot'].includes(key))
-      text += ', importé';
+    if (origin === 'import' && !['carton', 'sac', 'gaz', 'pot'].includes(key)) text += ', importé';
     if (dismantle) text += ' (démontage et montage)';
     if (menuisier) text += ' (menuisier)';
     text += ` : ≈ ${volumeLabel(estimatedInventoryItemVolume(key, size, dismantle, format) * quantity)} m³`;

@@ -42,7 +42,10 @@ export class PrismaCatalogue implements CatalogueRepository {
         tx.chauffeur.count({ where: { vehiculeId: id } }),
       ]);
       if (bookingCount > 0)
-        throw new AppError(409, `Impossible : ce véhicule est utilisé dans ${bookingCount} réservation${bookingCount > 1 ? 's' : ''}.`);
+        throw new AppError(
+          409,
+          `Impossible : ce véhicule est utilisé dans ${bookingCount} réservation${bookingCount > 1 ? 's' : ''}.`,
+        );
       if (driverCount > 0)
         throw new AppError(409, 'Impossible : un membre de l’équipe est affecté à ce véhicule.');
       try {

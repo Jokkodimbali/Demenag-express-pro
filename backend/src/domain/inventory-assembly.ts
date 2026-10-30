@@ -84,7 +84,13 @@ export function inventoryAssemblyLines(
     grouped.set(groupKey, {
       label: `Menuisier · démontage / montage ${rawLabel}${sized}${originLabel}`,
       quantity,
-      unitPrice: assemblyUnitPrice(settings, key, origin, sizeMeta ? size : undefined, sizeMeta?.default ?? 1),
+      unitPrice: assemblyUnitPrice(
+        settings,
+        key,
+        origin,
+        sizeMeta ? size : undefined,
+        sizeMeta?.default ?? 1,
+      ),
     });
   };
   for (const [key, entry] of Object.entries(inventory.entries)) {
@@ -93,11 +99,23 @@ export function inventoryAssemblyLines(
   }
   for (const variant of inventory.variants) {
     if (variant.dismantle || (['salon', 'chaise'].includes(variant.itemKey) && variant.menuisier))
-      append(variant.itemKey, labels[variant.itemKey] ?? variant.itemKey, variant.quantity, variant.size, variant.origin ?? 'local');
+      append(
+        variant.itemKey,
+        labels[variant.itemKey] ?? variant.itemKey,
+        variant.quantity,
+        variant.size,
+        variant.origin ?? 'local',
+      );
   }
   for (const item of inventory.custom) {
     if (item.dismantle)
-      append('custom', item.label.trim() || 'autre objet', item.quantity, 1, item.origin ?? 'local');
+      append(
+        'custom',
+        item.label.trim() || 'autre objet',
+        item.quantity,
+        1,
+        item.origin ?? 'local',
+      );
   }
   return [...grouped.values()];
 }

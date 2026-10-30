@@ -1,3 +1,4 @@
+import { uiText } from '../../content/reference-ui-text';
 import { Link } from 'react-router-dom';
 import type { Booking, Settings } from '../../domain/model';
 import { money } from '../../domain/format';
@@ -26,38 +27,42 @@ export function BookingConfirmation({
   );
 
   return (
-    <section className="booking-confirmation" aria-label="Demande envoyée">
+    <section className="booking-confirmation" aria-label={uiText['demandeEnvoyee']}>
       <div className="booking-confirmation-card">
         <div className="booking-confirmation-check" aria-hidden="true">
           ✓
         </div>
         <div className="booking-confirmation-heading">
-          <span>RÉSERVATION ENVOYÉE</span>
-          <h2>MERCI {firstName}, VOTRE DEMANDE EST EN COURS D’EXAMEN</h2>
-          <p>
-            Demenag Express vérifie votre demande et vous recontacte pour confirmer le devis. Le
-            montant affiché est une estimation provisoire.
-          </p>
+          <span>{uiText['reservationENVOYEE']}</span>
+          <h2>
+            {uiText['merci']}
+            {firstName}
+            {uiText['votreDEMANDEESTENCOURSDEXAMEN']}
+          </h2>
+          <p>{uiText['demenagExpressVerifieVotreDemandeEtVousRecontactePourC']}</p>
         </div>
         <div className="booking-confirmation-facts">
           <div>
-            <span>RÉFÉRENCE</span>
+            <span>{uiText['reference']}</span>
             <strong className="reference">{booking.reference}</strong>
           </div>
           <div>
-            <span>STATUT</span>
-            <strong className="status">En cours d’examen</strong>
+            <span>{uiText['statut']}</span>
+            <strong className="status">{uiText['enCoursDExamen']}</strong>
           </div>
           <div>
-            <span>DATE</span>
+            <span>{uiText['date']}</span>
             <strong>{date}</strong>
           </div>
           <div>
-            <span>ESTIMATION PROVISOIRE</span>
+            <span>{uiText['estimationPROVISOIRE']}</span>
             <strong>≈ {money(booking.estimate.total)}</strong>
           </div>
           <div className="route">
-            <span>TRAJET · {booking.vehicle.name}</span>
+            <span>
+              {uiText['trajet2']}
+              {booking.vehicle.name}
+            </span>
             <strong>
               {booking.fromAddress || '—'} → {booking.toAddress || '—'}
             </strong>
@@ -74,11 +79,11 @@ export function BookingConfirmation({
               target="_blank"
               rel="noopener noreferrer"
             >
-              Nous écrire sur WhatsApp
+              {uiText['nousEcrireSurWhatsApp']}
             </a>
           )}
           <Link className="button secondary" to={routes.home}>
-            Retour à l’accueil
+            {uiText['retourALAccueil']}
           </Link>
         </div>
       </div>

@@ -1,3 +1,4 @@
+import { uiText } from '../content/reference-ui-text';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useEffect, useRef } from 'react';
@@ -115,7 +116,7 @@ export function TollPointEditorMap({
       ref={host}
       className="toll-editor-map"
       role="region"
-      aria-label="Carte des péages. Cliquez pour définir la position du point sélectionné."
+      aria-label={uiText['carteDesPeagesCliquezPourDefinirLaPositionDuPointSelec']}
     />
   );
 }

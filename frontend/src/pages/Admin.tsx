@@ -1,8 +1,10 @@
+import { uiText } from '../content/reference-ui-text';
 import { useEffect, useState } from 'react';
 import { MessageCircle } from 'lucide-react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { routes } from '../routing/routes';
 import { useAdministration } from '../application/controllers/useAdministration';
+import { useBookingCommands } from '../application/controllers/useBookingCommands';
 import { BookingCard } from '../components/BookingCard';
 import { ConfirmationDialog } from '../components/ConfirmationDialog';
 import { useApp } from '../application/context';
@@ -69,8 +71,10 @@ function referenceMoney(value: number | null) {
 }
 
 export function Admin() {
-  const { bookings, setBookings, loading, error } = useAdministration();
-  const { api, catalogue } = useApp();
+  const { bookings, setBookings, loading, error, recordBookingReminder, removeBooking } =
+    useAdministration();
+  const { catalogue } = useApp();
+  const bookingCommands = useBookingCommands();
   const [params] = useSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -186,8 +190,7 @@ export function Admin() {
     setReminderBusy(booking.id);
     setActionError('');
     try {
-      const updated = await api.recordBookingReminder(booking.id);
-      setBookings((rows) => rows.map((row) => (row.id === updated.id ? updated : row)));
+      await recordBookingReminder(booking.id);
     } catch (reason) {
       setActionError(
         reason instanceof Error ? reason.message : 'Le rappel n’a pas pu être enregistré.',
@@ -201,8 +204,7 @@ export function Admin() {
     setDeleteBusy(true);
     setDeleteError('');
     try {
-      await api.deleteBooking(deleteTarget.id);
-      setBookings((rows) => rows.filter((row) => row.id !== deleteTarget.id));
+      await removeBooking(deleteTarget.id);
       setSuccessToast(`Réservation ${deleteTarget.reference} supprimée définitivement.`);
       setDeleteTarget(null);
     } catch (reason) {
@@ -221,7 +223,7 @@ export function Admin() {
     }
     let active = true;
     setFullDetail(null);
-    void api
+    void bookingCommands
       .booking(selectedBookingId)
       .then((booking) => {
         if (active) setFullDetail(booking);
@@ -235,7 +237,7 @@ export function Admin() {
     return () => {
       active = false;
     };
-  }, [api, selectedBookingId]);
+  }, [bookingCommands, selectedBookingId]);
   const selectedBooking = selectedBookingId
     ? fullDetail?.id === selectedBookingId
       ? fullDetail
@@ -262,7 +264,7 @@ export function Admin() {
         <ConfirmationDialog
           titleId="delete-reservation-title"
           eyebrow="SUPPRESSION D’UN RENDEZ-VOUS"
-          title="Voulez-vous supprimer définitivement ce rendez-vous ?"
+          title={uiText['voulezVousSupprimerDefinitivementCeRendezVous']}
           description={`La réservation, son devis et ses photos seront effacés. Cette action est irréversible. ${deleteTarget.reference} · ${deleteTarget.customerName} · ${referenceDate(deleteTarget)} · ${deleteTarget.fromAddress || '—'} → ${deleteTarget.toAddress || '—'}`}
           confirmLabel="Supprimer"
           busy={deleteBusy}
@@ -275,7 +277,7 @@ export function Admin() {
         <div className="admin-reference-reservation-toolbar">
           <div
             className="admin-reference-reservation-filters"
-            aria-label="Filtrer les réservations"
+            aria-label={uiText['filtrerLesReservations']}
           >
             {(
               [
@@ -295,7 +297,7 @@ export function Admin() {
               </button>
             ))}
           </div>
-          <div className="admin-reference-period" aria-label="Période des réservations">
+          <div className="admin-reference-period" aria-label={uiText['periodeDesReservations']}>
             <div className="admin-reference-period-tabs">
               {(
                 [
@@ -318,20 +320,20 @@ export function Admin() {
               <div className="admin-reference-period-controls">
                 <button
                   type="button"
-                  aria-label="Précédent"
+                  aria-label={uiText['precedent']}
                   onClick={() => setSelectedDay((day) => addDays(day, period === 'day' ? -1 : -7))}
                 >
                   ‹
                 </button>
                 <input
                   type="date"
-                  aria-label="Date de la période"
+                  aria-label={uiText['dateDeLaPeriode']}
                   value={selectedDay}
                   onChange={(event) => event.target.value && setSelectedDay(event.target.value)}
                 />
                 <button
                   type="button"
-                  aria-label="Suivant"
+                  aria-label={uiText['suivant']}
                   onClick={() => setSelectedDay((day) => addDays(day, period === 'day' ? 1 : 7))}
                 >
                   ›
@@ -365,7 +367,7 @@ export function Admin() {
               className="button secondary small"
               onClick={() => navigate(routes.administration)}
             >
-              Retour aux réservations
+              {uiText['retourAuxReservations']}
             </button>
             <BookingCard
               admin
@@ -384,18 +386,22 @@ export function Admin() {
           </div>
         ) : (
           <>
-            <div className="admin-reservations-desktop" role="table" aria-label="Réservations">
+            <div
+              className="admin-reservations-desktop"
+              role="table"
+              aria-label={uiText['reservations']}
+            >
               <div className="admin-reservations-row admin-reservations-header" role="row">
-                <span role="columnheader">RÉF.</span>
-                <span role="columnheader">CLIENT</span>
-                <span role="columnheader">TRAJET</span>
-                <span role="columnheader">DATE</span>
-                <span role="columnheader">VÉHICULE</span>
-                <span role="columnheader">MONTANT</span>
-                <span role="columnheader">STATUT</span>
+                <span role="columnheader">{uiText['ref']}</span>
+                <span role="columnheader">{uiText['client']}</span>
+                <span role="columnheader">{uiText['trajet']}</span>
+                <span role="columnheader">{uiText['date']}</span>
+                <span role="columnheader">{uiText['vehicule']}</span>
+                <span role="columnheader">{uiText['montant']}</span>
+                <span role="columnheader">{uiText['statut']}</span>
               </div>
               {visible.length === 0 ? (
-                <div className="admin-reservations-empty">Aucune réservation.</div>
+                <div className="admin-reservations-empty">{uiText['aucuneReservation']}</div>
               ) : (
                 visible.map((booking) => {
                   const latestQuote = booking.quotes.at(-1);
@@ -456,7 +462,7 @@ export function Admin() {
                             }}
                           >
                             <MessageCircle size={14} aria-hidden="true" />
-                            Rappel ·{' '}
+                            {uiText['rappel']}{' '}
                             {reminder.daysBefore === 0
                               ? 'aujourd’hui'
                               : reminder.daysBefore === 1
@@ -466,7 +472,8 @@ export function Admin() {
                         )}
                         {!reminder.canSend && (
                           <small className="admin-reminder-disabled" title={reminder.why}>
-                            Rappel indisponible · {reminder.why}
+                            {uiText['rappelIndisponible']}
+                            {reminder.why}
                           </small>
                         )}
                         {reminder.lastSent && <small>{reminder.lastSent}</small>}
@@ -478,7 +485,7 @@ export function Admin() {
                             setDeleteTarget(booking);
                           }}
                         >
-                          Supprimer
+                          {uiText['supprimer']}
                         </button>
                       </div>
                     </div>
@@ -488,7 +495,7 @@ export function Admin() {
             </div>
             <div className="admin-reservations-mobile">
               {visible.length === 0 ? (
-                <div className="admin-reservations-empty">Aucune réservation.</div>
+                <div className="admin-reservations-empty">{uiText['aucuneReservation']}</div>
               ) : (
                 visible.map((booking) => {
                   const latestQuote = booking.quotes.at(-1);
@@ -549,7 +556,7 @@ export function Admin() {
                           }}
                         >
                           <MessageCircle size={14} aria-hidden="true" />
-                          Rappel ·{' '}
+                          {uiText['rappel']}{' '}
                           {reminder.daysBefore === 0
                             ? 'aujourd’hui'
                             : reminder.daysBefore === 1
@@ -559,7 +566,8 @@ export function Admin() {
                       )}
                       {!reminder.canSend && (
                         <small className="admin-reminder-disabled" title={reminder.why}>
-                          Rappel indisponible · {reminder.why}
+                          {uiText['rappelIndisponible']}
+                          {reminder.why}
                         </small>
                       )}
                       {reminder.lastSent && <small>{reminder.lastSent}</small>}
@@ -571,7 +579,7 @@ export function Admin() {
                           setDeleteTarget(booking);
                         }}
                       >
-                        Supprimer
+                        {uiText['supprimer']}
                       </button>
                     </div>
                   );
@@ -579,7 +587,7 @@ export function Admin() {
               )}
             </div>
             <span className="admin-reservations-hint">
-              Cliquez sur une ligne pour établir ou modifier le devis.
+              {uiText['cliquezSurUneLignePourEtablirOuModifierLeDevis']}
             </span>
           </>
         )}

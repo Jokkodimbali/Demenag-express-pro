@@ -1,7 +1,8 @@
+import { uiText } from '../content/reference-ui-text';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Camera, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAdministration } from '../application/controllers/useAdministration';
-import { useApp } from '../application/context';
+import { useBookingCommands } from '../application/controllers/useBookingCommands';
 import { errorMessage } from '../application/error-message';
 import { buildPlanReport, PlanQhseReport } from '../components/PlanQhseReport';
 import type { Booking, WorkPlanReview, WorkPlanStep } from '../domain/model';
@@ -251,7 +252,7 @@ function PlanRow({
             </button>
           ))}
           <label>
-            Heure réelle{' '}
+            {uiText['heureReelle']}{' '}
             <input
               type="time"
               value={draft.actualTime}
@@ -264,7 +265,7 @@ function PlanRow({
             <div className="reference-plan-proof">
               <textarea
                 rows={2}
-                placeholder="Justificatif : raison de l’écart"
+                placeholder={uiText['justificatifRaisonDeLEcart']}
                 value={draft.reason}
                 onChange={(event) => commit({ reason: event.target.value }, true)}
               />
@@ -272,12 +273,12 @@ function PlanRow({
                 <div className="reference-plan-thumbnail">
                   <img
                     src={draft.photo}
-                    alt="Justificatif"
+                    alt={uiText['justificatif']}
                     onClick={() => viewPhoto(draft.photo ?? '')}
                   />
                   <button
                     type="button"
-                    title="Retirer la photo"
+                    title={uiText['retirerLaPhoto']}
                     onClick={() => commit({ photo: '' })}
                   >
                     ×
@@ -285,7 +286,7 @@ function PlanRow({
                 </div>
               ) : (
                 <label className="reference-plan-photo">
-                  <Camera size={16} strokeWidth={2} /> Photo
+                  <Camera size={16} strokeWidth={2} /> {uiText['photo']}
                   <input
                     type="file"
                     accept="image/*"
@@ -302,7 +303,7 @@ function PlanRow({
               )}
             </div>
             <div className="reference-plan-cause-fields">
-              <span>CAUSE</span>
+              <span>{uiText['cause']}</span>
               <div>
                 {CAUSES.map((cause) => (
                   <button
@@ -315,7 +316,7 @@ function PlanRow({
                   </button>
                 ))}
               </div>
-              <span>GRAVITÉ</span>
+              <span>{uiText['gravite']}</span>
               <div>
                 {SEVERITIES.map(({ value, label, color }) => (
                   <button
@@ -334,14 +335,16 @@ function PlanRow({
               </div>
               <textarea
                 rows={2}
-                placeholder="Action corrective pour éviter que ça se reproduise"
+                placeholder={uiText['actionCorrectivePourEviterQueCaSeReproduise']}
                 value={draft.correctiveAction}
                 onChange={(event) => commit({ correctiveAction: event.target.value }, true)}
               />
             </div>
           </>
         )}
-        {missing && <span className="reference-plan-missing">Justificatif manquant</span>}
+        {missing && (
+          <span className="reference-plan-missing">{uiText['justificatifManquant']}</span>
+        )}
         {error && (
           <span className="reference-plan-missing" role="alert">
             {error}
@@ -353,7 +356,7 @@ function PlanRow({
 }
 
 export function AdminPlanFollowUp() {
-  const { api } = useApp();
+  const commands = useBookingCommands();
   const { bookings, setBookings, loading, error } = useAdministration();
   const [period, setPeriod] = useState<Period>('week');
   const [selectedDay, setSelectedDay] = useState(todayDakar);
@@ -397,7 +400,7 @@ export function AdminPlanFollowUp() {
       .then(async (queued) => {
         const live = bookingsRef.current.find((item) => item.id === booking.id);
         const current = live && live.version > queued.version ? live : queued;
-        const next = await api.reviewWorkPlan(
+        const next = await commands.reviewWorkPlan(
           booking.id,
           stepId,
           patch.status,
@@ -421,7 +424,7 @@ export function AdminPlanFollowUp() {
     <div className="reference-plan-page">
       <section className="reference-plan-overview">
         <div className="reference-plan-overview-head">
-          <span>SUIVI DES PLANNINGS PRÉVISIONNELS</span>
+          <span>{uiText['suiviDESPLANNINGSPREVISIONNELS']}</span>
           <div className="reference-plan-filters">
             {(
               [
@@ -444,7 +447,7 @@ export function AdminPlanFollowUp() {
         <div className="reference-plan-date-nav">
           <button
             type="button"
-            aria-label="Période précédente"
+            aria-label={uiText['periodePrecedente']}
             onClick={() => setSelectedDay((day) => shiftPeriod(day, period, -1))}
           >
             <ChevronLeft size={18} strokeWidth={2.4} />
@@ -452,14 +455,14 @@ export function AdminPlanFollowUp() {
           <strong>{periodTitle(period, selectedDay)}</strong>
           <button
             type="button"
-            aria-label="Période suivante"
+            aria-label={uiText['periodeSuivante']}
             onClick={() => setSelectedDay((day) => shiftPeriod(day, period, 1))}
           >
             <ChevronRight size={18} strokeWidth={2.4} />
           </button>
           <input
             type="date"
-            aria-label="Date du suivi"
+            aria-label={uiText['dateDuSuivi']}
             value={selectedDay}
             onChange={(event) => event.target.value && setSelectedDay(event.target.value)}
           />
@@ -468,7 +471,7 @@ export function AdminPlanFollowUp() {
             className="reference-plan-today"
             onClick={() => setSelectedDay(todayDakar())}
           >
-            Aujourd’hui
+            {uiText['aujourdHui2']}
           </button>
         </div>
         <div className="reference-plan-stats">
@@ -494,7 +497,7 @@ export function AdminPlanFollowUp() {
         </p>
       )}
       {loading ? (
-        <p className="reference-plan-empty">Chargement des réservations…</p>
+        <p className="reference-plan-empty">{uiText['chargementDesReservations']}</p>
       ) : visible.length ? (
         visible.map((booking) => {
           const steps = stepsFor(booking);
@@ -565,14 +568,14 @@ export function AdminPlanFollowUp() {
           );
         })
       ) : (
-        <span className="reference-plan-empty">Aucun rendez-vous sur cette période.</span>
+        <span className="reference-plan-empty">{uiText['aucunRendezVousSurCettePeriode']}</span>
       )}
       {viewPhoto && (
         <div
           className="reference-plan-lightbox"
           role="dialog"
           aria-modal="true"
-          aria-label="Justificatif photographique"
+          aria-label={uiText['justificatifPhotographique']}
           onClick={() => setViewPhoto('')}
           onWheel={(event) => {
             if (!event.ctrlKey && !event.metaKey) return;
@@ -588,13 +591,13 @@ export function AdminPlanFollowUp() {
             <button type="button" onClick={() => setZoom((value) => Math.min(4, value + 0.5))}>
               +
             </button>
-            <button type="button" onClick={() => setViewPhoto('')} aria-label="Fermer">
+            <button type="button" onClick={() => setViewPhoto('')} aria-label={uiText['fermer']}>
               ×
             </button>
           </div>
           <img
             src={viewPhoto}
-            alt="Justificatif"
+            alt={uiText['justificatif']}
             style={{ transform: `scale(${zoom})` }}
             onClick={(event) => event.stopPropagation()}
           />

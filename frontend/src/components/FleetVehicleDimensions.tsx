@@ -1,3 +1,4 @@
+import { uiText } from '../content/reference-ui-text';
 import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Vehicle } from '../domain/model';
@@ -79,16 +80,22 @@ export function FleetVehicleImagePreview({ vehicle }: { vehicle: Vehicle }) {
               : undefined
           }
         >
-          LONGUEUR <strong>{formatted(dimensions.length)} m</strong>
+          {uiText['longueur3']}
+          <strong>
+            {formatted(dimensions.length)} {uiText['m']}
+          </strong>
         </span>
-        <span className="fleet-dimension-volume-chip">VOLUME ~{volume} m³</span>
+        <span className="fleet-dimension-volume-chip">
+          {uiText['volume']}
+          {volume} {uiText['m³']}
+        </span>
       </div>
       <div
         className="fleet-dimension-interior"
         style={{ aspectRatio: assetRatio(vehicle.interior, '560 / 500') }}
       >
         <img src={vehicle.interior} alt={`Intérieur du ${vehicle.name}`} />
-        {!overlays && <span className="fleet-interior-view-label">VUE INTÉRIEURE</span>}
+        {!overlays && <span className="fleet-interior-view-label">{uiText['vueINTERIEURE']}</span>}
         <span
           className={`fleet-dimension-height${overlays ? ' is-asset-annotated' : ''}`}
           style={
@@ -100,7 +107,10 @@ export function FleetVehicleImagePreview({ vehicle }: { vehicle: Vehicle }) {
               : undefined
           }
         >
-          HAUTEUR <strong>{formatted(dimensions.height)} m</strong>
+          {uiText['hauteur2']}
+          <strong>
+            {formatted(dimensions.height)} {uiText['m']}
+          </strong>
         </span>
         <span
           className="fleet-dimension-width"
@@ -110,7 +120,10 @@ export function FleetVehicleImagePreview({ vehicle }: { vehicle: Vehicle }) {
               : undefined
           }
         >
-          LARGEUR <strong>{formatted(dimensions.width)} m</strong>
+          {uiText['largeur2']}
+          <strong>
+            {formatted(dimensions.width)} {uiText['m']}
+          </strong>
         </span>
         <span
           className="fleet-wheel-width"
@@ -125,7 +138,7 @@ export function FleetVehicleImagePreview({ vehicle }: { vehicle: Vehicle }) {
               : undefined
           }
         >
-          {formatted(dimensions.wheelWidth)} m entre passages de roue
+          {formatted(dimensions.wheelWidth)} {uiText['mEntrePassagesDeRoue']}
         </span>
       </div>
     </div>
@@ -224,16 +237,24 @@ export function FleetVehicleDimensions({
                 : undefined
             }
           >
-            LONGUEUR <strong>{displayedLength} m</strong>
+            {uiText['longueur3']}
+            <strong>
+              {displayedLength} {uiText['m']}
+            </strong>
           </span>
-          <span className="fleet-dimension-volume-chip">VOLUME ~{volume}</span>
+          <span className="fleet-dimension-volume-chip">
+            {uiText['volume']}
+            {volume}
+          </span>
         </div>
         <div
           className="fleet-dimension-interior"
           style={{ aspectRatio: assetRatio(vehicle.interior, '560 / 500') }}
         >
           <img src={vehicle.interior} alt={`Intérieur du ${vehicle.name}`} />
-          {!overlays && <span className="fleet-interior-view-label">VUE INTÉRIEURE</span>}
+          {!overlays && (
+            <span className="fleet-interior-view-label">{uiText['vueINTERIEURE']}</span>
+          )}
           <span
             className={`fleet-dimension-height${overlays ? ' is-asset-annotated' : ''}`}
             style={
@@ -245,7 +266,10 @@ export function FleetVehicleDimensions({
                 : undefined
             }
           >
-            HAUTEUR <strong>{displayedHeight} m</strong>
+            {uiText['hauteur2']}
+            <strong>
+              {displayedHeight} {uiText['m']}
+            </strong>
           </span>
           <span
             className="fleet-dimension-width"
@@ -258,7 +282,10 @@ export function FleetVehicleDimensions({
                 : undefined
             }
           >
-            LARGEUR <strong>{displayedWidth} m</strong>
+            {uiText['largeur2']}
+            <strong>
+              {displayedWidth} {uiText['m']}
+            </strong>
           </span>
           <span
             className="fleet-wheel-width"
@@ -273,7 +300,7 @@ export function FleetVehicleDimensions({
                 : undefined
             }
           >
-            {displayedWheelWidth} m entre passages de roue
+            {displayedWheelWidth} {uiText['mEntrePassagesDeRoue']}
           </span>
         </div>
       </div>
@@ -303,24 +330,31 @@ export function FleetVehicleDimensions({
       </div>
       <div className="fleet-volume-breakdown">
         <div>
-          <strong>VOLUME UTILE CALCULÉ</strong>
+          <strong>{uiText['volumeUTILECALCULE']}</strong>
           <b>~{volume}</b>
         </div>
         <div className="fleet-volume-steps">
           <span>
-            {displayedLength} m × {displayedHeight} m × {displayedWidth} m = {shown(gross)} m³
+            {displayedLength} {uiText['m2']}
+            {displayedHeight} {uiText['m2']}
+            {displayedWidth} {uiText['m3']}
+            {shown(gross)} {uiText['m³']}
           </span>
           <span>
-            Passages de roue : ({displayedWidth} m − {displayedWheelWidth} m) × 0,30 m × 1,90 m = −{' '}
-            {shown(wheelSpace)} m³
+            {uiText['passagesDeRoue2']}
+            {displayedWidth} {uiText['m4']}
+            {displayedWheelWidth} {uiText['m030M190M']} {shown(wheelSpace)} {uiText['m³']}
           </span>
-          <span>Parois et toit arrondis : × 0,95 = {volume}</span>
+          <span>
+            {uiText['paroisEtToitArrondis095']}
+            {volume}
+          </span>
         </div>
       </div>
       <div className="fleet-dimension-management">{management}</div>
       {saved && (
         <span role="status" className="sr-only">
-          Dimensions enregistrées.
+          {uiText['dimensionsEnregistrees']}
         </span>
       )}
     </article>

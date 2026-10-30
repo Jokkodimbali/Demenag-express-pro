@@ -1,3 +1,4 @@
+import { uiText } from '../content/reference-ui-text';
 import { useState } from 'react';
 import { ChevronDown, Download, Sparkles } from 'lucide-react';
 import type { Booking, WorkPlanStep } from '../domain/model';
@@ -219,7 +220,10 @@ async function downloadReport(report: PlanReport, analysis: string) {
   const line = (value: string, size = 10, bold = false, indent = 0) => {
     doc.setFont('helvetica', bold ? 'bold' : 'normal');
     doc.setFontSize(size);
-    for (const part of doc.splitTextToSize(safe(value), 515 - indent)) {
+    const wrappedText: unknown = doc.splitTextToSize(safe(value), 515 - indent);
+    const parts = Array.isArray(wrappedText) ? wrappedText : [wrappedText];
+    for (const part of parts) {
+      if (typeof part !== 'string') continue;
       if (y > 800) {
         doc.addPage();
         y = margin;
@@ -303,9 +307,10 @@ export function PlanQhseReport({ report }: { report: PlanReport }) {
         <span className={`reference-plan-chevron${open ? ' open' : ''}`}>
           <ChevronDown size={16} strokeWidth={2.5} />
         </span>
-        <strong>Rapport QHSE</strong>
+        <strong>{uiText['rapportQHSE']}</strong>
         <span>
-          {report.kpi[0].value} respecté · {report.nonConformities.length} non-conformité
+          {report.kpi[0].value} {uiText['respecte2']}
+          {report.nonConformities.length} {uiText['nonConformite']}
           {report.nonConformities.length > 1 ? 's' : ''}
         </span>
       </button>
@@ -322,7 +327,7 @@ export function PlanQhseReport({ report }: { report: PlanReport }) {
           </div>
           <div className="reference-plan-report-breakdown">
             <div>
-              <h3>CAUSES DES ÉCARTS</h3>
+              <h3>{uiText['causesDESECARTS']}</h3>
               {report.causes.length ? (
                 report.causes.map(([cause, count]) => (
                   <div className="reference-plan-cause-bar" key={cause}>
@@ -340,11 +345,11 @@ export function PlanQhseReport({ report }: { report: PlanReport }) {
                   </div>
                 ))
               ) : (
-                <span>Aucun écart sur la période.</span>
+                <span>{uiText['aucunEcartSurLaPeriode']}</span>
               )}
             </div>
             <div>
-              <h3>GRAVITÉ</h3>
+              <h3>{uiText['gravite']}</h3>
               <div className="reference-plan-gravity">
                 {GRAVITY.map(([key, label, color]) => (
                   <div key={key}>
@@ -355,7 +360,7 @@ export function PlanQhseReport({ report }: { report: PlanReport }) {
               </div>
             </div>
           </div>
-          <h3>REGISTRE DES NON-CONFORMITÉS</h3>
+          <h3>{uiText['registreDESNONCONFORMITES']}</h3>
           {report.nonConformities.length ? (
             report.nonConformities.map((item, index) => (
               <div className="reference-plan-nc" key={`${item.ref}-${item.step}-${index}`}>
@@ -365,19 +370,25 @@ export function PlanQhseReport({ report }: { report: PlanReport }) {
                 <span>
                   {item.status} · {item.cause} · {item.severity}
                 </span>
-                <span>Justification : {item.reason}</span>
-                <span>Action corrective : {item.action}</span>
+                <span>
+                  {uiText['justification']}
+                  {item.reason}
+                </span>
+                <span>
+                  {uiText['actionCorrective']}
+                  {item.action}
+                </span>
               </div>
             ))
           ) : (
-            <span>Aucune non-conformité.</span>
+            <span>{uiText['aucuneNonConformite']}</span>
           )}
           <div className="reference-plan-ai">
             <div>
               <Sparkles size={18} />
-              <strong>Assistant IA · points à améliorer</strong>
+              <strong>{uiText['assistantIAPointsAAmeliorer']}</strong>
               {busy ? (
-                <span>Analyse en cours…</span>
+                <span>{uiText['analyseEnCours']}</span>
               ) : (
                 <button type="button" onClick={() => void runAnalysis()}>
                   {text ? 'Relancer l’analyse IA' : 'Analyser avec l’IA'}
@@ -394,7 +405,7 @@ export function PlanQhseReport({ report }: { report: PlanReport }) {
               void downloadReport(report, text).catch(() => setError('Téléchargement impossible.'))
             }
           >
-            <Download size={16} /> Télécharger le rapport QHSE (PDF)
+            <Download size={16} /> {uiText['telechargerLeRapportQHSEPDF']}
           </button>
         </div>
       )}

@@ -1,7 +1,7 @@
+import { uiText } from '../content/reference-ui-text';
 import {
   ArrowUpRight,
   Bell,
-  CalendarDays,
   CalendarClock,
   Check,
   Download,
@@ -22,12 +22,15 @@ import { BookingRouteMap } from './BookingRouteMap';
 import { TollRateSelector } from './TollRateSelector';
 import { quotedServiceOptions } from '../application/services/quote-service-options';
 import { messages } from '../content/fr';
-import { dateLabel, money, statuses } from '../domain/format';
+import { money, statuses } from '../domain/format';
 import { assemblyUnitPrice, labourUnitPrice } from '../domain/labour-price';
 import { inventoryAssemblyLines } from '../domain/inventory-assembly';
 import type { Booking } from '../domain/model';
 import { useApp } from '../application/context';
-import { whatsappNumber, whatsappUrl } from '../application/services/whatsapp';
+import { bookingReminder } from '../application/services/booking-reminder';
+import { BookingCardMain } from './BookingCardMain';
+import { bookingClosure } from '../domain/booking-closure';
+import { BookingPdfPreview } from './BookingPdfPreview';
 export function BookingCard({
   booking: b,
   onChange,
@@ -90,70 +93,20 @@ export function BookingCard({
   const inventoryMenuPreview = quoteSettings
     ? inventoryAssemblyLines(b.inventorySnapshot?.sourceInventory, quoteSettings)
     : [];
-  const clientPhoneLink = b.phone.replace(/[^\d+]/g, '');
-  const reminderToday = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Africa/Dakar',
-  }).format(new Date());
-  const daysUntilMove = b.date
-    ? Math.round(
-        (+new Date(`${b.date}T12:00:00Z`) - +new Date(`${reminderToday}T12:00:00Z`)) / 86400000,
-      )
-    : -1;
-  const canSendReminder =
-    daysUntilMove >= 0 &&
-    !terminal &&
-    whatsappNumber(b.phone, catalogue?.settings.whatsappCountryCode ?? '221').length >= 10;
-  const reminderWhen =
-    daysUntilMove === 0
-      ? 'aujourd’hui'
-      : daysUntilMove === 1
-        ? 'demain'
-        : daysUntilMove % 7 === 0
-          ? `dans ${daysUntilMove / 7} semaine${daysUntilMove > 7 ? 's' : ''}`
-          : `dans ${daysUntilMove} jours`;
-  const reminderDate = b.date
-    ? new Date(`${b.date}T12:00:00Z`).toLocaleDateString('fr-FR', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-        timeZone: 'Africa/Dakar',
-      })
-    : '';
-  const paymentMethods = [
-    catalogue?.settings.paymentWave !== false ? 'Wave' : '',
-    catalogue?.settings.paymentCash !== false ? 'espèces' : '',
-  ].filter(Boolean);
-  const reminderReason = !b.date
-    ? 'Ajoutez une date au rendez-vous.'
-    : daysUntilMove < 0
-      ? 'La date du rendez-vous est passée.'
-      : terminal
-        ? 'La réservation est clôturée.'
-        : whatsappNumber(b.phone, catalogue?.settings.whatsappCountryCode ?? '221').length < 10
-          ? 'Le numéro WhatsApp du client est manquant ou invalide.'
-          : '';
-  const reminderMessage = `Bonjour ${b.customerName}, petit rappel de Demenag Express : votre déménagement (${b.reference}) est prévu ${reminderWhen}, le ${reminderDate}${b.timeSlot && b.timeSlot !== 'À définir' ? ` à ${b.timeSlot}` : ''}.\n${b.fromAddress ? `Départ : ${b.fromAddress}\n` : ''}${b.toAddress ? `Arrivée : ${b.toAddress}\n` : ''}Merci de préparer vos affaires pour le chargement.${paymentMethods.length ? `\nMode de paiement : ${paymentMethods.join(' ou ')}${paymentMethods.length > 1 ? ' (au choix)' : ''}.` : ''} Pour toute question, contactez-nous au ${catalogue?.settings.businessPhone ?? ''}. À bientôt !`;
-  const reminderHref = whatsappUrl(b.phone, reminderMessage, catalogue?.settings);
-  const lastReminder = b.reminders?.at(-1);
-  const lastReminderLabel = lastReminder
-    ? `Dernier rappel : ${new Date(lastReminder.at).toLocaleString('fr-FR', {
-        day: '2-digit',
-        month: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        timeZone: 'Africa/Dakar',
-      })}`
-    : '';
-  const incompleteTrips = trips.filter((trip) => !trip.finishedAt);
-  const bookingClosureBlockers = [
-    !finalQuote ? 'enregistrer le devis final' : '',
-    !b.driverFinishedAt ? 'attendre le signalement de fin des courses' : '',
-    trips.length === 0 ? 'enregistrer au moins une course' : '',
-    incompleteTrips.length > 0
-      ? `terminer les courses ${incompleteTrips.map((trip) => trip.sequence).join(', ')}`
-      : '',
-  ].filter(Boolean);
-  const canCloseBooking = b.status === 'in_progress' && bookingClosureBlockers.length === 0;
+  const {
+    clientPhoneLink,
+    canSendReminder,
+    daysUntilMove,
+    reminderWhen,
+    reminderReason,
+    reminderHref,
+    lastReminderLabel,
+  } = bookingReminder(b, catalogue?.settings, terminal);
+  const {
+    blockers: bookingClosureBlockers,
+    canClose: canCloseBooking,
+    incompleteTrips,
+  } = bookingClosure(b, Boolean(finalQuote));
   const [editingSchedule, setEditingSchedule] = useState(false);
   const [planningOpen, setPlanningOpen] = useState(false);
   const [scheduleDate, setScheduleDate] = useState(b.date ?? '');
@@ -199,79 +152,24 @@ export function BookingCard({
         <span className="reference">{b.reference}</span>
         <span className={'status ' + b.status}>{statuses[b.status]}</span>
       </div>
-      <div className="booking-card-main">
-        <img src={b.vehicle.image} alt={messages.text} />
-        <div>
-          <h3>{admin || driverMode ? b.customerName : b.vehicle.name}</h3>
-          {admin && (
-            <p className="muted">
-              {b.phone} · {b.vehicle.name}
-            </p>
-          )}
-          {driverMode && (
-            <p className="muted booking-driver-contact">
-              Client : <a href={`tel:${clientPhoneLink}`}>{b.phone}</a> · {b.vehicle.name}
-            </p>
-          )}
-          <p>
-            <MapPin size={15} />
-            <span>
-              {b.fromAddress} → {b.toAddress}
-            </span>
-          </p>
-          <p>
-            <CalendarDays size={15} />
-            {b.date ? `${dateLabel(b.date)} · ${b.timeSlot}` : 'Sans date de rendez-vous'}
-          </p>
-          {admin && !finalQuote && !terminal && (
-            <button
-              className="button text small"
-              type="button"
-              onClick={() => setEditingSchedule((value) => !value)}
-            >
-              {editingSchedule ? 'Fermer' : 'Modifier le rendez-vous'}
-            </button>
-          )}
-          {admin && !finalQuote && !terminal && editingSchedule && (
-            <form
-              className="schedule-editor"
-              onSubmit={async (event) => {
-                event.preventDefault();
-                if (await saveSchedule(scheduleDate, scheduleSlot)) setEditingSchedule(false);
-              }}
-            >
-              <label>
-                Date du rendez-vous
-                <input
-                  type="date"
-                  value={scheduleDate}
-                  min={new Date().toISOString().slice(0, 10)}
-                  onChange={(event) => setScheduleDate(event.target.value)}
-                />
-              </label>
-              {scheduleDate && (
-                <label>
-                  Heure du rendez-vous
-                  <input
-                    type="time"
-                    step="60"
-                    value={scheduleSlot}
-                    onChange={(event) => setScheduleSlot(event.target.value)}
-                    required
-                  />
-                </label>
-              )}
-              <button className="button primary small" disabled={busy} type="submit">
-                Enregistrer
-              </button>
-            </form>
-          )}
-        </div>
-        <div className="booking-amount">
-          <span>{displayedQuote ? 'Dernier devis' : 'Estimation'}</span>
-          <strong>{money(displayedPrice.total)}</strong>
-        </div>
-      </div>
+      <BookingCardMain
+        booking={b}
+        admin={admin}
+        driverMode={driverMode}
+        clientPhoneLink={clientPhoneLink}
+        finalQuote={finalQuote}
+        terminal={terminal}
+        editingSchedule={editingSchedule}
+        setEditingSchedule={setEditingSchedule}
+        scheduleDate={scheduleDate}
+        setScheduleDate={setScheduleDate}
+        scheduleSlot={scheduleSlot}
+        setScheduleSlot={setScheduleSlot}
+        saveSchedule={saveSchedule}
+        busy={busy}
+        displayedQuote={displayedQuote}
+        displayedPrice={displayedPrice}
+      />
       {(admin || driverMode) && (
         <BookingRouteMap
           booking={b}
@@ -288,7 +186,11 @@ export function BookingCard({
         >
           <CalendarClock size={16} />
           {planningOpen ? 'Fermer le planning' : 'Ouvrir le planning'}
-          {b.workPlan?.length ? <span>{b.workPlan.length} étapes</span> : null}
+          {b.workPlan?.length ? (
+            <span>
+              {b.workPlan.length} {uiText['etapes']}
+            </span>
+          ) : null}
         </button>
       </div>
       {planningOpen && (
@@ -354,10 +256,10 @@ export function BookingCard({
             <table className="booking-price-table">
               <thead>
                 <tr>
-                  <th>Prestation</th>
-                  <th>Qté</th>
-                  <th>Prix unitaire</th>
-                  <th>Montant</th>
+                  <th>{uiText['prestation']}</th>
+                  <th>{uiText['qte']}</th>
+                  <th>{uiText['prixUnitaire']}</th>
+                  <th>{uiText['montant2']}</th>
                 </tr>
               </thead>
               <tbody>
@@ -378,7 +280,7 @@ export function BookingCard({
               </tbody>
               <tfoot>
                 <tr>
-                  <th colSpan={3}>Total</th>
+                  <th colSpan={3}>{uiText['total2']}</th>
                   <th>{money(displayedPrice.total)}</th>
                 </tr>
               </tfoot>
@@ -387,18 +289,20 @@ export function BookingCard({
           {!!displayedQuote?.tolls?.length && (
             <div className="booking-toll-summary">
               <div className="booking-toll-heading">
-                <strong>PÉAGES À VOTRE CHARGE</strong>
-                <span>NON INCLUS DANS LE TOTAL</span>
+                <strong>{uiText['peagesAVOTRECHARGE']}</strong>
+                <span>{uiText['nonINCLUSDANSLETOTAL']}</span>
               </div>
               {displayedQuote.tolls.map((line, index) => (
                 <div className="booking-toll-line" key={`${line.tollPointId}-${index}`}>
                   <span>{line.label}</span>
-                  <span>{line.quantity} passage(s)</span>
+                  <span>
+                    {line.quantity} {uiText['passageS']}
+                  </span>
                   <strong>{money(line.quantity * line.unitPrice)}</strong>
                 </div>
               ))}
               <div className="booking-toll-total">
-                <strong>Total péages</strong>
+                <strong>{uiText['totalPeages']}</strong>
                 <strong>
                   {money(
                     displayedQuote.tolls.reduce(
@@ -414,7 +318,7 @@ export function BookingCard({
       </div>
       {!!b.questionnaireAnswers?.length && (
         <section className="booking-precision booking-client-questionnaire">
-          <strong>Questionnaire client</strong>
+          <strong>{uiText['questionnaireClient']}</strong>
           {b.questionnaireAnswers.map((answer) => (
             <div key={answer.questionId}>
               <span>{answer.question}</span>
@@ -426,7 +330,7 @@ export function BookingCard({
       {admin && (
         <section className="booking-precision">
           <div className="booking-precision-heading">
-            <strong>Note de précision</strong>
+            <strong>{uiText['noteDePrecision']}</strong>
             {!editingNotes && !terminal && !finalQuote && (
               <button
                 className="button text small"
@@ -436,7 +340,7 @@ export function BookingCard({
                   setEditingNotes(true);
                 }}
               >
-                Modifier
+                {uiText['modifier']}
               </button>
             )}
           </div>
@@ -448,16 +352,16 @@ export function BookingCard({
               }}
             >
               <textarea
-                aria-label="Note de précision de la réservation"
+                aria-label={uiText['noteDePrecisionDeLaReservation']}
                 rows={3}
                 maxLength={2000}
                 value={bookingNotes}
                 onChange={(event) => setBookingNotes(event.target.value)}
-                placeholder="Ajouter une précision pour cette réservation…"
+                placeholder={uiText['ajouterUnePrecisionPourCetteReservation']}
               />
               <div className="booking-precision-actions">
                 <button className="button primary small" type="submit" disabled={busy}>
-                  <Save size={15} /> Enregistrer
+                  <Save size={15} /> {uiText['enregistrer2']}
                 </button>
                 <button
                   className="button secondary small"
@@ -468,7 +372,7 @@ export function BookingCard({
                     setEditingNotes(false);
                   }}
                 >
-                  <X size={15} /> Annuler
+                  <X size={15} /> {uiText['annuler2']}
                 </button>
               </div>
             </form>
@@ -483,7 +387,7 @@ export function BookingCard({
           disabled={busy}
           onClick={() => void previewQuote()}
         >
-          <Eye size={16} /> Aperçu du devis PDF
+          <Eye size={16} /> {uiText['apercuDuDevisPDF']}
         </button>
         <button
           className="button secondary small"
@@ -538,7 +442,7 @@ export function BookingCard({
             disabled={busy || !canCloseBooking}
             onClick={() => void change('completed')}
           >
-            <Check size={16} /> Clôturer la réservation
+            <Check size={16} /> {uiText['cloturerLaReservation']}
           </button>
         )}
         {admin && last && (
@@ -569,7 +473,7 @@ export function BookingCard({
             }}
           >
             <Bell size={16} />
-            Rappel ·{' '}
+            {uiText['rappel']}{' '}
             {daysUntilMove === 0
               ? 'aujourd’hui'
               : daysUntilMove === 1
@@ -579,7 +483,8 @@ export function BookingCard({
         )}
         {admin && !canSendReminder && (
           <span className="caption booking-reminder-disabled" title={reminderReason}>
-            Rappel indisponible · {reminderReason}
+            {uiText['rappelIndisponible']}
+            {reminderReason}
           </span>
         )}
         {admin && finalQuote && (
@@ -602,7 +507,7 @@ export function BookingCard({
             }}
           >
             <Trash2 size={16} />
-            Supprimer définitivement
+            {uiText['supprimerDefinitivement']}
           </button>
         )}
       </div>
@@ -613,34 +518,17 @@ export function BookingCard({
       )}
       {admin && b.status === 'in_progress' && !canCloseBooking && (
         <p className="caption booking-close-hint" role="status">
-          Pour clôturer : {bookingClosureBlockers.join(' ; ')}.
+          {uiText['pourCloturer']}
+          {bookingClosureBlockers.join(' ; ')}.
         </p>
       )}
-      {pdfPreviewUrl && (
-        <Modal
-          titleId={'pdf-preview-title-' + b.id}
-          busy={busy}
-          onClose={() => setPdfPreviewUrl('')}
-          className="account-dialog quote-pdf-preview"
-        >
-          <div className="quote-pdf-preview-heading">
-            <h2 id={'pdf-preview-title-' + b.id}>Aperçu du devis</h2>
-            <div className="dialog-actions">
-              <a className="button primary small" href={pdfPreviewUrl} download={pdfPreviewName}>
-                <Download size={16} /> Télécharger le PDF
-              </a>
-              <button
-                type="button"
-                className="button secondary small"
-                onClick={() => setPdfPreviewUrl('')}
-              >
-                <X size={16} /> Fermer
-              </button>
-            </div>
-          </div>
-          <iframe title="Aperçu du devis PDF" src={pdfPreviewUrl} />
-        </Modal>
-      )}
+      <BookingPdfPreview
+        bookingId={b.id}
+        url={pdfPreviewUrl}
+        fileName={pdfPreviewName}
+        busy={busy}
+        onClose={() => setPdfPreviewUrl('')}
+      />
       {driverMode && <DriverCourseActions booking={b} onChange={onChange} />}
       {admin &&
         ['confirmed', 'in_progress'].includes(b.status) &&
@@ -652,39 +540,38 @@ export function BookingCard({
             {trips.length > 0
               ? `${admin ? 'L’administration a' : 'Le chauffeur a'} signalé ${trips.length} aller(s)-retour(s) terminé(s).`
               : 'Les courses sont signalées comme terminées.'}{' '}
-            Vérifiez le dossier avant la clôture.
+            {uiText['verifiezLeDossierAvantLaCloture']}
           </p>
-          {!finalQuote && (
-            <p>
-              Vous pouvez encore modifier la réservation. Enregistrez ensuite le devis final ; il
-              verrouillera les modifications et permettra la clôture.
-            </p>
-          )}
-          {finalQuote && (
-            <p>
-              Le devis final est enregistré et les modifications sont verrouillées. Clôturez la
-              réservation pour terminer le dossier.
-            </p>
-          )}
+          {!finalQuote && <p>{uiText['vousPouvezEncoreModifierLaReservationEnregistrezEnsuit']}</p>}
+          {finalQuote && <p>{uiText['leDevisFinalEstEnregistreEtLesModificationsSontVerroui']}</p>}
           {incompleteTrips.length > 0 && (
             <p>
-              Clôture indisponible : terminez les courses{' '}
+              {uiText['clotureIndisponibleTerminezLesCourses']}{' '}
               {incompleteTrips.map((trip) => trip.sequence).join(', ')}.
             </p>
           )}
           {finalQuote && b.status !== 'in_progress' && (
-            <p>Clôture indisponible : le statut actuel est « {statuses[b.status]} ».</p>
+            <p>
+              {uiText['clotureIndisponibleLeStatutActuelEst']}
+              {statuses[b.status]} ».
+            </p>
           )}
         </div>
       )}
       {!driverMode && !!b.trips?.length && (
         <section className="booking-trip-history">
-          <h4>Courses et preuves ({b.trips.length})</h4>
+          <h4>
+            {uiText['coursesEtPreuves']}
+            {b.trips.length})
+          </h4>
           {b.trips.map((trip) => (
             <div className="booking-trip-proof" key={trip.id}>
-              <strong>Course {trip.sequence}</strong>
+              <strong>
+                {uiText['course']}
+                {trip.sequence}
+              </strong>
               <div>
-                <span>Chargement</span>
+                <span>{uiText['chargement2']}</span>
                 {trip.loadingPhotos.length ? (
                   trip.loadingPhotos.map((photo, index) => (
                     <a key={`load-${index}`} href={photo} target="_blank" rel="noreferrer">
@@ -695,11 +582,11 @@ export function BookingCard({
                     </a>
                   ))
                 ) : (
-                  <em>Aucune photo enregistrée</em>
+                  <em>{uiText['aucunePhotoEnregistree']}</em>
                 )}
               </div>
               <div>
-                <span>Déchargement</span>
+                <span>{uiText['dechargement']}</span>
                 {trip.unloadingPhotos?.length ? (
                   trip.unloadingPhotos.map((photo, index) => (
                     <a key={`unload-${index}`} href={photo} target="_blank" rel="noreferrer">
@@ -813,7 +700,7 @@ export function BookingCard({
                     />
                   </div>
                   <div>
-                    <label htmlFor={'discountType-' + b.id}>Type de remise</label>
+                    <label htmlFor={'discountType-' + b.id}>{uiText['typeDeRemise']}</label>
                     <select
                       name="discountType"
                       id={'discountType-' + b.id}
@@ -825,13 +712,14 @@ export function BookingCard({
                         }))
                       }
                     >
-                      <option value="fcfa">FCFA</option>
-                      <option value="pct">Pourcentage</option>
+                      <option value="fcfa">{uiText['fcfa']}</option>
+                      <option value="pct">{uiText['pourcentage']}</option>
                     </select>
                   </div>
                   <div>
                     <label htmlFor={'discount-' + b.id}>
-                      Remise ({quoteDraft.discountType === 'pct' ? '%' : 'FCFA'})
+                      {uiText['remise3']}
+                      {quoteDraft.discountType === 'pct' ? '%' : 'FCFA'})
                     </label>
                     <input
                       name="discount"
@@ -851,7 +739,7 @@ export function BookingCard({
                     />
                   </div>
                   <div>
-                    <label htmlFor={'discountReason-' + b.id}>Motif de la remise</label>
+                    <label htmlFor={'discountReason-' + b.id}>{uiText['motifDeLaRemise']}</label>
                     <input
                       name="discountReason"
                       id={'discountReason-' + b.id}
@@ -952,7 +840,7 @@ export function BookingCard({
               </div>
             </div>
             <div className="quote-service-options">
-              <h3>Prestations incluses au devis</h3>
+              <h3>{uiText['prestationsInclusesAuDevis']}</h3>
               {(
                 [
                   ['labour', messages.manUvres, messages.chargementEtDechargement],
@@ -981,7 +869,7 @@ export function BookingCard({
                     <span>
                       <strong>{label}</strong>
                       <small>
-                        {description} · {money(price)} / unité
+                        {description} · {money(price)} {uiText['unite']}
                       </small>
                     </span>
                     <input
@@ -1004,7 +892,7 @@ export function BookingCard({
             </div>
             {inventoryMenuPreview.length > 0 && (
               <div className="quote-inventory-services">
-                <h4>Démontage / montage selon l’inventaire</h4>
+                <h4>{uiText['demontageMontageSelonLInventaire']}</h4>
                 {inventoryMenuPreview.map((line) => (
                   <div key={line.label}>
                     <span>
@@ -1027,7 +915,7 @@ export function BookingCard({
               }
             />
             <p className="caption">
-              Les péages sont à la charge du client et exclus du total du devis.
+              {uiText['lesPeagesSontALaChargeDuClientEtExclusDuTotalDuDevis']}
             </p>
             <div className="quote-live-total" aria-live="polite">
               <span>{messages.montantCalculeDuDevis}</span>

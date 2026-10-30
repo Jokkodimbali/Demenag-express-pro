@@ -1,8 +1,6 @@
-import { useEffect, useState } from 'react';
+import { uiText } from '../content/reference-ui-text';
 import { AlertTriangle, CheckCircle2, MapPin, RefreshCw } from 'lucide-react';
-import { useApp } from '../application/context';
-import type { VehicleReports } from '../application/ports';
-import { errorMessage } from '../application/error-message';
+import { useAdminVehicleReports } from '../application/controllers/useAdminVehicleReports';
 
 const levelName: Record<string, string> = {
   engineOil: 'Huile moteur',
@@ -32,50 +30,18 @@ const dateLabel = (value: string) =>
   );
 
 export function AdminVehicleReports() {
-  const { api } = useApp();
-  const [reports, setReports] = useState<VehicleReports>({ inspections: [], breakdowns: [] });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [retry, setRetry] = useState(0);
-  useEffect(() => {
-    const refreshOnReport = (event: Event) => {
-      const notification = (event as CustomEvent<{ title?: string }>).detail;
-      if (
-        notification?.title === 'Contrôle véhicule reçu' ||
-        notification?.title === 'Panne signalée'
-      )
-        setRetry((value) => value + 1);
-    };
-    window.addEventListener('demenag:notification', refreshOnReport);
-    return () => window.removeEventListener('demenag:notification', refreshOnReport);
-  }, []);
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    api
-      .adminVehicleReports()
-      .then((value) => active && setReports(value))
-      .catch((reason: unknown) => active && setError(errorMessage(reason)))
-      .finally(() => active && setLoading(false));
-    return () => {
-      active = false;
-    };
-  }, [api, retry]);
+  const { reports, loading, error, refresh } = useAdminVehicleReports();
   return (
     <div className="vehicle-admin-reports">
       <div className="section-heading report-admin-heading">
         <div>
-          <p className="eyebrow">SUIVI DE LA FLOTTE</p>
-          <h2>Contrôles et pannes</h2>
-          <p>Les vérifications quotidiennes et signalements envoyés par les chauffeurs.</p>
+          <p className="eyebrow">{uiText['suiviDELAFLOTTE']}</p>
+          <h2>{uiText['controlesEtPannes']}</h2>
+          <p>{uiText['lesVerificationsQuotidiennesEtSignalementsEnvoyesParLe']}</p>
         </div>
-        <button
-          className="button secondary small"
-          onClick={() => setRetry((value) => value + 1)}
-          disabled={loading}
-        >
+        <button className="button secondary small" onClick={refresh} disabled={loading}>
           <RefreshCw size={16} />
-          Actualiser
+          {uiText['actualiser']}
         </button>
       </div>
       {error && (
@@ -85,11 +51,11 @@ export function AdminVehicleReports() {
       )}
       <section>
         <h3>
-          <AlertTriangle size={20} /> Signalements de panne{' '}
+          <AlertTriangle size={20} /> {uiText['signalementsDePanne']}{' '}
           <span className="report-count">{reports.breakdowns.length}</span>
         </h3>
         {loading ? (
-          <p className="panel loading">Chargement…</p>
+          <p className="panel loading">{uiText['chargement']}</p>
         ) : reports.breakdowns.length ? (
           <div className="report-card-grid">
             {reports.breakdowns.map((report) => (
@@ -109,9 +75,14 @@ export function AdminVehicleReports() {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  <MapPin size={17} /> Ouvrir la position du chauffeur
+                  <MapPin size={17} /> {uiText['ouvrirLaPositionDuChauffeur']}
                 </a>
-                {report.accuracy && <small>Précision GPS : ±{Math.round(report.accuracy)} m</small>}
+                {report.accuracy && (
+                  <small>
+                    {uiText['precisionGPS']}
+                    {Math.round(report.accuracy)} {uiText['m']}
+                  </small>
+                )}
                 <div className="report-photo-grid">
                   {report.photos.map((photo, index) => (
                     <a key={`${report.id}-${index}`} href={photo} target="_blank" rel="noreferrer">
@@ -123,16 +94,16 @@ export function AdminVehicleReports() {
             ))}
           </div>
         ) : (
-          <p className="panel report-empty">Aucune panne signalée.</p>
+          <p className="panel report-empty">{uiText['aucunePanneSignalee']}</p>
         )}
       </section>
       <section>
         <h3>
-          <CheckCircle2 size={20} /> Contrôles quotidiens{' '}
+          <CheckCircle2 size={20} /> {uiText['controlesQuotidiens']}{' '}
           <span className="report-count">{reports.inspections.length}</span>
         </h3>
         {loading ? (
-          <p className="panel loading">Chargement…</p>
+          <p className="panel loading">{uiText['chargement']}</p>
         ) : reports.inspections.length ? (
           <div className="report-card-grid">
             {reports.inspections.map((report) => (
@@ -181,7 +152,7 @@ export function AdminVehicleReports() {
             ))}
           </div>
         ) : (
-          <p className="panel report-empty">Aucun contrôle reçu pour le moment.</p>
+          <p className="panel report-empty">{uiText['aucunControleRecuPourLeMoment']}</p>
         )}
       </section>
     </div>

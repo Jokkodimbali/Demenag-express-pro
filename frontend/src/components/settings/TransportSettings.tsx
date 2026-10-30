@@ -1,3 +1,4 @@
+import { uiText } from '../../content/reference-ui-text';
 import { useState, type CSSProperties } from 'react';
 import { FleetVehicleDimensions } from '../FleetVehicleDimensions';
 import { useApp } from '../../application/context';
@@ -165,7 +166,9 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
       <div className="reference-settings-grid">
         {vehicles.map((vehicle) => (
           <section style={sectionStyle} key={vehicle.id}>
-            <span className="reference-settings-card-title">{vehicle.name} · par aller-retour</span>
+            <span className="reference-settings-card-title">
+              {vehicle.name} {uiText['parAllerRetour']}
+            </span>
             {tiers.map((label, index) => (
               <label style={lineStyle} key={label}>
                 <span>{label}</span>
@@ -182,10 +185,10 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
         ))}
 
         <section className="reference-settings-wide" style={sectionStyle}>
-          <span className="reference-settings-card-title">Suppléments fixes</span>
+          <span className="reference-settings-card-title">{uiText['supplementsFixes']}</span>
           <div className="reference-settings-fixed-fields">
             <label>
-              <span>Manœuvre (par personne)</span>
+              <span>{uiText['manœuvreParPersonne']}</span>
               <input
                 style={inputStyle}
                 type="number"
@@ -195,7 +198,7 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
               />
             </label>
             <label>
-              <span>Supplément par étage sans ascenseur (par manœuvre)</span>
+              <span>{uiText['supplementParEtageSansAscenseurParManœuvre']}</span>
               <input
                 style={inputStyle}
                 type="number"
@@ -205,7 +208,7 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
               />
             </label>
             <label>
-              <span>Forfait avec ascenseur, dès le 1er (par manœuvre)</span>
+              <span>{uiText['forfaitAvecAscenseurDesLe1erParManœuvre']}</span>
               <input
                 style={inputStyle}
                 type="number"
@@ -218,15 +221,15 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
           <input type="hidden" name="assembly" value={catalogue.settings.assemblyPrice} />
 
           <span className="reference-settings-kicker">
-            DÉMONTAGE / MONTAGE PAR MEUBLE (PRIX CLIENT)
+            {uiText['demontageMONTAGEPARMEUBLEPRIXCLIENT']}
           </span>
           <div className="reference-settings-assembly-columns">
             {assemblyColumns.map((sections, columnIndex) => (
               <div className="reference-settings-assembly-column" key={columnIndex}>
                 <div className="reference-settings-price-head">
                   <span />
-                  <span className="reference-settings-column-title">Local</span>
-                  <span className="reference-settings-column-title">Importé</span>
+                  <span className="reference-settings-column-title">{uiText['local']}</span>
+                  <span className="reference-settings-column-title">{uiText['importe']}</span>
                 </div>
                 {sections.map(([section, sectionRows]) => (
                   <div className="reference-settings-assembly-category" key={section}>
@@ -263,13 +266,16 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
                             {range && (
                               <div className="reference-settings-size-row">
                                 <div className="reference-settings-size-labels">
-                                  <span>Local</span>
-                                  <span>Importé</span>
+                                  <span>{uiText['local']}</span>
+                                  <span>{uiText['importe']}</span>
                                 </div>
                                 <div className="reference-settings-size-increment">
-                                  <span>Supplément par {sizeLabel.replace(/s$/u, '')} en plus</span>
+                                  <span>
+                                    {uiText['supplementPar']}
+                                    {sizeLabel.replace(/s$/u, '')} {uiText['enPlus']}
+                                  </span>
                                   <label>
-                                    <span>Local</span>
+                                    <span>{uiText['local']}</span>
                                     <input
                                       style={inputStyle}
                                       type="number"
@@ -280,7 +286,7 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
                                     />
                                   </label>
                                   <label>
-                                    <span>Importé</span>
+                                    <span>{uiText['importe']}</span>
                                     <input
                                       style={inputStyle}
                                       type="number"
@@ -308,7 +314,7 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
                                         {size === 1 ? sizeLabel.replace(/s$/, '') : sizeLabel}
                                       </span>
                                       <label>
-                                        <span>Local</span>
+                                        <span>{uiText['local']}</span>
                                         <input
                                           style={inputStyle}
                                           type="number"
@@ -319,7 +325,7 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
                                         />
                                       </label>
                                       <label>
-                                        <span>Importé</span>
+                                        <span>{uiText['importe']}</span>
                                         <input
                                           style={inputStyle}
                                           type="number"
@@ -342,17 +348,19 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
                 ))}
                 {columnIndex === 0 && (
                   <div className="reference-settings-assembly-category">
-                    <strong className="reference-settings-category">AUTRES OBJETS</strong>
+                    <strong className="reference-settings-category">
+                      {uiText['autresOBJETS']}
+                    </strong>
                     <div className="reference-settings-price-matrix">
                       <div className="reference-settings-price-row">
-                        <span>Autre objet</span>
+                        <span>{uiText['autreObjet']}</span>
                         <input
                           style={inputStyle}
                           type="number"
                           min="0"
                           name="montageP.custom.local"
                           defaultValue={customPricing.local ?? catalogue.settings.assemblyPrice}
-                          aria-label="Autre objet, local"
+                          aria-label={uiText['autreObjetLocal']}
                         />
                         <input
                           style={inputStyle}
@@ -363,7 +371,7 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
                             customPricing.import ??
                             Math.round(catalogue.settings.assemblyPrice * 1.5)
                           }
-                          aria-label="Autre objet, importé"
+                          aria-label={uiText['autreObjetImporte']}
                         />
                       </div>
                     </div>
@@ -376,13 +384,15 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
 
         <section className="reference-settings-wide" style={sectionStyle}>
           <div className="reference-settings-section-heading">
-            <span className="reference-settings-card-title">Grille de prix des manœuvres</span>
-            <span>Base + supplément départ + supplément arrivée</span>
+            <span className="reference-settings-card-title">
+              {uiText['grilleDePrixDesManœuvres']}
+            </span>
+            <span>{uiText['baseSupplementDepartSupplementArrivee']}</span>
           </div>
           <div
             className="reference-settings-scenarios"
             role="group"
-            aria-label="Scénario ascenseur"
+            aria-label={uiText['scenarioAscenseur']}
           >
             {scenarios.map((entry) => (
               <button
@@ -397,7 +407,7 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
           </div>
           <div className="reference-settings-grid-scroll">
             <div className="reference-settings-labour-grid">
-              <div className="reference-settings-axis">Départ ↓ · Arrivée →</div>
+              <div className="reference-settings-axis">{uiText['departArrivee']}</div>
               {floors.map((floor) => (
                 <strong className="reference-settings-col" key={floor}>
                   {floor}
@@ -422,7 +432,7 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
         </section>
 
         <section className="reference-settings-wide" style={sectionStyle}>
-          <span className="reference-settings-card-title">Dimensions des véhicules</span>
+          <span className="reference-settings-card-title">{uiText['dimensionsDesVehicules']}</span>
           {dimensionError && (
             <p role="alert" className="alert error">
               {dimensionError}
@@ -441,7 +451,7 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
 
         <section className="reference-settings-wide" style={sectionStyle}>
           <div className="reference-settings-section-heading">
-            <span className="reference-settings-card-title">Main-d'œuvre et durées</span>
+            <span className="reference-settings-card-title">{uiText['mainDŒuvreEtDurees']}</span>
           </div>
           <div className="reference-settings-labor-fields">
             {planningFields.map(([key, label, hint]) => (
@@ -503,7 +513,7 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
               form?.requestSubmit();
             }}
           >
-            Revenir aux valeurs par défaut
+            {uiText['revenirAuxValeursParDefaut']}
           </button>
         </section>
 

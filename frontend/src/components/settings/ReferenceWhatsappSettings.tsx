@@ -1,3 +1,4 @@
+import { uiText } from '../../content/reference-ui-text';
 import { useState } from 'react';
 import type { Catalogue } from '../../domain/model';
 import { whatsappUrl } from '../../application/services/whatsapp';
@@ -48,38 +49,85 @@ export function ReferenceWhatsappSettings({ catalogue }: { catalogue: Catalogue 
     whatsappCountryCode: countryCode,
     whatsappMode: mode,
   });
-  const openedWith = modes.find(([value]) => value === mode)?.[1].replace(/ \(.*$/, '') ?? 'api.whatsapp.com';
+  const openedWith =
+    modes.find(([value]) => value === mode)?.[1].replace(/ \(.*$/, '') ?? 'api.whatsapp.com';
 
   return (
     <section className="reference-settings-wide reference-settings-whatsapp">
-      <span className="reference-settings-card-title">WhatsApp</span>
+      <span className="reference-settings-card-title">{uiText['whatsapp']}</span>
       <div className="reference-settings-whatsapp-grid">
         <label>
-          <span>INDICATIF PAYS</span>
-          <input name="w.cc" inputMode="numeric" pattern="[1-9][0-9]{0,3}" maxLength={4} value={countryCode} onChange={(event) => setCountryCode(event.target.value)} placeholder="221" required />
+          <span>{uiText['indicatifPAYS']}</span>
+          <input
+            name="w.cc"
+            inputMode="numeric"
+            pattern="[1-9][0-9]{0,3}"
+            maxLength={4}
+            value={countryCode}
+            onChange={(event) => setCountryCode(event.target.value)}
+            placeholder={uiText['221']}
+            required
+          />
         </label>
         <label>
-          <span>NUMÉRO WHATSAPP DE L’ENTREPRISE</span>
-          <input name="w.biz" type="tel" maxLength={30} value={businessNumber} onChange={(event) => setBusinessNumber(event.target.value)} placeholder="77 510 51 04" required />
+          <span>{uiText['numeroWHATSAPPDELENTREPRISE']}</span>
+          <input
+            name="w.biz"
+            type="tel"
+            maxLength={30}
+            value={businessNumber}
+            onChange={(event) => setBusinessNumber(event.target.value)}
+            placeholder={uiText['775105104']}
+            required
+          />
         </label>
         <label>
-          <span>OUVRIR AVEC</span>
-          <select name="w.mode" value={mode} onChange={(event) => setMode(event.target.value as typeof mode)}>
-            {modes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          <span>{uiText['ouvrirAVEC']}</span>
+          <select
+            name="w.mode"
+            value={mode}
+            onChange={(event) => setMode(event.target.value as typeof mode)}
+          >
+            {modes.map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
           </select>
         </label>
       </div>
       <label className="reference-settings-whatsapp-template">
-        <span>MESSAGE DU DEVIS FINAL</span>
-        <textarea name="w.tpl" rows={4} maxLength={1000} value={template} onChange={(event) => setTemplate(event.target.value)} required />
+        <span>{uiText['messageDUDEVISFINAL']}</span>
+        <textarea
+          name="w.tpl"
+          rows={4}
+          maxLength={1000}
+          value={template}
+          onChange={(event) => setTemplate(event.target.value)}
+          required
+        />
       </label>
-      <span className="reference-settings-whatsapp-hint">Variables : {'{nom}'} {'{ref}'} {'{num}'} {'{total}'} {'{peages}'} {'{allers}'} {'{vehicule}'} {'{date}'} {'{trajet}'}</span>
-      <div className="reference-settings-whatsapp-preview" aria-live="polite">{preview}</div>
-      <div className="reference-settings-whatsapp-test">
-        <a href={testUrl} target="_blank" rel="noopener noreferrer">Tester sur le numéro de l’entreprise</a>
-        <span>Ouvre : +{countryCode.replace(/\D/g, '')}{businessNumber.replace(/\D/g, '').replace(/^0+/, '')} · {openedWith}</span>
+      <span className="reference-settings-whatsapp-hint">
+        {uiText['variables']}
+        {'{nom}'} {'{ref}'} {'{num}'} {'{total}'} {'{peages}'} {'{allers}'} {'{vehicule}'}{' '}
+        {'{date}'} {'{trajet}'}
+      </span>
+      <div className="reference-settings-whatsapp-preview" aria-live="polite">
+        {preview}
       </div>
-      <span className="reference-settings-whatsapp-hint">Si WhatsApp ne s’ouvre pas, essayez « WhatsApp Web » sur ordinateur ou « Application WhatsApp » sur téléphone. Les numéros à 9 chiffres reçoivent automatiquement l’indicatif.</span>
+      <div className="reference-settings-whatsapp-test">
+        <a href={testUrl} target="_blank" rel="noopener noreferrer">
+          {uiText['testerSurLeNumeroDeLEntreprise']}
+        </a>
+        <span>
+          {uiText['ouvre']}
+          {countryCode.replace(/\D/g, '')}
+          {businessNumber.replace(/\D/g, '').replace(/^0+/, '')} · {openedWith}
+        </span>
+      </div>
+      <span className="reference-settings-whatsapp-hint">
+        {uiText['siWhatsAppNeSOuvrePasEssayezWhatsAppWebSurOrdinateurOu']}
+      </span>
     </section>
   );
 }

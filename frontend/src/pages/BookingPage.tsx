@@ -1,3 +1,4 @@
+import { uiText } from '../content/reference-ui-text';
 import { ArrowRight } from 'lucide-react';
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -107,7 +108,7 @@ export function BookingPage() {
               </h2>
               {editingBooking && (
                 <Link className="button secondary small" to={routes.account}>
-                  Retour à mon espace
+                  {uiText['retourAMonEspace']}
                 </Link>
               )}
             </div>
@@ -120,7 +121,7 @@ export function BookingPage() {
             <div className="alert error" role="alert">
               <p>{editError}</p>
               <Link className="button secondary" to={routes.account}>
-                Retour à mon espace
+                {uiText['retourAMonEspace']}
               </Link>
             </div>
           ) : error ? (
@@ -150,7 +151,10 @@ export function BookingPage() {
               data-mobile-step={mobileBookingStep}
             >
               <div className="booking-mobile-progress" aria-live="polite">
-                <span>ÉTAPE {mobileBookingStep} / 4</span>
+                <span>
+                  {uiText['etape']}
+                  {mobileBookingStep} {uiText['4']}
+                </span>
                 <strong>
                   {
                     (editingBooking
@@ -177,8 +181,7 @@ export function BookingPage() {
                 <div className="booking-mobile-step" data-booking-step="1">
                   {editingBooking && selected.active === false && (
                     <p className="alert error" role="status">
-                      Ce véhicule n’est plus disponible. Choisissez un autre véhicule avant
-                      d’envoyer votre demande.
+                      {uiText['ceVehiculeNEstPlusDisponibleChoisissezUnAutreVehiculeA']}
                     </p>
                   )}
                   <VehicleSelector
@@ -229,20 +232,19 @@ export function BookingPage() {
                   {!editingBooking && (
                     <section className="panel booking-trip-count">
                       <div>
-                        <h3>Nombre d’allers-retours estimés</h3>
+                        <h3>{uiText['nombreDAllersRetoursEstimes']}</h3>
                         <p className="muted">
-                          Le transport est facturé par aller-retour. L’équipe confirmera le nombre
-                          réel pour le devis final.
+                          {uiText['leTransportEstFactureParAllerRetourLEquipeConfirmeraLe']}
                         </p>
                       </div>
                       <div
                         className="stepper"
                         role="group"
-                        aria-label="Nombre d’allers-retours estimés"
+                        aria-label={uiText['nombreDAllersRetoursEstimes']}
                       >
                         <button
                           type="button"
-                          aria-label="Retirer un aller-retour"
+                          aria-label={uiText['retirerUnAllerRetour']}
                           disabled={quoteTrips <= 1}
                           onClick={() =>
                             setDraft((current) => ({
@@ -256,7 +258,7 @@ export function BookingPage() {
                         <output>{quoteTrips}</output>
                         <button
                           type="button"
-                          aria-label="Ajouter un aller-retour"
+                          aria-label={uiText['ajouterUnAllerRetour']}
                           disabled={quoteTrips >= catalogue.settings.maxTrips}
                           onClick={() =>
                             setDraft((current) => ({
@@ -331,7 +333,7 @@ export function BookingPage() {
                 setMobileBookingStep((step) => step - 1);
               }}
             >
-              Retour
+              {uiText['retour']}
             </button>
           )}
           {isMobileBooking && mobileBookingStep < 4 ? (
@@ -368,7 +370,8 @@ export function BookingPage() {
                 window.scrollTo({ top: document.getElementById('reserver')?.offsetTop ?? 0 });
               }}
             >
-              Continuer <ArrowRight size={16} />
+              {uiText['continuer']}
+              <ArrowRight size={16} />
             </button>
           ) : (
             <button

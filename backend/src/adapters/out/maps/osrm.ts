@@ -195,18 +195,10 @@ export class OpenStreetMaps implements RoutingProvider {
         };
         const address = result.address ?? {};
         const locality =
-          address.city ||
-          address.town ||
-          address.village ||
-          address.municipality ||
-          address.county;
+          address.city || address.town || address.village || address.municipality || address.county;
         const neighborhood =
-          address.neighbourhood ||
-          address.quarter ||
-          address.suburb ||
-          address.city_district;
-        const street =
-          address.road || address.pedestrian || address.residential || address.footway;
+          address.neighbourhood || address.quarter || address.suburb || address.city_district;
+        const street = address.road || address.pedestrian || address.residential || address.footway;
         const formatted = [...new Set([locality, neighborhood, street].filter(Boolean))].join(', ');
         const label = formatted || result.display_name;
         if (!label) throw new Error('Address');

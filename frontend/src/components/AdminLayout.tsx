@@ -1,3 +1,4 @@
+import { uiText } from '../content/reference-ui-text';
 import { useLayoutEffect, useRef } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { messages } from '../content/fr';
@@ -29,8 +30,8 @@ export function AdminLayout() {
     <section className="container workspace-page admin-workspace">
       <header className="admin-reference-heading">
         <div>
-          <span>ADMINISTRATION</span>
-          <h1>TABLEAU DE BORD</h1>
+          <span>{uiText['administration']}</span>
+          <h1>{uiText['tableauDEBORD']}</h1>
         </div>
         <nav
           ref={tabsRef}
