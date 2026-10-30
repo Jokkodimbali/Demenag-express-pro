@@ -1,5 +1,5 @@
-import { Outlet } from 'react-router-dom';
+import { Settings } from './Settings';
 
 export function AdminSettings() {
-  return <Outlet />;
+  return <Settings />;
 }

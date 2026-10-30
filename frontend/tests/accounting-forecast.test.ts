@@ -81,6 +81,27 @@ test('les lignes des rapports SYSCOHADA sont équilibrées et reprennent les rev
   );
 });
 
+test('les écritures d’ouverture restent équilibrées si dette et valeur des véhicules diffèrent', () => {
+  for (const [fleetValue, debt] of [
+    [25_000, 30_000],
+    [30_000, 25_000],
+    [25_000, 25_000],
+  ]) {
+    const config = { ...configuration, fleetValue, debt };
+    const ledger = buildSyscohadaEntries(config, [], [], config.start);
+    assert.equal(
+      ledger.reduce((sum, line) => sum + line.debit, 0),
+      ledger.reduce((sum, line) => sum + line.credit, 0),
+    );
+    assert.equal(
+      ledger
+        .filter((line) => line.account === '104')
+        .reduce((sum, line) => sum + line.credit - line.debit, 0),
+      fleetValue - debt,
+    );
+  }
+});
+
 test('les devis finals anciens sans snapshot sont explicitement marqués comme estimés', () => {
   const booking = {
     id: 'booking-old',
@@ -141,6 +162,27 @@ test('les coûts enregistrés avec un devis final restent figés après changeme
     [7_000, 12_000],
   );
   assert.ok(entries.every((entry) => !entry.label.includes('tarif actuel estimatif')));
+});
+
+test('les réservations annulées ne génèrent pas de charges de main-d’œuvre', () => {
+  const booking = {
+    id: 'booking-cancelled',
+    reference: 'DEM-CANCELLED',
+    date: '2026-01-15',
+    status: 'cancelled',
+    estimate: { lines: [] },
+    quotes: [
+      {
+        id: 'quote-cancelled',
+        reference: 'DV-CANCELLED',
+        kind: 'final',
+        createdAt: '2026-01-15T12:00:00.000Z',
+        price: { total: 100_000, lines: [{ label: 'Manœuvre', quantity: 2 }] },
+      },
+    ],
+  } as unknown as Booking;
+
+  assert.deepEqual(jobLabourEntries([booking], configuration), []);
 });
 
 test('le nombre de manœuvres suit les devis finals non annulés du mois de la réservation', () => {

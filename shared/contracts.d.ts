@@ -147,6 +147,9 @@ export type Settings = BookingRules & {
   invoiceLogo: string | null;
   invoiceStamp: string | null;
   invoiceSignature: string | null;
+  paymentWave?: boolean;
+  paymentCash?: boolean;
+  paymentQr?: string | null;
   questionnaire?: ClientQuestion[];
   movingLaborPlanning?: MovingLaborPlanningSettings;
 };
@@ -328,12 +331,35 @@ export type Quote = {
   notes: string;
   options?: Options;
   tolls?: QuoteTollLine[];
+  pricingInput?: QuotePricingInput;
   accountingCosts?: {
     movers: number;
     moverAmount: number;
     carpenters: number;
     carpenterAmount: number;
   };
+};
+export type QuotePricingSettings = Pick<
+  Settings,
+  | 'distanceBounds'
+  | 'maxTrips'
+  | 'maxOptions'
+  | 'labourPrice'
+  | 'labourFloorPrice'
+  | 'labourLiftPrice'
+  | 'assemblyPrice'
+  | 'montageP'
+>;
+export type QuotePricingInput = {
+  settings: QuotePricingSettings;
+  trips: number;
+  customPrice: number | null;
+  discount: number;
+  discountType: 'fcfa' | 'pct';
+  discountReason: string;
+  options: Options;
+  labourUnitPriceOverride: number | null;
+  extraLines: Array<{ label: string; quantity: number; unitPrice: number }>;
 };
 export type QuoteTollLine = {
   tollPointId: string;
@@ -359,6 +385,7 @@ export type Booking = {
   crewRefusedBy?: string[];
   crewReplies?: Record<string, 'ok' | 'no'>;
   crewMessages?: Record<string, string>;
+  crewAddressChange?: { from: boolean; to: boolean; at: string };
   customerName: string;
   phone: string;
   source?: string;

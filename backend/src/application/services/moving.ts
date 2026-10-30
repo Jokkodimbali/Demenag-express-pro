@@ -18,7 +18,7 @@ import {
   requireActiveUser,
   requireAdministrator,
 } from '../../domain/policies/access.js';
-import { calculatePrice } from '../../domain/pricing.js';
+import { calculatePrice, labourUnitPrice } from '../../domain/pricing.js';
 import { captureAccountingCosts } from '../../domain/accounting-costs.js';
 import { fallbackWorkPlan } from './fallback-work-plan.js';
 import {
@@ -38,6 +38,33 @@ import type {
   VehicleReportRepository,
 } from '../ports/index.js';
 import type { MovingUseCases } from '../ports/use-cases.js';
+
+function addressChangeForUpdate(
+  booking: Booking,
+  fromAddress: string,
+  toAddress: string,
+  from: Point,
+  to: Point,
+  at: string,
+) {
+  const fromChanged =
+    fromAddress.trim() !== booking.fromAddress.trim() ||
+    Math.abs(from[0] - booking.from[0]) > 1e-5 ||
+    Math.abs(from[1] - booking.from[1]) > 1e-5;
+  const toChanged =
+    toAddress.trim() !== booking.toAddress.trim() ||
+    Math.abs(to[0] - booking.to[0]) > 1e-5 ||
+    Math.abs(to[1] - booking.to[1]) > 1e-5;
+  if (!fromChanged && !toChanged) return booking.crewAddressChange;
+  const oldChange = booking.crewAddressChange;
+  const stillPending =
+    oldChange && Object.values(booking.crewBriefs ?? {}).some((sentAt) => sentAt < oldChange.at);
+  return {
+    from: fromChanged || Boolean(stillPending && oldChange.from),
+    to: toChanged || Boolean(stillPending && oldChange.to),
+    at,
+  };
+}
 
 export class MovingService implements MovingUseCases {
   constructor(
@@ -286,6 +313,14 @@ export class MovingService implements MovingUseCases {
     );
     if (input.date && input.date !== booking.date)
       validateDate(input.date, this.clock.now(), { ...settings, maxAdvanceDays: 730 });
+    const crewAddressChange = addressChangeForUpdate(
+      booking,
+      input.fromAddress,
+      input.toAddress,
+      route.from,
+      route.to,
+      this.clock.now().toISOString(),
+    );
     return this.bookings.update(
       {
         ...booking,
@@ -333,6 +368,7 @@ export class MovingService implements MovingUseCases {
             : booking.workPlan,
         inventorySnapshot: input.inventorySnapshot ?? booking.inventorySnapshot,
         estimate,
+        crewAddressChange,
       },
       version,
     );
@@ -753,8 +789,8 @@ export class MovingService implements MovingUseCases {
     if (booking.version !== version)
       throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
     requireValue(
-      booking.quotes.length === 0,
-      'Le trajet est verrouillé après la création d’un devis. Les montants des devis existants doivent rester inchangés.',
+      !booking.quotes.some((quote) => quote.kind === 'final'),
+      'Le trajet est verrouillé après la création du devis final.',
     );
     requireValue(
       !['completed', 'cancelled'].includes(booking.status),
@@ -779,6 +815,84 @@ export class MovingService implements MovingUseCases {
       [],
       booking.workAccess,
     );
+    const crewAddressChange = addressChangeForUpdate(
+      booking,
+      fromAddress,
+      toAddress,
+      from,
+      to,
+      this.clock.now().toISOString(),
+    );
+    let quotes = booking.quotes;
+    const latestQuote = quotes.at(-1);
+    if (latestQuote?.kind === 'provisional') {
+      const currentSettings = catalogue.settings;
+      const pricingSettings = {
+        distanceBounds: currentSettings.distanceBounds,
+        maxTrips: currentSettings.maxTrips,
+        maxOptions: currentSettings.maxOptions,
+        labourPrice: currentSettings.labourPrice,
+        labourFloorPrice: currentSettings.labourFloorPrice,
+        labourLiftPrice: currentSettings.labourLiftPrice,
+        assemblyPrice: currentSettings.assemblyPrice,
+        montageP: currentSettings.montageP,
+      };
+      const legacyPricingInput = () => {
+        const transport = latestQuote.price.lines.find((line) => /^Transport\b/u.test(line.label));
+        const labour = latestQuote.price.lines.find((line) => /^Man[œo]uvre\b/iu.test(line.label));
+        const standardLines = new Set<string>([
+          messages.menuisierBureau,
+          messages.menuisierArmoire,
+          messages.menuisierLit,
+        ]);
+        const lines = latestQuote.price.lines.filter(
+          (line) =>
+            !/^Transport\b/u.test(line.label) &&
+            !/^Man[œo]uvre\b/iu.test(line.label) &&
+            !standardLines.has(line.label),
+        );
+        return {
+          settings: pricingSettings,
+          trips: latestQuote.price.trips,
+          customPrice: latestQuote.price.tier === 3 ? (transport?.unitPrice ?? null) : null,
+          discount: latestQuote.price.discountValue ?? latestQuote.price.discount,
+          discountType: latestQuote.price.discountType ?? 'fcfa',
+          discountReason: latestQuote.price.discountReason ?? '',
+          options: latestQuote.options ?? booking.options,
+          labourUnitPriceOverride:
+            labour && labour.unitPrice !== labourUnitPrice(pricingSettings, booking.workAccess)
+              ? labour.unitPrice
+              : null,
+          extraLines: lines.map(({ label, quantity, unitPrice }) => ({
+            label,
+            quantity,
+            unitPrice,
+          })),
+        } as const;
+      };
+      const pricingInput = latestQuote.pricingInput ?? legacyPricingInput();
+      const settings = {
+        ...pricingInput.settings,
+        maxTrips: Math.max(pricingInput.settings.maxTrips, pricingInput.trips),
+      };
+      const price = calculatePrice(
+        booking.vehicle,
+        settings,
+        route.distanceKm,
+        pricingInput.options,
+        pricingInput.trips,
+        pricingInput.customPrice,
+        pricingInput.discount,
+        pricingInput.extraLines,
+        booking.workAccess,
+        pricingInput.labourUnitPriceOverride,
+        pricingInput.discountType,
+        pricingInput.discountReason,
+      );
+      quotes = quotes.map((quote) =>
+        quote.id === latestQuote.id ? { ...quote, price, pricingInput } : quote,
+      );
+    }
     return this.bookings.update(
       {
         ...booking,
@@ -788,6 +902,8 @@ export class MovingService implements MovingUseCases {
         toAddress,
         distanceKm: route.distanceKm,
         estimate,
+        quotes,
+        crewAddressChange,
       },
       version,
     );
@@ -957,6 +1073,26 @@ export class MovingService implements MovingUseCases {
       notes: input.notes,
       options,
       tolls,
+      pricingInput: {
+        settings: {
+          distanceBounds: quoteSettings.distanceBounds,
+          maxTrips: quoteSettings.maxTrips,
+          maxOptions: quoteSettings.maxOptions,
+          labourPrice: quoteSettings.labourPrice,
+          labourFloorPrice: quoteSettings.labourFloorPrice,
+          labourLiftPrice: quoteSettings.labourLiftPrice,
+          assemblyPrice: quoteSettings.assemblyPrice,
+          montageP: quoteSettings.montageP,
+        },
+        trips: input.trips,
+        customPrice: input.customPrice,
+        discount: input.discount,
+        discountType: input.discountType ?? 'fcfa',
+        discountReason: input.discountReason ?? '',
+        options,
+        labourUnitPriceOverride: input.labourUnitPriceOverride ?? null,
+        extraLines: [...inventoryLines, ...input.extraLines],
+      },
       ...(input.kind === 'final'
         ? { accountingCosts: captureAccountingCosts(booking, price, accountingConfiguration) }
         : {}),

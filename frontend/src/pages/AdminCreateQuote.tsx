@@ -29,7 +29,7 @@ import type { Booking, Options, Price, Quote } from '../domain/model';
 import { bookingInventorySnapshot, estimateMovingWork } from '../domain/moving-estimate';
 import { defaultClientQuestions } from '../domain/questionnaire';
 import { quoteNotificationUrl } from '../application/services/quote-notification';
-import { whatsappNumber } from '../application/services/whatsapp';
+import { whatsappNumber, whatsappUrl } from '../application/services/whatsapp';
 import { BookingConfirmation } from '../components/booking/BookingConfirmation';
 import { routes } from '../routing/routes';
 
@@ -72,6 +72,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
   const [quoteKind, setQuoteKind] = useState<Quote['kind']>('provisional');
   const [pdfError, setPdfError] = useState('');
   const [stageError, setStageError] = useState('');
+  const [reminderNotice, setReminderNotice] = useState('');
   const whatsappWindow = useRef<Window | null>(null);
   const sendWhatsAppAfterSave = useRef(false);
   const [openQuoteSections, setOpenQuoteSections] = useState({
@@ -90,7 +91,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
   const [trafficBusy, setTrafficBusy] = useState(false);
   const [trafficError, setTrafficError] = useState(false);
   const trafficRequest = useRef(0);
-  const { exportQuote, catalogue: appCatalogue, user } = useApp();
+  const { api, exportQuote, catalogue: appCatalogue, user } = useApp();
   const state = useBookingForm({
     mode: publicRequest && user?.role !== 'admin' ? 'booking' : 'admin-quote',
     quoteConfig,
@@ -109,9 +110,28 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
         quote,
         booking.pricingSettings ?? appCatalogue?.settings,
       );
-      if (whatsappWindow.current) whatsappWindow.current.location.href = href;
-      else window.open(href, '_blank', 'noopener,noreferrer');
-      whatsappWindow.current = null;
+      void (async () => {
+        try {
+          const settings = booking.pricingSettings ?? appCatalogue?.settings;
+          if (settings) {
+            const blob = await exportQuote(booking, quote, settings);
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `Devis-${quote.kind === 'final' ? 'final' : 'provisoire'}-${quote.reference}.pdf`;
+            document.body.append(link);
+            link.click();
+            link.remove();
+            window.setTimeout(() => URL.revokeObjectURL(url), 30000);
+          }
+        } catch {
+          setPdfError('Le devis est enregistré, mais le PDF n’a pas pu être téléchargé.');
+        } finally {
+          if (whatsappWindow.current) whatsappWindow.current.location.href = href;
+          else window.open(href, '_blank', 'noopener,noreferrer');
+          whatsappWindow.current = null;
+        }
+      })();
     },
   });
   const editingLocked = Boolean(
@@ -552,6 +572,50 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
     whatsappNumber(draft.customerPhone, catalogue?.settings.whatsappCountryCode ?? '221').length >=
     10,
   );
+  const reminderDays = draft.date
+    ? Math.round(
+        (+new Date(`${draft.date}T12:00:00Z`) - +new Date(`${today()}T12:00:00Z`)) / 86400000,
+      )
+    : -1;
+  const reminderCanSend = Boolean(
+    editingBooking && draft.date && reminderDays >= 0 && canSendQuoteWhatsApp,
+  );
+  const reminderDisabledReason = !editingBooking
+    ? 'Enregistrez le devis pour envoyer un rappel'
+    : !canSendQuoteWhatsApp
+      ? 'Ajoutez le numéro du client'
+      : !draft.date
+        ? 'Choisissez la date du rendez-vous'
+        : reminderDays < 0
+          ? 'La date du rendez-vous est passée'
+          : '';
+  const reminderWhen =
+    reminderDays === 0
+      ? 'aujourd’hui'
+      : reminderDays === 1
+        ? 'demain'
+        : reminderDays % 7 === 0
+          ? `dans ${reminderDays / 7} semaine${reminderDays > 7 ? 's' : ''}`
+          : `dans ${reminderDays} jours`;
+  const reminderDateLabel = draft.date
+    ? new Date(`${draft.date}T12:00:00Z`).toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        timeZone: 'Africa/Dakar',
+      })
+    : '';
+  const reminderPayment = [
+    catalogue?.settings.paymentWave !== false ? 'Wave' : '',
+    catalogue?.settings.paymentCash !== false ? 'espèces' : '',
+  ].filter(Boolean);
+  const reminderHref = editingBooking
+    ? whatsappUrl(
+        draft.customerPhone,
+        `Bonjour ${draft.customerName}, petit rappel de Demenag Express : votre déménagement (${editingBooking.reference}) est prévu ${reminderWhen}, le ${reminderDateLabel}${draft.timeSlot ? ` à ${draft.timeSlot}` : ''}.\n${draft.fromAddress ? `Départ : ${draft.fromAddress}\n` : ''}${draft.toAddress ? `Arrivée : ${draft.toAddress}\n` : ''}Merci de préparer vos affaires pour le chargement.${reminderPayment.length ? `\nMode de paiement : ${reminderPayment.join(' ou ')}${reminderPayment.length > 1 ? ' (au choix)' : ''}.` : ''} Pour toute question, contactez-nous au ${catalogue?.settings.businessPhone ?? ''}. À bientôt !`,
+        catalogue?.settings,
+      )
+    : '';
   function sendCurrentQuoteOnWhatsApp() {
     if (!canSendQuoteWhatsApp) {
       setStageError('Numéro WhatsApp du client invalide.');
@@ -1651,7 +1715,50 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                   </svg>
                   Envoyer le devis {quoteKind === 'final' ? 'final' : 'provisoire'} sur WhatsApp
                 </button>
+                {reminderCanSend && editingBooking && (
+                  <a
+                    className="admin-quote-reminder"
+                    href={reminderHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={`Message : rendez-vous ${reminderWhen}`}
+                    onClick={() => {
+                      setReminderNotice('');
+                      void api
+                        .recordBookingReminder(editingBooking.id)
+                        .then(() =>
+                          setReminderNotice(
+                            `Rappel WhatsApp envoyé à ${draft.customerName || 'client'} (${reminderWhen}).`,
+                          ),
+                        )
+                        .catch((reason: unknown) =>
+                          setStageError(
+                            reason instanceof Error
+                              ? reason.message
+                              : 'Le rappel n’a pas pu être enregistré.',
+                          ),
+                        );
+                    }}
+                  >
+                    Rappel ·{' '}
+                    {reminderDays === 0
+                      ? 'aujourd’hui'
+                      : reminderDays === 1
+                        ? 'demain'
+                        : `J-${reminderDays}`}
+                  </a>
+                )}
               </div>
+              {!reminderCanSend && (
+                <span className="admin-quote-reminder-disabled">
+                  Rappel indisponible · {reminderDisabledReason}
+                </span>
+              )}
+              {reminderNotice && (
+                <span className="admin-quote-reminder-notice" role="status">
+                  {reminderNotice}
+                </span>
+              )}
               <span className="admin-quote-recipient">
                 Destinataire :{' '}
                 <strong>

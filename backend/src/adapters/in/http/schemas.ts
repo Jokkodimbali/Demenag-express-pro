@@ -554,6 +554,9 @@ export const catalogueSchema = z.object({
     invoiceLogo: imageSchema.nullable(),
     invoiceStamp: imageSchema.nullable(),
     invoiceSignature: imageSchema.nullable(),
+    paymentWave: z.boolean().default(true),
+    paymentCash: z.boolean().default(true),
+    paymentQr: imageSchema.nullable().default('/assets/wave-qr.png'),
     questionnaire: z
       .array(clientQuestionSchema)
       .max(100)

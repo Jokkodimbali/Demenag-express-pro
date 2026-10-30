@@ -2,8 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../context';
 import { errorMessage } from '../error-message';
 import { catalogueFromForm } from '../validation/forms';
-import type { SettingsSection } from '../../pages/Settings';
-export function useSettings(section: SettingsSection) {
+export function useSettings() {
   const { api, catalogue, setCatalogue } = useApp();
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
@@ -25,9 +24,7 @@ export function useSettings(section: SettingsSection) {
         setError('');
       }
       try {
-        const updated = await api.updateCatalogue(
-          await catalogueFromForm(formData, current, section),
-        );
+        const updated = await api.updateCatalogue(await catalogueFromForm(formData, current));
         catalogueRef.current = updated;
         setCatalogue(updated);
         if (mounted.current) setSaved(true);
@@ -75,42 +72,21 @@ export function useSettings(section: SettingsSection) {
 
   function onChange(event: React.ChangeEvent<HTMLFormElement>) {
     if (event.target instanceof HTMLInputElement && !event.target.name) return;
-    if (section === 'pricing') queueSave(event.currentTarget);
+    queueSave(event.currentTarget);
   }
 
   function onBlur(event: React.FocusEvent<HTMLFormElement>) {
-    if (
-      section === 'pricing' &&
-      event.target instanceof HTMLElement &&
-      'name' in event.target &&
-      event.target.name
-    ) {
+    if (event.target instanceof HTMLElement && 'name' in event.target && event.target.name) {
       void flushPending(event.currentTarget);
     }
   }
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (section === 'pricing') {
-      setSaved(false);
-      await flushPending(e.currentTarget);
-      return;
-    }
     if (!catalogue || busy) return;
-    setBusy(true);
-    setError('');
     setSaved(false);
-    const form = new FormData(e.currentTarget);
-    try {
-      const updated = await api.updateCatalogue(await catalogueFromForm(form, catalogue, section));
-      catalogueRef.current = updated;
-      setCatalogue(updated);
-      setSaved(true);
-    } catch (cause) {
-      setError(errorMessage(cause));
-    } finally {
-      setBusy(false);
-    }
+    setError('');
+    await flushPending(e.currentTarget);
   }
   return { catalogue, busy, error, saved, submit, onChange, onBlur };
 }

@@ -116,9 +116,18 @@ function harness() {
       };
     },
   } as unknown as BookingRepository;
-  const settings = {} as Settings;
+  const settings = {
+    distanceBounds: [15, 25, 35],
+    maxTrips: 20,
+    maxOptions: 20,
+    labourPrice: 5000,
+    labourFloorPrice: 500,
+    labourLiftPrice: 500,
+    assemblyPrice: 5000,
+    montageP: {},
+  } as Settings;
   const catalogue = {
-    get: async () => ({ vehicles: [], settings }) as Catalogue,
+    get: async () => ({ vehicles: [booking.vehicle], settings }) as Catalogue,
   } as unknown as CatalogueRepository;
   const drivers = {
     findByUserId: async (userId: string) =>
@@ -129,7 +138,17 @@ function harness() {
     bookings,
     catalogue,
     {} as never,
-    {} as never,
+    {
+      route: async (from: [number, number], to: [number, number]) => ({
+        from,
+        to,
+        distanceKm: 10,
+        durationMinutes: 20,
+        geometry: [from, to],
+      }),
+      reverse: async (point: [number, number]) =>
+        point[0] === 14.7 ? 'Nouvelle adresse de départ' : 'Thiès',
+    } as never,
     drivers,
     { now: () => now },
     { next: () => 'generated-id' },
@@ -139,6 +158,9 @@ function harness() {
     getBooking: () => booking,
     setWorkPlan: (workPlan: Booking['workPlan']) => {
       booking = { ...booking, workPlan };
+    },
+    setQuotes: (quotes: Booking['quotes']) => {
+      booking = { ...booking, quotes };
     },
     addFinalQuote: () => {
       booking = {
@@ -157,6 +179,67 @@ function harness() {
     },
   };
 }
+
+test('admin route change recalculates the latest provisional quote and flags the changed address', async () => {
+  const { service, getBooking, setQuotes } = harness();
+  const options = { labour: 0, desk: 0, wardrobe: 0, bed: 0 };
+  setQuotes([
+    {
+      id: 'quote-provisional',
+      reference: 'DV-2026-PROVISIONAL',
+      kind: 'provisional',
+      createdAt: now.toISOString(),
+      price: { lines: [], total: 30000, discount: 0, tier: 3, trips: 1, currency: 'XOF' },
+      notes: '',
+      options,
+      pricingInput: {
+        settings: {
+          distanceBounds: [15, 25, 35],
+          maxTrips: 20,
+          maxOptions: 20,
+          labourPrice: 5000,
+          labourFloorPrice: 500,
+          labourLiftPrice: 500,
+          assemblyPrice: 5000,
+          montageP: {},
+        },
+        trips: 1,
+        customPrice: 30000,
+        discount: 0,
+        discountType: 'fcfa',
+        discountReason: '',
+        options,
+        labourUnitPriceOverride: null,
+        extraLines: [],
+      },
+    },
+  ]);
+  const originalVersion = getBooking().version;
+
+  const updated = await service.updateRoute(
+    admin,
+    'booking-1',
+    [14.7, -17.5],
+    getBooking().to,
+    originalVersion,
+  );
+
+  assert.equal(updated.fromAddress, 'Nouvelle adresse de départ');
+  assert.equal(updated.distanceKm, 10);
+  assert.equal(updated.quotes[0]?.reference, 'DV-2026-PROVISIONAL');
+  assert.equal(updated.quotes[0]?.price.total, 10000);
+  assert.deepEqual(updated.crewAddressChange, { from: true, to: false, at: now.toISOString() });
+});
+
+test('admin cannot change a route after a final quote exists', async () => {
+  const { service, getBooking, addFinalQuote } = harness();
+  addFinalQuote();
+
+  await assert.rejects(
+    service.updateRoute(admin, 'booking-1', [14.7, -17.5], getBooking().to, getBooking().version),
+    /devis final/u,
+  );
+});
 
 test('admin can review a reference fallback step when no work plan was saved', async () => {
   const { service, getBooking, setWorkPlan } = harness();

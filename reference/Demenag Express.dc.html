@@ -439,6 +439,12 @@ select option{background:#272A2E;color:#fff}
           <sc-if value="{{ r.hasDevis }}">
             <div style="background:#1E2023;border:1.5px solid #F6D73C;border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:10px">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-size:14px;font-weight:800">Devis final {{ r.devisNum }}</span><span style="font-family:Anton,sans-serif;font-size:clamp(22px,6vw,30px);color:#F6D73C">{{ r.devisTotal }}</span></div>
+              <sc-if value="{{ hasPayTxt }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:#1E2023;border:1px solid #3B4046;border-radius:12px;padding:12px">
+                  <div style="flex:1;min-width:160px;display:flex;flex-direction:column;gap:3px"><span style="font-size:11.5px;font-weight:800;letter-spacing:0.08em;color:#AEB4BB">MODE DE PAIEMENT</span><span style="font-size:15px;font-weight:800">{{ payTxtV }}</span></div>
+                  <sc-if value="{{ cliQr }}" hint-placeholder-val="{{ false }}"><img src="{{ payQr }}" alt="QR code Wave" style="width:120px;height:auto;border-radius:8px;background:#fff;padding:4px"></sc-if>
+                </div>
+              </sc-if>
               <sc-for list="{{ r.lines }}" as="l"><div style="display:flex;justify-content:space-between;gap:10px;font-size:14px;color:#D5D9DE"><span>{{ l.label }} × {{ l.qty }}</span><span>{{ l.amount }}</span></div></sc-for>
               <sc-if value="{{ r.hasTolls }}" hint-placeholder-val="{{ false }}">
                 <div style="border:1px solid #3B4046;border-radius:12px;overflow:hidden;margin-top:6px">
@@ -1205,7 +1211,8 @@ select option{background:#272A2E;color:#fff}
                   <button onClick="{{ dModeFin }}" style="border:0;border-radius:9px;min-height:44px;font-size:14px;font-weight:800;cursor:pointer;background:{{ dModeFBg }};color:{{ dModeFC }}">Final</button>
                 </div>
                 <sc-if value="{{ dModeIsProv }}" hint-placeholder-val="{{ true }}">
-                  <div style="display:flex;gap:8px;flex-wrap:wrap"><a href="{{ dWaUrl }}" target="_blank" rel="noopener" onClick="{{ sendProvWa }}" style="background:#0E9F4A;color:#fff;border-radius:10px;padding:14px 16px;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:10px;min-height:48px;text-align:center;flex:1 1 240px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path></svg>Envoyer le devis provisoire sur WhatsApp</a><sc-if value="{{ dRem.hasRem }}" hint-placeholder-val="{{ false }}"><a href="{{ dRem.remUrl }}" target="_blank" rel="noopener" onClick="{{ dRem.remind }}" title="{{ dRem.remTip }}" style="flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;background:transparent;color:#3DDC84;border:1.5px solid #3DDC84;border-radius:10px;padding:0 16px;min-height:48px;font-size:14px;font-weight:800;text-decoration:none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>{{ dRem.remLbl }}</a></sc-if></div>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap"><a href="{{ dWaUrl }}" target="_blank" rel="noopener" onClick="{{ sendProvWa }}" style="background:#0E9F4A;color:#fff;border-radius:10px;padding:14px 16px;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:10px;min-height:48px;text-align:center;flex:1 1 240px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path></svg>Envoyer le devis provisoire sur WhatsApp</a><sc-if value="{{ dRem.hasRem }}" hint-placeholder-val="{{ false }}"><a href="{{ dRem.remUrl }}" target="_blank" rel="noopener" onClick="{{ dRem.remind }}" title="{{ dRem.remTip }}" style="flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;background:transparent;color:#3DDC84;border:1.5px solid #3DDC84;border-radius:10px;padding:0 16px;min-height:48px;font-size:14px;font-weight:800;text-decoration:none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>{{ dRem.remLbl }}</a></sc-if><sc-if value="{{ dRem.off }}" hint-placeholder-val="{{ false }}"><span title="{{ dRem.why }}" style="flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;color:#6B737B;border:1.5px dashed #4A5057;border-radius:10px;padding:0 16px;min-height:48px;font-size:14px;font-weight:800;cursor:not-allowed"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>Rappel</span></sc-if></div>
+                  <sc-if value="{{ dRem.off }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:#AEB4BB">Rappel : {{ dRem.why }}.</span></sc-if>
                   <span style="font-size:12px;color:#AEB4BB;line-height:1.5">Destinataire : <strong style="color:#fff">{{ dWaNum }}</strong></span>
                 </sc-if>
                 <sc-if value="{{ dModeIsFin }}" hint-placeholder-val="{{ false }}">
@@ -1213,7 +1220,8 @@ select option{background:#272A2E;color:#fff}
                 <div style="display:flex;gap:8px;flex-wrap:wrap"><a href="{{ dWaUrl }}" target="_blank" rel="noopener" onClick="{{ sendFinalWa }}" style="background:#0E9F4A;color:#fff;border-radius:10px;padding:14px 16px;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:10px;min-height:48px;text-align:center;flex:1 1 240px" style-hover="background:#0E8443;color:#fff">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path></svg>
                   Envoyer le devis final sur WhatsApp
-                </a><sc-if value="{{ dRem.hasRem }}" hint-placeholder-val="{{ false }}"><a href="{{ dRem.remUrl }}" target="_blank" rel="noopener" onClick="{{ dRem.remind }}" title="{{ dRem.remTip }}" style="flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;background:transparent;color:#3DDC84;border:1.5px solid #3DDC84;border-radius:10px;padding:0 16px;min-height:48px;font-size:14px;font-weight:800;text-decoration:none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>{{ dRem.remLbl }}</a></sc-if></div>
+                </a><sc-if value="{{ dRem.hasRem }}" hint-placeholder-val="{{ false }}"><a href="{{ dRem.remUrl }}" target="_blank" rel="noopener" onClick="{{ dRem.remind }}" title="{{ dRem.remTip }}" style="flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;background:transparent;color:#3DDC84;border:1.5px solid #3DDC84;border-radius:10px;padding:0 16px;min-height:48px;font-size:14px;font-weight:800;text-decoration:none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>{{ dRem.remLbl }}</a></sc-if><sc-if value="{{ dRem.off }}" hint-placeholder-val="{{ false }}"><span title="{{ dRem.why }}" style="flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;color:#6B737B;border:1.5px dashed #4A5057;border-radius:10px;padding:0 16px;min-height:48px;font-size:14px;font-weight:800;cursor:not-allowed"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>Rappel</span></sc-if></div>
+                  <sc-if value="{{ dRem.off }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:#AEB4BB">Rappel : {{ dRem.why }}.</span></sc-if>
                 <span style="font-size:12px;color:#AEB4BB;line-height:1.5">Destinataire : <strong style="color:#fff">{{ dWaNum }}</strong> · ouverture via {{ waModeLabel }} · réglable dans Paramètres</span>
                 </sc-if>
               </div>
@@ -1699,6 +1707,18 @@ select option{background:#272A2E;color:#fff}
                     <span style="flex:1;min-width:0;text-align:right;font-size:12px;font-weight:700;color:{{ j.s2C }}">{{ j.s2Sum }}</span>
                   </div>
                   <sc-if value="{{ j.s2Open }}" hint-placeholder-val="{{ true }}"><div style="padding:0 12px 12px;display:flex;flex-direction:column;gap:10px">
+                    <sc-if value="{{ j.hasChg }}" hint-placeholder-val="{{ false }}">
+                      <div style="border:1.5px solid #FF9F5A;border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px">
+                        <span style="font-size:13.5px;font-weight:800;color:#FF9F5A">{{ j.chgTxt }}</span>
+                        <sc-for list="{{ j.chgWho }}" as="w" hint-placeholder-count="1">
+                          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:space-between">
+                            <span style="flex:1;min-width:160px;font-size:13px;color:#D5D9DE">{{ w.txt }}</span>
+                            <sc-if value="{{ j.chgMulti }}" hint-placeholder-val="{{ false }}"><button onClick="{{ w.send }}" style="background:transparent;color:#FF9F5A;border:1.5px solid #FF9F5A;border-radius:10px;min-height:40px;padding:0 12px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap">Envoyer</button></sc-if>
+                          </div>
+                        </sc-for>
+                        <button onClick="{{ j.chgSend }}" style="align-self:flex-start;background:#FF9F5A;color:#1E2023;border:0;border-radius:10px;min-height:44px;padding:0 16px;font-size:14px;font-weight:800;cursor:pointer">{{ j.chgLbl }}</button>
+                      </div>
+                    </sc-if>
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
                       <span></span>
                       <button onClick="{{ j.copy }}" style="flex-shrink:0;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;background:transparent;color:#fff;border:1.5px solid #4A5057;border-radius:10px;padding:0 12px;min-height:40px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;min-height:34px">{{ j.copyLbl }}</button>
@@ -2420,6 +2440,27 @@ select option{background:#272A2E;color:#fff}
             </sc-if>
           </div>
           <div style="background:#272A2E;border:1px solid #3B4046;border-radius:clamp(14px,4vw,20px);padding:clamp(14px,4vw,22px);display:flex;flex-direction:column;gap:12px;grid-column:1 / -1">
+            <span style="font-size:15px;font-weight:800">Paiement client</span>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <label style="display:flex;align-items:center;gap:10px;border:1.5px solid {{ payWaveBd }};border-radius:12px;padding:0 16px;min-height:48px;cursor:pointer;font-size:15px;font-weight:700"><input type="checkbox" checked="{{ payWave }}" onChange="{{ togWave }}" style="width:20px;height:20px;accent-color:#F6D73C">Wave</label>
+              <label style="display:flex;align-items:center;gap:10px;border:1.5px solid {{ payCashBd }};border-radius:12px;padding:0 16px;min-height:48px;cursor:pointer;font-size:15px;font-weight:700"><input type="checkbox" checked="{{ payCash }}" onChange="{{ togCash }}" style="width:20px;height:20px;accent-color:#F6D73C">Espèces</label>
+            </div>
+            <span style="font-size:13px;color:#AEB4BB">Affiché sur les devis et dans les messages : <strong style="color:#fff">{{ payTxtV }}</strong></span>
+            <sc-if value="{{ showQrBox }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:#1E2023;border:1px solid #3B4046;border-radius:12px;padding:12px">
+                <sc-if value="{{ hasPayQr }}" hint-placeholder-val="{{ false }}"><img src="{{ payQr }}" alt="QR code Wave" style="width:130px;height:auto;border-radius:8px;background:#fff;padding:4px"></sc-if>
+                <div style="flex:1;min-width:180px;display:flex;flex-direction:column;gap:8px">
+                  <span style="font-size:12px;font-weight:700;letter-spacing:0.06em;color:#AEB4BB">QR CODE WAVE MARCHAND</span>
+                  <sc-if value="{{ hasPayQr }}" hint-placeholder-val="{{ false }}"><span style="font-size:13px;color:#D5D9DE;overflow-wrap:anywhere">{{ payQrName }}</span></sc-if>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap">
+                    <label style="background:#F6D73C;color:#1E2023;border-radius:10px;padding:0 16px;min-height:44px;display:flex;align-items:center;font-size:14px;font-weight:800;cursor:pointer">{{ qrBtnLbl }}<input type="file" accept="application/pdf,image/*" onChange="{{ onQrFile }}" style="display:none"></label>
+                    <sc-if value="{{ hasPayQr }}" hint-placeholder-val="{{ false }}"><button onClick="{{ delQr }}" style="background:transparent;color:#FF5A5F;border:1.5px solid #FF5A5F;border-radius:10px;padding:0 14px;min-height:44px;font-size:14px;font-weight:700;cursor:pointer">Retirer</button></sc-if>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+          <div style="background:#272A2E;border:1px solid #3B4046;border-radius:clamp(14px,4vw,20px);padding:clamp(14px,4vw,22px);display:flex;flex-direction:column;gap:12px;grid-column:1 / -1">
             <span style="font-size:15px;font-weight:800">Google Maps · trafic en direct</span>
             <input value="{{ gkey }}" onChange="{{ onGkey }}" placeholder="Clé API Google Maps (Distance Matrix activée)" style="background:#1E2023;border:1px solid #3B4046;border-radius:10px;padding:12px;color:#fff;font-size:15px;outline:none;min-width:0">
           </div>
@@ -2484,7 +2525,7 @@ class Component extends DCLogic {
     if (!ok) return { hasRem: false, remSent: !!last, remSentTxt: last ? 'Rappel envoyé le ' + this.fStamp(last.at) : '' };
     const when = this.remWhen(n), dt = new Date(r.date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
     const t = r.start || (r.time && r.time !== 'À définir' ? r.time : '');
-    const msg = 'Bonjour ' + (r.name || '') + ', petit rappel de Demenag Express : votre déménagement (' + r.ref + ') est prévu ' + when + ', le ' + dt + (t ? ' à ' + t : '') + '.\n' + (r.from ? 'Départ : ' + r.from + '\n' : '') + (r.to ? 'Arrivée : ' + r.to + '\n' : '') + 'Merci de préparer vos affaires pour le chargement. Pour toute question, contactez-nous au ' + ((this.state.data.wa || {}).biz || '') + '. À bientôt !';
+    const msg = 'Bonjour ' + (r.name || '') + ', petit rappel de Demenag Express : votre déménagement (' + r.ref + ') est prévu ' + when + ', le ' + dt + (t ? ' à ' + t : '') + '.\n' + (r.from ? 'Départ : ' + r.from + '\n' : '') + (r.to ? 'Arrivée : ' + r.to + '\n' : '') + 'Merci de préparer vos affaires pour le chargement.' + (this.payLine() ? '\n' + this.payLine() : '') + '\nPour toute question, contactez-nous au ' + ((this.state.data.wa || {}).biz || '') + '. À bientôt !';
     return { hasRem: true, remLbl: 'Rappel · ' + (n === 0 ? 'aujourd’hui' : n === 1 ? 'demain' : 'J-' + n), remTip: 'Message : rendez-vous ' + when, remUrl: this.waUrl(r.phone, msg),
       remind: e => { e.stopPropagation(); const d0 = this.state.data; this.save({ ...d0, res: d0.res.map(x => x.id === r.id ? { ...x, reminders: [...(x.reminders || []), { at: new Date().toISOString(), n }] } : x) }); this.setState({ toast: 'Rappel WhatsApp envoyé à ' + (r.name || 'client') + ' (' + when + ').' }); },
       remSent: !!last, remSentTxt: last ? 'Dernier rappel : ' + this.fStamp(last.at) : '' };
@@ -2526,6 +2567,7 @@ class Component extends DCLogic {
   refD = el => this.bindMap('d', el);
 
   componentDidMount() {
+    setTimeout(() => this.loadDefaultQr(), 1500);
     this.fsInit(); window.addEventListener('beforeunload', () => { if (this._fh && this.state.fsOn) { clearTimeout(this._fsT); this.fsWrite(); } });
     this._lastAct = Date.now(); const act = () => { this._lastAct = Date.now(); }; ['mousemove', 'keydown', 'touchstart', 'scroll'].forEach(ev => window.addEventListener(ev, act, { passive: true }));
     setTimeout(() => { try { const ss = JSON.parse(localStorage.getItem('demx_sess') || 'null'); const d = this.state.data; if (!ss || this.state.user || !d || !(d.accounts || {})[ss.key] || Date.now() - ss.at > 30 * 86400000) return;
@@ -3843,12 +3885,13 @@ class Component extends DCLogic {
       const dv = r.devis || {}, inv = dv.inv || {}, flr = (et, asc) => !(+et > 0) ? 'rez-de-chaussée' : (+et === 1 ? '1er' : et + 'e') + ' étage' + (asc ? ', ascenseur' : ', sans ascenseur');
       const dmList = [['lit', 'lit'], ['armoire', 'armoire'], ['bureau', 'bureau']].filter(([k]) => +dv[k] > 0).map(([k, nm]) => dv[k] + ' ' + nm + (+dv[k] > 1 ? 's' : ''));
       const defMsg = p => { const role = p.role === 'chauffeur' ? 'chauffeur du ' + V.short : p.role === 'menuisier' ? 'menuisier' + (dmList.length ? ' (démontage et remontage : ' + dmList.join(', ') + ')' : '') : 'manœuvre';
-        return ['Bonjour ' + p.name.split(' ')[0] + ',', 'Déménagement ' + r.ref + ' · ' + this.fdate(r.date) + ' · ' + (r.time || 'Journée'), '',
-          'Lieu de retrait : ' + (adA || 'à compléter') + (inv.fEt !== undefined ? ' (' + flr(inv.fEt, inv.fAsc) + ')' : ''), 'Lien Google Maps : ' + (mA || 'adresse de retrait à compléter'), (src.fromNote || '').trim() ? 'Repère : ' + src.fromNote.trim() : '', '',
-          'Arrivée : ' + (adB || 'à compléter') + (inv.tEt !== undefined ? ' (' + flr(inv.tEt, inv.tAsc) + ')' : ''), mB ? 'Lien Google Maps : ' + mB : '', (src.toNote || '').trim() ? 'Repère : ' + src.toNote.trim() : '', '',
+        const C = r.addrChg, sp = (r.briefs || {})[p.id], pd = !!(C && sp && sp < C.at), okA = (r.acc || {})[p.id] === 'ok', cl = !pd ? '' : C.from && C.to ? 'les adresses de retrait et de dépôt ont été modifiées' : C.from ? 'l’adresse de retrait a été modifiée' : 'l’adresse de dépôt a été modifiée', nA = pd && C.from ? ' (NOUVELLE ADRESSE)' : '', nB = pd && C.to ? ' (NOUVELLE ADRESSE)' : '';
+        return [...(pd && okA ? ['MISE À JOUR · Mission ' + r.ref + ' déjà acceptée', ''] : []), 'Bonjour ' + p.name.split(' ')[0] + ',', ...(pd ? ['Attention : ' + cl + (okA ? '. Voici ta mission complète à jour.' : '. Voici la mission avec les adresses réactualisées.'), ''] : []), 'Déménagement ' + r.ref + ' · ' + this.fdate(r.date) + ' · ' + (r.time || 'Journée'), '',
+          'Lieu de retrait' + nA + ' : ' + (adA || 'à compléter') + (inv.fEt !== undefined ? ' (' + flr(inv.fEt, inv.fAsc) + ')' : ''), 'Lien Google Maps : ' + (mA || 'adresse de retrait à compléter'), (src.fromNote || '').trim() ? 'Repère : ' + src.fromNote.trim() : '', '',
+          'Lieu de dépôt' + nB + ' : ' + (adB || 'à compléter') + (inv.tEt !== undefined ? ' (' + flr(inv.tEt, inv.tAsc) + ')' : ''), mB ? 'Lien Google Maps : ' + mB : '', (src.toNote || '').trim() ? 'Repère : ' + src.toNote.trim() : '', '',
           'Ton rôle : ' + role + '.',
           'Client : ' + (r.name || '-') + (r.phone ? ' · ' + r.phone : ''),
-          'Équipe : ' + members.map(m => m.name + ' (' + RL[m.role][1].toLowerCase() + ')').join(', '), '', ...this.qcmLines(r, p)].filter((x, i, arr) => x !== '' || (arr[i - 1] !== '' && i > 0)).join('\n'); };
+          'Équipe : ' + members.map(m => m.name + ' (' + RL[m.role][1].toLowerCase() + ')').join(', '), '', ...(pd && okA ? ['Aucune réponse nécessaire : ta mission reste confirmée.'] : this.qcmLines(r, p))].filter((x, i, arr) => x !== '' || (arr[i - 1] !== '' && i > 0)).join('\n'); };
       const drafts = this.state.eqDrafts || {}, dk = p => r.id + '|' + p.id, msgOf = p => drafts[dk(p)] ?? defMsg(p);
       const waOf = p => { const d0 = this.digits((p && p.phone) || ''); return d0 ? 'https://wa.me/' + (d0.length <= 9 ? '221' + d0 : d0) + '?text=' + encodeURIComponent(msgOf(p)) : ''; };
       const to = (this.state.eqTo || {})[r.id] || 'all', edP = to === 'all' ? null : members.find(p => p.id === to), setTo = v => this.setState(st => ({ eqTo: { ...(st.eqTo || {}), [r.id]: v } }));
@@ -3858,7 +3901,7 @@ class Component extends DCLogic {
         : dTo <= 1 ? { t: (dTo === 0 ? 'Jour J' : 'Demain') + ' : ' + (members.length - nSent) + ' brief(s) à envoyer', c: '#FF6B6B' } : { t: 'Briefs à envoyer le ' + this.fdate(this.iso(sendDay)) + ' (la veille)', c: '#FFD23F' };
       const acc = r.acc || {}, nOk = members.filter(p => acc[p.id] === 'ok').length, allOk = members.length > 0 && nOk === members.length && full;
       const refused = (r.refusedBy || []).filter(id => !team.includes(id)).map(id => byId[id]).filter(Boolean).map(p => p.name + ' (' + RL[p.role][1].toLowerCase() + ', ' + (p.refusals || []).length + ' refus au total' + (this.isSuspect(p) ? ', suspect' : '') + ')');
-      const track = members.map(p => { const at = sentM[p.id], a = acc[p.id]; return { name: p.name + (this.isSuspect(p) ? ' ⚠' : ''), st: at ? 'Envoyé le ' + this.fStamp(at) : 'Non envoyé', c: at ? '#3DDC84' : (dTo <= 1 && !past ? '#FF6B6B' : '#AEB4BB'),
+      const track = members.map(p => { const at = sentM[p.id], a = acc[p.id]; return { name: p.name + (this.isSuspect(p) ? ' ⚠' : ''), st: at ? 'Envoyé le ' + this.fStamp(at) + (r.addrChg && at < r.addrChg.at ? ' · adresse modifiée depuis, à prévenir' : '') : 'Non envoyé', c: at ? (r.addrChg && at < r.addrChg.at ? '#FF9F5A' : '#3DDC84') : (dTo <= 1 && !past ? '#FF6B6B' : '#AEB4BB'),
         acc: a === 'ok' ? ((r.refusedBy || []).includes(p.id) ? '✓ A accepté (après un refus)' : '✓ A accepté') : a === 'no' ? 'A refusé puis réaffecté · en attente de réponse' : 'En attente de réponse', accC: a === 'ok' ? '#3DDC84' : a === 'no' ? '#FF6B6B' : '#FFD23F', isOk: a === 'ok', notOk: a !== 'ok',
         ok: () => this.setAcc(r.id, p.id, 'ok'), undo: () => this.setAcc(r.id, p.id, ''), no: () => { if (window.confirm(p.name + ' a refusé la mission ? Il/elle sera retiré(e) de l\'équipe.')) this.setAcc(r.id, p.id, 'no'); },
         btn: at ? 'Marquer non envoyé' : 'Marquer envoyé', tog: () => this.markSent(r.id, [p.id], !at) }; });
@@ -3872,10 +3915,16 @@ class Component extends DCLogic {
         send: () => { const u = waOf(edP); if (u) { window.open(u, '_blank'); this.markSent(r.id, [edP.id]); this.setState({ toast: 'Brief envoyé à ' + edP.name + ' le ' + this.fStamp(new Date().toISOString()) + '.' }); } } }
         : { hasEd: false, isAll: true, edNoWa: false, sendLbl: "Envoyer à toute l'équipe (" + urls0.length + ')', sendBg: urls0.length ? '#3DDC84' : '#6B737B',
           send: () => { if (!urls0.length) return this.setState({ toast: "Aucun numéro de téléphone dans l'équipe." }); urls0.forEach((u, i) => setTimeout(() => window.open(u, '_blank'), i * 700)); this.markSent(r.id, members.filter(waOf).map(p => p.id)); this.setState({ toast: 'Brief envoyé à ' + urls0.length + ' personne(s) : une conversation WhatsApp par personne.' }); } };
+      const pendL = members.filter(p => r.addrChg && sentM[p.id] && sentM[p.id] < r.addrChg.at), C0 = r.addrChg || {};
+      const chgV = { hasChg: pendL.length > 0, chgTxt: (C0.from && C0.to ? 'Adresses de retrait et de dépôt modifiées' : C0.from ? 'Adresse de retrait modifiée' : 'Adresse de dépôt modifiée') + (C0.at ? ' le ' + this.fStamp(C0.at) : ''),
+        chgWho: pendL.map(p => ({ txt: p.name.split(' ')[0] + ((r.acc || {})[p.id] === 'ok' ? ' : a accepté, reçoit la mission à jour' : ' : renvoi avec accepter / refuser'), hasWa: !!waOf(p),
+          send: () => { const u = waOf(p); if (!u) return this.setState({ toast: 'Pas de numéro WhatsApp pour ' + p.name + '.' }); window.open(u, '_blank'); this.markSent(r.id, [p.id]); this.setState({ toast: 'Mise à jour envoyée à ' + p.name.split(' ')[0] + '.' }); } })), chgMulti: pendL.length > 1,
+        chgLbl: pendL.length > 1 ? 'Envoyer à tous (' + pendL.length + ')' : 'Envoyer (WhatsApp)',
+        chgSend: () => { const L = pendL.filter(waOf); if (!L.length) return this.setState({ toast: 'Aucun numéro WhatsApp pour ces employés.' }); L.forEach((p, i) => setTimeout(() => window.open(waOf(p), '_blank'), i * 700)); this.markSent(r.id, L.map(p => p.id)); this.setState({ toast: 'Mise à jour d’adresse envoyée à ' + L.length + ' employé(s).' }); } };
       const urls = members.map(waOf).filter(Boolean), copied = this.state.eqCopied === r.id;
       return { ref: r.ref, name: r.name, slot: r.time || 'Journée', route: (r.from || '-') + ' → ' + (r.to || '-'), veh: V.tag, st: full ? 'Équipe complète' : 'Équipe incomplète', stC: full ? '#3DDC84' : '#FF6B6B',
-        roles, ...(() => { const sec = this.state.eqSec || {}, o = {}, nS = members.filter(p => sentM[p.id]).length;
-          const sums = [[full ? 'Complète' : 'Incomplète', full ? '#3DDC84' : '#FF6B6B'], [members.length ? nS + ' / ' + members.length + ' envoyé' + (nS > 1 ? 's' : '') : '', nS === members.length && nS ? '#3DDC84' : '#AEB4BB'], [nOk + ' / ' + members.length + ' acceptée' + (nOk > 1 ? 's' : ''), allOk ? '#3DDC84' : '#FFD23F']];
+        roles, ...chgV, ...(() => { const sec = this.state.eqSec || {}, o = {}, nS = members.filter(p => sentM[p.id]).length;
+          const sums = [[full ? 'Complète' : 'Incomplète', full ? '#3DDC84' : '#FF6B6B'], (pendL.length ? ['Adresse modifiée · ' + pendL.length + ' à prévenir', '#FF9F5A'] : [members.length ? nS + ' / ' + members.length + ' envoyé' + (nS > 1 ? 's' : '') : '', nS === members.length && nS ? '#3DDC84' : '#AEB4BB']), [nOk + ' / ' + members.length + ' acceptée' + (nOk > 1 ? 's' : ''), allOk ? '#3DDC84' : '#FFD23F']];
           [1, 2, 3].forEach(n => { const k = r.id + ':' + n, op = sec[k] === true; Object.assign(o, { ['s' + n + 'Open']: op, ['s' + n + 'Rot']: op ? '0deg' : '-90deg', ['s' + n + 'Sum']: sums[n - 1][0], ['s' + n + 'C']: sums[n - 1][1], ['s' + n + 'Tog']: () => this.setState(st => ({ eqSec: { ...(st.eqSec || {}), [k]: !op } })) }); });
           return o; })(), warns: [...new Set(warns)], hasWarns: warns.length > 0, hasTeam: members.length > 0, toOpts, ...ed, track, hasAcc: members.length > 0, accT: allOk ? '✓ Mission acceptée par toute l’équipe' : 'Réponses : ' + nOk + ' / ' + members.length + ' acceptée' + (nOk > 1 ? 's' : ''), accC: allOk ? '#3DDC84' : '#FFD23F', hasRef: refused.length > 0, refTxt: 'A refusé : ' + refused.join(' · ') + '. Remplacez-le dans le rôle ci-dessus.', hasBr: !!brSt, brT: brSt ? brSt.t : '', brC: brSt ? brSt.c : '#AEB4BB',
         copyLbl: copied ? 'Copié ✓' : 'Copier le brief',
@@ -4374,10 +4423,28 @@ class Component extends DCLogic {
     if (m === 'wame') return 'https://wa.me/' + n + '?text=' + t;
     return 'https://api.whatsapp.com/send?phone=' + n + '&text=' + t;
   }
+  payCfg() { const p = (this.state.data || {}).pay || {}; return { wave: p.wave !== false, cash: p.cash !== false, qr: p.qr || '' }; }
+  payTxt() { const p = this.payCfg(); return p.wave && p.cash ? 'Wave ou espèces (au choix)' : p.wave ? 'Wave uniquement' : p.cash ? 'Espèces uniquement' : ''; }
+  payLine() { const p = this.payCfg(); if (!p.wave && !p.cash) return ''; return 'Mode de paiement : ' + (p.wave && p.cash ? 'par Wave ou en espèces, au choix.' : p.wave ? 'par Wave uniquement (pas d’espèces).' : 'en espèces uniquement (pas de Wave).') + (p.wave && p.qr ? ' Le QR code Wave marchand figure sur le devis PDF.' : ''); }
+  async pdfToPng(buf) { if (!window.pdfjsLib) await new Promise((ok, ko) => { const s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js'; s.onload = ok; s.onerror = ko; document.head.appendChild(s); });
+    const L = window.pdfjsLib; L.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+    const doc = await L.getDocument({ data: new Uint8Array(buf) }).promise, pg = await doc.getPage(1), vp = pg.getViewport({ scale: 2 }), c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height; const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+    await pg.render({ canvasContext: ctx, viewport: vp }).promise; return this.trimWhite(c); }
+  trimWhite(c) { const ctx = c.getContext('2d'), { width: w, height: hh } = c, px = ctx.getImageData(0, 0, w, hh).data; let x0 = w, y0 = hh, x1 = 0, y1 = 0;
+    for (let y = 0; y < hh; y += 2) for (let x = 0; x < w; x += 2) { const i = (y * w + x) * 4; if (px[i] < 235 || px[i + 1] < 235 || px[i + 2] < 235) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } }
+    if (x1 <= x0) return c.toDataURL('image/png'); const m = 12; x0 = Math.max(0, x0 - m); y0 = Math.max(0, y0 - m); x1 = Math.min(w, x1 + m); y1 = Math.min(hh, y1 + m);
+    const o = document.createElement('canvas'), k = Math.min(1, 900 / Math.max(x1 - x0, y1 - y0)); o.width = Math.round((x1 - x0) * k); o.height = Math.round((y1 - y0) * k); o.getContext('2d').drawImage(c, x0, y0, x1 - x0, y1 - y0, 0, 0, o.width, o.height); return o.toDataURL('image/png'); }
+  setPay(patch) { const d0 = this.state.data; this.save({ ...d0, pay: { ...(d0.pay || {}), ...patch } }); }
+  onQrFile = async e => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (!f) return; this.setState({ qrBusy: true });
+    try { let url; if (/pdf$/i.test(f.type) || /\.pdf$/i.test(f.name)) url = await this.pdfToPng(await f.arrayBuffer());
+      else url = await new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => { const im = new Image(); im.onload = () => { const c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, 0); ok(this.trimWhite(c)); }; im.onerror = ko; im.src = r.result; }; r.readAsDataURL(f); });
+      this.setPay({ qr: url, qrName: f.name }); this.setState({ toast: 'QR code Wave enregistré.' }); } catch (er) { console.error(er); this.setState({ toast: 'Impossible de lire ce fichier. Essayez un PDF ou une image PNG/JPG.' }); }
+    this.setState({ qrBusy: false }); };
+  async loadDefaultQr() { const p = (this.state.data || {}).pay || {}; if (p.qr || p.qrCleared) return; try { const r = await fetch('assets/wave-qr.pdf'); if (!r.ok) return; const url = await this.pdfToPng(await r.arrayBuffer()); if (!((this.state.data || {}).pay || {}).qr) this.setPay({ qr: url, qrName: 'static_wave_qr.pdf' }); } catch (e) {} }
   waMsg(d) {
     const c = this.calc(d), r = this.state.data.res.find(x => x.id === d.resId) || {};
     const map = { nom: d.name || '', ref: r.ref || '', num: d.num || '', total: this.fmt(c.total) + (c.tolls.length ? ' (+ péages à votre charge : ' + this.fmt(c.tollTot) + ')' : ''), peages: c.tolls.length ? c.tolls.map(l => '- ' + l.label.replace(/^Péage · /i, '') + ' : ' + l.qty + ' × ' + this.fmt(l.pu)).join('\n') + '\nTotal péages : ' + this.fmt(c.tollTot) : '', allers: d.trips, vehicule: this.VEH[d.vehicle].short, date: this.fdate(d.date), trajet: (d.from || '') + ' → ' + (d.to || '') };
-    let tpl = this.state.data.wa.tpl || ''; if (map.peages && !tpl.includes('{peages}')) tpl += '\n\nPéages à votre charge (non inclus) :\n{peages}';
+    let tpl = this.state.data.wa.tpl || ''; if (map.peages && !tpl.includes('{peages}')) tpl += '\n\nPéages à votre charge (non inclus) :\n{peages}'; const pl = this.payLine(); if (pl && !tpl.includes('{paiement}')) tpl += '\n\n{paiement}'; map.paiement = pl;
     return tpl.replace(/\{(\w+)\}/g, (m, k) => map[k] !== undefined ? map[k] : m);
   }
   MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
@@ -4400,12 +4467,20 @@ class Component extends DCLogic {
       d.resId = id;
       res = [{ id, ref: 'DEM-' + (4830 + res.length + Math.floor(Math.random() * 50)), status: 'attente', time: 'À définir', ...core, trips: d.trips, remise: d.remise, custom: d.custom, estimate: this.calc(d).total, devis: null }, ...res];
     }
+    const prevR = s.data.res.find(x => x.id === d.resId), pv = prevR ? (prevR.devis || prevR) : null;
+    const llDiff = (a, b) => (!a && !b) ? false : (!a || !b) ? true : Math.abs(a[0] - b[0]) > 1e-5 || Math.abs(a[1] - b[1]) > 1e-5;
+    const chF = !!pv && (llDiff(pv.fromLL, d.fromLL) || String(pv.from || '').trim() !== String(d.from || '').trim()), chT = !!pv && (llDiff(pv.toLL, d.toLL) || String(pv.to || '').trim() !== String(d.to || '').trim());
+    let addrChg = prevR ? prevR.addrChg : undefined;
+    if (chF || chT) { const old = prevR.addrChg, stillP = old && Object.values(prevR.briefs || {}).some(t => t < old.at); addrChg = { from: chF || !!(stillP && old.from), to: chT || !!(stillP && old.to), at: new Date().toISOString() };
+      const nb = Object.keys(prevR.briefs || {}).filter(id => this.crewIds(prevR).includes(id)).length;
+      if (nb) setTimeout(() => this.setState({ toast: (chF && chT ? 'Adresses de retrait et de dépôt modifiées' : chF ? 'Adresse de retrait modifiée' : 'Adresse de dépôt modifiée') + ' : ' + nb + ' employé(s) à prévenir dans Équipes.' }), 1800); }
     const devis = { ...d, total: c.total, tier: c.tier, final: mode === 'final', sentAt: mode === 'final' ? new Date().toISOString() : null };
     res = res.map(r => {
       if (r.id !== d.resId) return r;
       if (mode === 'final') return { ...r, ...core, ...(d.start ? { start: d.start, time: d.start.replace(':', 'h') } : {}), devis, status: 'termine' };
       return { ...r, ...core, ...(d.start ? { time: d.start.replace(':', 'h') } : {}), estimate: this.calc(d).total, devis, status: r.status === 'termine' ? 'termine' : 'attente' };
     });
+    if (addrChg !== (prevR || {}).addrChg) res = res.map(r => r.id === d.resId ? { ...r, addrChg } : r);
     let journal = s.data.journal || [];
     if (mode === 'final') {
       const rr = res.find(r => r.id === d.resId) || {};
@@ -4480,19 +4555,32 @@ class Component extends DCLogic {
     doc.setTextColor(final ? 255 : 30, final ? 255 : 32, final ? 255 : 35); doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
     doc.text(final ? 'TOTAL À PAYER' : 'ESTIMATION PROVISOIRE', M + 5, y + 10); doc.setFontSize(17); doc.text(T(c.tier === 3 && !c.unit ? 'Sur devis' : this.fmt(c.total)), W - M - 5, y + 10.5, { align: 'right' });
     y += 26; doc.setTextColor(30, 32, 35); doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5);
-    if (c.tolls && c.tolls.length) { doc.setFont('helvetica', 'bold'); doc.text(T('Péages à la charge du client (non inclus) : ' + this.fmt(c.tollTot) + ' - détail en page annexe.'), M, y); doc.setFont('helvetica', 'normal'); y += 7; }
-    const hasInv = d.inv && this.normInv(d.inv).lines.some(l => l.q > 0);
-    const pNote = hasInv ? [(d.fromNote || '').trim() ? 'Repère départ : ' + d.fromNote.trim() : '', (d.toNote || '').trim() ? 'Repère arrivée : ' + d.toNote.trim() : '', this.estLine(d), this.laborLine(d), (d.notes || '').trim(), 'Inventaire détaillé en page suivante.'].filter(Boolean).join('\n') : this.fullNote(d);
+    const hasInv = !!d.inv, hasObj = hasInv && this.normInv(d.inv).lines.some(l => l.q > 0);
+    if (!hasInv && c.tolls && c.tolls.length) { doc.setFont('helvetica', 'bold'); doc.text(T('Péages à la charge du client (non inclus) : ' + this.fmt(c.tollTot) + ' - détail en page annexe.'), M, y); doc.setFont('helvetica', 'normal'); y += 7; }
+    const pNote = hasInv ? '' : this.fullNote(d);
     if (pNote) { const n = doc.splitTextToSize(T('Note : ' + pNote), W - 2 * M); if (y + n.length * 4.6 > 278) { doc.addPage(); y = 24; } doc.text(n, M, y); y += n.length * 4.6 + 4; }
     doc.setTextColor(90, 97, 104); doc.setFontSize(9);
     const legal = final ? "Devis final établi sur la base du nombre réel d'allers-retours effectués (" + d.trips + "), au tarif de la tranche de distance appliquée."
       : "Devis temporaire, calculé sur " + d.trips + " aller(s)-retour(s) estimé(s). Le transport est facturé par aller-retour effectué : le devis final, basé sur le nombre réel d'allers-retours, sera envoyé par Demenag Express à la fin du déménagement.";
-    const lg = doc.splitTextToSize(T(legal), W - 2 * M); doc.text(lg, M, y); y += lg.length * 4.4 + 18;
-    if (y + 46 > 287) { doc.addPage(); y = 24; }
-    doc.setTextColor(30, 32, 35); doc.setFontSize(10); doc.text('Signature client', M, y); doc.text('Cachet et signature Demenag Express', W - M, y, { align: 'right' });
-    const sz = 40, sx = W - M - sz, sy = y + 3;
-    if (stamp) doc.addImage(stamp.url, 'PNG', sx, sy, sz, sz);
-    if (sign) { const sw = 34, sh = sw * sign.h / sign.w; doc.addImage(sign.url, 'PNG', sx - 18, sy + sz / 2 - sh / 2 + 4, sw, sh); }
+    const lg = doc.splitTextToSize(T(legal), W - 2 * M); doc.text(lg, M, y); y += lg.length * 4.4 + 8;
+    { const P = this.payCfg(), pt = this.payTxt(); let qi = null;
+      if (pt && P.wave && P.qr) qi = await new Promise(ok => { const im = new Image(); im.onload = () => ok({ url: P.qr, w: im.naturalWidth, h: im.naturalHeight }); im.onerror = () => ok(null); im.src = P.qr; });
+      const drawSig = (x0, y0, x1, H) => { doc.setTextColor(30, 32, 35); doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+        const half = H / 2; doc.text('Signature client', x0, y0 + 5); doc.setDrawColor(201, 206, 211); doc.setLineWidth(0.3); doc.line(x0, y0 + half - 4, x1, y0 + half - 4);
+        const yc = y0 + half + 2; doc.text('Cachet et signature Demenag Express', x0, yc + 3); const sz = Math.max(26, Math.min(40, H - half - 8)), sx = x1 - sz, sy = yc + 5;
+        if (stamp) doc.addImage(stamp.url, 'PNG', sx, sy, sz, sz); if (sign) { const sw = sz * 0.85, sh = sw * sign.h / sign.w; doc.addImage(sign.url, 'PNG', sx - sw * 0.5, sy + sz / 2 - sh / 2 + 3, sw, sh); } };
+      if (pt) {
+        let H = Math.min(112, 287 - y); if (H < 70) { doc.addPage(); y = 24; H = 112; }
+        const colW = (W - 2 * M) / 2 - 4, bx = M;
+        doc.setDrawColor(201, 206, 211); doc.setLineWidth(0.3); doc.roundedRect(bx, y, colW, H, 2, 2, 'S');
+        doc.setTextColor(30, 32, 35); doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.text('MODE DE PAIEMENT', bx + 5, y + 8);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.text(T(pt), bx + 5, y + 14.5);
+        if (qi) { doc.setFontSize(8.5); doc.setTextColor(90, 97, 104); const cap = doc.splitTextToSize(T('Scannez ce QR code avec l’application Wave pour payer Demenag Express.'), colW - 10); doc.text(cap, bx + 5, y + 20.5);
+          const top = y + 22 + cap.length * 3.8, avH = y + H - 5 - top, avW = colW - 10; let qw = avW, qh = qw * qi.h / qi.w; if (qh > avH) { qh = avH; qw = qh * qi.w / qi.h; }
+          doc.addImage(qi.url, 'PNG', bx + (colW - qw) / 2, top, qw, qh); }
+        drawSig(M + colW + 10, y, W - M, H); y += H + 6;
+      } else { if (y + 50 > 287) { doc.addPage(); y = 24; } drawSig(W / 2 + 4, y, W - M, 50); y += 56; } }
+    
     if (c.tolls && c.tolls.length) {
       doc.addPage(); y = 18; doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(30, 32, 35); doc.text('PÉAGES', M, y); doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(90, 97, 104); doc.text(T((d.num || '') + ' - ' + (d.name || '') + ' - ' + this.VEH[d.vehicle].short), W - M, y, { align: 'right' }); y += 4; doc.setDrawColor(30, 32, 35); doc.setLineWidth(0.5); doc.line(M, y, W - M, y); y += 10; doc.setTextColor(30, 32, 35);
       const hT = 22 + c.tolls.length * 7.5, RX = W - M - 5, PX = RX - 38;
@@ -4518,10 +4606,17 @@ class Component extends DCLogic {
         doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); let yy = y + 6 + a.length * 4.8; doc.text(T(fl(et) + (asc ? '  ·  ascenseur' : '  ·  sans ascenseur')), x, yy);
         if ((rep || '').trim()) { const r = doc.splitTextToSize(T('Repère : ' + rep.trim()), W / 2 - M - 6); doc.text(r, x, yy + 5); yy += r.length * 4.6; } return yy; };
       y = Math.max(endB(M, 'DÉPART (A)', d.from, inv.fEt, inv.fAsc, d.fromNote), endB(W / 2, 'ARRIVÉE (B)', d.to, inv.tEt, inv.tAsc, d.toNote)) + 10;
+      { const rec = [['Estimation', this.estLine(d)], ['Main-d’oeuvre', this.laborLine(d)], ['Péages', c.tolls && c.tolls.length ? 'À la charge du client (non inclus) : ' + this.fmt(c.tollTot) + ' - détail en page annexe.' : ''], ['Notes', (d.notes || '').trim()]]
+          .map(([k, v]) => [k, String(v || '').replace(/^(Estimation|Main-d['’]oeuvre)\s*:\s*/i, '').trim()]).filter(x => x[1]);
+        if (rec.length) { doc.setFontSize(9.5); const rows = rec.map(([k, v]) => [k, doc.splitTextToSize(T(v), W - 2 * M - 40)]), bh = 8 + rows.reduce((s, r) => s + r[1].length * 4.6 + 2, 0);
+          if (y + bh > 270) { doc.addPage(); y = 24; }
+          doc.setDrawColor(201, 206, 211); doc.setLineWidth(0.3); doc.roundedRect(M, y, W - 2 * M, bh, 2, 2, 'S'); let ry = y + 6.5;
+          rows.forEach(([k, ls]) => { doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(90, 97, 104); doc.text(T(k.toUpperCase()), M + 4, ry); doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(30, 32, 35); doc.text(ls, M + 38, ry); ry += ls.length * 4.6 + 2; });
+          y += bh + 9; } }
       const ix = [M, W - M - 92, W - M - 80, W - M];
       const head = () => { doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(90, 97, 104); doc.text('OBJET', ix[0], y); doc.text('QTÉ', ix[1], y, { align: 'right' }); doc.text('DÉTAIL', ix[2], y); doc.text('VOLUME', ix[3], y, { align: 'right' });
         y += 2.5; doc.setDrawColor(30, 32, 35); doc.setLineWidth(0.3); doc.line(M, y, W - M, y); y += 6; doc.setLineWidth(0.15); doc.setDrawColor(225, 228, 231); };
-      head();
+      if (hasObj) head(); else { doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(90, 97, 104); doc.text('Aucun objet renseigné.', M, y); y += 8; }
       [...this.INVCAT.map(cc => cc.sec), 'Autres objets'].forEach(sec => {
         const ls = inv.lines.filter(l => l.q > 0 && this.invItem(l).sec === sec); if (!ls.length) return;
         if (y > 262) { doc.addPage(); y = 24; head(); }
@@ -4822,12 +4917,19 @@ class Component extends DCLogic {
       dWa: `https://wa.me/221${this.digits(d.phone)}?text=` + encodeURIComponent(`Bonjour ${d.name}, voici votre devis Demenag Express ${d.num || ''} : ${this.fmt(dc.total)} (${d.trips} aller(s)-retour(s), ${this.VEH[d.vehicle].short}).`),
       saveDevis: () => this.commitDevis('prov'), saveProv: () => this.commitDevis('prov'),
       sendProv: () => { if (this.commitDevis('prov')) this.setState({ toast: 'Devis provisoire envoyé dans l’espace client.' }); },
-      sendProvWa: e => { const ph = this.waNum(d.phone); if (ph.length < 10) { e.preventDefault(); return this.setState({ toast: 'Numéro WhatsApp du client invalide.' }); } if (!this.commitDevis('prov')) e.preventDefault(); },
+      sendProvWa: e => { try { const r0 = s.data.res.find(x => x.id === d.resId); this.pdf({ ...d, ref: r0 ? r0.ref : '', time: r0 ? r0.time : '' }, 'prov'); } catch (e0) {} const ph = this.waNum(d.phone); if (ph.length < 10) { e.preventDefault(); return this.setState({ toast: 'Numéro WhatsApp du client invalide.' }); } if (!this.commitDevis('prov')) e.preventDefault(); },
       dSecV: (() => { const o = {}; ['client', 'trajet', 'opts'].forEach(k => { const op = !!(s.dSec || {})[k]; o[k] = { open: op, rot: op ? '0deg' : '-90deg', toggle: () => this.setState(st => ({ dSec: { ...(st.dSec || {}), [k]: !op } })) }; }); return o; })(), sendFinal: () => this.commitDevis('final'),
-      sendFinalWa: e => { const ph = this.waNum(d.phone); if (ph.length < 10) { e.preventDefault(); return this.setState({ toast: 'Numéro WhatsApp du client invalide.' }); } if (!this.commitDevis('final')) e.preventDefault(); },
-      dIsNew: !resRef, dIsExisting: !!resRef, dShowStage: s.view !== 'cdevis', dRem: (() => { const r = d.resId && s.data.res.find(x => x.id === d.resId); if (!r) return { hasRem: false }; const v = this.remVals(r); return { ...v, remind: e => { v.remind(e); } }; })(),
+      sendFinalWa: e => { try { const r0 = s.data.res.find(x => x.id === d.resId); this.pdf({ ...d, ref: r0 ? r0.ref : '', time: r0 ? r0.time : '' }, 'final'); } catch (e0) {} const ph = this.waNum(d.phone); if (ph.length < 10) { e.preventDefault(); return this.setState({ toast: 'Numéro WhatsApp du client invalide.' }); } if (!this.commitDevis('final')) e.preventDefault(); },
+      dIsNew: !resRef, dIsExisting: !!resRef, dShowStage: s.view !== 'cdevis', dRem: (() => { const r = d.resId && s.data.res.find(x => x.id === d.resId), off = why => ({ hasRem: false, off: true, why });
+        if (!r) return off('Enregistrez le devis pour envoyer un rappel');
+        const v = this.remVals({ ...r, name: d.name || r.name, phone: d.phone || r.phone, date: d.noDate ? '' : (d.date || r.date), start: d.start || r.start, from: d.from || r.from, to: d.to || r.to, status: 'attente' });
+        if (v.hasRem) return { ...v, off: false, remind: e => { v.remind(e); } };
+        const n = this.waNum(d.phone || r.phone).length >= 10, dt = !d.noDate && (d.date || r.date);
+        return off(!n ? 'Ajoutez le numéro du client' : !dt ? 'Choisissez la date du RDV' : 'La date du RDV est passée'); })(),
       dStage: (() => { const r = s.data.res.find(x => x.id === d.resId); const st = r ? (r.devis && r.devis.final ? ['Devis final envoyé', '#0E9F4A', '#fff', '#0E9F4A'] : ['Devis provisoire', '#3A3420', '#F6D73C', '#8A6D00']) : ['Nouveau', '#30343A', '#fff', '#3B4046']; return { label: st[0], bg: st[1], color: st[2], border: st[3] }; })(),
       dWaUrl: this.waUrl(d.phone, this.waMsg({ ...d, num: d.num || 'DV-2026-' + String(108 + s.data.res.filter(r => r.devis).length).padStart(4, '0') })),
+      hasPayTxt: !!this.payTxt(), cliQr: this.payCfg().wave && !!this.payCfg().qr, ...(() => { const P = this.payCfg(); return { payWave: P.wave, payCash: P.cash, payQr: P.qr, hasPayQr: !!P.qr, payQrName: ((s.data.pay || {}).qrName) || '', payTxtV: this.payTxt() || 'Aucun mode coché', qrBusy: !!s.qrBusy, onQrFile: this.onQrFile,
+        togWave: () => this.setPay({ wave: !P.wave }), togCash: () => this.setPay({ cash: !P.cash }), delQr: () => this.setPay({ qr: '', qrName: '', qrCleared: true }), payWaveBd: P.wave ? '#F6D73C' : '#3B4046', payCashBd: P.cash ? '#F6D73C' : '#3B4046', showQrBox: P.wave, qrBtnLbl: s.qrBusy ? 'Lecture…' : P.qr ? 'Remplacer (PDF ou image)' : 'Importer le QR (PDF ou image)' }; })(),
       dWaNum: this.waNum(d.phone) ? '+' + this.waNum(d.phone) : 'aucun numéro',
       waModeLabel: ({ api: 'api.whatsapp.com', wame: 'wa.me', web: 'WhatsApp Web', app: 'Application WhatsApp' })[s.data.wa.mode] || 'api.whatsapp.com',
       dPdfLabel: (s.dMode || ((s.data.res.find(x => x.id === d.resId) || {}).status === 'termine' ? 'final' : 'prov')) === 'final' ? 'Télécharger le PDF final' : 'Télécharger le PDF provisoire',

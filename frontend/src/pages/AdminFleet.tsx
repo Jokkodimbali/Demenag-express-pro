@@ -203,9 +203,26 @@ function defaultMissionMessage(
       : employee.role === 'menuisier'
         ? `menuisier${furniture.length ? ` (démontage et remontage : ${furniture.join(', ')})` : ''}`
         : 'manœuvre';
+  const sentAt = booking.crewBriefs?.[employee.id];
+  const addressUpdatePending = Boolean(
+    booking.crewAddressChange && sentAt && sentAt < booking.crewAddressChange.at,
+  );
+  const alreadyAccepted = addressUpdatePending && booking.crewReplies?.[employee.id] === 'ok';
   const lines = [
+    ...(alreadyAccepted ? [`MISE À JOUR · Mission ${booking.reference} déjà acceptée`, ''] : []),
     `Bonjour ${firstName},`,
     `Déménagement ${booking.reference} · ${date} · ${booking.timeSlot || 'Journée'}`,
+    ...(addressUpdatePending && booking.crewAddressChange
+      ? [
+          `MISE À JOUR : ${
+            booking.crewAddressChange.from && booking.crewAddressChange.to
+              ? 'les adresses de retrait et de dépôt ont changé'
+              : booking.crewAddressChange.from
+                ? 'l’adresse de retrait a changé'
+                : 'l’adresse de dépôt a changé'
+          }. Vérifie les nouvelles adresses ci-dessous.`,
+        ]
+      : []),
     '',
     `Lieu de retrait : ${booking.fromAddress || 'à compléter'}${fromFloor !== undefined ? ` (${floor(fromFloor, Boolean(fromLift))})` : ''}`,
     `Lien Google Maps : ${googleMapLink(booking.from, booking.fromAddress) || 'adresse de retrait à compléter'}`,
@@ -221,11 +238,15 @@ function defaultMissionMessage(
     `Client : ${booking.customerName || '-'}${booking.phone ? ` · ${booking.phone}` : ''}`,
     `Équipe : ${team.map((member) => `${member.name} (${roleName(member.role ?? 'chauffeur').toLowerCase()})`).join(', ')}`,
     '',
-    `ACCEPTES-TU LA MISSION ${booking.reference} ?`,
-    'Réponds par 1 ou 2 :',
-    '1 - J’accepte la mission',
-    '2 - Je refuse la mission',
-    ...(waBusiness
+    ...(alreadyAccepted
+      ? ['Aucune réponse nécessaire : ta mission reste confirmée.']
+      : [
+          `ACCEPTES-TU LA MISSION ${booking.reference} ?`,
+          'Réponds par 1 ou 2 :',
+          '1 - J’accepte la mission',
+          '2 - Je refuse la mission',
+        ]),
+    ...(!alreadyAccepted && waBusiness
       ? [
           '',
           'Ou touche ta réponse :',
@@ -1186,6 +1207,12 @@ export function AdminFleet() {
             const members = teamIds(booking)
               .map((id) => employeeById.get(id))
               .filter((member): member is Driver => Boolean(member));
+            const staleAddressBriefs = members.filter((member) => {
+              const sentAt = booking.crewBriefs?.[member.id];
+              return Boolean(
+                booking.crewAddressChange && sentAt && sentAt < booking.crewAddressChange.at,
+              );
+            });
             const complete = roles.every((role) => crew[role.id].length >= needs[role.id]);
             const wasSent = members.filter((member) => booking.crewBriefs?.[member.id]).length;
             const accepted = members.filter(
@@ -1280,6 +1307,23 @@ export function AdminFleet() {
                       <li key={warning}>{warning}</li>
                     ))}
                   </ul>
+                )}
+                {staleAddressBriefs.length > 0 && (
+                  <aside className="teams-address-update" role="status">
+                    <strong>Adresse modifiée · consigne à renvoyer</strong>
+                    <span>
+                      {staleAddressBriefs.map((member) => member.name).join(', ')} n’ont pas reçu
+                      les nouvelles adresses.
+                    </span>
+                    <button
+                      type="button"
+                      className="button secondary"
+                      onClick={() => void sendBrief(booking, staleAddressBriefs)}
+                    >
+                      Renvoyer à {staleAddressBriefs.length} personne
+                      {staleAddressBriefs.length > 1 ? 's' : ''}
+                    </button>
+                  </aside>
                 )}
                 {!!booking.crewRefusedBy?.filter((id) => !teamIds(booking).includes(id)).length && (
                   <p className="teams-refusals">

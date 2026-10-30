@@ -119,7 +119,20 @@ export function BookingCard({
         timeZone: 'Africa/Dakar',
       })
     : '';
-  const reminderMessage = `Bonjour ${b.customerName}, petit rappel de Demenag Express : votre déménagement (${b.reference}) est prévu ${reminderWhen}, le ${reminderDate}${b.timeSlot && b.timeSlot !== 'À définir' ? ` à ${b.timeSlot}` : ''}.\n${b.fromAddress ? `Départ : ${b.fromAddress}\n` : ''}${b.toAddress ? `Arrivée : ${b.toAddress}\n` : ''}Merci de préparer vos affaires pour le chargement. Pour toute question, contactez-nous au ${catalogue?.settings.businessPhone ?? ''}. À bientôt !`;
+  const paymentMethods = [
+    catalogue?.settings.paymentWave !== false ? 'Wave' : '',
+    catalogue?.settings.paymentCash !== false ? 'espèces' : '',
+  ].filter(Boolean);
+  const reminderReason = !b.date
+    ? 'Ajoutez une date au rendez-vous.'
+    : daysUntilMove < 0
+      ? 'La date du rendez-vous est passée.'
+      : terminal
+        ? 'La réservation est clôturée.'
+        : whatsappNumber(b.phone, catalogue?.settings.whatsappCountryCode ?? '221').length < 10
+          ? 'Le numéro WhatsApp du client est manquant ou invalide.'
+          : '';
+  const reminderMessage = `Bonjour ${b.customerName}, petit rappel de Demenag Express : votre déménagement (${b.reference}) est prévu ${reminderWhen}, le ${reminderDate}${b.timeSlot && b.timeSlot !== 'À définir' ? ` à ${b.timeSlot}` : ''}.\n${b.fromAddress ? `Départ : ${b.fromAddress}\n` : ''}${b.toAddress ? `Arrivée : ${b.toAddress}\n` : ''}Merci de préparer vos affaires pour le chargement.${paymentMethods.length ? `\nMode de paiement : ${paymentMethods.join(' ou ')}${paymentMethods.length > 1 ? ' (au choix)' : ''}.` : ''} Pour toute question, contactez-nous au ${catalogue?.settings.businessPhone ?? ''}. À bientôt !`;
   const reminderHref = whatsappUrl(b.phone, reminderMessage, catalogue?.settings);
   const lastReminder = b.reminders?.at(-1);
   const lastReminderLabel = lastReminder
@@ -563,6 +576,11 @@ export function BookingCard({
                 ? 'demain'
                 : `J-${daysUntilMove}`}
           </a>
+        )}
+        {admin && !canSendReminder && (
+          <span className="caption booking-reminder-disabled" title={reminderReason}>
+            Rappel indisponible · {reminderReason}
+          </span>
         )}
         {admin && finalQuote && (
           <button

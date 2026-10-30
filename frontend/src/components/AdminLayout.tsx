@@ -13,7 +13,7 @@ const sections = [
   { to: routes.administrationAccounting, label: 'Comptabilité' },
   { to: routes.administrationVehicleReports, label: 'Contrôles' },
   { to: routes.administrationTollPoints, label: 'Péages' },
-  { to: routes.administrationPricing, label: 'Paramètres' },
+  { to: routes.administrationSettings, label: 'Paramètres' },
 ];
 export function AdminLayout() {
   const location = useLocation();

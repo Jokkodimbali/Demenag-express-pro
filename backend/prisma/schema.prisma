@@ -172,6 +172,9 @@ model ParametreApplication {
   logoFacture             String? @map("invoice_logo")
   tamponFacture           String? @map("invoice_stamp")
   signatureFacture        String? @map("invoice_signature")
+  paiementWave            Boolean @default(true) @map("payment_wave")
+  paiementEspeces         Boolean @default(true) @map("payment_cash")
+  qrPaiement              String? @default("/assets/wave-qr.png") @map("payment_qr")
 
   reservationsOuvertes      Boolean @default(true) @map("bookings_enabled")
   delaiMaximumJours         Int     @default(366) @map("max_advance_days")

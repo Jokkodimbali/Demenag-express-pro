@@ -142,7 +142,7 @@ export function useBookingCard({
     }
   }
   async function createPdf(quote?: Quote): Promise<Blob | null> {
-    const settings = b.pricingSettings ?? catalogue?.settings;
+    const settings = catalogue?.settings ?? b.pricingSettings;
     if (!settings) return null;
     setError('');
     setBusy(true);

@@ -117,6 +117,15 @@ export function Admin() {
     const phone = whatsappNumber(booking.phone, catalogue?.settings.whatsappCountryCode ?? '221');
     const canSend =
       daysBefore >= 0 && !['completed', 'cancelled'].includes(booking.status) && phone.length >= 10;
+    const why = !booking.date
+      ? 'Ajoutez une date au rendez-vous.'
+      : daysBefore < 0
+        ? 'La date du rendez-vous est passée.'
+        : ['completed', 'cancelled'].includes(booking.status)
+          ? 'La réservation est clôturée.'
+          : phone.length < 10
+            ? 'Le numéro WhatsApp du client est manquant ou invalide.'
+            : '';
     const when =
       daysBefore === 0
         ? 'aujourd’hui'
@@ -139,6 +148,16 @@ export function Admin() {
       `.\n` +
       (booking.fromAddress ? `Départ : ${booking.fromAddress}\n` : '') +
       (booking.toAddress ? `Arrivée : ${booking.toAddress}\n` : '') +
+      (catalogue?.settings.paymentWave !== false || catalogue?.settings.paymentCash !== false
+        ? `Mode de paiement : ${[
+            catalogue?.settings.paymentWave !== false ? 'Wave' : '',
+            catalogue?.settings.paymentCash !== false ? 'espèces' : '',
+          ]
+            .filter(Boolean)
+            .join(
+              ' ou ',
+            )}${catalogue?.settings.paymentWave !== false && catalogue?.settings.paymentCash !== false ? ' (au choix)' : ''}.\n`
+        : '') +
       `Merci de préparer vos affaires pour le chargement. Pour toute question, contactez-nous au ${catalogue?.settings.businessPhone ?? ''}. À bientôt !`;
     const last = booking.reminders?.at(-1);
     const sentAt = last
@@ -155,6 +174,7 @@ export function Admin() {
     const lastSent = sentAt ? `${canSend ? 'Dernier rappel :' : 'Rappel envoyé le'} ${sentAt}` : '';
     return {
       canSend,
+      why,
       daysBefore,
       when,
       lastSent,
@@ -444,6 +464,11 @@ export function Admin() {
                                 : `J-${reminder.daysBefore}`}
                           </a>
                         )}
+                        {!reminder.canSend && (
+                          <small className="admin-reminder-disabled" title={reminder.why}>
+                            Rappel indisponible · {reminder.why}
+                          </small>
+                        )}
                         {reminder.lastSent && <small>{reminder.lastSent}</small>}
                         <button
                           type="button"
@@ -531,6 +556,11 @@ export function Admin() {
                               ? 'demain'
                               : `J-${reminder.daysBefore}`}
                         </a>
+                      )}
+                      {!reminder.canSend && (
+                        <small className="admin-reminder-disabled" title={reminder.why}>
+                          Rappel indisponible · {reminder.why}
+                        </small>
                       )}
                       {reminder.lastSent && <small>{reminder.lastSent}</small>}
                       <button

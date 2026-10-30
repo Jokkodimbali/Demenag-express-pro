@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react';
-import { Link, Navigate, Route, Routes } from 'react-router-dom';
+import { Link, Route, Routes } from 'react-router-dom';
 import { AdminLayout } from '../components/AdminLayout';
 import { Layout } from '../components/Layout';
 import { messages } from '../content/fr';
@@ -30,22 +30,8 @@ const AdminFleet = lazy(() =>
 const AdminSettings = lazy(() =>
   import('../pages/AdminSettings').then((m) => ({ default: m.AdminSettings })),
 );
-const AdminPricing = lazy(() =>
-  import('../pages/AdminPricing').then((m) => ({ default: m.AdminPricing })),
-);
 const AdminTollPoints = lazy(() =>
   import('../pages/AdminTollPoints').then((m) => ({ default: m.AdminTollPoints })),
-);
-const AdminBookingRules = lazy(() =>
-  import('../pages/AdminBookingRules').then((m) => ({ default: m.AdminBookingRules })),
-);
-const AdminInvoicing = lazy(() =>
-  import('../pages/AdminInvoicing').then((m) => ({ default: m.AdminInvoicing })),
-);
-const AdminQuestionnaireSettings = lazy(() =>
-  import('../pages/AdminQuestionnaireSettings').then((m) => ({
-    default: m.AdminQuestionnaireSettings,
-  })),
 );
 const AdminUsers = lazy(() =>
   import('../pages/AdminUsers').then((m) => ({ default: m.AdminUsers })),
@@ -130,14 +116,8 @@ export function AppRoutes() {
             <Route path="finances" element={<AdminFinance />} />
             <Route path="comptabilite" element={<AdminAccounting />} />
             <Route path="flotte" element={<AdminFleet />} />
-            <Route path="parametres" element={<AdminSettings />}>
-              <Route index element={<Navigate to="tarifs" replace />} />
-              <Route path="tarifs" element={<AdminPricing />} />
-              <Route path="peages" element={<AdminTollPoints />} />
-              <Route path="reservations" element={<AdminBookingRules />} />
-              <Route path="facturation" element={<AdminInvoicing />} />
-              <Route path="questionnaire" element={<AdminQuestionnaireSettings />} />
-            </Route>
+            <Route path="peages" element={<AdminTollPoints />} />
+            <Route path="parametres" element={<AdminSettings />} />
             <Route path="comptes" element={<AdminUsers />} />
             <Route path="clients" element={<AdminClients />} />
             <Route path="vehicules/rapports" element={<AdminVehicleReports />} />

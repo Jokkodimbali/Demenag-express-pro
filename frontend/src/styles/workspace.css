@@ -2185,24 +2185,6 @@ div.driver-course-complete p {
 .settings-form h2 {
   font-size: 25px;
 }
-.settings-form h3 {
-  margin: 22px 0 10px;
-  font-size: 17px;
-}
-.social-settings {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 14px;
-  margin-bottom: 20px;
-}
-.social-settings > div {
-  display: grid;
-  align-content: start;
-  gap: 6px;
-}
-.settings-form > .panel > .muted {
-  font-size: 12px;
-}
 .whatsapp-template-preview {
   padding: 12px;
   color: var(--text);
@@ -2216,17 +2198,166 @@ div.driver-course-complete p {
 .whatsapp-test {
   align-items: center;
 }
-.invoice-asset-preview {
-  display: block;
-  width: min(100%, 240px);
-  max-height: 150px;
-  object-fit: contain;
-  object-position: left center;
-  margin: 8px 0 18px;
-  padding: 10px;
-  background: #fff;
+.payment-settings-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 8px 0;
+}
+.payment-settings-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 14px;
   border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease;
+}
+.payment-settings-panel {
+  display: grid;
+  gap: 14px;
+  margin-top: 0;
+  padding: clamp(14px, 3vw, 22px);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+}
+.payment-settings-options label:has(input:checked) {
+  border-color: var(--yellow);
+  box-shadow: inset 0 0 0 1px var(--yellow);
+}
+.payment-settings-preview {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.payment-settings-preview strong {
+  color: #fff;
+}
+.payment-settings-options input[type='checkbox'] {
+  width: 18px;
+  min-width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--yellow);
+}
+.payment-qr-panel {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
+}
+.payment-qr-preview {
+  display: block;
+  width: min(130px, 100%);
+  max-height: 180px;
+  object-fit: contain;
+  padding: 5px;
   border-radius: 8px;
+  background: #fff;
+}
+.payment-qr-content {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  min-width: min(100%, 220px);
+}
+.payment-qr-content > strong {
+  color: inherit;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.payment-qr-filename {
+  color: #d5d9de;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.payment-qr-upload {
+  display: inline-flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 0 15px;
+  border-radius: 9px;
+  background: var(--yellow);
+  color: #1e2023;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.payment-qr-file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+.payment-qr-remove-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+.payment-qr-upload:has(+ .payment-qr-file:focus-visible) {
+  outline: 2px solid var(--yellow);
+}
+.payment-qr-remove {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1.5px solid #ff5a5f;
+  border-radius: 10px;
+  background: transparent;
+  color: #ff5a5f;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.payment-qr-remove:has(+ .payment-qr-remove-input:focus-visible),
+.payment-qr-remove-input:focus-visible + .payment-qr-remove {
+  outline: 2px solid #ff5a5f;
+}
+.teams-address-update {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin: 12px 0;
+  padding: 12px 14px;
+  border: 1px solid #ff9f5a;
+  border-radius: 10px;
+  background: rgb(255 159 90 / 8%);
+  color: inherit;
+}
+.teams-address-update strong {
+  color: #ff9f5a;
+}
+.admin-reminder-disabled,
+.booking-reminder-disabled {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.teams-address-update span {
+  flex: 1 1 240px;
 }
 .invoice-stamp-preview {
   width: 130px;
@@ -2943,15 +3074,6 @@ div.driver-course-complete p {
 .confirmation-dialog > p:not(.eyebrow):not(.alert) {
   margin: 0;
   color: var(--muted);
-}
-.settings-form .field-pair {
-  margin-bottom: 20px;
-}
-.settings-form > .button {
-  justify-self: start;
-}
-.settings-tabs {
-  margin-top: 0;
 }
 .toll-admin-layout {
   display: grid;

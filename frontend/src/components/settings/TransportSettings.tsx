@@ -8,6 +8,7 @@ import type { Catalogue, LabourMatrixScenario } from '../../domain/model';
 import { inventoryItems } from '../../domain/inventory';
 import { referenceInventoryKey } from '../../domain/inventory-assembly';
 import { ReferenceVehicleSettings } from './ReferenceVehicleSettings';
+import { PaymentSettings } from './PaymentSettings';
 import { ReferenceWhatsappSettings } from './ReferenceWhatsappSettings';
 import { ReferenceGoogleMapsSettings } from './ReferenceGoogleMapsSettings';
 
@@ -507,6 +508,7 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
         </section>
 
         <ReferenceVehicleSettings catalogue={catalogue} />
+        <PaymentSettings catalogue={catalogue} />
         <ReferenceGoogleMapsSettings />
         <ReferenceWhatsappSettings catalogue={catalogue} />
       </div>

@@ -313,24 +313,32 @@ export async function downloadQuote(
     y += 2;
   }
 
+  const paymentModes = [
+    settings.paymentWave !== false ? 'Wave' : '',
+    settings.paymentCash !== false ? 'espèces' : '',
+  ].filter(Boolean);
+  const paymentText = paymentModes.length
+    ? `${paymentModes.join(' ou ')}${paymentModes.length > 1 ? ' (au choix)' : ''}`
+    : '';
+  const paymentQr =
+    settings.paymentWave !== false && settings.paymentQr
+      ? settings.paymentQr.startsWith('/assets/')
+        ? await assetDataUrl(settings.paymentQr)
+        : settings.paymentQr
+      : '';
+  const paymentQrSize = paymentQr ? doc.getImageProperties(paymentQr) : null;
+
   const inventory = booking.inventorySnapshot;
   const hasInventoryDetails = Boolean(inventory?.items.length);
-  const inventorySummary = inventory
-    ? [
-        ...(addressNotes.from ? [`Repère départ : ${addressNotes.from}`] : []),
-        ...(addressNotes.to ? [`Repère arrivée : ${addressNotes.to}`] : []),
-        ...(addressNotes.remaining ? [addressNotes.remaining] : []),
-        ...(hasInventoryDetails ? ['Inventaire détaillé en page suivante.'] : []),
-      ].join('\n')
-    : '';
-  const quoteNotes = [
-    inventorySummary,
-    ...(!inventory ? [addressNotes.from ? `Repère départ : ${addressNotes.from}` : ''] : []),
-    ...(!inventory ? [addressNotes.to ? `Repère arrivée : ${addressNotes.to}` : ''] : []),
-    ...(!inventory ? [addressNotes.remaining] : []),
-  ]
-    .filter(Boolean)
-    .join('\n');
+  const quoteNotes = inventory
+    ? ''
+    : [
+        addressNotes.from ? `Repère départ : ${addressNotes.from}` : '',
+        addressNotes.to ? `Repère arrivée : ${addressNotes.to}` : '',
+        addressNotes.remaining,
+      ]
+        .filter(Boolean)
+        .join('\n');
   if (quoteNotes) {
     y += 8;
     ensureSpace(12);
@@ -362,16 +370,55 @@ export async function downloadQuote(
     y = paragraph(settings.invoiceFooter, margin, y + 2, contentWidth, 8, false, [92, 99, 106]);
 
   // Espaces de signature et cachet comme sur le document de référence.
-  let signatureY = Math.max(y + 16, 181);
+  const signatureHeight = paymentText ? 112 : 46;
+  let signatureY = Math.max(y + (paymentText ? 8 : 16), 181);
   let deferredSignature = false;
-  if (signatureY + 46 > 287) {
-    if (tolls.length || hasInventoryDetails) deferredSignature = true;
+  if (signatureY + signatureHeight > 287) {
+    if (tolls.length || inventory) deferredSignature = true;
     else {
       doc.addPage();
       signatureY = 30;
     }
   }
   async function drawSignature(top: number) {
+    if (paymentText) {
+      const leftWidth = contentWidth / 2 - 4;
+      const rightStart = margin + leftWidth + 8;
+      doc.setDrawColor(201, 206, 211);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(margin, top, leftWidth, signatureHeight, 2, 2, 'S');
+      paragraph('MODE DE PAIEMENT', margin + 5, top + 8, leftWidth - 10, 8, true);
+      paragraph(paymentText, margin + 5, top + 15, leftWidth - 10, 10, true);
+      if (paymentQr && paymentQrSize) {
+        paragraph(
+          'Scannez ce QR code avec l’application Wave pour payer Demenag Express.',
+          margin + 5,
+          top + 22,
+          leftWidth - 10,
+          7.5,
+          false,
+          [90, 97, 104],
+        );
+        const maxWidth = leftWidth - 10;
+        const maxHeight = signatureHeight - 40;
+        const scale = Math.min(maxWidth / paymentQrSize.width, maxHeight / paymentQrSize.height);
+        const width = paymentQrSize.width * scale;
+        const height = paymentQrSize.height * scale;
+        addImage(paymentQr, margin + (leftWidth - width) / 2, top + 37, width, height);
+      }
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(42, 45, 48);
+      doc.text('Signature client', rightStart, top + 8);
+      doc.setDrawColor(201, 206, 211);
+      doc.line(rightStart, top + signatureHeight / 2 - 4, right, top + signatureHeight / 2 - 4);
+      doc.text('Cachet et signature Demenag Express', rightStart, top + signatureHeight / 2 + 5);
+      const stamp = settings.invoiceStamp || (await assetDataUrl('/assets/cachet.png'));
+      const signature = settings.invoiceSignature || (await assetDataUrl('/assets/signature.png'));
+      addContainedImage(stamp, right - 38, top + signatureHeight / 2 + 8, 32, 32);
+      addContainedImage(signature, right - 59, top + signatureHeight / 2 + 17, 25, 17);
+      return;
+    }
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     doc.setTextColor(42, 45, 48);
@@ -448,16 +495,23 @@ export async function downloadQuote(
       doc.text(clean(label), margin + 4, tollY);
       doc.setTextColor(90, 97, 104);
       doc.text(
-        clean(`${toll.quantity} × ${toll.unitPrice ? pdfMoney(toll.unitPrice) : 'prix à confirmer'}`),
+        clean(
+          `${toll.quantity} × ${toll.unitPrice ? pdfMoney(toll.unitPrice) : 'prix à confirmer'}`,
+        ),
         tollUnitX,
         tollY,
         { align: 'right' },
       );
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(30, 32, 35);
-      doc.text(toll.unitPrice ? pdfMoney(toll.quantity * toll.unitPrice) : '—', tollAmountX, tollY, {
-        align: 'right',
-      });
+      doc.text(
+        toll.unitPrice ? pdfMoney(toll.quantity * toll.unitPrice) : '—',
+        tollAmountX,
+        tollY,
+        {
+          align: 'right',
+        },
+      );
       doc.setFont('helvetica', 'normal');
       tollY += 7.5;
     });
@@ -480,7 +534,7 @@ export async function downloadQuote(
     );
   }
 
-  if (inventory && hasInventoryDetails) {
+  if (inventory) {
     doc.addPage();
     y = 18;
     doc.setFont('helvetica', 'bold');
@@ -503,7 +557,7 @@ export async function downloadQuote(
       right,
       y + 9,
       {
-      align: 'right',
+        align: 'right',
       },
     );
     y += 13;
@@ -554,6 +608,55 @@ export async function downloadQuote(
           addressNotes.to,
         ),
       ) + 10;
+    const recapRows = [
+      ...(inventory.totalVolumeM3 > 0
+        ? [
+            [
+              'ESTIMATION',
+              `Volume ~${inventory.totalVolumeM3.toFixed(1).replace('.', ',')} m³, soit ${inventory.estimatedTrips} aller${inventory.estimatedTrips > 1 ? 's' : ''}-retour${inventory.estimatedTrips > 1 ? 's' : ''} en ${booking.vehicle.shortName || booking.vehicle.name}.`,
+            ],
+          ]
+        : []),
+      [
+        'MAIN-D’ŒUVRE',
+        `${inventory.moverCount} manœuvres${inventory.carpenterCount ? ` + ${inventory.carpenterCount} menuisier${inventory.carpenterCount > 1 ? 's' : ''}` : ''}, chargement + déchargement ~${durationLabel(inventory.loadingMinutes + inventory.unloadingMinutes)}.`,
+      ],
+      ...(tolls.length
+        ? [
+            [
+              'PÉAGES',
+              `À la charge du client (non inclus) : ${pdfMoney(tollTotal)} - détail en page annexe.`,
+            ],
+          ]
+        : []),
+      ...(addressNotes.remaining ? [['NOTES', addressNotes.remaining]] : []),
+    ].map(([label, value]) => ({
+      label,
+      lines: doc.splitTextToSize(clean(value), contentWidth - 46) as string[],
+    }));
+    if (recapRows.length) {
+      const recapHeight = 8 + recapRows.reduce((sum, row) => sum + row.lines.length * 4.6 + 2, 0);
+      if (y + recapHeight > 270) {
+        doc.addPage();
+        y = 24;
+      }
+      doc.setDrawColor(201, 206, 211);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(margin, y, contentWidth, recapHeight, 2, 2, 'S');
+      let recapY = y + 6.5;
+      recapRows.forEach((row) => {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.setTextColor(90, 97, 104);
+        doc.text(row.label, margin + 4, recapY);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9.5);
+        doc.setTextColor(30, 32, 35);
+        doc.text(row.lines, margin + 42, recapY);
+        recapY += row.lines.length * 4.6 + 2;
+      });
+      y += recapHeight + 9;
+    }
     const columns = { item: margin, quantity: right - 92, details: right - 80, volume: right };
     const tableHeader = () => {
       ensureSpace(12);
@@ -570,7 +673,10 @@ export async function downloadQuote(
       doc.line(margin, y, right, y);
       y += 6;
     };
-    tableHeader();
+    if (hasInventoryDetails) tableHeader();
+    else {
+      y = paragraph('Aucun objet renseigné.', margin, y, contentWidth, 9.5, false, [90, 97, 104]);
+    }
     const sections = [...new Set(inventory.items.map((item) => item.section))];
     sections.forEach((section) => {
       const sectionItems = inventory.items.filter((item) => item.section === section);
@@ -629,7 +735,8 @@ export async function downloadQuote(
       doc.setFontSize(10);
       doc.setTextColor(36, 40, 44);
       doc.text('Effets annexes', columns.item, y);
-      const annexDwelling = inventory.dwellingType === 'F5 et plus' ? 'F5 et +' : inventory.dwellingType;
+      const annexDwelling =
+        inventory.dwellingType === 'F5 et plus' ? 'F5 et +' : inventory.dwellingType;
       const annexDetails = `Sacs, vaisselle, linge, petits objets (forfait ${annexDwelling} ~${inventory.annexVolumeM3.toFixed(2).replace('.', ',')} m³, cartons et sacs comptés déduits)`;
       const annexLines = doc.splitTextToSize(
         clean(annexDetails),
@@ -727,7 +834,9 @@ export async function downloadQuote(
     if (inventory.ready === 'non') inventoryFlags.push("matériel pas prêt, emballage par l'équipe");
     if (inventory.stairs === 'oui') inventoryFlags.push('tout passe dans les escaliers');
     if (inventory.stairs === 'non')
-      inventoryFlags.push('certains objets ne passent pas dans les escaliers (démontage, fenêtre ou monte-meuble)');
+      inventoryFlags.push(
+        'certains objets ne passent pas dans les escaliers (démontage, fenêtre ou monte-meuble)',
+      );
     if (inventory.stairs === 'verif') inventoryFlags.push('passage des escaliers à vérifier');
     if (inventoryFlags.length) {
       y = paragraph(`À noter : ${inventoryFlags.join(', ')}.`, margin, y, contentWidth, 8.5);
@@ -745,7 +854,7 @@ export async function downloadQuote(
 
   if (deferredSignature) {
     signatureY = Math.max(y + 16, 181);
-    if (signatureY + 46 > 287) {
+    if (signatureY + signatureHeight > 287) {
       doc.addPage();
       signatureY = 30;
     }

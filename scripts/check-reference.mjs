@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
-const expectedDocument = '6054ce493c541f50764d0f7debed6dbef342accfc8d5cf600e0960dc11e6abe8';
+const expectedDocument = 'c7891b503aa0b22eaff5f2627e4a1f64072d7ef4da691d89a144a5fada6a555a';
 const expectedAssets = {
   'logo.png': '987baabff136582af0494a4cf509f5d1800744438efe0304046e42e668e10df1',
   'sprinter-profil.png': 'ac5a80bc5b35b153040455dd4c55721dd18e09996d3d2a063f35db1af5bd6846',
@@ -14,15 +14,18 @@ const expectedAssets = {
   'master-interieur.png': '21efc33e9369ff048a880b43dca9265772b013c587bf39f498f3437a492237c1',
   'cachet.png': '2384143bc28377a17b49b3d458bf13db6975c8f37268a1946226b7ccab1df820',
   'signature.png': '2a26b47766d94bc3ad93205c86e6c5ce6297b7f37e6ebd546a90d288aa643c14',
+  'wave-qr.pdf': 'ae72be150b9aa468d65cbedeb3d23e3a035a13f3db1e268030dedd5fd122e913',
+  'wave-qr.png': '35b3f6bc0a69e7c415474e84bea5517eb9c5fb62a0ac42c76aa8d6805450b949',
 };
 const digest = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const document = readFileSync(resolve(root, 'reference/Demenag Express.dc.html'));
 if (digest(document) !== expectedDocument)
   throw new Error('Le fichier de référence a été modifié.');
 const references = [
-  ...new Set(
-    [...document.toString('utf8').matchAll(/assets\/([\w.-]+)/g)].map((match) => match[1]),
-  ),
+  ...new Set([
+    ...[...document.toString('utf8').matchAll(/assets\/([\w.-]+)/g)].map((match) => match[1]),
+    'wave-qr.png',
+  ]),
 ];
 for (const name of references) {
   const expected = expectedAssets[name];

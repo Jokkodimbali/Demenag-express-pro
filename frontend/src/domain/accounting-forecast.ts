@@ -141,6 +141,7 @@ export function jobLabourEntries(
   config: AccountingFinanceConfiguration,
 ): AccountingEntry[] {
   return bookings.flatMap((booking) => {
+    if (booking.status === 'cancelled') return [];
     const final = [...booking.quotes].reverse().find((quote) => quote.kind === 'final');
     if (!final || final.price.total === null) return [];
     const calculatedMovers =
@@ -419,6 +420,7 @@ export const accountNames: Record<string, string> = {
   '2845': 'Amortissements matériel de transport',
   '2848': 'Amortissements autres immobilisations',
   '168': 'Emprunt auprès du père',
+  '104': 'Compte de l’exploitant',
   '637': 'Personnel extérieur (manœuvres)',
   '681': 'Dotations aux amortissements',
   '891': 'Impôt sur le résultat',
@@ -451,6 +453,11 @@ export function buildSyscohadaEntries(
   };
   add(`${config.start}-01`, '245', 'Acquisition des 3 véhicules', config.fleetValue, 0);
   add(`${config.start}-01`, '168', 'Financement par le père', 0, config.debt);
+  const openingEquity = config.fleetValue - config.debt;
+  if (openingEquity > 0)
+    add(`${config.start}-01`, '104', 'Écart d’ouverture à justifier', 0, openingEquity);
+  else if (openingEquity < 0)
+    add(`${config.start}-01`, '104', 'Écart d’ouverture à justifier', -openingEquity, 0);
   for (const entry of entries.filter(
     (item) =>
       item.date.slice(0, 7) >= config.start &&

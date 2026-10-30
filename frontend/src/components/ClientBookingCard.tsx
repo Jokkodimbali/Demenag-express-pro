@@ -60,6 +60,13 @@ export function ClientBookingCard({
           : `dans ${daysBefore} jours`;
   const reminderLabel =
     daysBefore === 0 ? 'aujourd’hui' : daysBefore === 1 ? 'demain' : `J-${daysBefore}`;
+  const paymentModes = [
+    catalogue?.settings.paymentWave !== false ? 'Wave' : '',
+    catalogue?.settings.paymentCash !== false ? 'espèces' : '',
+  ].filter(Boolean);
+  const paymentText = paymentModes.length
+    ? `Mode de paiement : ${paymentModes.join(' ou ')}${paymentModes.length > 1 ? ' (au choix)' : ''}.`
+    : '';
   const reminderDate = booking.date
     ? new Date(`${booking.date}T12:00:00Z`).toLocaleDateString('fr-FR', {
         weekday: 'long',
@@ -74,7 +81,7 @@ export function ClientBookingCard({
     `.\n` +
     (booking.fromAddress ? `Départ : ${booking.fromAddress}\n` : '') +
     (booking.toAddress ? `Arrivée : ${booking.toAddress}\n` : '') +
-    `Merci de préparer vos affaires pour le chargement. Pour toute question, contactez-nous au ${catalogue?.settings.businessPhone ?? ''}. À bientôt !`;
+    `Merci de préparer vos affaires pour le chargement.${paymentText ? `\n${paymentText}` : ''} Pour toute question, contactez-nous au ${catalogue?.settings.businessPhone ?? ''}. À bientôt !`;
   const reminderUrl = whatsappUrl(booking.phone, reminderMessage, catalogue?.settings);
   const lastReminder = booking.reminders?.at(-1);
   const lastReminderDate = lastReminder
@@ -213,6 +220,19 @@ export function ClientBookingCard({
             <strong>Devis final {finalQuote.reference}</strong>
             <strong>{money(finalQuote.price.total)}</strong>
           </div>
+          {paymentText && (
+            <div className="reference-client-payment">
+              <div>
+                <span>MODE DE PAIEMENT</span>
+                <strong>
+                  {paymentText.replace(/^Mode de paiement : /u, '').replace(/\.$/u, '')}
+                </strong>
+              </div>
+              {catalogue?.settings.paymentWave !== false && catalogue?.settings.paymentQr && (
+                <img src={catalogue.settings.paymentQr} alt="QR code Wave marchand" />
+              )}
+            </div>
+          )}
           {finalQuote.price.lines.map((line, index) => (
             <div className="reference-client-line" key={`${line.label}-${index}`}>
               <span>

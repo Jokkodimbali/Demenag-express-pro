@@ -1,6 +1,6 @@
 import { requireValue } from './errors.js';
 import { messages } from './messages/fr.js';
-import type { Options, Price, Settings, Vehicle, WorkAccess } from './model.js';
+import type { Options, Price, QuotePricingSettings, Vehicle, WorkAccess } from './model.js';
 
 const MAX_DATABASE_INTEGER = 2_147_483_647;
 
@@ -8,7 +8,7 @@ const accessLabel = (floor: number, lift: boolean) =>
   `${floor === 0 ? 'RDC' : floor === 1 ? '1er étage' : `${floor}e étage`}${floor > 0 ? (lift ? ' avec ascenseur' : ' sans ascenseur') : ''}`;
 
 export function assemblyUnitPrice(
-  settings: Settings,
+  settings: QuotePricingSettings,
   key: string,
   origin: 'local' | 'import' = 'local',
   size?: number,
@@ -45,7 +45,7 @@ export function assemblyUnitPrice(
     : fallback;
 }
 
-export function labourUnitPrice(settings: Settings, access?: WorkAccess) {
+export function labourUnitPrice(settings: QuotePricingSettings, access?: WorkAccess) {
   if (!access) return settings.labourPrice;
   const surcharge = (floor: number, lift: boolean) =>
     floor <= 0
@@ -65,7 +65,7 @@ export function tierOf(distance: number, bounds: [number, number, number]) {
 }
 export function calculatePrice(
   vehicle: Vehicle,
-  settings: Settings,
+  settings: QuotePricingSettings,
   distance: number,
   options: Options,
   trips = 1,
