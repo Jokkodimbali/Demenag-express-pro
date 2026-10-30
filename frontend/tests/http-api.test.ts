@@ -44,3 +44,31 @@ test('Une panne réseau ou un accès interdit ne déconnecte pas la session', as
     globalThis.fetch = originalFetch;
   }
 });
+
+test('La connexion employé envoie le téléphone et le mot de passe initial', async () => {
+  const originalFetch = globalThis.fetch;
+  let sentBody = '';
+  globalThis.fetch = async (_input, init) => {
+    sentBody = String(init?.body ?? '');
+    return new Response(
+      JSON.stringify({
+        id: 'employee-1',
+        name: 'Employé test',
+        phone: '+221771234567',
+        role: 'driver',
+      }),
+      { status: 201, headers: { 'Content-Type': 'application/json' } },
+    );
+  };
+  try {
+    const api = createHttpApi('/api');
+    const user = await api.login('771234567', 'Initial-Password-2026');
+    assert.deepEqual(JSON.parse(sentBody), {
+      identifier: '771234567',
+      password: 'Initial-Password-2026',
+    });
+    assert.equal(user.role, 'driver');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

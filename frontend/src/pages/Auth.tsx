@@ -1,12 +1,12 @@
 import { uiText } from '../content/reference-ui-text';
 import { useState } from 'react';
 import { ArrowRight, Eye, EyeOff } from 'lucide-react';
-import { useAuthentication, type LoginSpace } from '../application/controllers/useAuthentication';
+import { useAuthentication } from '../application/controllers/useAuthentication';
 import { messages } from '../content/fr';
 export function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [registerPassword, setRegisterPassword] = useState('');
-  const [space, setSpace] = useState<LoginSpace>('client');
+  const [registrationRole, setRegistrationRole] = useState<'client' | 'driver'>('client');
   const [resetMode, setResetMode] = useState(false);
   const {
     register,
@@ -18,7 +18,7 @@ export function Auth() {
     requestPasswordReset,
     resetSent,
     setResetSent,
-  } = useAuthentication(space);
+  } = useAuthentication();
   const passwordStrength = [
     registerPassword.length >= 8,
     /[a-zA-Z]/.test(registerPassword) && /\d/.test(registerPassword),
@@ -31,33 +31,7 @@ export function Auth() {
     <div className="auth-page">
       <div className="auth-card">
         <h1>{uiText['monCOMPTE']}</h1>
-        <div className="tabs auth-spaces" aria-label={uiText['choisirUnEspaceDeConnexion']}>
-          {(
-            [
-              ['client', 'Client'],
-              ['driver', 'Employé'],
-              ['admin', 'Administrateur'],
-            ] as const
-          ).map(([role, label]) => (
-            <button
-              type="button"
-              key={role}
-              className={space === role ? 'active' : ''}
-              aria-pressed={space === role}
-              onClick={() => {
-                setSpace(role);
-                setRegister(false);
-                setResetMode(false);
-                setRegisterPassword('');
-                setError('');
-                setResetSent(false);
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        {space === 'client' && !resetMode && (
+        {!resetMode && (
           <div className="tabs">
             <button
               type="button"
@@ -65,6 +39,7 @@ export function Auth() {
               onClick={() => {
                 setRegister(false);
                 setResetMode(false);
+                setRegistrationRole('client');
                 setRegisterPassword('');
                 setError('');
               }}
@@ -77,6 +52,7 @@ export function Auth() {
               onClick={() => {
                 setRegister(true);
                 setResetMode(false);
+                setRegistrationRole('client');
                 setRegisterPassword('');
                 setError('');
               }}
@@ -88,39 +64,64 @@ export function Auth() {
         <form onSubmit={resetMode ? requestPasswordReset : submit}>
           {register && !resetMode && (
             <>
-              <label htmlFor="auth-name">
-                <span>{uiText['nomCOMPLET']}</span>
-              </label>
-              <input
-                id="auth-name"
-                name="name"
-                autoComplete="name"
-                minLength={2}
-                maxLength={100}
-                required
-                placeholder={messages.votreNomEtPrenom}
-              />
+              <label htmlFor="auth-registration-role">Type de compte</label>
+              <select
+                id="auth-registration-role"
+                name="accountRole"
+                value={registrationRole}
+                onChange={(event) => {
+                  setRegistrationRole(event.target.value as 'client' | 'driver');
+                  setRegisterPassword('');
+                  setError('');
+                }}
+              >
+                <option value="client">Client</option>
+                <option value="driver">Employé · compte créé par l’administration</option>
+              </select>
+              {registrationRole === 'driver' ? (
+                <p className="caption">
+                  Utilisez le numéro et le mot de passe initial transmis par l’administration.
+                </p>
+              ) : (
+                <>
+                  <label htmlFor="auth-name">
+                    <span>{uiText['nomCOMPLET']}</span>
+                  </label>
+                  <input
+                    id="auth-name"
+                    name="name"
+                    autoComplete="name"
+                    minLength={2}
+                    maxLength={100}
+                    required
+                    placeholder={messages.votreNomEtPrenom}
+                  />
+                </>
+              )}
             </>
           )}
           <label htmlFor="auth-phone">
-            <span>{uiText['telephone2']}</span>
+            <span>
+              {register || resetMode ? uiText['telephone2'] : 'Téléphone ou email administrateur'}
+            </span>
           </label>
           <input
             id="auth-phone"
-            name="phone"
-            type="tel"
-            autoComplete="tel"
-            inputMode="tel"
+            name={resetMode ? 'phone' : register ? 'phone' : 'identifier'}
+            type={resetMode ? 'tel' : register ? 'tel' : 'text'}
+            autoComplete={resetMode ? 'tel' : register ? 'tel' : 'username'}
+            inputMode={resetMode || register ? 'tel' : 'text'}
             required
-            maxLength={25}
-            placeholder={uiText['221771234567']}
+            minLength={resetMode || register ? 9 : 3}
+            maxLength={resetMode || register ? 25 : 254}
+            placeholder={
+              resetMode || register ? uiText['221771234567'] : 'Téléphone ou email admin'
+            }
           />
           <p className="caption">
-            {space === 'client'
-              ? 'Numéro donné lors de votre devis ou de votre réservation.'
-              : space === 'driver'
-                ? 'Numéro enregistré par l’administrateur.'
-                : 'Numéro du compte administrateur.'}
+            {register || resetMode
+              ? 'Utilisez le numéro associé à votre compte.'
+              : 'Client : téléphone uniquement. Employé : téléphone et mot de passe initial. Administrateur : téléphone ou email avec mot de passe.'}
           </p>
           {!resetMode && (
             <>
@@ -129,15 +130,24 @@ export function Auth() {
               </label>
               <div className="auth-password-field">
                 <input
+                  key={`${register ? 'register' : 'login'}-${registrationRole}-password`}
                   id="auth-password"
                   name="password"
                   type={showPassword ? 'text' : 'password'}
-                  autoComplete={register ? 'new-password' : 'current-password'}
-                  minLength={register ? 8 : 1}
+                  autoComplete={
+                    register && registrationRole === 'client' ? 'new-password' : 'current-password'
+                  }
+                  minLength={register && registrationRole === 'client' ? 8 : register ? 10 : 0}
                   maxLength={128}
-                  required
-                  placeholder={register ? '8 caractères minimum' : messages.votreMotDePasse}
-                  onChange={(event) => setRegisterPassword(event.target.value)}
+                  required={register}
+                  placeholder={
+                    register && registrationRole === 'client'
+                      ? '8 caractères minimum'
+                      : register
+                        ? 'Mot de passe initial transmis par l’administration'
+                        : messages.votreMotDePasse
+                  }
+                  onChange={(event) => setRegisterPassword(register ? event.target.value : '')}
                 />
                 <button
                   className="auth-password-toggle"
@@ -151,7 +161,12 @@ export function Auth() {
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              {register && (
+              {!register && (
+                <p className="caption">
+                  Mot de passe obligatoire pour l’administrateur uniquement.
+                </p>
+              )}
+              {register && registrationRole === 'client' && (
                 <>
                   <div className="auth-password-strength" aria-live="polite">
                     <div aria-hidden="true">
@@ -202,12 +217,14 @@ export function Auth() {
               : resetMode
                 ? 'Envoyer la demande'
                 : register
-                  ? messages.creerMonCompte
+                  ? registrationRole === 'driver'
+                    ? 'Se connecter à mon espace employé'
+                    : messages.creerMonCompte
                   : 'Se connecter'}
             <ArrowRight size={18} />
           </button>
         </form>
-        {space === 'client' && !register && !resetMode && (
+        {!register && !resetMode && (
           <button
             className="auth-reset-link"
             type="button"

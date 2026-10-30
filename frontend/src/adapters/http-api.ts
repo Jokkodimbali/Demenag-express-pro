@@ -112,8 +112,9 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
     createDriver: (input) => request(httpRoutes.drivers, 'POST', input),
     updateDriver: (driver) => request(`${httpRoutes.drivers}/${driver.id}`, 'PUT', driver),
     deleteDriver: (id) => request(`${httpRoutes.drivers}/${id}`, 'DELETE'),
+    resetDriverPassword: (id) => request(httpRoutes.resetDriverPassword(id), 'POST', {}),
     driverProfile: () => request(httpRoutes.driver.profile),
-    updateDriverProfile: (input) => request(httpRoutes.driver.profile, 'PUT', input),
+    updateDriverPhoto: (photo) => request(httpRoutes.driver.profilePhoto, 'PUT', { photo }),
     updateDriverAvailability: (availability) =>
       request(httpRoutes.driver.availability, 'PUT', availability),
     driverBookings: () => request(httpRoutes.driver.bookings),
@@ -152,10 +153,17 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
       sharePendingRead(httpRoutes.authentication.current, () =>
         request(httpRoutes.authentication.current),
       ),
-    login: (phone, password) =>
-      request(httpRoutes.authentication.login, 'POST', { phone, password }),
-    register: (name, phone, password) =>
-      request(httpRoutes.authentication.register, 'POST', { name, phone, password }),
+    login: (identifier, password) =>
+      request(httpRoutes.authentication.login, 'POST', {
+        identifier,
+        ...(password ? { password } : {}),
+      }),
+    register: (name, phone, password, role = 'client') =>
+      request(httpRoutes.authentication.register, 'POST', {
+        role,
+        phone,
+        ...(role === 'client' ? { name, password } : {}),
+      }),
     logout: () => request(httpRoutes.authentication.logout, 'POST'),
     bookings: () => sharePendingRead(httpRoutes.bookings, () => request(httpRoutes.bookings)),
     booking: (id) => request(`${httpRoutes.bookings}/${id}`),

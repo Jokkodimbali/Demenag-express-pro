@@ -1,4 +1,5 @@
 import { uiText } from '../content/reference-ui-text';
+import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import { useAccount } from '../application/controllers/useAccount';
@@ -18,6 +19,9 @@ export function Account() {
             <h1>{messages.monProfil}</h1>
             <p>{messages.informationsDuCompteAdministrateur}</p>
           </div>
+          <Link className="button secondary small" to={routes.administration}>
+            <ArrowLeft size={16} /> Retour à l’administration
+          </Link>
         </div>
         <AdminProfileForm />
       </section>
@@ -38,6 +42,13 @@ export function Account() {
           {uiText['nouvelleReservation']}
         </Link>
       </div>
+      {user && (
+        <section className="reference-client-profile" aria-label="Profil du compte client">
+          <span>MON PROFIL</span>
+          <strong>{user.name}</strong>
+          <span>{user.phone}</span>
+        </section>
+      )}
       {error && (
         <p className="reference-client-error" role="alert">
           {error}{' '}

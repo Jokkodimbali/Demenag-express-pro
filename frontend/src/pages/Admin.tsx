@@ -1,7 +1,7 @@
 import { liveBookingPrice } from '../application/services/live-booking-price';
 import { uiText } from '../content/reference-ui-text';
 import { useEffect, useState } from 'react';
-import { MessageCircle } from 'lucide-react';
+import { MessageCircle, Search, X } from 'lucide-react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { routes } from '../routing/routes';
 import { useAdministration } from '../application/controllers/useAdministration';
@@ -13,6 +13,9 @@ import { messages } from '../content/fr';
 import { money } from '../domain/format';
 import type { Booking } from '../domain/model';
 import { whatsappNumber, whatsappUrl } from '../application/services/whatsapp';
+import { usePagination } from '../application/usePagination';
+import { Pagination } from '../components/Pagination';
+import { pageSizes } from '../config/pagination';
 
 type ReservationFilter = 'all' | 'provisional' | 'final' | 'undated';
 type ReservationPeriod = 'all' | 'day' | 'week';
@@ -80,6 +83,7 @@ export function Admin() {
   const location = useLocation();
   const navigate = useNavigate();
   const [reservationFilter, setReservationFilter] = useState<ReservationFilter>('all');
+  const [searchQuery, setSearchQuery] = useState(() => params.get('q') ?? '');
   const [period, setPeriod] = useState<ReservationPeriod>('all');
   const [selectedDay, setSelectedDay] = useState(dakarToday);
   const [reminderBusy, setReminderBusy] = useState('');
@@ -106,12 +110,40 @@ export function Admin() {
     final: periodBookings.filter(hasFinalQuote).length,
     undated: periodBookings.filter((booking) => !booking.date).length,
   };
-  const visible = periodBookings.filter((booking) => {
-    if (reservationFilter === 'undated') return !booking.date;
-    if (reservationFilter === 'provisional') return isProvisional(booking);
-    if (reservationFilter === 'final') return hasFinalQuote(booking);
-    return true;
-  });
+  const filteredBookings = periodBookings
+    .filter((booking) => {
+      if (reservationFilter === 'undated') return !booking.date;
+      if (reservationFilter === 'provisional') return isProvisional(booking);
+      if (reservationFilter === 'final') return hasFinalQuote(booking);
+      return true;
+    })
+    .filter((booking) => {
+      const query = searchQuery
+        .trim()
+        .toLocaleLowerCase('fr')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/gu, '');
+      if (!query) return true;
+      const searchable = [
+        booking.reference,
+        booking.customerName,
+        booking.phone,
+        booking.fromAddress,
+        booking.toAddress,
+        booking.vehicle.name,
+        booking.vehicle.shortName,
+      ]
+        .join(' ')
+        .toLocaleLowerCase('fr')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/gu, '');
+      return searchable.includes(query);
+    });
+  const bookingsPage = usePagination(
+    filteredBookings,
+    pageSizes.bookings,
+    `${searchQuery}|${reservationFilter}|${period}|${selectedDay}`,
+  );
   function reminderInfo(booking: Booking) {
     const daysBefore = booking.date
       ? Math.round(
@@ -276,6 +308,25 @@ export function Admin() {
       )}
       <>
         <div className="admin-reference-reservation-toolbar">
+          <label className="admin-reference-reservation-search">
+            <Search size={17} aria-hidden="true" />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder={uiText['rechercherUneReservation']}
+              aria-label={uiText['rechercherUneReservation']}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                aria-label={uiText['effacerLaRecherche']}
+              >
+                <X size={16} aria-hidden="true" />
+              </button>
+            )}
+          </label>
           <div
             className="admin-reference-reservation-filters"
             aria-label={uiText['filtrerLesReservations']}
@@ -401,10 +452,14 @@ export function Admin() {
                 <span role="columnheader">{uiText['montant']}</span>
                 <span role="columnheader">{uiText['statut']}</span>
               </div>
-              {visible.length === 0 ? (
-                <div className="admin-reservations-empty">{uiText['aucuneReservation']}</div>
+              {bookingsPage.total === 0 ? (
+                <div className="admin-reservations-empty">
+                  {searchQuery.trim()
+                    ? uiText['aucuneReservationCorrespondante']
+                    : uiText['aucuneReservation']}
+                </div>
               ) : (
-                visible.map((booking) => {
+                bookingsPage.rows.map((booking) => {
                   const total = liveBookingPrice(booking, catalogue).total;
                   const reminder = reminderInfo(booking);
                   const href = `${routes.administrationCreateQuote}?modifier=${encodeURIComponent(booking.id)}`;
@@ -494,10 +549,14 @@ export function Admin() {
               )}
             </div>
             <div className="admin-reservations-mobile">
-              {visible.length === 0 ? (
-                <div className="admin-reservations-empty">{uiText['aucuneReservation']}</div>
+              {bookingsPage.total === 0 ? (
+                <div className="admin-reservations-empty">
+                  {searchQuery.trim()
+                    ? uiText['aucuneReservationCorrespondante']
+                    : uiText['aucuneReservation']}
+                </div>
               ) : (
-                visible.map((booking) => {
+                bookingsPage.rows.map((booking) => {
                   const total = liveBookingPrice(booking, catalogue).total;
                   const reminder = reminderInfo(booking);
                   const href = `${routes.administrationCreateQuote}?modifier=${encodeURIComponent(booking.id)}`;
@@ -589,6 +648,14 @@ export function Admin() {
               {uiText['cliquezSurUneLignePourEtablirOuModifierLeDevis']}
             </span>
           </>
+        )}
+        {!loading && !selectedBooking && bookingsPage.total > 0 && (
+          <Pagination
+            page={bookingsPage.page}
+            pageCount={bookingsPage.pageCount}
+            total={bookingsPage.total}
+            onPageChange={bookingsPage.setPage}
+          />
         )}
       </>
     </>

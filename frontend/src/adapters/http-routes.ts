@@ -1,6 +1,7 @@
 export const httpRoutes = {
   users: '/admin/users',
   resetUserPassword: (id: string) => `/admin/users/${id}/password-reset`,
+  resetDriverPassword: (id: string) => `/admin/drivers/${id}/password-reset`,
   clients: '/admin/clients',
   adminProfile: '/admin/profile',
   accounting: '/admin/accounting',
@@ -26,6 +27,7 @@ export const httpRoutes = {
   bookingRoute: (id: string) => `/bookings/${id}/route`,
   driver: {
     profile: '/driver/profile',
+    profilePhoto: '/driver/profile/photo',
     availability: '/driver/availability',
     bookings: '/driver/bookings',
     inspections: '/driver/vehicle-inspections',

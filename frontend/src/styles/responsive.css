@@ -559,9 +559,6 @@
     gap: 8px;
     font-size: 10px;
   }
-  .admin-toolbar {
-    align-items: stretch;
-  }
   .admin-reservations-desktop {
     display: none;
   }
@@ -574,12 +571,6 @@
     padding: 20px;
     background: #272a2e;
     border-radius: 16px;
-  }
-  .search-field {
-    width: 100%;
-  }
-  .search-field input {
-    font-size: 14px;
   }
   .tariff-grid {
     grid-template-columns: minmax(0, 1fr);

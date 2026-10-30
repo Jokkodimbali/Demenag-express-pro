@@ -1,5 +1,6 @@
 import { uiText } from '../content/reference-ui-text';
 import { useEffect, useRef, useState } from 'react';
+import { BriefcaseBusiness, ChevronDown, LogOut, UserRound } from 'lucide-react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useLayout } from '../application/controllers/useLayout';
 import { routes } from '../routing/routes';
@@ -10,6 +11,7 @@ export function Layout() {
   const { pathname, hash } = useLocation();
   const [headerSuccess, setHeaderSuccess] = useState('');
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const accountMenuRef = useRef<HTMLDetailsElement>(null);
 
   useEffect(() => {
     if (pathname === routes.home && hash === '#reserver') {
@@ -38,6 +40,8 @@ export function Layout() {
       : user?.role === 'driver'
         ? routes.driverWorkspace
         : routes.account;
+  const profileRoute = user?.role === 'driver' ? routes.driverProfile : routes.account;
+  const closeAccountMenu = () => accountMenuRef.current?.removeAttribute('open');
 
   return (
     <>
@@ -62,18 +66,45 @@ export function Layout() {
               {uiText['reserver2']}
             </Link>
             {user ? (
-              <>
-                <Link className="reference-nav-account" to={accountRoute}>
-                  {user.role === 'admin' ? 'Administration' : 'Mon espace'}
-                </Link>
-                <button
-                  type="button"
-                  className="reference-nav-logout"
-                  onClick={() => void logout()}
-                >
-                  {uiText['deconnexion']}
-                </button>
-              </>
+              <details className="account-menu" ref={accountMenuRef}>
+                <summary aria-label={`Compte de ${user.name}`}>
+                  {user.photo ? (
+                    <img className="account-avatar" src={user.photo} alt="" />
+                  ) : (
+                    <span className="account-avatar account-avatar-placeholder">
+                      <UserRound size={16} aria-hidden="true" />
+                    </span>
+                  )}
+                  <span>{user.name}</span>
+                  <ChevronDown size={15} aria-hidden="true" />
+                </summary>
+                <div className="account-dropdown">
+                  <div className="account-dropdown-profile">
+                    <strong>{user.name}</strong>
+                    <span>
+                      {user.role === 'admin'
+                        ? 'Administrateur'
+                        : user.role === 'driver'
+                          ? 'Employé'
+                          : 'Client'}
+                    </span>
+                  </div>
+                  <Link to={profileRoute} onClick={closeAccountMenu}>
+                    <UserRound size={16} aria-hidden="true" />
+                    {user.role === 'client' ? 'Mon profil et mes réservations' : 'Mon profil'}
+                  </Link>
+                  {accountRoute !== profileRoute && (
+                    <Link to={accountRoute} onClick={closeAccountMenu}>
+                      <BriefcaseBusiness size={16} aria-hidden="true" />
+                      {user.role === 'admin' ? 'Administration' : 'Mon espace missions'}
+                    </Link>
+                  )}
+                  <button type="button" onClick={() => void logout()}>
+                    <LogOut size={16} aria-hidden="true" />
+                    {uiText['deconnexion']}
+                  </button>
+                </div>
+              </details>
             ) : (
               <Link className="reference-nav-login" to={routes.login}>
                 {uiText['monCompte']}

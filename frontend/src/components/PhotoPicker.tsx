@@ -8,6 +8,9 @@ type PhotoPickerProps = {
   required?: boolean;
   maxPhotos?: number;
   validationError?: string;
+  disabled?: boolean;
+  cameraButtonLabel?: string;
+  importButtonLabel?: string;
   onChange: (files: File[]) => void;
 };
 
@@ -17,6 +20,9 @@ export function PhotoPicker({
   required = false,
   maxPhotos = 5,
   validationError,
+  disabled = false,
+  cameraButtonLabel = uiText['prendreUnePhoto'],
+  importButtonLabel = uiText['choisirDesPhotos'],
   onChange,
 }: PhotoPickerProps) {
   const galleryRef = useRef<HTMLInputElement>(null);
@@ -42,11 +48,11 @@ export function PhotoPicker({
       setError('Utilisez une image JPG, PNG ou WebP.');
       return;
     }
-    if (files.length + selected.length > maxPhotos) {
+    if (maxPhotos > 1 && files.length + selected.length > maxPhotos) {
       setError(`Vous pouvez ajouter ${maxPhotos} photo${maxPhotos > 1 ? 's' : ''} maximum.`);
     } else {
       setError('');
-      onChange([...files, ...selected]);
+      onChange(maxPhotos === 1 ? [selected[0]!] : [...files, ...selected]);
     }
     if (galleryRef.current) galleryRef.current.value = '';
     if (cameraRef.current) cameraRef.current.value = '';
@@ -75,7 +81,7 @@ export function PhotoPicker({
   }
   async function takePhoto() {
     const video = videoRef.current;
-    if (!video || video.videoWidth === 0 || files.length >= maxPhotos) return;
+    if (!video || video.videoWidth === 0 || (maxPhotos > 1 && files.length >= maxPhotos)) return;
     const canvas = document.createElement('canvas');
     const scale = Math.min(1, 1920 / Math.max(video.videoWidth, video.videoHeight));
     canvas.width = Math.round(video.videoWidth * scale);
@@ -86,8 +92,10 @@ export function PhotoPicker({
     const image = await new Promise<Blob | null>((resolve) =>
       canvas.toBlob(resolve, 'image/jpeg', 0.82),
     );
-    if (image)
-      onChange([...files, new File([image], `photo-${Date.now()}.jpg`, { type: 'image/jpeg' })]);
+    if (image) {
+      const photo = new File([image], `photo-${Date.now()}.jpg`, { type: 'image/jpeg' });
+      onChange(maxPhotos === 1 ? [photo] : [...files, photo]);
+    }
     setCameraStream(null);
   }
   return (
@@ -102,17 +110,18 @@ export function PhotoPicker({
         <button
           type="button"
           className="button secondary small"
+          disabled={disabled}
           onClick={() => galleryRef.current?.click()}
         >
-          <ImagePlus size={16} /> {uiText['choisirDesPhotos']}
+          <ImagePlus size={16} /> {importButtonLabel}
         </button>
         <button
           type="button"
           className="button secondary small"
           onClick={() => void openCamera()}
-          disabled={openingCamera || files.length >= maxPhotos}
+          disabled={disabled || openingCamera || (maxPhotos > 1 && files.length >= maxPhotos)}
         >
-          <Camera size={16} /> {uiText['prendreUnePhoto']}
+          <Camera size={16} /> {cameraButtonLabel}
         </button>
       </div>
       <input
@@ -121,6 +130,7 @@ export function PhotoPicker({
         type="file"
         accept="image/jpeg,image/png,image/webp"
         multiple
+        disabled={disabled}
         onChange={(event) => addFiles(event.currentTarget.files)}
       />
       <input
@@ -129,6 +139,7 @@ export function PhotoPicker({
         type="file"
         accept="image/jpeg,image/png,image/webp"
         capture="environment"
+        disabled={disabled}
         onChange={(event) => addFiles(event.currentTarget.files)}
       />
       {files.length > 0 && (
@@ -144,6 +155,7 @@ export function PhotoPicker({
                 <button
                   type="button"
                   aria-label={`Retirer la photo ${index + 1}`}
+                  disabled={disabled}
                   onClick={() => onChange(files.filter((_, photoIndex) => photoIndex !== index))}
                 >
                   <X size={15} />
@@ -175,6 +187,7 @@ export function PhotoPicker({
               <button
                 type="button"
                 className="button secondary"
+                disabled={disabled}
                 onClick={() => setCameraStream(null)}
               >
                 {uiText['annuler']}
@@ -183,7 +196,7 @@ export function PhotoPicker({
                 type="button"
                 className="button primary"
                 onClick={() => void takePhoto()}
-                disabled={files.length >= maxPhotos}
+                disabled={disabled || (maxPhotos > 1 && files.length >= maxPhotos)}
               >
                 <Camera size={17} /> {uiText['capturerLaPhoto']}
               </button>

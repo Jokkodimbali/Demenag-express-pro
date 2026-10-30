@@ -17,11 +17,22 @@ export class PrismaUsers implements UserRepository {
       data: { demandeReinitialisationMotDePasse: requestedAt },
     });
   }
-  async updateProfile(userId: string, name: string, phone: string, photo?: string | null) {
+  async updateProfile(
+    userId: string,
+    name: string,
+    phone: string,
+    photo?: string | null,
+    email?: string | null,
+  ) {
     try {
       const row = await this.db.utilisateur.update({
         where: { id: userId },
-        data: { nom: name, telephone: phone, ...(photo === undefined ? {} : { photo }) },
+        data: {
+          nom: name,
+          telephone: phone,
+          ...(photo === undefined ? {} : { photo }),
+          ...(email === undefined ? {} : { email: email?.trim().toLowerCase() || null }),
+        },
       });
       return safeUser(fromUser(row));
     } catch (error) {
@@ -30,6 +41,12 @@ export class PrismaUsers implements UserRepository {
   }
   async findByPhone(phone: string) {
     const row = await this.db.utilisateur.findUnique({ where: { telephone: phone } });
+    return row ? fromUser(row) : null;
+  }
+  async findByEmail(email: string) {
+    const row = await this.db.utilisateur.findUnique({
+      where: { email: email.trim().toLowerCase() },
+    });
     return row ? fromUser(row) : null;
   }
   async create(user: UserCredentials) {

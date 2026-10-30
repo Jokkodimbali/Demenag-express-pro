@@ -1,5 +1,8 @@
 import { uiText } from '../../content/reference-ui-text';
+import { Copy, KeyRound, MessageCircle, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { messages } from '../../content/fr';
+import { whatsappUrl } from '../../application/services/whatsapp';
 import type { useAdminFleetPageModel } from '../../application/controllers/useAdminFleetPageModel';
 type Model = ReturnType<typeof useAdminFleetPageModel>;
 export function FleetEmployeesPanel({ model }: { model: Model }) {
@@ -28,6 +31,8 @@ export function FleetEmployeesPanel({ model }: { model: Model }) {
     setSortByAccepted,
     newEmployee,
     setNewEmployee,
+    createdEmployeeAccess,
+    setCreatedEmployeeAccess,
     dayIndex,
     availabilityOf,
     weekLoad,
@@ -36,6 +41,7 @@ export function FleetEmployeesPanel({ model }: { model: Model }) {
     applyMemberPatch,
     updateEmployeeAddress,
     addEmployee,
+    resetEmployeePassword,
     removeEmployee,
     visibleEmployees,
     roles,
@@ -45,6 +51,12 @@ export function FleetEmployeesPanel({ model }: { model: Model }) {
     availabilitySummary,
     iso,
   } = model;
+  const [copiedCredential, setCopiedCredential] = useState(false);
+  const [credentialCopyError, setCredentialCopyError] = useState('');
+  useEffect(() => {
+    setCopiedCredential(false);
+    setCredentialCopyError('');
+  }, [createdEmployeeAccess?.password]);
   return (
     <section className="teams-panel teams-employees">
       <div>
@@ -76,17 +88,6 @@ export function FleetEmployeesPanel({ model }: { model: Model }) {
             value={newEmployee.phone}
             onChange={(event) =>
               setNewEmployee((value) => ({ ...value, phone: event.target.value }))
-            }
-          />
-          <input
-            placeholder={uiText['motDePasseInitial10CaracteresMinimum']}
-            type="password"
-            autoComplete="new-password"
-            minLength={10}
-            maxLength={128}
-            value={newEmployee.password}
-            onChange={(event) =>
-              setNewEmployee((value) => ({ ...value, password: event.target.value }))
             }
           />
           <input
@@ -128,6 +129,76 @@ export function FleetEmployeesPanel({ model }: { model: Model }) {
           {uiText['ajouterLEmploye']}
         </button>
       </div>
+      {createdEmployeeAccess && (
+        <section className="teams-generated-credentials" role="status">
+          <div className="teams-generated-heading">
+            <div>
+              <strong>
+                {createdEmployeeAccess.purpose === 'creation'
+                  ? 'Compte employé créé'
+                  : 'Mot de passe employé réinitialisé'}
+              </strong>
+              <span>
+                {createdEmployeeAccess.purpose === 'creation'
+                  ? `Transmettez ces identifiants à ${createdEmployeeAccess.name}.`
+                  : `Le nouveau mot de passe de ${createdEmployeeAccess.name} remplace l’ancien.`}
+              </span>
+            </div>
+            <button
+              type="button"
+              className="team-icon-button"
+              aria-label="Masquer les identifiants"
+              onClick={() => setCreatedEmployeeAccess(null)}
+            >
+              <X size={16} />
+            </button>
+          </div>
+          <div className="teams-generated-fields">
+            <label>
+              Téléphone
+              <input readOnly value={createdEmployeeAccess.phone} />
+            </label>
+            <label>
+              Mot de passe{' '}
+              {createdEmployeeAccess.purpose === 'creation' ? 'initial' : 'à transmettre'}
+              <input readOnly value={createdEmployeeAccess.password} />
+            </label>
+          </div>
+          {credentialCopyError && <p className="teams-generated-error">{credentialCopyError}</p>}
+          <div className="teams-generated-actions">
+            <button
+              type="button"
+              className="team-button"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(createdEmployeeAccess.password);
+                  setCopiedCredential(true);
+                  setCredentialCopyError('');
+                } catch {
+                  setCredentialCopyError(
+                    'Copie indisponible. Sélectionnez le mot de passe pour le copier.',
+                  );
+                }
+              }}
+            >
+              <Copy size={15} />{' '}
+              {copiedCredential ? 'Mot de passe copié' : 'Copier le mot de passe'}
+            </button>
+            <a
+              className="team-button primary"
+              href={whatsappUrl(
+                createdEmployeeAccess.phone,
+                `Bonjour ${createdEmployeeAccess.name}, voici vos accès à l’espace employé Demenag Express. Téléphone : ${createdEmployeeAccess.phone}. Mot de passe : ${createdEmployeeAccess.password}. Connectez-vous avec ces identifiants puis changez votre mot de passe.`,
+                catalogue?.settings,
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <MessageCircle size={15} /> Envoyer par WhatsApp
+            </a>
+          </div>
+        </section>
+      )}
       <div className="teams-chips teams-filter-chips">
         <button
           className={!sortByAccepted ? 'team-chip active' : 'team-chip'}
@@ -264,6 +335,16 @@ export function FleetEmployeesPanel({ model }: { model: Model }) {
                 {activeToday
                   ? `Disponible ${employeeDayAvailability.startTime}–${employeeDayAvailability.endTime}`
                   : 'Repos'}
+              </button>
+              <button
+                type="button"
+                className="team-icon-button"
+                title="Réinitialiser et copier le mot de passe"
+                aria-label={`Réinitialiser le mot de passe de ${employee.name}`}
+                disabled={savingEmployee === employee.id}
+                onClick={() => void resetEmployeePassword(employee)}
+              >
+                <KeyRound size={16} />
               </button>
               <button
                 className="team-delete"

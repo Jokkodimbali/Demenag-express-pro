@@ -8,6 +8,9 @@ export const uiText1 = {
   voulezVousSupprimerDefinitivementCeRendezVous:
     'Voulez-vous supprimer définitivement ce rendez-vous ?',
   filtrerLesReservations: 'Filtrer les réservations',
+  rechercherUneReservation: 'Rechercher une réservation',
+  aucuneReservationCorrespondante:
+    'Aucune réservation ne correspond à la recherche ou aux filtres.',
   periodeDesReservations: 'Période des réservations',
   precedent: 'Précédent',
   dateDeLaPeriode: 'Date de la période',

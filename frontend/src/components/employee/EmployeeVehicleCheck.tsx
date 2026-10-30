@@ -6,6 +6,7 @@ import { showHeaderSuccess } from '../../application/header-notice';
 import { errorMessage } from '../../application/error-message';
 import type { VehicleInspection } from '../../application/ports';
 import type { Driver } from '../../domain/model';
+import { PhotoPicker } from '../PhotoPicker';
 import { employeeDate, employeePhoto } from './photos';
 const checks = [
   ['engineOil', 'Niveau d’huile'],
@@ -30,6 +31,7 @@ export function EmployeeVehicleCheck({
   const [selected, setSelected] = useState('');
   const vehicleId = vehicles.some((v) => v.id === selected) ? selected : (vehicles[0]?.id ?? '');
   const [items, setItems] = useState<Record<string, Item>>({});
+  const [photoFiles, setPhotoFiles] = useState<Record<string, File[]>>({});
   const [reports, setReports] = useState<VehicleInspection[]>([]);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -82,6 +84,7 @@ export function EmployeeVehicleCheck({
       });
       setReports((old) => [report, ...old]);
       setItems({});
+      setPhotoFiles({});
       showHeaderSuccess('Contrôle technique enregistré.');
     } catch (e) {
       setError(errorMessage(e));
@@ -109,26 +112,19 @@ export function EmployeeVehicleCheck({
         {checks.map(([key, label]) => (
           <div className="employee-check" key={key}>
             <strong>{label}</strong>
-            <label className="employee-photo-input">
-              {items[key]?.image ? (
-                <img src={items[key].image} alt={label} />
-              ) : (
-                <span>{uiText['prendreLaPhoto']}</span>
-              )}
-              <input
-                aria-label={`Photo · ${label}`}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                hidden
-                disabled={busy}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  e.target.value = '';
-                  void photo(key, file);
-                }}
-              />
-            </label>
+            <PhotoPicker
+              label={`Photo · ${label}`}
+              files={photoFiles[key] ?? []}
+              maxPhotos={1}
+              disabled={busy}
+              cameraButtonLabel="Activer la caméra"
+              importButtonLabel="Importer une photo"
+              onChange={(files) => {
+                setPhotoFiles((current) => ({ ...current, [key]: files }));
+                if (files[0]) void photo(key, files[0]);
+                else update(key, { image: undefined });
+              }}
+            />
             {items[key]?.image ? (
               <button className="employee-enlarge" onClick={() => onView(items[key].image!)}>
                 {uiText['agrandir']}

@@ -9,6 +9,7 @@ import {
 import { vehicleCapacity } from '../src/domain/vehicle-capacity.js';
 import { validateDate, transition } from '../src/domain/booking.js';
 import { AuthService, normalizePhone } from '../src/application/services/auth.js';
+import { registerSchema } from '../src/adapters/in/http/validation/auth.js';
 import { ScryptPasswords } from '../src/adapters/out/security/crypto.js';
 import type { Settings, UserCredentials, Vehicle } from '../src/domain/model.js';
 const vehicle: Vehicle = {
@@ -337,6 +338,19 @@ test('Le téléphone est normalisé sans tronquer les numéros invalides', () =>
   assert.equal(normalizePhone('00221 77 123 45 67'), '+221771234567');
   assert.throws(() => normalizePhone('1234567771234567'));
 });
+test('L’inscription autorise les clients et employés préenregistrés, jamais un admin public', () => {
+  const phone = '771234567';
+  assert.equal(
+    registerSchema.parse({ name: 'Client test', phone, password: 'Client-2026' }).role,
+    'client',
+  );
+  assert.equal(registerSchema.safeParse({ phone, role: 'driver' }).success, false);
+  assert.equal(
+    registerSchema.safeParse({ name: 'Admin test', phone, password: 'Admin-2026', role: 'admin' })
+      .success,
+    false,
+  );
+});
 test('La connexion accepte les comptes historiques enregistrés sans +221', async () => {
   const user: UserCredentials = {
     id: 'user-1',
@@ -346,9 +360,34 @@ test('La connexion accepte les comptes historiques enregistrés sans +221', asyn
     active: true,
     passwordHash: 'valid-hash',
   };
+  const admin: UserCredentials = {
+    id: 'admin-1',
+    name: 'Admin test',
+    phone: '+221771234567',
+    email: 'admin@example.com',
+    role: 'admin',
+    active: true,
+    passwordHash: 'admin-hash',
+  };
+  const employee: UserCredentials = {
+    id: 'employee-1',
+    name: 'Employé test',
+    phone: '+221781234567',
+    role: 'driver',
+    active: true,
+    passwordHash: 'employee-hash',
+  };
   const auth = new AuthService(
     {
-      findByPhone: async (phone) => (phone === user.phone ? user : null),
+      findByPhone: async (phone) =>
+        phone === user.phone
+          ? user
+          : phone === admin.phone
+            ? admin
+            : phone === employee.phone
+              ? employee
+              : null,
+      findByEmail: async (email) => (email === admin.email ? admin : null),
       create: async () => user,
       updatePassword: async () => {},
       updateProfile: async (id, name, phone, photo) => ({
@@ -372,8 +411,16 @@ test('La connexion accepte les comptes historiques enregistrés sans +221', asyn
     { next: () => 'session-1' },
   );
 
-  const session = await auth.login('+221 77 141 12 51', 'correct-password');
+  const session = await auth.login('+221 77 141 12 51');
   assert.equal(session.user.id, user.id);
+  const adminSession = await auth.login('admin@example.com', 'correct-password');
+  assert.equal(adminSession.user.id, admin.id);
+  await assert.rejects(auth.login('admin@example.com'));
+  await assert.rejects(auth.login('+221771234567'));
+  await assert.rejects(auth.login('+221771234567', 'wrong-password'));
+  assert.equal((await auth.login('+221771234567', 'correct-password')).user.id, admin.id);
+  assert.equal((await auth.login(employee.phone, 'correct-password')).user.id, employee.id);
+  await assert.rejects(auth.login(employee.phone));
 });
 test('Les mots de passe sont salés et vérifiés sans stockage en clair', async () => {
   const h = new ScryptPasswords();

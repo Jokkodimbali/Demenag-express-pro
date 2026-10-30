@@ -60,6 +60,7 @@ export function compose(db: PrismaClient, routing: RoutingProvider) {
       new ScryptPasswords(),
       ids,
       notifications,
+      new PrismaSessions(db),
     ),
     administration: new AdministrationService(
       new PrismaAdministration(db),

@@ -36,7 +36,7 @@ export interface AccountingUseCases {
 export type AuthSession = { user: User; token: string };
 export interface AuthUseCases {
   register(name: string, phone: string, password: string): Promise<AuthSession>;
-  login(phone: string, password: string): Promise<AuthSession>;
+  login(identifier: string, password?: string): Promise<AuthSession>;
   requestPasswordReset(phone: string): Promise<void>;
   current(token?: string): Promise<User | null>;
   logout(token?: string): Promise<void>;
@@ -125,7 +125,10 @@ export interface AdministrationUseCases {
   updateUser(actor: User, user: User): Promise<User>;
   createUser(actor: User, input: Omit<User, 'id'> & { password: string }): Promise<User>;
   resetClientPassword(actor: User, userId: string, password: string): Promise<void>;
-  updateProfile(actor: User, input: Pick<User, 'name' | 'phone' | 'photo'>): Promise<User>;
+  updateProfile(
+    actor: User,
+    input: Pick<User, 'name' | 'phone' | 'photo' | 'email'>,
+  ): Promise<User>;
 }
 export interface CatalogueUseCases {
   get(): Promise<Catalogue>;
@@ -136,15 +139,17 @@ export interface CatalogueUseCases {
   updateTollPoint(actor: User, id: string, input: TollPointInput): Promise<TollPoint>;
   deleteTollPoint(actor: User, id: string): Promise<void>;
 }
-export type DriverCreation = Omit<Driver, 'id' | 'userId' | 'active'> & { password?: string };
+export type DriverCreation = Omit<Driver, 'id' | 'userId' | 'active'>;
+export type CreatedDriver = Driver & { initialPassword: string };
 export type DriverUpdate = Omit<Driver, 'userId'>;
 export interface DriverUseCases {
   list(actor: User): Promise<Driver[]>;
-  create(actor: User, input: DriverCreation): Promise<Driver>;
+  create(actor: User, input: DriverCreation): Promise<CreatedDriver>;
   update(actor: User, driver: DriverUpdate): Promise<Driver>;
   remove(actor: User, id: string): Promise<{ removed: boolean; employee: Driver }>;
+  resetAccessPassword(actor: User, id: string): Promise<{ password: string }>;
   profile(actor: User): Promise<Driver>;
-  updateProfile(actor: User, input: Pick<Driver, 'name' | 'phone' | 'photo'>): Promise<Driver>;
+  updatePhoto(actor: User, photo: string | null): Promise<Driver>;
   updateAvailability(
     actor: User,
     availability: NonNullable<Driver['availability']>,

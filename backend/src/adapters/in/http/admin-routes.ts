@@ -315,6 +315,11 @@ export function registerAdminRoutes(
       .status(201)
       .json(await deps.drivers.create(getActor(res), createDriverSchema.parse(req.body))),
   );
+  app.post(apiRoutes.administration.driverPasswordReset, authenticate, admin, async (req, res) =>
+    res.json(
+      await deps.drivers.resetAccessPassword(getActor(res), userIdSchema.parse(req.params.id)),
+    ),
+  );
   app.put(`${apiRoutes.administration.drivers}/:id`, authenticate, admin, async (req, res) =>
     res.json(
       await deps.drivers.update(getActor(res), {

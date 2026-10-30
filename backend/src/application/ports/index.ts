@@ -57,10 +57,17 @@ export interface NotificationPublisher {
 }
 export interface UserRepository {
   findByPhone(phone: string): Promise<UserCredentials | null>;
+  findByEmail(email: string): Promise<UserCredentials | null>;
   create(user: UserCredentials): Promise<User>;
   updatePassword(userId: string, hash: string): Promise<void>;
   requestPasswordReset?(userId: string, requestedAt: Date): Promise<void>;
-  updateProfile(userId: string, name: string, phone: string, photo?: string | null): Promise<User>;
+  updateProfile(
+    userId: string,
+    name: string,
+    phone: string,
+    photo?: string | null,
+    email?: string | null,
+  ): Promise<User>;
 }
 export interface SessionRepository {
   create(hash: string, userId: string, expiresAt: Date): Promise<void>;

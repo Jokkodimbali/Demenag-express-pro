@@ -8,6 +8,7 @@ import type {
   IdGenerator,
   NotificationPublisher,
   PasswordHasher,
+  SessionRepository,
   UserRepository,
 } from '../ports/index.js';
 import type { DriverCreation, DriverUpdate, DriverUseCases } from '../ports/use-cases.js';
@@ -21,6 +22,7 @@ export class DriverService implements DriverUseCases {
     private readonly passwords: PasswordHasher,
     private readonly ids: IdGenerator,
     private readonly notifications?: NotificationPublisher,
+    private readonly sessions?: SessionRepository,
   ) {}
   async list(actor: User) {
     requireAdministrator(actor);
@@ -29,21 +31,20 @@ export class DriverService implements DriverUseCases {
   async create(actor: User, input: DriverCreation) {
     requireAdministrator(actor);
     const phone = normalizePhone(input.phone);
-    if (input.password && (await this.users.findByPhone(phone)))
+    if (await this.users.findByPhone(phone))
       throw new AppError(409, messages.unCompteUtiliseDejaCeNumero);
-    const user = input.password
-      ? await this.users.create({
-          id: this.ids.next(),
-          name: input.name,
-          phone,
-          passwordHash: await this.passwords.hash(input.password),
-          role: 'driver',
-          active: true,
-        })
-      : null;
+    const initialPassword = this.newPassword();
+    const user = await this.users.create({
+      id: this.ids.next(),
+      name: input.name,
+      phone,
+      passwordHash: await this.passwords.hash(initialPassword),
+      role: 'driver',
+      active: true,
+    });
     const driver = {
       id: this.ids.next(),
-      userId: user?.id ?? null,
+      userId: user.id,
       name: input.name,
       phone,
       photo: input.photo,
@@ -63,7 +64,7 @@ export class DriverService implements DriverUseCases {
     await this.releaseVehicle(driver.vehicleId, driver.id);
     const created = await this.drivers.create(driver);
     if (created.vehicleId) await this.notifyVehicleAssignment(created);
-    return created;
+    return { ...created, initialPassword };
   }
   async update(actor: User, input: DriverUpdate) {
     requireAdministrator(actor);
@@ -128,14 +129,31 @@ export class DriverService implements DriverUseCases {
     await this.drivers.delete(id);
     return { removed: true, employee };
   }
+  async resetAccessPassword(actor: User, id: string) {
+    requireAdministrator(actor);
+    const employee = await this.drivers.find(id);
+    if (!employee?.userId)
+      throw new AppError(404, 'Aucun compte de connexion associé à cet employé.');
+    if (!this.sessions)
+      throw new AppError(500, 'La réinitialisation sécurisée des accès est indisponible.');
+    const normalizedPhone = normalizePhone(employee.phone);
+    const account =
+      (await this.users.findByPhone(normalizedPhone)) ??
+      (await this.users.findByPhone(normalizedPhone.slice('+221'.length)));
+    if (!account || account.id !== employee.userId || account.role !== 'driver')
+      throw new AppError(409, 'Le compte de connexion de cet employé est introuvable.');
+    const password = this.newPassword();
+    await this.users.updatePassword(account.id, await this.passwords.hash(password));
+    await this.sessions.deleteForUser(account.id);
+    return { password };
+  }
   async profile(actor: User) {
     return this.requireProfile(actor);
   }
-  async updateProfile(actor: User, input: Pick<Driver, 'name' | 'phone' | 'photo'>) {
+  async updatePhoto(actor: User, photo: string | null) {
     const current = await this.requireProfile(actor);
-    const phone = await this.availablePhone(input.phone, actor.id);
-    const updated = await this.drivers.update({ ...current, ...input, phone });
-    await this.users.updateProfile(actor.id, updated.name, updated.phone);
+    const updated = await this.drivers.update({ ...current, photo });
+    await this.users.updateProfile(actor.id, current.name, current.phone, photo);
     return updated;
   }
   async updateAvailability(actor: User, availability: NonNullable<Driver['availability']>) {
@@ -252,5 +270,8 @@ export class DriverService implements DriverUseCases {
       },
       { userIds: [driver.userId] },
     );
+  }
+  private newPassword() {
+    return `${this.ids.next().replaceAll('-', '')}G7`;
   }
 }

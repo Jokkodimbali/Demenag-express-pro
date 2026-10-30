@@ -4,8 +4,7 @@ import { useApp } from '../context';
 import { errorMessage } from '../error-message';
 import { routes } from '../../routing/routes';
 import { messages } from '../../content/fr';
-export type LoginSpace = 'client' | 'driver' | 'admin';
-export function useAuthentication(space: LoginSpace) {
+export function useAuthentication() {
   const { api, setUser } = useApp();
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -20,23 +19,24 @@ export function useAuthentication(space: LoginSpace) {
     setBusy(true);
     const f = new FormData(e.currentTarget);
     try {
-      const phone = String(f.get('phone')),
-        password = String(f.get('password'));
+      const phone = String(f.get('phone') ?? ''),
+        password = String(f.get('password') ?? '');
       if (register) {
-        if (password !== String(f.get('passwordConfirmation')))
-          throw new Error('Les deux mots de passe ne correspondent pas.');
-        if (password.length < 8 || !/[a-zA-Z]/.test(password) || !/\d/.test(password))
-          throw new Error(
-            'Mot de passe trop faible : 8 caractères minimum, avec au moins une lettre et un chiffre.',
-          );
-        await api.register(String(f.get('name')), phone, password);
-      } else await api.login(phone, password);
+        const role = String(f.get('accountRole') ?? 'client');
+        if (role === 'driver') {
+          await api.login(phone, password);
+        } else {
+          if (password !== String(f.get('passwordConfirmation')))
+            throw new Error('Les deux mots de passe ne correspondent pas.');
+          if (password.length < 8 || !/[a-zA-Z]/.test(password) || !/\d/.test(password))
+            throw new Error(
+              'Mot de passe trop faible : 8 caractères minimum, avec au moins une lettre et un chiffre.',
+            );
+          await api.register(String(f.get('name')), phone, password, 'client');
+        }
+      } else await api.login(String(f.get('identifier')), password);
       const user = await api.me();
       if (!user) throw new Error(messages.sessionImpossibleAVerifierReconnectezVous);
-      if (user.role !== space) {
-        await api.logout();
-        throw new Error('Ce compte ne correspond pas à l’espace sélectionné.');
-      }
       setUser(user);
       navigate(
         params.get('retour') === 'reservation' && user.role === 'client'

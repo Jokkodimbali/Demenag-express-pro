@@ -88,13 +88,14 @@ export class AdministrationService implements AdministrationUseCases {
       await repository.resetClientPassword(userId, passwordHash);
     });
   }
-  async updateProfile(actor: User, input: Pick<User, 'name' | 'phone' | 'photo'>) {
+  async updateProfile(actor: User, input: Pick<User, 'name' | 'phone' | 'photo' | 'email'>) {
     requireAdministrator(actor);
     return this.users.updateProfile(
       actor.id,
       input.name.trim(),
       normalizePhone(input.phone),
       input.photo ?? null,
+      input.email?.trim().toLowerCase() || null,
     );
   }
 }

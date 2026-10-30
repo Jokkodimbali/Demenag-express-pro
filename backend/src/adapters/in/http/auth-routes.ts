@@ -25,7 +25,7 @@ export function registerAuthRoutes(
     });
   app.post(apiRoutes.auth.register, authLimiter, async (req, res) => {
     const p = registerSchema.parse(req.body);
-    const session = await deps.auth.register(p.name, p.phone, p.password);
+    const session = await deps.auth.register(p.name ?? '', p.phone, p.password ?? '');
     clearLegacySessionCookie(res)
       .cookie(security.session.cookieName, session.token, cookieOptions)
       .status(201)
@@ -33,7 +33,7 @@ export function registerAuthRoutes(
   });
   app.post(apiRoutes.auth.login, authLimiter, async (req, res) => {
     const p = loginSchema.parse(req.body);
-    const session = await deps.auth.login(p.phone, p.password);
+    const session = await deps.auth.login(p.identifier ?? p.phone ?? '', p.password);
     clearLegacySessionCookie(res)
       .cookie(security.session.cookieName, session.token, cookieOptions)
       .json(session.user);

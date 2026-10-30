@@ -33,6 +33,7 @@ model Utilisateur {
   id                                String             @id @default(uuid()) @db.Uuid
   nom                               String             @map("name")
   telephone                         String             @unique @map("phone")
+  email                             String?            @unique @map("email")
   empreinteMotDePasse               String             @map("password_hash")
   demandeReinitialisationMotDePasse DateTime?          @map("password_reset_requested_at") @db.Timestamptz
   role                              RoleUtilisateur    @default(client)

@@ -5,6 +5,16 @@ import { integrationHeader, integrationPassword } from './context.js';
 
 export async function registerScenarioUsers(context: IntegrationContext) {
   const { db, clients, prefix, phone, testUserIds, testPhones } = context;
+  const attemptedAdminAccount = await clients.first
+    .post('/api/auth/register')
+    .set(integrationHeader)
+    .send({
+      name: prefix + ' non autorisé',
+      phone: phone(10),
+      password: integrationPassword,
+      role: 'admin',
+    });
+  assert.equal(attemptedAdminAccount.status, 400);
   for (const [agent, n] of [
     [clients.first, 0],
     [clients.second, 1],
@@ -19,7 +29,6 @@ export async function registerScenarioUsers(context: IntegrationContext) {
         name: prefix + ' ' + n,
         phone: testPhone,
         password: integrationPassword,
-        role: 'admin',
       });
     if (response.status === 201 && typeof response.body.id === 'string')
       testUserIds.push(response.body.id);

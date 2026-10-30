@@ -81,10 +81,15 @@ export function useAdminFleetPageModel() {
   const [filterRole, setFilterRole] = useState<TeamRole | 'all'>('all');
   const [sortByAccepted, setSortByAccepted] = useState(false);
   const [recipient, setRecipient] = useState<Record<string, string>>({});
+  const [createdEmployeeAccess, setCreatedEmployeeAccess] = useState<{
+    name: string;
+    phone: string;
+    password: string;
+    purpose: 'creation' | 'reset';
+  } | null>(null);
   const [newEmployee, setNewEmployee] = useState({
     name: '',
     phone: '',
-    password: '',
     address: '',
     role: 'manoeuvre' as TeamRole,
     authorizedVehicleIds: [] as string[],
@@ -447,14 +452,12 @@ export function useAdminFleetPageModel() {
     const phone = newEmployee.phone.trim();
     if (!name) return setPageError('Indiquez le nom.');
     if (phone.replace(/\D/g, '').length < 9) return setPageError('Indiquez le téléphone.');
-    if (newEmployee.password.length < 10)
-      return setPageError('Choisissez un mot de passe initial d’au moins 10 caractères.');
     setPageError('');
+    setCreatedEmployeeAccess(null);
     try {
       const created = await fleetCommands.createDriver({
         name,
         phone,
-        password: newEmployee.password,
         photo: null,
         vehicleId: null,
         role: newEmployee.role,
@@ -466,22 +469,30 @@ export function useAdminFleetPageModel() {
         refusals: [],
         clearedRefusals: 0,
       });
-      confirmedEmployeesRef.current.set(created.id, created);
-      setEmployees((current) => [...current, created].sort((a, b) => a.name.localeCompare(b.name)));
+      const { initialPassword, ...employee } = created;
+      confirmedEmployeesRef.current.set(employee.id, employee);
+      setEmployees((current) =>
+        [...current, employee].sort((a, b) => a.name.localeCompare(b.name)),
+      );
+      setCreatedEmployeeAccess({
+        name,
+        phone: employee.phone,
+        password: initialPassword,
+        purpose: 'creation',
+      });
       setNewEmployee({
         name: '',
         phone: '',
-        password: '',
         address: '',
         role: 'manoeuvre',
         authorizedVehicleIds: [],
       });
       setToast(`${name} ajouté(e).`);
-      if (created.address) {
+      if (employee.address) {
         try {
-          const result = await fleetCommands.searchAddress(`${created.address}, Sénégal`);
+          const result = await fleetCommands.searchAddress(`${employee.address}, Sénégal`);
           if (result[0])
-            await saveEmployee(created, {
+            await saveEmployee(employee, {
               latitude: result[0].point[0],
               longitude: result[0].point[1],
             });
@@ -491,6 +502,33 @@ export function useAdminFleetPageModel() {
       }
     } catch (cause) {
       setPageError(errorMessage(cause));
+    }
+  };
+  const resetEmployeePassword = async (employee: Driver) => {
+    const confirmed = await requestConfirmation({
+      titleId: 'reset-employee-password-title',
+      eyebrow: messages.confirmationRequise,
+      title: `Réinitialiser le mot de passe de ${employee.name} ?`,
+      description:
+        'L’ancien mot de passe ne fonctionnera plus. Les sessions de cet employé seront fermées et un nouveau mot de passe sera affiché pour être copié ou envoyé.',
+      confirmLabel: 'Générer un nouveau mot de passe',
+    });
+    if (!confirmed) return;
+    setSavingEmployee(employee.id);
+    setPageError('');
+    try {
+      const { password } = await fleetCommands.resetDriverPassword(employee.id);
+      setCreatedEmployeeAccess({
+        name: employee.name,
+        phone: employee.phone,
+        password,
+        purpose: 'reset',
+      });
+      setToast(`Nouveau mot de passe créé pour ${employee.name}.`);
+    } catch (cause) {
+      setPageError(errorMessage(cause));
+    } finally {
+      setSavingEmployee('');
     }
   };
   const removeEmployee = async (employee: Driver) => {
@@ -880,6 +918,8 @@ export function useAdminFleetPageModel() {
     setFilterRole,
     sortByAccepted,
     setSortByAccepted,
+    createdEmployeeAccess,
+    setCreatedEmployeeAccess,
     recipient,
     setRecipient,
     newEmployee,
@@ -908,6 +948,7 @@ export function useAdminFleetPageModel() {
     applyMemberPatch,
     updateEmployeeAddress,
     addEmployee,
+    resetEmployeePassword,
     removeEmployee,
     addDaysForWeek,
     autoCompose,

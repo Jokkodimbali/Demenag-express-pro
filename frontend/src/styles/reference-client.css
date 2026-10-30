@@ -52,6 +52,36 @@
   cursor: pointer;
   text-decoration: none;
 }
+.reference-client-profile {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px 16px;
+  padding: 14px 18px;
+  border: 1px solid #3b4046;
+  border-radius: 14px;
+  background: #272a2e;
+}
+.reference-client-profile > span:first-child {
+  color: #f6d73c;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+.reference-client-profile strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.reference-client-profile > span:last-child {
+  color: #aeb4bb;
+  font-size: 13px;
+}
+@media (max-width: 520px) {
+  .reference-client-profile {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+}
 .reference-client-empty,
 .reference-client-card {
   background: #272a2e;

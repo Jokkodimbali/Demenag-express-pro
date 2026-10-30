@@ -1,5 +1,6 @@
 import { AppError } from '../../domain/errors.js';
 import { messages } from '../../domain/messages/fr.js';
+import type { UserCredentials } from '../../domain/model.js';
 import type {
   Clock,
   IdGenerator,
@@ -39,13 +40,23 @@ export class AuthService implements AuthUseCases {
     });
     return this.issue(user);
   }
-  async login(phone: string, password: string) {
-    const normalizedPhone = normalizePhone(phone);
-    // Compatibilité avec les comptes historiques enregistrés sans l’indicatif +221.
-    const user =
-      (await this.users.findByPhone(normalizedPhone)) ??
-      (await this.users.findByPhone(normalizedPhone.slice('+221'.length)));
-    const valid = await this.passwords.verify(password, user?.passwordHash ?? '');
+  async login(identifier: string, password?: string) {
+    const isEmail = identifier.includes('@');
+    let user: UserCredentials | null;
+    if (isEmail) {
+      const emailUser = await this.users.findByEmail(identifier);
+      user = emailUser?.role === 'admin' ? emailUser : null;
+    } else {
+      const normalizedPhone = normalizePhone(identifier);
+      // Compatibilité avec les comptes historiques enregistrés sans l’indicatif +221.
+      user =
+        (await this.users.findByPhone(normalizedPhone)) ??
+        (await this.users.findByPhone(normalizedPhone.slice('+221'.length)));
+    }
+    const valid =
+      user?.role === 'admin' || user?.role === 'driver'
+        ? Boolean(password) && (await this.passwords.verify(password ?? '', user.passwordHash))
+        : !isEmail && Boolean(user);
     if (!user || user.active === false || !valid)
       throw new AppError(401, messages.telephoneOuMotDePasseIncorrect);
     return this.issue({ id: user.id, name: user.name, phone: user.phone, role: user.role });

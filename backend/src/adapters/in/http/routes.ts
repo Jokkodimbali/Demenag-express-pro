@@ -29,10 +29,12 @@ export const apiRoutes = {
     userPasswordReset: '/api/admin/users/:id/password-reset',
     clients: '/api/admin/clients',
     drivers: '/api/admin/drivers',
+    driverPasswordReset: '/api/admin/drivers/:id/password-reset',
     profile: '/api/admin/profile',
   },
   driver: {
     profile: '/api/driver/profile',
+    profilePhoto: '/api/driver/profile/photo',
     availability: '/api/driver/availability',
     bookings: '/api/driver/bookings',
     inspections: '/api/driver/vehicle-inspections',

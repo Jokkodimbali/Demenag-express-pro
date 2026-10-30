@@ -35,7 +35,7 @@ export interface UserRepository {
 }
 export interface AdminProfileRepository {
   adminProfile(): Promise<User>;
-  updateAdminProfile(input: Pick<User, 'name' | 'phone' | 'photo'>): Promise<User>;
+  updateAdminProfile(input: Pick<User, 'name' | 'phone' | 'photo' | 'email'>): Promise<User>;
 }
 export interface ClientDirectoryRepository {
   hiddenClients(): Promise<{ phone: string; hiddenAt: string }[]>;
@@ -60,9 +60,9 @@ export interface TollPointRepository {
 export interface AuthRepository {
   onSessionExpired?(listener: () => void): () => void;
   me(): Promise<User | null>;
-  login(phone: string, password: string): Promise<User>;
+  login(identifier: string, password?: string): Promise<User>;
   requestPasswordReset(phone: string): Promise<void>;
-  register(name: string, phone: string, password: string): Promise<User>;
+  register(name: string, phone: string, password: string, role?: 'client'): Promise<User>;
   logout(): Promise<void>;
   changePassword(oldPassword: string, newPassword: string): Promise<User>;
 }
@@ -112,7 +112,8 @@ export interface AccountingRepository {
   accountingConfiguration(): Promise<AccountingFinanceConfiguration | null>;
   saveAccountingConfiguration(value: AccountingFinanceConfiguration): Promise<void>;
 }
-export type DriverCreation = Omit<Driver, 'id' | 'userId' | 'active'> & { password?: string };
+export type DriverCreation = Omit<Driver, 'id' | 'userId' | 'active'>;
+export type CreatedDriver = Driver & { initialPassword: string };
 export type InspectionLevels = Record<string, 'good' | 'low' | 'empty'>;
 export type VehicleInspection = {
   id: string;
@@ -153,11 +154,12 @@ export type AppNotification = {
 export type NotificationInbox = { items: AppNotification[]; unreadCount: number };
 export interface DriverRepository {
   drivers(): Promise<Driver[]>;
-  createDriver(input: DriverCreation): Promise<Driver>;
+  createDriver(input: DriverCreation): Promise<CreatedDriver>;
   updateDriver(driver: Omit<Driver, 'userId'>): Promise<Driver>;
   deleteDriver(id: string): Promise<{ removed: boolean; employee: Driver }>;
+  resetDriverPassword(id: string): Promise<{ password: string }>;
   driverProfile(): Promise<Driver>;
-  updateDriverProfile(input: Pick<Driver, 'name' | 'phone' | 'photo'>): Promise<Driver>;
+  updateDriverPhoto(photo: string | null): Promise<Driver>;
   updateDriverAvailability(availability: NonNullable<Driver['availability']>): Promise<Driver>;
   driverBookings(): Promise<Booking[]>;
   addEmployeeProofs(id: string, kind: 'retrait' | 'depot', photos: string[]): Promise<Booking>;

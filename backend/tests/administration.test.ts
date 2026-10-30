@@ -39,6 +39,7 @@ function fixture(count: number, currentActor: User = actor) {
   };
   const users: UserRepository = {
     findByPhone: async () => null,
+    findByEmail: async () => null,
     create: async (user) => user,
     updatePassword: async () => {},
     updateProfile: async (id, name, phone, photo) => ({

@@ -1,5 +1,4 @@
 export const uiText2 = {
-  choisirUnEspaceDeConnexion: 'Choisir un espace de connexion',
   nomCOMPLET: 'NOM COMPLET',
   telephone2: 'TÉLÉPHONE',
   '221771234567': '+221 77 123 45 67',

@@ -247,25 +247,37 @@ export const workPlanReviewSchema = z.object({
   correctiveAction: z.string().max(1000).optional(),
   version: z.number().int().positive(),
 });
-export const loginSchema = z.object({
-  phone: z.string().min(9).max(25),
-  password: z.string().min(1).max(128),
+const loginFields = z.object({
+  identifier: z.string().trim().min(3).max(254).optional(),
+  phone: z.string().trim().min(9).max(25).optional(),
+  password: z.string().max(128).optional(),
 });
-export const registerSchema = loginSchema
-  .extend({
-    name: z.string().trim().min(2).max(100),
-    password: z
-      .string()
-      .min(
-        8,
-        'Mot de passe trop faible : 8 caractères minimum, avec au moins une lettre et un chiffre.',
-      )
-      .max(128),
+export const loginSchema = loginFields.refine((input) => Boolean(input.identifier || input.phone), {
+  path: ['identifier'],
+  message: 'Saisissez votre numéro de téléphone ou votre email administrateur.',
+});
+export const registerSchema = z
+  .object({
+    role: z.literal('client').default('client'),
+    phone: z.string().trim().min(9).max(25),
+    name: z.string().trim().min(2).max(100).optional(),
+    password: z.string().max(128).optional(),
   })
-  .refine((input) => /[a-zA-Z]/.test(input.password) && /\d/.test(input.password), {
-    path: ['password'],
-    message:
-      'Mot de passe trop faible : 8 caractères minimum, avec au moins une lettre et un chiffre.',
+  .superRefine((input, context) => {
+    if (!input.name)
+      context.addIssue({ code: 'custom', path: ['name'], message: 'Saisissez votre nom complet.' });
+    if (
+      !input.password ||
+      input.password.length < 8 ||
+      !/[a-zA-Z]/.test(input.password) ||
+      !/\d/.test(input.password)
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['password'],
+        message:
+          'Mot de passe trop faible : 8 caractères minimum, avec au moins une lettre et un chiffre.',
+      });
   });
 export const statusSchema = z.object({
   status: z.enum(['confirmed', 'in_progress', 'completed', 'cancelled']),
@@ -366,9 +378,8 @@ export const driverSchema = z.object({
 export const createDriverSchema = driverSchema.extend({
   active: z.boolean().optional().default(true),
   photo: imageSchema.nullable(),
-  password: z.string().min(10, messages.utilisezAuMoins10Caracteres).max(128).optional(),
 });
-export const driverProfileSchema = driverSchema.pick({ name: true, phone: true, photo: true });
+export const driverProfilePhotoSchema = z.object({ photo: imageSchema.nullable() });
 export const vehicleInspectionSchema = z.object({
   levels: z.object({
     engineOil: z.enum(['good', 'low', 'empty']),
@@ -407,6 +418,10 @@ export const breakdownSchema = z.object({
 export const adminProfileSchema = z.object({
   name: z.string().trim().min(2).max(100),
   phone: z.string().trim().min(9).max(25),
+  email: z
+    .union([z.literal(''), z.email()])
+    .nullable()
+    .optional(),
   photo: imageSchema.nullable(),
 });
 export const catalogueSchema = z.object({

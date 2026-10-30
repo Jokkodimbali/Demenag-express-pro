@@ -12,6 +12,7 @@ export function useAdminFleet() {
       loadDrivers: () => api.drivers(),
       route: (...args: Parameters<typeof api.route>) => api.route(...args),
       createDriver: (...args: Parameters<typeof api.createDriver>) => api.createDriver(...args),
+      resetDriverPassword: (id: string) => api.resetDriverPassword(id),
       deleteDriver: (id: string) => api.deleteDriver(id),
       loadBookings: () => api.bookings(),
     }),

@@ -44,6 +44,7 @@ export type User = {
   id: string;
   name: string;
   phone: string;
+  email?: string | null;
   role: Role;
   active?: boolean;
   photo?: string | null;

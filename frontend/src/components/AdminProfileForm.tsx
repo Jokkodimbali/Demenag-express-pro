@@ -29,6 +29,10 @@ export function AdminProfileForm() {
       await updateProfile({
         name: String(form.get('name')),
         phone: String(form.get('phone')),
+        email:
+          String(form.get('email') ?? '')
+            .trim()
+            .toLowerCase() || null,
         photo: photo || null,
       });
       setSaved(true);
@@ -77,6 +81,18 @@ export function AdminProfileForm() {
               required
               minLength={9}
               maxLength={25}
+            />
+          </div>
+          <div>
+            <label htmlFor="admin-profile-email">Email administrateur</label>
+            <input
+              id="admin-profile-email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              defaultValue={admin.email ?? ''}
+              maxLength={254}
+              placeholder="admin@exemple.com"
             />
           </div>
         </div>

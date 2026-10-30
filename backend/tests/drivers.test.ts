@@ -6,7 +6,7 @@ import type {
   DriverRepository,
   UserRepository,
 } from '../src/application/ports/index.js';
-import type { Booking, Driver, User } from '../src/domain/model.js';
+import type { Booking, Driver, User, UserCredentials } from '../src/domain/model.js';
 import { driverSchema } from '../src/adapters/in/http/schemas.js';
 
 const actor: User = {
@@ -36,6 +36,135 @@ const second: Driver = {
   active: true,
   vehicleId: 'vehicle-b',
 };
+
+test('Un employé peut mettre à jour sa photo de profil sans modifier ses autres informations', async () => {
+  const employee: User = {
+    id: 'user-1',
+    name: 'Awa',
+    phone: '+221770000001',
+    role: 'driver',
+    active: true,
+  };
+  const updatedUsers: User[] = [];
+  const drivers: DriverRepository = {
+    list: async () => [],
+    find: async () => null,
+    findByUserId: async () => first,
+    create: async (driver) => driver,
+    update: async (driver) => driver,
+  };
+  const users: UserRepository = {
+    findByPhone: async () => null,
+    findByEmail: async () => null,
+    create: async () => {
+      throw new Error('Non utilisé par ce test');
+    },
+    updatePassword: async () => {},
+    updateProfile: async (id, name, phone, photo) => {
+      const user = { id, name, phone, role: 'driver' as const, active: true, photo: photo ?? null };
+      updatedUsers.push(user);
+      return user;
+    },
+  };
+  const service = new DriverService(
+    drivers,
+    users,
+    {} as BookingRepository,
+    { hash: async (value) => value, verify: async () => false },
+    { next: () => 'unused' },
+  );
+
+  const updated = await service.updatePhoto(employee, 'data:image/jpeg;base64,photo');
+  assert.equal(updated.name, first.name);
+  assert.equal(updated.phone, first.phone);
+  assert.equal(updated.photo, 'data:image/jpeg;base64,photo');
+  assert.equal(updatedUsers[0]?.name, first.name);
+  assert.equal(updatedUsers[0]?.phone, first.phone);
+  assert.equal(updatedUsers[0]?.photo, 'data:image/jpeg;base64,photo');
+});
+
+test('La création d’un employé génère un mot de passe initial et ne stocke que son hash', async () => {
+  let sequence = 0;
+  let storedHash = '';
+  const createdUsers: UserCredentials[] = [];
+  const createdDrivers: Driver[] = [];
+  const drivers: DriverRepository = {
+    list: async () => [],
+    find: async () => null,
+    findByUserId: async () => null,
+    create: async (driver) => {
+      createdDrivers.push(driver);
+      return driver;
+    },
+    update: async (driver) => driver,
+  };
+  const users: UserRepository = {
+    findByPhone: async () => null,
+    findByEmail: async () => null,
+    create: async (user) => {
+      createdUsers.push(user);
+      return {
+        id: user.id,
+        name: user.name,
+        phone: user.phone,
+        role: user.role,
+        active: user.active,
+        photo: user.photo,
+        email: user.email,
+      };
+    },
+    updatePassword: async () => {},
+    updateProfile: async (id, name, phone, photo) => ({
+      id,
+      name,
+      phone,
+      role: 'driver',
+      active: true,
+      photo: photo ?? null,
+    }),
+  };
+  const bookings: BookingRepository = {
+    list: async () => [],
+    find: async () => null,
+    create: async () => {
+      throw new Error('Non utilisé par ce test');
+    },
+    update: async () => {
+      throw new Error('Non utilisé par ce test');
+    },
+    startTrip: async () => {},
+    addTripLoadingPhotos: async () => {},
+    finishTrip: async () => {},
+  };
+  const service = new DriverService(
+    drivers,
+    users,
+    bookings,
+    {
+      hash: async (value) => {
+        storedHash = `hash:${value}`;
+        return storedHash;
+      },
+      verify: async () => false,
+    },
+    { next: () => `id-${++sequence}` },
+  );
+
+  const employee = await service.create(actor, {
+    name: 'Awa Ndiaye',
+    phone: '770000003',
+    photo: null,
+    vehicleId: null,
+    role: 'chauffeur',
+  });
+
+  assert.equal(employee.initialPassword, 'id1G7');
+  assert.equal(storedHash, `hash:${employee.initialPassword}`);
+  assert.equal(createdUsers[0]?.role, 'driver');
+  assert.equal(createdUsers[0]?.passwordHash, storedHash);
+  assert.equal(createdDrivers[0]?.userId, createdUsers[0]?.id);
+  assert.equal(createdDrivers[0]?.phone, '+221770000003');
+});
 
 test('La validation administrateur conserve la disponibilité et refuse un horaire incohérent', () => {
   const availability = Array.from({ length: 7 }, (_, index) => ({
@@ -79,6 +208,7 @@ test('Changer un chauffeur de véhicule libère automatiquement le chauffeur dé
   };
   const users: UserRepository = {
     findByPhone: async () => null,
+    findByEmail: async () => null,
     create: async (user) => user,
     updatePassword: async () => {},
     updateProfile: async (id, name, phone, photo) => ({
@@ -179,6 +309,7 @@ test('Un employé voit ses missions affectées, indépendamment du véhicule', a
   };
   const users: UserRepository = {
     findByPhone: async () => null,
+    findByEmail: async () => null,
     create: async (value) => value,
     updatePassword: async () => {},
     updateProfile: async (id, name, phone, photo) => ({
