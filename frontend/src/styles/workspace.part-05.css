@@ -1,11 +1,3 @@
-@media (max-width: 600px) {
-  .toll-admin-coordinate-fields {
-    grid-template-columns: 1fr;
-  }
-  .toll-admin-table {
-    min-width: 700px;
-  }
-}
 .text-link {
   color: var(--yellow);
   background: transparent;
@@ -348,7 +340,7 @@
   margin: 0;
 }
 .vehicle-report-section > .section-heading h2,
-.vehicle-admin-reports h2 {
+.vehicle-report-form h2 {
   margin: 4px 0;
 }
 .vehicle-report-form {
@@ -356,8 +348,7 @@
   gap: 16px;
   padding: 22px;
 }
-.vehicle-report-form h3,
-.vehicle-admin-reports section > h3 {
+.vehicle-report-form h3 {
   display: flex;
   align-items: center;
   gap: 9px;
@@ -390,16 +381,6 @@
   border: 1px solid var(--line);
   border-radius: 10px;
   background: #202226;
-}
-.inspection-proof-grid figure {
-  min-width: 0;
-  margin: 0;
-}
-.inspection-proof-grid figcaption {
-  margin-top: 5px;
-  color: var(--muted);
-  font-size: 10px;
-  line-height: 1.35;
 }
 .report-photo-picker {
   display: grid;
@@ -531,110 +512,6 @@
 }
 .breakdown-form {
   border-color: #ed784966;
-}
-.vehicle-admin-reports {
-  display: grid;
-  gap: 26px;
-}
-.vehicle-admin-reports section {
-  display: grid;
-  gap: 14px;
-}
-.report-admin-heading {
-  align-items: center;
-}
-.report-count {
-  padding: 3px 8px;
-  border-radius: 99px;
-  background: #f6d73c15;
-  color: var(--yellow);
-  font-size: 12px;
-}
-.report-card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 390px), 1fr));
-  gap: 15px;
-}
-.admin-report-card {
-  display: grid;
-  align-content: start;
-  gap: 13px;
-  padding: 20px;
-  min-width: 0;
-}
-.admin-report-card p {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-.report-card-heading {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-}
-.report-card-heading h4 {
-  margin: 4px 0;
-}
-.report-card-heading a,
-.report-card-heading time,
-.admin-report-card small {
-  color: var(--muted);
-  font-size: 12px;
-}
-.report-location {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  width: fit-content;
-  color: var(--yellow);
-  font-weight: 700;
-}
-.report-photo-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-.report-photo-grid img {
-  display: block;
-  width: 100%;
-  height: 130px;
-  object-fit: cover;
-  border-radius: 8px;
-  background: #202326;
-}
-.fluid-level-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 8px;
-  margin: 0;
-}
-.fluid-level-list > div {
-  padding: 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-}
-.fluid-level-list dt {
-  color: var(--muted);
-  font-size: 11px;
-}
-.fluid-level-list dd {
-  margin: 4px 0 0;
-  font-size: 13px;
-  font-weight: 700;
-}
-.condition-pill {
-  width: fit-content;
-  padding: 7px 10px;
-  border-radius: 99px;
-  font-size: 12px;
-  font-weight: 700;
-}
-.condition-good {
-  color: #42c995;
-  background: #42c99518;
-}
-.condition-attention {
-  color: #f2bc47;
-  background: #f2bc4718;
 }
 .condition-unsafe {
   color: #ff756b;

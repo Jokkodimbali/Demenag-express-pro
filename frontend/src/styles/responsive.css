@@ -423,15 +423,6 @@
     grid-template-columns: 1fr;
     gap: 14px;
   }
-  .admin-report-card {
-    padding: 15px;
-  }
-  .report-photo-grid img {
-    height: 105px;
-  }
-  .report-card-heading {
-    flex-direction: column;
-  }
   .driver-vehicle-card > img {
     max-height: 210px;
   }

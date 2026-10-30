@@ -1,9 +1,11 @@
 import { uiText } from '../../content/reference-ui-text';
+import { messages } from '../../content/fr';
 import type { useAdminFleetPageModel } from '../../application/controllers/useAdminFleetPageModel';
 type Model = ReturnType<typeof useAdminFleetPageModel>;
 export function FleetEmployeesPanel({ model }: { model: Model }) {
   const {
     catalogue,
+    requestConfirmation,
     bookings,
     employees,
     employeesLoading,
@@ -500,14 +502,19 @@ export function FleetEmployeesPanel({ model }: { model: Model }) {
                       <button
                         className="team-button"
                         onClick={() => {
-                          if (
-                            window.confirm(
-                              `Lever le signalement de ${employee.name} ? L’historique des refus reste comptabilisé.`,
-                            )
-                          )
-                            void applyMemberPatch(employee, {
-                              clearedRefusals: employee.refusals?.length ?? 0,
+                          void (async () => {
+                            const confirmed = await requestConfirmation({
+                              titleId: 'clear-employee-report-title',
+                              eyebrow: messages.confirmationRequise,
+                              title: messages.leverSignalementTitre(employee.name),
+                              description: messages.leverSignalementDescription(employee.name),
+                              confirmLabel: uiText['leverLeSignalement'],
                             });
+                            if (confirmed)
+                              await applyMemberPatch(employee, {
+                                clearedRefusals: employee.refusals?.length ?? 0,
+                              });
+                          })();
                         }}
                       >
                         {uiText['leverLeSignalement']}

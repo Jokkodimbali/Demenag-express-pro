@@ -156,6 +156,13 @@ export interface DriverUseCases {
     kind: 'retrait' | 'depot',
     photos: string[],
   ): Promise<Booking>;
+  updateEmployeeProof(
+    actor: User,
+    bookingId: string,
+    proofId: string,
+    patch: { kind?: 'retrait' | 'depot'; image?: string; note?: string },
+  ): Promise<Booking>;
+  deleteEmployeeProof(actor: User, bookingId: string, proofId: string): Promise<Booking>;
 }
 export interface VehicleReportUseCases {
   submitInspection(actor: User, input: VehicleInspectionInput): Promise<VehicleReportRecord>;
@@ -166,6 +173,13 @@ export interface VehicleReportUseCases {
   adminReports(
     actor: User,
   ): Promise<{ inspections: VehicleReportRecord[]; breakdowns: VehicleReportRecord[] }>;
+  updateInspectionLevel(
+    actor: User,
+    id: string,
+    key: string,
+    good: boolean,
+  ): Promise<VehicleReportRecord>;
+  deleteInspection(actor: User, id: string): Promise<void>;
 }
 export interface NotificationUseCases {
   list(actor: User): Promise<{ items: import('./index.js').Notification[]; unreadCount: number }>;

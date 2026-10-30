@@ -16,6 +16,7 @@
 @import './styles/reference-employee.css';
 @import './styles/reference-admin-clients.css';
 @import './styles/reference-accounting.css';
+@import './styles/admin-controls.css';
 /* Journal comptable de l'administration */
 .accounting-page {
   display: grid;

@@ -1,4 +1,12 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import type { Catalogue, TollPoint, User } from '../domain/model';
 import { blankDraft, type Draft } from './booking-draft';
 import { errorMessage } from './error-message';
@@ -21,6 +29,16 @@ type AppContextValue = {
   reload: () => void;
   draft: Draft;
   setDraft: React.Dispatch<React.SetStateAction<Draft>>;
+  confirmation: ConfirmationRequest | null;
+  requestConfirmation: (request: ConfirmationRequest) => Promise<boolean>;
+  resolveConfirmation: (confirmed: boolean) => void;
+};
+export type ConfirmationRequest = {
+  titleId: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  confirmLabel: string;
 };
 const AppContext = createContext<AppContextValue | null>(null);
 export function AppProvider({
@@ -42,6 +60,20 @@ export function AppProvider({
     [retry, setRetry] = useState(0);
   const [draft, setDraft] = useState(blankDraft);
   const [tollPoints, setTollPoints] = useState<TollPoint[]>([]);
+  const [confirmation, setConfirmation] = useState<ConfirmationRequest | null>(null);
+  const confirmationResolver = useRef<((confirmed: boolean) => void) | null>(null);
+  const requestConfirmation = useCallback((request: ConfirmationRequest) => {
+    return new Promise<boolean>((resolve) => {
+      confirmationResolver.current?.(false);
+      confirmationResolver.current = resolve;
+      setConfirmation(request);
+    });
+  }, []);
+  const resolveConfirmation = useCallback((confirmed: boolean) => {
+    setConfirmation(null);
+    confirmationResolver.current?.(confirmed);
+    confirmationResolver.current = null;
+  }, []);
   useEffect(() => api.onSessionExpired?.(() => setUser(null)), [api]);
   useEffect(() => {
     let active = true;
@@ -115,6 +147,9 @@ export function AppProvider({
         reload: () => setRetry((n) => n + 1),
         draft,
         setDraft,
+        confirmation,
+        requestConfirmation,
+        resolveConfirmation,
       }}
     >
       {children}

@@ -82,6 +82,14 @@ export class VehicleReportService implements VehicleReportUseCases {
     ]);
     return { inspections, breakdowns };
   }
+  async updateInspectionLevel(actor: User, id: string, key: string, good: boolean) {
+    requireAdministrator(actor);
+    return this.reports.updateInspectionLevel(id, key, good ? 'good' : 'low');
+  }
+  async deleteInspection(actor: User, id: string) {
+    requireAdministrator(actor);
+    await this.reports.deleteInspection(id);
+  }
   private async driver(actor: User) {
     requireActiveUser(actor);
     if (actor.role !== 'driver') throw new AppError(403, messages.actionReserveeAuxChauffeurs);

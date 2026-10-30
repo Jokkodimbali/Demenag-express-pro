@@ -2,6 +2,7 @@ import L from 'leaflet';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAdministration } from '../../application/controllers/useAdministration';
 import { useApp } from '../../application/context';
+import { messages } from '../../content/fr';
 import { useAdminFleet } from '../../application/controllers/useAdminFleet';
 import { errorMessage } from '../../application/error-message';
 import type { Booking, Driver, Point } from '../../domain/model';
@@ -38,7 +39,7 @@ import {
 } from '../../application/services/team-planning';
 
 export function useAdminFleetPageModel() {
-  const { catalogue } = useApp();
+  const { catalogue, requestConfirmation } = useApp();
   const fleetCommands = useAdminFleet();
   const businessWhatsAppPhone =
     catalogue?.settings.whatsappPhone || catalogue?.settings.businessPhone || '';
@@ -493,8 +494,14 @@ export function useAdminFleetPageModel() {
     }
   };
   const removeEmployee = async (employee: Driver) => {
-    if (!window.confirm(`Supprimer ${employee.name} ? Les affectations à venir seront retirées.`))
-      return;
+    const confirmed = await requestConfirmation({
+      titleId: 'delete-employee-title',
+      eyebrow: messages.confirmationRequise,
+      title: messages.supprimerEmployeTitre(employee.name),
+      description: messages.suppressionEmployeDescription(employee.name),
+      confirmLabel: messages.confirmerAction,
+    });
+    if (!confirmed) return;
     setSavingEmployee(employee.id);
     setPageError('');
     try {
@@ -637,6 +644,16 @@ export function useAdminFleetPageModel() {
   };
 
   const changeReply = async (booking: Booking, member: Driver, reply: 'ok' | 'no' | '') => {
+    if (reply === 'no') {
+      const confirmed = await requestConfirmation({
+        titleId: 'refuse-mission-title',
+        eyebrow: messages.confirmationRequise,
+        title: messages.refuserMissionTitre(member.name),
+        description: messages.refusMissionDescription(member.name),
+        confirmLabel: messages.confirmerAction,
+      });
+      if (!confirmed) return;
+    }
     const replies = { ...(booking.crewReplies ?? {}) };
     const crew = teamOf(booking);
     let refusedBy = [...(booking.crewRefusedBy ?? [])];
@@ -804,6 +821,7 @@ export function useAdminFleetPageModel() {
 
   return {
     catalogue,
+    requestConfirmation,
     fleetCommands,
     businessWhatsAppPhone,
     businessWhatsAppCountry,

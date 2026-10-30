@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { createHttpApi } from './adapters/http-api';
 import { AppProvider } from './application/context';
+import { AppConfirmation } from './components/AppConfirmation';
 import type { AccountingDocumentExporter, QuoteExporter } from './application/ports';
 import { AppRoutes } from './routing/AppRoutes';
 import './styles.css';
@@ -31,6 +32,7 @@ createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <AppProvider api={api} exportQuote={exportQuote} exportAccounting={exportAccounting}>
         <AppRoutes />
+        <AppConfirmation />
       </AppProvider>
     </BrowserRouter>
   </StrictMode>,

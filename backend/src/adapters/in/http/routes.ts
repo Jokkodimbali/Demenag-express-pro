@@ -40,6 +40,8 @@ export const apiRoutes = {
     bookingTrips: '/api/driver/bookings/:id/trips',
   },
   vehicleReports: '/api/admin/vehicle-reports',
+  adminEmployeeProof: '/api/admin/bookings/:bookingId/employee-proofs/:proofId',
+  adminVehicleInspection: '/api/admin/vehicle-inspections/:id',
   notifications: {
     base: '/api/notifications',
     readAll: '/api/notifications/read-all',

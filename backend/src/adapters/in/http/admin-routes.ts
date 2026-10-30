@@ -16,6 +16,21 @@ import { accountSchema, createAccountSchema, userIdSchema } from './validation/a
 import { z } from 'zod';
 const accountingMonthValue = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
 const clientPhoneSchema = z.string().regex(/^\d{9}$/);
+const employeeProofUpdateSchema = z
+  .object({
+    kind: z.enum(['retrait', 'depot']).optional(),
+    image: z
+      .string()
+      .max(7_000_000)
+      .regex(/^(\/assets\/[a-z0-9-]+\.(png|jpg|jpeg|webp)|data:image\/(png|jpeg|webp);base64,)/i)
+      .optional(),
+    note: z.string().max(500).optional(),
+  })
+  .refine((patch) => Object.keys(patch).length > 0, 'Aucune modification à enregistrer.');
+const inspectionItemUpdateSchema = z.object({
+  key: z.enum(['engineOil', 'brakeFluid', 'coolant', 'washerFluid', 'fuel']),
+  good: z.boolean(),
+});
 const clientUpdateSchema = z.object({
   name: z.string().trim().min(2).max(100),
   phone: z.string().min(9).max(25),
@@ -121,10 +136,47 @@ const accountingConfigurationSchema = z.object({
 });
 export function registerAdminRoutes(
   app: Express,
-  deps: Pick<Dependencies, 'administration' | 'catalogue' | 'drivers' | 'accounting'>,
+  deps: Pick<
+    Dependencies,
+    'administration' | 'catalogue' | 'drivers' | 'accounting' | 'vehicleReports'
+  >,
   access: Pick<Access, 'authenticate' | 'admin'>,
 ) {
   const { authenticate, admin } = access;
+  app.patch(apiRoutes.adminEmployeeProof, authenticate, admin, async (req, res) =>
+    res.json(
+      await deps.drivers.updateEmployeeProof(
+        getActor(res),
+        z.uuid().parse(req.params.bookingId),
+        z.string().min(1).max(100).parse(req.params.proofId),
+        employeeProofUpdateSchema.parse(req.body),
+      ),
+    ),
+  );
+  app.delete(apiRoutes.adminEmployeeProof, authenticate, admin, async (req, res) =>
+    res.json(
+      await deps.drivers.deleteEmployeeProof(
+        getActor(res),
+        z.uuid().parse(req.params.bookingId),
+        z.string().min(1).max(100).parse(req.params.proofId),
+      ),
+    ),
+  );
+  app.patch(`${apiRoutes.adminVehicleInspection}/item`, authenticate, admin, async (req, res) => {
+    const input = inspectionItemUpdateSchema.parse(req.body);
+    res.json(
+      await deps.vehicleReports.updateInspectionLevel(
+        getActor(res),
+        z.uuid().parse(req.params.id),
+        input.key,
+        input.good,
+      ),
+    );
+  });
+  app.delete(apiRoutes.adminVehicleInspection, authenticate, admin, async (req, res) => {
+    await deps.vehicleReports.deleteInspection(getActor(res), z.uuid().parse(req.params.id));
+    res.status(204).end();
+  });
   app.get(apiRoutes.administration.accounting, authenticate, admin, async (req, res) => {
     const month =
       req.query.month === undefined ? undefined : accountingMonthSchema.parse(req.query.month);

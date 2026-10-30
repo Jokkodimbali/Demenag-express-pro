@@ -78,6 +78,27 @@ export const messages = {
   suppressionDefinitive: 'Suppression définitive',
   supprimerDefinitivement: 'Supprimer définitivement',
   annuler: 'Annuler',
+  confirmationRequise: 'Confirmation requise',
+  confirmerAction: 'Confirmer',
+  supprimerClientTitre: (name: string | number) => `Retirer ${name} des clients ?`,
+  supprimerPeageTitre: 'Supprimer ce péage ?',
+  supprimerEmployeTitre: (name: string | number) => `Supprimer ${name} ?`,
+  refuserMissionTitre: (name: string | number) => `${name} a refusé la mission ?`,
+  leverSignalementTitre: (name: string | number) => `Lever le signalement de ${name} ?`,
+  viderFicheTitre: 'Vider la fiche d’appel ?',
+  suppressionControleDescription:
+    'Ce contrôle technique sera supprimé définitivement. Cette action ne peut pas être annulée.',
+  suppressionPreuveDescription: 'Cette preuve photo sera supprimée définitivement de la mission.',
+  suppressionPeageDescription: 'Ce point de péage et ses tarifs seront supprimés.',
+  suppressionClientDescription: (name: string | number) =>
+    `Le profil de ${name} sera retiré de la liste des clients.`,
+  suppressionEmployeDescription: (name: string | number) =>
+    `Supprimer ${name} ? Les affectations à venir seront retirées.`,
+  refusMissionDescription: (name: string | number) =>
+    `${name} sera retiré(e) de l’équipe de cette mission.`,
+  leverSignalementDescription: (name: string | number) =>
+    `Lever le signalement de ${name} ? L’historique des refus restera comptabilisé.`,
+  viderFicheDescription: 'Les objets et quantités de cette fiche d’appel seront effacés.',
   distanceRoutiere: 'Distance routière',
   km: ' km',
   montageDemontage: 'Montage / démontage',

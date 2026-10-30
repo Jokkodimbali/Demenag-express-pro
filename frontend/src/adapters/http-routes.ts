@@ -32,6 +32,9 @@ export const httpRoutes = {
     breakdowns: '/driver/breakdowns',
   },
   vehicleReports: '/admin/vehicle-reports',
+  vehicleInspection: (id: string) => `/admin/vehicle-inspections/${id}`,
+  employeeProof: (bookingId: string, proofId: string) =>
+    `/admin/bookings/${bookingId}/employee-proofs/${proofId}`,
   notifications: '/notifications',
   announce: '/admin/notifications/announce',
   estimates: '/estimates',

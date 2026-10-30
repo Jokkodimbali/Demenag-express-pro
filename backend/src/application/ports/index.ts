@@ -123,6 +123,12 @@ export interface VehicleReportRepository {
     vehicleId: string,
     input: BreakdownInput,
   ): Promise<VehicleReportRecord>;
+  updateInspectionLevel(
+    id: string,
+    key: string,
+    level: 'good' | 'low',
+  ): Promise<VehicleReportRecord>;
+  deleteInspection(id: string): Promise<void>;
   listInspections(): Promise<VehicleReportRecord[]>;
   listBreakdowns(): Promise<VehicleReportRecord[]>;
   listDriverInspections(driverId: string): Promise<VehicleReportRecord[]>;

@@ -5,7 +5,6 @@ export function useTollPointCommands() {
   const { api } = useApp();
   return useMemo(
     () => ({
-      searchAddress: (query: string) => api.search(query),
       createTollPoint: (...args: Parameters<typeof api.createTollPoint>) =>
         api.createTollPoint(...args),
       updateTollPoint: (...args: Parameters<typeof api.updateTollPoint>) =>

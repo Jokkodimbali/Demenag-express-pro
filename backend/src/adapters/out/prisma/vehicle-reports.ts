@@ -3,6 +3,7 @@ import type {
   VehicleInspectionInput,
   VehicleReportRepository,
 } from '../../../application/ports/index.js';
+import { AppError } from '../../../domain/errors.js';
 import type { Prisma, PrismaClient } from '../../../generated/prisma/client.js';
 
 const inspectionInclude = {
@@ -48,6 +49,32 @@ export class PrismaVehicleReports implements VehicleReportRepository {
       include: breakdownInclude,
     });
     return this.breakdown(row);
+  }
+  async updateInspectionLevel(id: string, key: string, level: 'good' | 'low') {
+    const row = await this.db.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "demenag"."vehicle_inspections" WHERE "id" = ${id}::uuid FOR UPDATE`;
+      const current = await tx.controleVehicule.findUnique({ where: { id } });
+      if (!current) throw new AppError(404, 'Contrôle introuvable.');
+      const levels = { ...(current.niveaux as Record<string, string>), [key]: level };
+      const condition = Object.values(levels).every((value) => value === 'good')
+        ? 'good'
+        : 'attention';
+      return tx.controleVehicule.update({
+        where: { id },
+        data: { niveaux: levels, etatVehicule: condition },
+        include: inspectionInclude,
+      });
+    });
+    return this.inspection(row);
+  }
+  async deleteInspection(id: string) {
+    try {
+      await this.db.controleVehicule.delete({ where: { id } });
+    } catch (error) {
+      if (error instanceof Error && 'code' in error && error.code === 'P2025')
+        throw new AppError(404, 'Contrôle introuvable.');
+      throw error;
+    }
   }
   async listInspections() {
     return (

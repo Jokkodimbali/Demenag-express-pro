@@ -116,6 +116,8 @@ export type DriverCreation = Omit<Driver, 'id' | 'userId' | 'active'> & { passwo
 export type InspectionLevels = Record<string, 'good' | 'low' | 'empty'>;
 export type VehicleInspection = {
   id: string;
+  driverId: string;
+  vehicleId?: string;
   driverName: string;
   driverPhone: string;
   vehicleName: string;
@@ -174,6 +176,18 @@ export interface DriverRepository {
     input: Pick<BreakdownReport, 'description' | 'latitude' | 'longitude' | 'accuracy' | 'photos'>,
   ): Promise<BreakdownReport>;
   adminVehicleReports(): Promise<VehicleReports>;
+  updateInspectionLevel(
+    id: string,
+    key: 'engineOil' | 'brakeFluid' | 'coolant' | 'washerFluid' | 'fuel',
+    good: boolean,
+  ): Promise<VehicleInspection>;
+  deleteInspection(id: string): Promise<void>;
+  updateEmployeeProof(
+    bookingId: string,
+    proofId: string,
+    patch: { kind?: 'retrait' | 'depot'; image?: string; note?: string },
+  ): Promise<Booking>;
+  deleteEmployeeProof(bookingId: string, proofId: string): Promise<Booking>;
 }
 export interface MapsRepository {
   route(from: Point, to: Point): Promise<RouteTicket>;

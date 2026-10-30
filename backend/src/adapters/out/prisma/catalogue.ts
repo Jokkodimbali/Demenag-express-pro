@@ -59,7 +59,7 @@ export class PrismaCatalogue implements CatalogueRepository {
   }
   async listTollPoints(): Promise<TollPoint[]> {
     const rows = await this.db.pointPeage.findMany({
-      orderBy: [{ nom: 'asc' }],
+      orderBy: [{ creeLe: 'asc' }, { id: 'asc' }],
     });
     return rows.map(fromTollPoint);
   }

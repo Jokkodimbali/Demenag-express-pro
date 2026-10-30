@@ -634,14 +634,7 @@ export function FleetPlanningPanel({ model }: { model: Model }) {
                                 )}
                                 <button
                                   className="team-button danger"
-                                  onClick={() => {
-                                    if (
-                                      window.confirm(
-                                        `${member.name} a refusé la mission ? Il/elle sera retiré(e) de l’équipe.`,
-                                      )
-                                    )
-                                      void changeReply(booking, member, 'no');
-                                  }}
+                                  onClick={() => void changeReply(booking, member, 'no')}
                                 >
                                   {uiText['aRefuse']}
                                 </button>

@@ -184,6 +184,40 @@ export class DriverService implements DriverUseCases {
       booking.version,
     );
   }
+  async updateEmployeeProof(
+    actor: User,
+    bookingId: string,
+    proofId: string,
+    patch: { kind?: 'retrait' | 'depot'; image?: string; note?: string },
+  ) {
+    requireAdministrator(actor);
+    const booking = await this.bookingsRepository.find(bookingId);
+    if (!booking) throw new AppError(404, 'Mission introuvable.');
+    const proofs = booking.employeeProofs ?? [];
+    if (!proofs.some((proof) => proof.id === proofId))
+      throw new AppError(404, 'Preuve de mission introuvable.');
+    return this.bookingsRepository.update(
+      {
+        ...booking,
+        employeeProofs: proofs.map((proof) =>
+          proof.id === proofId ? { ...proof, ...patch } : proof,
+        ),
+      },
+      booking.version,
+    );
+  }
+  async deleteEmployeeProof(actor: User, bookingId: string, proofId: string) {
+    requireAdministrator(actor);
+    const booking = await this.bookingsRepository.find(bookingId);
+    if (!booking) throw new AppError(404, 'Mission introuvable.');
+    const proofs = booking.employeeProofs ?? [];
+    if (!proofs.some((proof) => proof.id === proofId))
+      throw new AppError(404, 'Preuve de mission introuvable.');
+    return this.bookingsRepository.update(
+      { ...booking, employeeProofs: proofs.filter((proof) => proof.id !== proofId) },
+      booking.version,
+    );
+  }
   private async requireProfile(actor: User) {
     requireActiveUser(actor);
     if (actor.role !== 'driver') throw new AppError(403, messages.actionReserveeAuxChauffeurs);

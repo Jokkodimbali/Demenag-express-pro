@@ -6,13 +6,15 @@ export function Pagination({
   pageCount,
   total,
   onPageChange,
+  showSinglePage = false,
 }: {
   page: number;
   pageCount: number;
   total: number;
   onPageChange: (page: number) => void;
+  showSinglePage?: boolean;
 }) {
-  if (pageCount <= 1) return null;
+  if (pageCount <= 1 && !showSinglePage) return null;
   return (
     <nav className="pagination" aria-label={messages.pagination}>
       <span>{messages.resultatsPaginees(total, page, pageCount)}</span>

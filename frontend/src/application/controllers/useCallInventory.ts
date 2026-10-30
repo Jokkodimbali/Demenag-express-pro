@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { useApp } from '../context';
+import { messages } from '../../content/fr';
 import type { Draft } from '../booking-draft';
 import { useBookingCommands } from './useBookingCommands';
 import type { MovingLaborPlanningSettings, Vehicle } from '../../domain/model';
@@ -37,6 +39,7 @@ export function useCallInventory({
   audience: 'admin' | 'client';
   referenceMode: boolean;
 }) {
+  const { requestConfirmation } = useApp();
   const [customLabel, setCustomLabel] = useState('');
   const [inventoryError, setInventoryError] = useState('');
   const [open, setOpen] = useState(audience === 'client' && !referenceMode);
@@ -115,8 +118,15 @@ export function useCallInventory({
     });
     if (estimate?.trips) onApplyEstimate(selectedVehicleId, estimate.trips);
   };
-  const clearInventory = () => {
-    if (!window.confirm("Vider la fiche d'appel ?")) return;
+  const clearInventory = async () => {
+    const confirmed = await requestConfirmation({
+      titleId: 'clear-inventory-title',
+      eyebrow: messages.confirmationRequise,
+      title: messages.viderFicheTitre,
+      description: messages.viderFicheDescription,
+      confirmLabel: messages.confirmerAction,
+    });
+    if (!confirmed) return;
     setInventoryError('');
     setCustomLabel('');
     setActiveWidget(null);

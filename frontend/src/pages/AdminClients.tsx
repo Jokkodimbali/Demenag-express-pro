@@ -1,8 +1,10 @@
 import { uiText } from '../content/reference-ui-text';
+import { messages } from '../content/fr';
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAdministration } from '../application/controllers/useAdministration';
 import { useAdminClients } from '../application/controllers/useAdminClients';
+import { useApp } from '../application/context';
 import { errorMessage } from '../application/error-message';
 import { normalizedClientPhone } from '../application/services/client-summary';
 import { usePagination } from '../application/usePagination';
@@ -161,6 +163,7 @@ function ClientRow({
   );
 }
 export function AdminClients() {
+  const { requestConfirmation } = useApp();
   const { loadDirectory, updateClient, hideClientProfile, resetClientPassword } = useAdminClients();
   const { bookings, loading, error, setRetry } = useAdministration();
   const navigate = useNavigate();
@@ -261,7 +264,14 @@ export function AdminClients() {
     }
   }
   async function hideClient(client: ClientRowValue) {
-    if (!window.confirm(`Supprimer ${client.name} de la liste des clients ?`)) return;
+    const confirmed = await requestConfirmation({
+      titleId: 'hide-client-title',
+      eyebrow: messages.confirmationRequise,
+      title: messages.supprimerClientTitre(client.name),
+      description: messages.suppressionClientDescription(client.name),
+      confirmLabel: uiText['supprimer'],
+    });
+    if (!confirmed) return;
     try {
       const entry = await hideClientProfile(client.key);
       setHidden((old) => [...old.filter((value) => digitsOnly(value.phone) !== client.key), entry]);

@@ -43,6 +43,8 @@ test('Le contrôle employé conserve les cinq photos et le carburant, et autoris
     listDriverInspections: async () => [],
     listDriverBreakdowns: async () => [],
     findInspection: async () => ({ photos: Array(6).fill(image) }),
+    updateInspectionLevel: async () => ({}) as never,
+    deleteInspection: async () => undefined,
   };
   const service = new VehicleReportService(reports, drivers);
   const items = Object.fromEntries(
