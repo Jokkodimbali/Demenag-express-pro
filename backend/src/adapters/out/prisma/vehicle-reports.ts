@@ -55,13 +55,27 @@ export class PrismaVehicleReports implements VehicleReportRepository {
       await tx.$queryRaw`SELECT "id" FROM "demenag"."vehicle_inspections" WHERE "id" = ${id}::uuid FOR UPDATE`;
       const current = await tx.controleVehicule.findUnique({ where: { id } });
       if (!current) throw new AppError(404, 'Contrôle introuvable.');
+      const photos = Array.isArray(current.photos) ? current.photos : [];
       const levels = { ...(current.niveaux as Record<string, string>), [key]: level };
       const condition = Object.values(levels).every((value) => value === 'good')
         ? 'good'
         : 'attention';
       return tx.controleVehicule.update({
         where: { id },
-        data: { niveaux: levels, etatVehicule: condition },
+        data: {
+          niveaux: levels,
+          etatVehicule: condition,
+          // Adding fuel switches the legacy layout to the current five-point layout.
+          // Migrate the photos atomically with that switch, including its empty fuel slot.
+          ...(key === 'fuel' && !('fuel' in (current.niveaux as Record<string, string>))
+            ? {
+                photos: [
+                  ...[0, 2, 1, 4, -1].map((index) => photos[index] ?? ''),
+                  ...photos.filter((_, index) => ![0, 2, 1, 4].includes(index)),
+                ],
+              }
+            : {}),
+        },
         include: inspectionInclude,
       });
     });
@@ -81,7 +95,6 @@ export class PrismaVehicleReports implements VehicleReportRepository {
       await this.db.controleVehicule.findMany({
         include: inspectionInclude,
         orderBy: { creeLe: 'desc' },
-        take: 300,
       })
     ).map((r) => this.inspection(r));
   }
@@ -90,7 +103,6 @@ export class PrismaVehicleReports implements VehicleReportRepository {
       await this.db.signalementPanne.findMany({
         include: breakdownInclude,
         orderBy: { creeLe: 'desc' },
-        take: 300,
       })
     ).map((r) => this.breakdown(r));
   }

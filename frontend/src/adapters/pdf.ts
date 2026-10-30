@@ -259,6 +259,8 @@ export async function downloadQuote(
   for (const [index, line] of price.lines.entries()) {
     const label =
       index === 0 && documentQuote?.kind !== 'final' ? `${line.label} - estimé` : line.label;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
     const labelLines = doc.splitTextToSize(clean(label), qtyX - margin - 14) as string[];
     const rowHeight = Math.max(12, labelLines.length * 4.5 + 5);
     ensureSpace(rowHeight + 35);
@@ -370,15 +372,12 @@ export async function downloadQuote(
     y = paragraph(settings.invoiceFooter, margin, y + 2, contentWidth, 8, false, [92, 99, 106]);
 
   // Espaces de signature et cachet comme sur le document de référence.
-  const signatureHeight = paymentText ? 112 : 46;
-  let signatureY = Math.max(y + (paymentText ? 8 : 16), 181);
-  let deferredSignature = false;
-  if (signatureY + signatureHeight > 287) {
-    if (tolls.length || inventory) deferredSignature = true;
-    else {
-      doc.addPage();
-      signatureY = 30;
-    }
+  let signatureY = y + 8;
+  let signatureHeight = paymentText ? Math.min(112, 287 - signatureY) : 50;
+  if ((paymentText && signatureHeight < 70) || signatureY + signatureHeight > 287) {
+    doc.addPage();
+    signatureY = 24;
+    signatureHeight = paymentText ? 112 : 50;
   }
   async function drawSignature(top: number) {
     if (paymentText) {
@@ -415,8 +414,20 @@ export async function downloadQuote(
       doc.text('Cachet et signature Demenag Express', rightStart, top + signatureHeight / 2 + 5);
       const stamp = settings.invoiceStamp || (await assetDataUrl('/assets/cachet.png'));
       const signature = settings.invoiceSignature || (await assetDataUrl('/assets/signature.png'));
-      addContainedImage(stamp, right - 38, top + signatureHeight / 2 + 8, 32, 32);
-      addContainedImage(signature, right - 59, top + signatureHeight / 2 + 17, 25, 17);
+      addContainedImage(
+        stamp,
+        right - 38,
+        top + signatureHeight / 2 + 8,
+        Math.min(32, signatureHeight / 2 - 8),
+        Math.min(32, signatureHeight / 2 - 8),
+      );
+      addContainedImage(
+        signature,
+        right - 59,
+        top + signatureHeight / 2 + 10,
+        25,
+        Math.min(17, signatureHeight / 2 - 10),
+      );
       return;
     }
     doc.setFont('helvetica', 'normal');
@@ -448,7 +459,7 @@ export async function downloadQuote(
     addContainedImage(stamp, right - 40, top + 5, 38, 38);
     addContainedImage(signature, right - 58, top + 23, 31, 18);
   }
-  if (!deferredSignature) await drawSignature(signatureY);
+  await drawSignature(signatureY);
 
   if (tolls.length) {
     doc.addPage();
@@ -850,15 +861,6 @@ export async function downloadQuote(
       false,
       [90, 97, 104],
     );
-  }
-
-  if (deferredSignature) {
-    signatureY = Math.max(y + 16, 181);
-    if (signatureY + signatureHeight > 287) {
-      doc.addPage();
-      signatureY = 30;
-    }
-    await drawSignature(signatureY);
   }
 
   const blob = doc.output('blob');

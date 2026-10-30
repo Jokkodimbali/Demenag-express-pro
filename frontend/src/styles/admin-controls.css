@@ -55,7 +55,8 @@
   flex: 2 1 230px;
   min-width: 90px;
   max-width: 320px;
-  min-height: 36px;
+  margin: 0;
+  min-height: 38px;
   padding: 0 8px;
   border: 1px solid #3b4046;
   border-radius: 10px;
@@ -101,7 +102,7 @@
   flex: 1 1 100px;
   min-width: 80px;
   max-width: 220px;
-  min-height: 36px;
+  min-height: 38px;
   padding: 7px 8px;
   border: 1px solid #3b4046;
   border-radius: 10px;
@@ -118,7 +119,7 @@
   flex: 1 1 130px;
   min-width: 110px;
   max-width: 190px;
-  min-height: 36px;
+  min-height: 38px;
   padding: 6px 8px;
   border: 1px solid #3b4046;
   border-radius: 10px;
@@ -255,11 +256,11 @@
   .reference-controls-filters,
   .reference-proofs-filters {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 
   .reference-controls-search {
-    grid-column: 1 / -1;
+    height: 38px;
     width: 100%;
     max-width: none;
   }
@@ -271,6 +272,18 @@
     width: 100%;
     min-width: 0;
     max-width: none;
+  }
+
+  .reference-controls-search input {
+    min-height: 0;
+    height: 36px;
+  }
+
+  .reference-controls-filters select:not(:first-of-type),
+  .reference-proofs-filters select:not(:first-of-type),
+  .reference-controls-filters input[type='date'],
+  .reference-proofs-filters input[type='date'] {
+    grid-column: 1 / -1;
   }
 }
 

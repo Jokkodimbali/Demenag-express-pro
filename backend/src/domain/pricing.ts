@@ -92,7 +92,7 @@ export function calculatePrice(
   );
   requireValue(
     customPrice === null ||
-      (Number.isInteger(customPrice) && customPrice > 0 && customPrice <= 10000000),
+      (Number.isInteger(customPrice) && customPrice >= 0 && customPrice <= 10000000),
     messages.prixPersonnaliseInvalide,
   );
   requireValue(
@@ -103,7 +103,7 @@ export function calculatePrice(
     'Prix par manœuvre invalide.',
   );
   const tier = tierOf(distance, settings.distanceBounds);
-  const transport = tier === 3 ? customPrice : vehicle.prices[tier];
+  const transport = tier === 3 ? (customPrice ?? 0) : vehicle.prices[tier];
   const [firstBound, secondBound, thirdBound] = settings.distanceBounds;
   const transportTier = [
     `moins de ${firstBound} km`,
@@ -111,17 +111,14 @@ export function calculatePrice(
     `${secondBound} – ${thirdBound} km`,
     `plus de ${thirdBound} km`,
   ][tier];
-  const lines =
-    transport === null
-      ? []
-      : [
-          {
-            label: `Transport ${vehicle.shortName || vehicle.name} · ${transportTier} (aller-retour)`,
-            quantity: trips,
-            unitPrice: transport,
-            total: transport * trips,
-          },
-        ];
+  const lines = [
+    {
+      label: `Transport ${vehicle.shortName || vehicle.name} · ${transportTier} (aller-retour)`,
+      quantity: trips,
+      unitPrice: transport,
+      total: transport * trips,
+    },
+  ];
   const accessDescription = workAccess
     ? ` (${accessLabel(workAccess.fromFloor, workAccess.fromLift)} → ${accessLabel(workAccess.toFloor, workAccess.toLift)})`
     : '';
@@ -171,7 +168,7 @@ export function calculatePrice(
   const reason = discountReason.trim();
   return {
     lines,
-    total: transport === null ? null : subtotal - effectiveDiscount,
+    total: subtotal - effectiveDiscount,
     discount: effectiveDiscount,
     discountLabel: `Remise${discountType === 'pct' && discount ? ` (${Math.min(100, discount)} %)` : ''}${reason ? ` · ${reason}` : ''}`,
     discountType,

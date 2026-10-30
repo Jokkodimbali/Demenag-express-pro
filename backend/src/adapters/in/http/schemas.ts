@@ -295,7 +295,7 @@ export const bookingRouteUpdateSchema = routeSchema.extend({
 export const quoteSchema = z.object({
   kind: z.enum(['provisional', 'final']),
   trips: z.number().int().min(1).max(10000),
-  customPrice: z.number().int().positive().max(10000000).nullable(),
+  customPrice: z.number().int().nonnegative().max(10000000).nullable(),
   labourUnitPriceOverride: z.number().int().positive().max(10000000).nullable().optional(),
   discount: z.number().int().min(0).max(10000000),
   discountType: z.enum(['fcfa', 'pct']).optional(),

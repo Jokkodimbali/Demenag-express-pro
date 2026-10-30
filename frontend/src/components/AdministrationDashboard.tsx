@@ -1,3 +1,4 @@
+import { liveBookingPrice } from '../application/services/live-booking-price';
 import { uiText } from '../content/reference-ui-text';
 import { ChevronLeft, ChevronRight, FilePenLine, MessageCircle } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -45,6 +46,7 @@ function RevenueLegend({ provisional, definitive }: { provisional: number; defin
 }
 
 export function RevenueDashboard({ bookings, vehicles = [], onSelect }: DashboardProps) {
+  const { catalogue } = useApp();
   const [vehicleId, setVehicleId] = useState('');
   const [period, setPeriod] = useState<Period>('month');
   const [selectedDay, setSelectedDay] = useState(() => new Date().toISOString().slice(0, 10));
@@ -76,8 +78,8 @@ export function RevenueDashboard({ bookings, vehicles = [], onSelect }: Dashboar
       );
     });
   }, [month, period, selectedDay, vehicleBookings]);
-  const scopeRevenue = useMemo(() => revenueFor(scoped), [scoped]);
-  const globalRevenue = useMemo(() => revenueFor(bookings), [bookings]);
+  const scopeRevenue = useMemo(() => revenueFor(scoped, catalogue), [scoped, catalogue]);
+  const globalRevenue = useMemo(() => revenueFor(bookings, catalogue), [bookings, catalogue]);
   const dailyBookings = useMemo(
     () => vehicleBookings.filter((booking) => booking.date === selectedDay),
     [selectedDay, vehicleBookings],
@@ -247,16 +249,17 @@ function DailyVehicleRevenue({
   bookings: Booking[];
   selectedDay: string;
 }) {
+  const { catalogue } = useApp();
   const rows = useMemo(() => {
     const grouped = new Map<string, Booking[]>();
     for (const booking of bookings)
       grouped.set(booking.vehicle.id, [...(grouped.get(booking.vehicle.id) ?? []), booking]);
     return [...grouped.values()].map((vehicleBookings) => ({
       vehicle: vehicleBookings[0].vehicle,
-      revenue: revenueFor(vehicleBookings),
+      revenue: revenueFor(vehicleBookings, catalogue),
       bookings: vehicleBookings.length,
     }));
-  }, [bookings]);
+  }, [bookings, catalogue]);
   return (
     <section className="panel daily-revenue">
       <div className="section-heading">
@@ -305,6 +308,7 @@ function BookingCalendar({
   selectedDay,
   onSelectDay,
 }: CalendarProps) {
+  const { catalogue } = useApp();
   const days = useMemo(() => {
     if (period === 'week') {
       const start = weekStart(selectedDay);
@@ -359,7 +363,7 @@ function BookingCalendar({
         {days.map((day) => {
           const key = day.toISOString().slice(0, 10);
           const dayBookings = byDay.get(key) ?? [];
-          const revenue = revenueFor(dayBookings);
+          const revenue = revenueFor(dayBookings, catalogue);
           return (
             <div
               className={
@@ -411,7 +415,7 @@ function BookingCalendar({
       {bookings.some((booking) => !booking.date)
         ? (() => {
             const undatedBookings = bookings.filter((booking) => !booking.date);
-            const undatedRevenue = revenueFor(undatedBookings);
+            const undatedRevenue = revenueFor(undatedBookings, catalogue);
             return (
               <section
                 className="calendar-undated"
@@ -446,7 +450,7 @@ function BookingCalendar({
                         {booking.customerName} {uiText['idClient']}
                         {clientIdentifier(booking.phone)} · {booking.timeSlot || 'Heure à convenir'}
                       </span>
-                      <strong>{money(bookingRevenueAmount(booking))}</strong>
+                      <strong>{money(bookingRevenueAmount(booking, catalogue))}</strong>
                     </button>
                   ))}
                 </div>
@@ -481,11 +485,7 @@ export function DefinitiveQuotes({
                   <strong>{booking.reference}</strong> · {booking.customerName}
                 </span>
                 <small>{booking.vehicle.name}</small>
-                <strong>
-                  {money(
-                    finalQuote?.price.total ?? lastQuote?.price.total ?? booking.estimate.total,
-                  )}
-                </strong>
+                <strong>{money(liveBookingPrice(booking, catalogue).total)}</strong>
               </button>
               <div className="finance-row-actions">
                 {booking.status === 'in_progress' && (

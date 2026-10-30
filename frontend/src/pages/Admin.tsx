@@ -1,3 +1,4 @@
+import { liveBookingPrice } from '../application/services/live-booking-price';
 import { uiText } from '../content/reference-ui-text';
 import { useEffect, useState } from 'react';
 import { MessageCircle } from 'lucide-react';
@@ -404,8 +405,7 @@ export function Admin() {
                 <div className="admin-reservations-empty">{uiText['aucuneReservation']}</div>
               ) : (
                 visible.map((booking) => {
-                  const latestQuote = booking.quotes.at(-1);
-                  const total = latestQuote?.price.total ?? booking.estimate.total;
+                  const total = liveBookingPrice(booking, catalogue).total;
                   const reminder = reminderInfo(booking);
                   const href = `${routes.administrationCreateQuote}?modifier=${encodeURIComponent(booking.id)}`;
                   return (
@@ -498,8 +498,7 @@ export function Admin() {
                 <div className="admin-reservations-empty">{uiText['aucuneReservation']}</div>
               ) : (
                 visible.map((booking) => {
-                  const latestQuote = booking.quotes.at(-1);
-                  const total = latestQuote?.price.total ?? booking.estimate.total;
+                  const total = liveBookingPrice(booking, catalogue).total;
                   const reminder = reminderInfo(booking);
                   const href = `${routes.administrationCreateQuote}?modifier=${encodeURIComponent(booking.id)}`;
                   return (

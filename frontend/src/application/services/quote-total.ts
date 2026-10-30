@@ -27,7 +27,7 @@ export function quoteTotal(
   extras: QuoteExtraLine[],
 ) {
   const { tier } = booking.estimate;
-  const transportUnit = tier === 3 ? draft.customPrice : booking.vehicle.prices[tier];
+  const transportUnit = tier === 3 ? (draft.customPrice ?? 0) : booking.vehicle.prices[tier];
   const maxTrips = draft.kind === 'final' ? 10000 : settings.maxTrips;
   if (!Number.isInteger(draft.trips) || draft.trips < 1 || draft.trips > maxTrips) return null;
   if (!Number.isInteger(draft.discount) || draft.discount < 0) return null;
@@ -48,7 +48,6 @@ export function quoteTotal(
     if (!line.label.trim() || line.quantity < 1 || line.unitPrice < 1) return sum;
     return sum + line.quantity * line.unitPrice;
   }, 0);
-  if (transportUnit === null) return null;
   const inventoryTotal = inventoryLines.reduce(
     (sum, line) => sum + line.quantity * line.unitPrice,
     0,

@@ -1,3 +1,4 @@
+import { liveBookingPrice } from '../application/services/live-booking-price';
 import { uiText } from '../content/reference-ui-text';
 import { useApp } from '../application/context';
 import { useBookingCard } from '../application/controllers/useBookingCard';
@@ -21,8 +22,7 @@ export function ClientBookingCard({
   const { pdf, busy, error, recordReminder } = useBookingCard({ booking, onChange });
   const provisionalQuote = booking.quotes.filter((quote) => quote.kind === 'provisional').at(-1);
   const finalQuote = booking.quotes.filter((quote) => quote.kind === 'final').at(-1);
-  const displayedEstimate =
-    finalQuote?.price.total ?? provisionalQuote?.price.total ?? booking.estimate.total;
+  const displayedEstimate = liveBookingPrice(booking, catalogue).total;
   const referenceDate = booking.date ? booking.date.split('-').reverse().join('/') : '—';
   const distanceBounds = catalogue?.settings.distanceBounds ??
     booking.pricingSettings?.distanceBounds ?? [15, 25, 35];

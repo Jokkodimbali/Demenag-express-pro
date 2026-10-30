@@ -19,6 +19,7 @@ export function useAdminVehicleReports() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
+  const [proofsLoading, setProofsLoading] = useState(true);
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
   const bookingWrites = useRef(new Map<string, Promise<Booking>>());
@@ -40,15 +41,22 @@ export function useAdminVehicleReports() {
     let active = true;
     setLoading(true);
     setError('');
-    Promise.all([api.adminVehicleReports(), api.bookings(), api.drivers()])
-      .then(([nextReports, nextBookings, nextDrivers]) => {
+    setProofsLoading(true);
+    void api
+      .adminVehicleReports()
+      .then((nextReports) => {
+        if (active) setReports(nextReports);
+      })
+      .catch((reason: unknown) => active && setError(errorMessage(reason)))
+      .finally(() => active && setLoading(false));
+    void Promise.all([api.bookings(), api.drivers()])
+      .then(([nextBookings, nextDrivers]) => {
         if (!active) return;
-        setReports(nextReports);
         setBookings(nextBookings);
         setDrivers(nextDrivers);
       })
       .catch((reason: unknown) => active && setError(errorMessage(reason)))
-      .finally(() => active && setLoading(false));
+      .finally(() => active && setProofsLoading(false));
     return () => {
       active = false;
     };
@@ -165,6 +173,7 @@ export function useAdminVehicleReports() {
     reports,
     proofs,
     loading,
+    proofsLoading,
     error,
     updateProof,
     deleteProof,

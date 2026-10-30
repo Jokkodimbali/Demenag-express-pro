@@ -1,3 +1,4 @@
+import { liveBookingPrice } from '../application/services/live-booking-price';
 import { uiText } from '../content/reference-ui-text';
 import { messages } from '../content/fr';
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
@@ -34,12 +35,7 @@ const shortDate = (value: string) => {
 };
 function amounts(booking: Booking) {
   const final = [...booking.quotes].reverse().find((quote) => quote.kind === 'final');
-  const provisional = [...booking.quotes].reverse().find((quote) => quote.kind === 'provisional');
   return {
-    amount:
-      (booking.status === 'completed'
-        ? (final?.price.total ?? booking.estimate.total)
-        : (provisional?.price.total ?? booking.estimate.total)) ?? 0,
     finalized:
       (booking.status === 'completed' ? (final?.price.total ?? booking.estimate.total) : 0) ?? 0,
   };
@@ -163,7 +159,7 @@ function ClientRow({
   );
 }
 export function AdminClients() {
-  const { requestConfirmation } = useApp();
+  const { requestConfirmation, catalogue } = useApp();
   const { loadDirectory, updateClient, hideClientProfile, resetClientPassword } = useAdminClients();
   const { bookings, loading, error, setRetry } = useAdministration();
   const navigate = useNavigate();
@@ -215,7 +211,10 @@ export function AdminClients() {
             .filter((date): date is string => Boolean(date))
             .sort()
             .at(-1) ?? '';
-        const total = active.reduce((sum, booking) => sum + amounts(booking).amount, 0);
+        const total = active.reduce(
+          (sum, booking) => sum + (liveBookingPrice(booking, catalogue).total ?? 0),
+          0,
+        );
         const final = active.reduce((sum, booking) => sum + amounts(booking).finalized, 0);
         const acct =
           users.find((user) => user.role === 'client' && digitsOnly(user.phone) === key) ?? null;
@@ -234,7 +233,7 @@ export function AdminClients() {
         ];
       })
       .sort((a, b) => b.moves - a.moves || a.name.localeCompare(b.name));
-  }, [bookings, profiles, hidden, users]);
+  }, [bookings, profiles, hidden, users, catalogue]);
   const needle = query.trim().toLocaleLowerCase('fr');
   const filtered = rows.filter(
     (row) =>

@@ -88,7 +88,7 @@ export function AdminCreateQuoteAside({
           <div>
             <small>{uiText['client']}</small>
             <strong>{draft.customerName || '—'}</strong>
-            <span>{draft.customerPhone || '—'}</span>
+            <span>{draft.customerPhone}</span>
           </div>
           <div>
             <small>{uiText['datePREVUE']}</small>

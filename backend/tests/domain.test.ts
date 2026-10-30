@@ -238,8 +238,15 @@ test('Un devis qui dépasserait la capacité des colonnes comptables est refusé
 test('Le volume véhicule utilise les quatre dimensions et retire le volume des passages de roue', () => {
   assert.equal(vehicleCapacity('4,30 m', '1,94 m', '1,78 m', '1,35 m'), '13,9 m³');
 });
-test('Un trajet de plus de 35 km reste sur devis, jamais à zéro', () => {
-  assert.equal(calculatePrice(vehicle, settings, 50, none).total, null);
+test('Au-delà de 35 km, le transport non chiffré vaut zéro et les prestations restent calculées', () => {
+  assert.equal(calculatePrice(vehicle, settings, 50, none).total, 0);
+  const withLabour = calculatePrice(vehicle, settings, 50, { ...none, labour: 2 });
+  assert.equal(withLabour.total, settings.labourPrice * 2);
+  assert.equal(withLabour.lines[0]?.unitPrice, 0);
+  assert.equal(
+    calculatePrice(vehicle, settings, 50, { ...none, labour: 2 }, 1, 0).total,
+    settings.labourPrice * 2,
+  );
   assert.equal(calculatePrice(vehicle, settings, 50, none, 2, 60000).total, 120000);
 });
 test('Les montants et quantités invalides sont refusés', () => {
@@ -386,7 +393,7 @@ test('Les bornes et limites choisies par l’administration pilotent le calcul',
     maxTrips: 3,
   };
   assert.equal(calculatePrice(vehicle, configured, 12, none).total, 37000);
-  assert.equal(calculatePrice(vehicle, configured, 31, none).total, null);
+  assert.equal(calculatePrice(vehicle, configured, 31, none).total, 0);
   assert.throws(() => calculatePrice(vehicle, configured, 12, { ...none, labour: 3 }));
   assert.throws(() => calculatePrice(vehicle, configured, 12, none, 4));
 });

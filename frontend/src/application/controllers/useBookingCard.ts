@@ -1,3 +1,4 @@
+import { liveBookingPrice } from '../services/live-booking-price';
 import { useEffect, useState } from 'react';
 import { messages } from '../../content/fr';
 import type { Booking, BookingStatus, Quote, TollPoint } from '../../domain/model';
@@ -31,7 +32,7 @@ export function useBookingCard({
     [deleting, setDeleting] = useState(false),
     [deleteBusy, setDeleteBusy] = useState(false),
     [deleteError, setDeleteError] = useState(''),
-    [extraLines, setExtraLines] = useState<ExtraLine[]>(() => extrasFromLast(b, last, tollPoints)),
+    [extraLines, setExtraLines] = useState<ExtraLine[]>(() => extrasFromLast(last, tollPoints)),
     [quoteNotes, setQuoteNotes] = useState(() => last?.notes || b.notes || '');
   const [quoteDraft, setQuoteDraft] = useState(() => ({
     kind: b.driverFinishedAt ? ('final' as const) : (last?.kind ?? ('provisional' as const)),
@@ -74,7 +75,7 @@ export function useBookingCard({
       discountReason: last?.price.discountReason ?? '',
       options: quotedServiceOptions(b, last),
     });
-    setExtraLines(extrasFromLast(b, last, tollPoints));
+    setExtraLines(extrasFromLast(last, tollPoints));
     setQuoteNotes(last?.notes || b.notes || '');
   }, [b, last, tollPoints]);
   const terminal = ['completed', 'cancelled'].includes(b.status);
@@ -147,7 +148,12 @@ export function useBookingCard({
     setError('');
     setBusy(true);
     try {
-      return await exportQuote(b, quote, settings);
+      const price = quote?.kind === 'final' ? quote.price : liveBookingPrice(b, catalogue, quote);
+      return await exportQuote(
+        { ...b, estimate: price },
+        quote ? { ...quote, price } : undefined,
+        settings,
+      );
     } catch {
       setError(messages.lePdfNAPasPuEtreGenere);
       return null;
@@ -291,11 +297,7 @@ export function useBookingCard({
   };
 }
 
-function extrasFromLast(
-  booking: Booking,
-  quote: Quote | undefined,
-  tollPoints: TollPoint[],
-): ExtraLine[] {
+function extrasFromLast(quote: Quote | undefined, tollPoints: TollPoint[]): ExtraLine[] {
   if (!quote) return [];
   const tollLines = (quote.tolls ?? []).map((line) => ({
     id: line.tollPointId,
@@ -309,7 +311,7 @@ function extrasFromLast(
       .filter(
         (line) =>
           !isQuotedServiceLine(line.label) &&
-          !line.label.includes(booking.vehicle.name) &&
+          !line.label.startsWith('Transport') &&
           !line.label.startsWith('Menuisier · démontage / montage '),
       )
       .map((line) => ({

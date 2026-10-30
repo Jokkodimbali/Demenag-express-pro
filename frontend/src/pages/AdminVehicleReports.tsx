@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Search, X } from 'lucide-react';
+import { errorMessage } from '../application/error-message';
 import { uiText } from '../content/reference-ui-text';
 import { EmployeePhotoViewer } from '../components/employee/EmployeePhotoViewer';
 import { employeePhoto } from '../components/employee/photos';
@@ -34,6 +35,7 @@ const dateLabel = (value: string) =>
     year: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'Africa/Dakar',
   }).format(new Date(value));
 const isoDate = (value: string) => {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -55,6 +57,7 @@ export function AdminVehicleReports() {
     reports,
     proofs,
     loading,
+    proofsLoading,
     error,
     updateProof,
     deleteProof,
@@ -73,6 +76,7 @@ export function AdminVehicleReports() {
   const [proofVehicleFilter, setProofVehicleFilter] = useState('all');
   const [proofPersonFilter, setProofPersonFilter] = useState('all');
   const [photo, setPhoto] = useState('');
+  const [photoError, setPhotoError] = useState('');
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const noteTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const missions = useMemo(
@@ -179,19 +183,20 @@ export function AdminVehicleReports() {
 
   async function replaceProofPhoto(bookingId: string, proofId: string, file?: File) {
     if (!file) return;
+    setPhotoError('');
     try {
       const image = await employeePhoto(file);
       await updateProof(bookingId, proofId, { image });
-    } catch {
-      // The shared controller surfaces API and image errors in the message above.
+    } catch (reason) {
+      setPhotoError(errorMessage(reason));
     }
   }
 
   return (
     <div className="reference-controls-page">
-      {error && (
+      {(photoError || error) && (
         <p className="reference-controls-error" aria-live="polite">
-          {error}
+          {photoError || error}
         </p>
       )}
       <section className="reference-controls-card">
@@ -392,7 +397,7 @@ export function AdminVehicleReports() {
             </select>
           </div>
         </div>
-        {loading ? (
+        {proofsLoading ? (
           <span className="reference-controls-empty">{uiText['chargement']}</span>
         ) : proofs.length === 0 ? (
           <span className="reference-controls-empty">{uiText['aucunePhoto']}</span>
@@ -498,7 +503,7 @@ export function AdminVehicleReports() {
             </table>
           </div>
         )}
-        {!loading && filteredProofs.length > 0 && (
+        {!proofsLoading && filteredProofs.length > 0 && (
           <Pagination
             page={proofsPage.page}
             pageCount={proofsPage.pageCount}

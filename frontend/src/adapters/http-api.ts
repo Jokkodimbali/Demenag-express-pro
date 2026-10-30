@@ -127,7 +127,8 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
     driverReports: () => request(httpRoutes.driver.inspections),
     submitVehicleInspection: (input) => request(httpRoutes.driver.inspections, 'POST', input),
     reportBreakdown: (input) => request(httpRoutes.driver.breakdowns, 'POST', input),
-    adminVehicleReports: () => request(httpRoutes.vehicleReports),
+    adminVehicleReports: () =>
+      sharePendingRead(httpRoutes.vehicleReports, () => request(httpRoutes.vehicleReports)),
     updateInspectionLevel: (id, key, good) =>
       request(`${httpRoutes.vehicleInspection(id)}/item`, 'PATCH', { key, good }),
     deleteInspection: (id) => request(httpRoutes.vehicleInspection(id), 'DELETE'),

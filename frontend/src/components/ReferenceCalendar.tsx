@@ -1,3 +1,5 @@
+import { useApp } from '../application/context';
+import { liveBookingPrice } from '../application/services/live-booking-price';
 import { uiText } from '../content/reference-ui-text';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -50,21 +52,6 @@ function startOfWeek(day: string) {
 
 function dateLabel(day: string, options: Intl.DateTimeFormatOptions) {
   return atNoon(day).toLocaleDateString('fr-FR', { ...options, timeZone: 'Africa/Dakar' });
-}
-
-function amount(booking: Booking) {
-  const final = booking.quotes.filter((quote) => quote.kind === 'final').at(-1);
-  const provisional = booking.quotes.filter((quote) => quote.kind === 'provisional').at(-1);
-  if (booking.status === 'completed') {
-    return {
-      final: final?.price.total ?? provisional?.price.total ?? booking.estimate.total,
-      provisional: null,
-    };
-  }
-  return {
-    final: null,
-    provisional: final?.price.total ?? provisional?.price.total ?? booking.estimate.total,
-  };
 }
 
 function timeRange(booking: Booking) {
@@ -150,6 +137,13 @@ function periodTitle(view: View, day: string, month: Date) {
 }
 
 export function ReferenceCalendar({ bookings, vehicles, onSelect }: CalendarProps) {
+  const { catalogue } = useApp();
+  const amount = (booking: Booking) => {
+    const total = liveBookingPrice(booking, catalogue).total;
+    return booking.status === 'completed'
+      ? { final: total, provisional: null }
+      : { final: null, provisional: total };
+  };
   const [view, setView] = useState<View>('month');
   const [monthCursor, setMonthCursor] = useState(dakarToday);
   const [gridAnchor, setGridAnchor] = useState<string | null>(null);
