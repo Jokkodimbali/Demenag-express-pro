@@ -28,17 +28,26 @@ export class VehicleReportService implements VehicleReportUseCases {
   ) {}
   async submitInspection(actor: User, input: VehicleInspectionInput) {
     const driver = await this.driver(actor);
-    if (!driver.vehicleId) throw new AppError(400, 'Aucun véhicule ne vous est affecté.');
-    if (input.photos.length < 6 || input.photos.length > 10)
-      throw new AppError(
-        400,
-        'Ajoutez une photo par niveau et de une à cinq photos pour l’état général du véhicule.',
-      );
+    if (!driver.active || (driver.role ?? 'chauffeur') !== 'chauffeur')
+      throw new AppError(403, 'Action réservée aux chauffeurs actifs.');
+    const vehicleId = input.reference ? input.vehicleId : driver.vehicleId;
+    if (!vehicleId) throw new AppError(400, 'Sélectionnez un véhicule.');
+    if (
+      input.reference &&
+      driver.authorizedVehicleIds?.length &&
+      !driver.authorizedVehicleIds.includes(vehicleId)
+    )
+      throw new AppError(403, 'Véhicule non autorisé.');
+    if (
+      input.reference
+        ? input.photos.length !== 5
+        : input.photos.length < 6 || input.photos.length > 10
+    )
+      throw new AppError(400, 'Ajoutez une photo pour chaque point de contrôle.');
     const date = dakarDate();
-    const previousInspection = await this.reports.findInspection(driver.id, date);
-    if (Array.isArray(previousInspection?.photos) && previousInspection.photos.length >= 6)
+    if (!input.reference && (await this.reports.findInspection(driver.id, date)))
       throw new AppError(409, 'Le contrôle du véhicule a déjà été envoyé pour aujourd’hui.');
-    const report = await this.reports.createInspection(driver.id, driver.vehicleId, date, input);
+    const report = await this.reports.createInspection(driver.id, vehicleId, date, input);
     await this.notify(
       'Contrôle véhicule reçu',
       `${driver.name} a envoyé le contrôle quotidien du véhicule.`,
@@ -72,6 +81,14 @@ export class VehicleReportService implements VehicleReportUseCases {
       this.reports.listBreakdowns(),
     ]);
     return { inspections, breakdowns };
+  }
+  async updateInspectionLevel(actor: User, id: string, key: string, good: boolean) {
+    requireAdministrator(actor);
+    return this.reports.updateInspectionLevel(id, key, good ? 'good' : 'low');
+  }
+  async deleteInspection(actor: User, id: string) {
+    requireAdministrator(actor);
+    await this.reports.deleteInspection(id);
   }
   private async driver(actor: User) {
     requireActiveUser(actor);

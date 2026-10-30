@@ -1,8 +1,8 @@
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { mapConfiguration } from '../../config/maps';
-import { addTollMarkers } from '../../components/maps/toll-markers';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { liveTrafficTileUrl, mapConfiguration } from '../../config/maps';
+import { addReferenceTollMarkers, addTollMarkers } from '../../components/maps/toll-markers';
 import { addRouteLine } from '../../components/maps/route-line';
 import { messages } from '../../content/fr';
 import type { Point, TollPoint } from '../../domain/model';
@@ -16,12 +16,13 @@ const pin = (side: Side) =>
   L.divIcon({
     className: 'map-pin-host',
     html: `<span class="map-pin ${side}"><span>${side === 'from' ? 'A' : 'B'}</span></span>`,
-    iconSize: [32, 38],
-    iconAnchor: [16, 38],
+    iconSize: [34, 34],
+    iconAnchor: [17, 34],
   });
 export function useRouteMap(
   tollLines: TollExtraLine[] = EMPTY_TOLL_LINES,
   onTollToggle?: (line: TollExtraLine, selected: boolean) => void,
+  referenceQuoteMap = false,
 ) {
   const { api, draft, setDraft, tollPoints } = useApp();
   const [active, setActive] = useState<Side>('from'),
@@ -45,7 +46,7 @@ export function useRouteMap(
   tollStateRef.current = { tollLines, onTollToggle };
   const routeRequest = useRef(0),
     searchRequest = useRef(0),
-    addressRequest = useRef(0);
+    addressRequests = useRef<Record<Side, number>>({ from: 0, to: 0 });
   const { from, to } = draft;
   const routeTolls = useMemo(
     () => tollsOnRoute(draft.route?.geometry ?? [], tollPoints),
@@ -64,7 +65,7 @@ export function useRouteMap(
   setPointRef.current = (side, point, label) => {
     routeRequest.current++;
     searchRequest.current++;
-    const requestId = ++addressRequest.current;
+    const requestId = ++addressRequests.current[side];
     setResults(null);
     setBusy(false);
     setSearching(null);
@@ -79,7 +80,7 @@ export function useRouteMap(
       void api
         .reverse(point)
         .then(({ label: address }) => {
-          if (requestId === addressRequest.current) {
+          if (requestId === addressRequests.current[side]) {
             setDraft((d) => ({ ...d, [side + 'Address']: address }));
           }
         })
@@ -92,7 +93,7 @@ export function useRouteMap(
       const id = ++routeRequest.current;
       setBusy(true);
       setError('');
-      setDraft((d) => ({ ...d, route: null }));
+      setDraft((d) => ({ ...d, route: null, distanceKmOverride: null }));
       try {
         const result = await api.route(from, to);
         if (id === routeRequest.current) setDraft((d) => ({ ...d, route: result }));
@@ -104,24 +105,31 @@ export function useRouteMap(
     },
     [api, setDraft],
   );
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!host.current) return;
     const routeCounter = routeRequest;
     const searchCounter = searchRequest;
     const m = L.map(host.current, {
-      scrollWheelZoom: true,
+      scrollWheelZoom: false,
       minZoom: 9,
       maxBounds: [
         [12, -18.2],
         [16.8, -11.2],
       ],
-    }).setView([14.6928, -17.4467], 12);
+    }).setView([14.72, -17.22], 10);
     map.current = m;
-    L.tileLayer(mapConfiguration.tileUrl, mapConfiguration.tileOptions).addTo(m);
-    m.on('click', (e) => setPointRef.current(activeRef.current, [e.latlng.lat, e.latlng.lng]));
+    const trafficTiles = L.tileLayer(liveTrafficTileUrl(), mapConfiguration.tileOptions).addTo(m);
+    const refreshTrafficTiles = window.setInterval(() => {
+      trafficTiles.setUrl(liveTrafficTileUrl());
+    }, 300000);
+    m.on('click', (event) =>
+      setPointRef.current(activeRef.current, [event.latlng.lat, event.latlng.lng]),
+    );
+    m.on('focus', () => m.scrollWheelZoom.enable());
     const observer = new ResizeObserver(() => m.invalidateSize());
     observer.observe(host.current);
     return () => {
+      window.clearInterval(refreshTrafficTiles);
       observer.disconnect();
       m.remove();
       map.current = null;
@@ -134,20 +142,60 @@ export function useRouteMap(
   }, []);
   useEffect(() => {
     if (!map.current) return;
+    map.current.eachLayer((layer) => {
+      if (
+        layer instanceof L.Popup &&
+        layer.options.className?.includes('reference-toll-leaflet-popup')
+      )
+        layer.remove();
+    });
+    tollLayer.current?.eachLayer((layer) => {
+      if (layer instanceof L.Marker) layer.closePopup();
+    });
     tollLayer.current?.remove();
-    tollLayer.current = addTollMarkers(
-      map.current,
-      tollPoints,
-      canChooseTolls ? toggleToll : undefined,
-      new Set(tollLines.map((item) => item.id)),
-      undefined,
-      new Set(routeTolls.map((point) => point.id)),
-    );
+    tollLayer.current =
+      referenceQuoteMap && canChooseTolls
+        ? addReferenceTollMarkers(
+            map.current,
+            tollPoints,
+            tollLines,
+            draft.vehicleId,
+            (point, quantity) => {
+              map.current?.closePopup();
+              const toggle = tollStateRef.current.onTollToggle;
+              if (!toggle) return;
+              if (quantity === 0) {
+                const previous = tollLines.find((line) => line.id === point.id);
+                if (previous) toggle(previous, false);
+                return;
+              }
+              toggle(tollLine(point, draft.vehicleId, 'one-way', quantity), true);
+            },
+          )
+        : addTollMarkers(
+            map.current,
+            tollPoints,
+            canChooseTolls ? toggleToll : undefined,
+            new Set(tollLines.map((item) => item.id)),
+            undefined,
+            new Set(routeTolls.map((point) => point.id)),
+          );
     return () => {
+      tollLayer.current?.eachLayer((layer) => {
+        if (layer instanceof L.Marker) layer.closePopup();
+      });
       tollLayer.current?.remove();
       tollLayer.current = null;
     };
-  }, [tollPoints, canChooseTolls, tollLines, routeTolls, toggleToll]);
+  }, [
+    tollPoints,
+    canChooseTolls,
+    tollLines,
+    routeTolls,
+    toggleToll,
+    referenceQuoteMap,
+    draft.vehicleId,
+  ]);
   useEffect(() => {
     if (!map.current) return;
     for (const side of ['from', 'to'] as const) {
@@ -166,7 +214,10 @@ export function useRouteMap(
         icon: pin(side),
         draggable: true,
         alt: side === 'from' ? messages.pointDeDepart : messages.pointDArrivee,
+        zIndexOffset: 2000,
       }).addTo(map.current);
+      marker.on('click', () => setActive(side));
+      marker.on('dragstart', () => setActive(side));
       marker.on('dragend', () => {
         const p = marker.getLatLng();
         setPointRef.current(side, [p.lat, p.lng]);
@@ -179,13 +230,22 @@ export function useRouteMap(
     line.current?.remove();
     line.current = null;
     if (draft.route && map.current) {
-      line.current = addRouteLine(map.current, draft.route.geometry);
+      line.current = addRouteLine(map.current, draft.route.geometry, draft.route.fallback);
       map.current.fitBounds(line.current.getBounds(), { padding: [50, 50] });
     }
   }, [draft.route]);
   useEffect(() => {
     if (from && to) void calculateRoute(from, to);
   }, [calculateRoute, from, to]);
+  useEffect(() => {
+    const resize = window.setTimeout(() => {
+      const currentMap = map.current;
+      if (!currentMap) return;
+      currentMap.invalidateSize();
+      if (line.current) currentMap.fitBounds(line.current.getBounds(), { padding: [60, 60] });
+    }, 60);
+    return () => window.clearTimeout(resize);
+  }, [full]);
   useEffect(() => {
     if (!full) return;
     const onKey = (e: KeyboardEvent) => {
@@ -202,11 +262,17 @@ export function useRouteMap(
   function address(side: Side, value: string) {
     routeRequest.current++;
     searchRequest.current++;
-    addressRequest.current++;
+    addressRequests.current[side]++;
     setBusy(false);
     setSearching(null);
     setResults(null);
-    setDraft((d) => ({ ...d, [side + 'Address']: value, [side]: null, route: null }));
+    setDraft((d) => ({
+      ...d,
+      [side + 'Address']: value,
+      [side]: null,
+      route: null,
+      distanceKmOverride: null,
+    }));
   }
   async function search(side: Side) {
     const q = draft[(side + 'Address') as 'fromAddress' | 'toAddress'];
@@ -229,8 +295,47 @@ export function useRouteMap(
       if (id === searchRequest.current) setSearching(null);
     }
   }
+  async function geocode(side: Side) {
+    const query = draft[(side + 'Address') as 'fromAddress' | 'toAddress'].trim();
+    if (query.length < 3 || draft[side]) return;
+    const id = ++searchRequest.current;
+    setSearching(side);
+    setError('');
+    try {
+      const items = await api.search(query);
+      if (id !== searchRequest.current) return;
+      if (items.length) setPointRef.current(side, items[0].point, query);
+      else setError(messages.aucuneAdresseTrouveePlacezLePointSurLa);
+    } catch (error) {
+      if (id === searchRequest.current) setError(errorMessage(error));
+    } finally {
+      if (id === searchRequest.current) setSearching(null);
+    }
+  }
   function route() {
     if (draft.from && draft.to) void calculateRoute(draft.from, draft.to);
+  }
+  function clear() {
+    routeRequest.current++;
+    searchRequest.current++;
+    addressRequests.current.from++;
+    addressRequests.current.to++;
+    setResults(null);
+    setBusy(false);
+    setSearching(null);
+    setError('');
+    setActive('from');
+    setDraft((current) => ({
+      ...current,
+      from: null,
+      to: null,
+      fromAddress: '',
+      toAddress: '',
+      fromNote: '',
+      toNote: '',
+      route: null,
+      distanceKmOverride: null,
+    }));
   }
   function locate() {
     if (!navigator.geolocation) {
@@ -269,7 +374,9 @@ export function useRouteMap(
     to,
     address,
     search,
+    geocode,
     route,
+    clear,
     locate,
   };
 }

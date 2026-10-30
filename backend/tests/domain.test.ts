@@ -1,9 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { calculatePrice, labourUnitPrice, tierOf } from '../src/domain/pricing.js';
+import {
+  assemblyUnitPrice,
+  calculatePrice,
+  labourUnitPrice,
+  tierOf,
+} from '../src/domain/pricing.js';
 import { vehicleCapacity } from '../src/domain/vehicle-capacity.js';
 import { validateDate, transition } from '../src/domain/booking.js';
 import { AuthService, normalizePhone } from '../src/application/services/auth.js';
+import { registerSchema } from '../src/adapters/in/http/validation/auth.js';
 import { ScryptPasswords } from '../src/adapters/out/security/crypto.js';
 import type { Settings, UserCredentials, Vehicle } from '../src/domain/model.js';
 const vehicle: Vehicle = {
@@ -55,6 +61,9 @@ test('Les limites tarifaires respectent les tranches annoncées', () => {
     [0, 1, 1, 2, 2, 3],
   );
 });
+test('Une distance corrigée à zéro conserve la première tranche du modèle', () => {
+  assert.equal(tierOf(0, settings.distanceBounds), 0);
+});
 test('Le transport, les options et la remise sont calculés en FCFA entiers', () => {
   const price = calculatePrice(
     vehicle,
@@ -79,12 +88,18 @@ test('Chaque ligne du devis conserve la quantité exacte de sa prestation', () =
   assert.deepEqual(
     price.lines.map(({ label, quantity }) => ({ label, quantity })),
     [
-      { label: 'Transport Sprinter · aller-retour', quantity: 3 },
+      { label: 'Transport Sprinter · 15 – 25 km (aller-retour)', quantity: 3 },
       { label: 'Manœuvre', quantity: 2 },
       { label: 'Menuisier · bureau', quantity: 1 },
       { label: 'Menuisier · armoire', quantity: 1 },
     ],
   );
+});
+test('Le prix personnalisé ne remplace pas la tranche normale après modification du trajet', () => {
+  const price = calculatePrice(vehicle, settings, 20, none, 2, 90000);
+  assert.equal(price.lines[0].unitPrice, vehicle.prices[1]);
+  assert.equal(price.lines[0].label, 'Transport Sprinter · 15 – 25 km (aller-retour)');
+  assert.equal(price.total, vehicle.prices[1] * 2);
 });
 test('Le tarif par manœuvre ajoute les étages sans ascenseur et le forfait ascenseur', () => {
   const access = { fromFloor: 2, toFloor: 1, fromLift: false, toLift: true };
@@ -103,7 +118,26 @@ test('Le tarif par manœuvre ajoute les étages sans ascenseur et le forfait asc
   assert.equal(price.lines[1].unitPrice, 7500);
   assert.match(price.lines[1].label, /2e étage sans ascenseur → 1er étage avec ascenseur/);
 });
-test('Les prix saisis dans chaque matrice remplacent les anciens suppléments calculés', () => {
+test('Le prix par manœuvre saisi sur le devis remplace la grille admin', () => {
+  const price = calculatePrice(
+    vehicle,
+    settings,
+    10,
+    { ...none, labour: 2 },
+    1,
+    null,
+    0,
+    [],
+    undefined,
+    8000,
+  );
+  assert.equal(price.lines.find((line) => line.label === 'Manœuvre')?.unitPrice, 8000);
+  assert.equal(price.total, 46000);
+  assert.throws(() =>
+    calculatePrice(vehicle, settings, 10, { ...none, labour: 2 }, 1, null, 0, [], undefined, -5),
+  );
+});
+test('Les suppléments suivent la formule de la référence, indépendamment des anciennes matrices', () => {
   const labourMatrix = {
     none: Array.from({ length: 6 }, (_, from) =>
       Array.from({ length: 6 }, (_, to) => 1000 + from * 10 + to),
@@ -120,10 +154,10 @@ test('Les prix saisis dans chaque matrice remplacent les anciens suppléments ca
   };
   const matrixSettings = { ...settings, labourMatrix };
   const cases = [
-    [{ fromFloor: 2, toFloor: 4, fromLift: false, toLift: false }, 1024],
-    [{ fromFloor: 2, toFloor: 4, fromLift: true, toLift: false }, 2024],
-    [{ fromFloor: 2, toFloor: 4, fromLift: false, toLift: true }, 3024],
-    [{ fromFloor: 2, toFloor: 4, fromLift: true, toLift: true }, 4024],
+    [{ fromFloor: 2, toFloor: 4, fromLift: false, toLift: false }, 9000],
+    [{ fromFloor: 2, toFloor: 4, fromLift: true, toLift: false }, 8500],
+    [{ fromFloor: 2, toFloor: 4, fromLift: false, toLift: true }, 7500],
+    [{ fromFloor: 2, toFloor: 4, fromLift: true, toLift: true }, 7000],
   ] as const;
   for (const [access, expected] of cases) {
     const price = calculatePrice(
@@ -198,22 +232,90 @@ test('Un devis qui dépasserait la capacité des colonnes comptables est refusé
     /limite de stockage/u,
   );
   assert.throws(
-    () => calculatePrice(vehicle, { ...settings, maxTrips: 10000 }, 10, none, 10000, 10000000),
+    () => calculatePrice(vehicle, { ...settings, maxTrips: 10000 }, 50, none, 10000, 10000000),
     /limite de stockage/u,
   );
 });
 test('Le volume véhicule utilise les quatre dimensions et retire le volume des passages de roue', () => {
   assert.equal(vehicleCapacity('4,30 m', '1,94 m', '1,78 m', '1,35 m'), '13,9 m³');
 });
-test('Un trajet de plus de 35 km reste sur devis, jamais à zéro', () => {
-  assert.equal(calculatePrice(vehicle, settings, 50, none).total, null);
+test('Au-delà de 35 km, le transport non chiffré vaut zéro et les prestations restent calculées', () => {
+  assert.equal(calculatePrice(vehicle, settings, 50, none).total, 0);
+  const withLabour = calculatePrice(vehicle, settings, 50, { ...none, labour: 2 });
+  assert.equal(withLabour.total, settings.labourPrice * 2);
+  assert.equal(withLabour.lines[0]?.unitPrice, 0);
+  assert.equal(
+    calculatePrice(vehicle, settings, 50, { ...none, labour: 2 }, 1, 0).total,
+    settings.labourPrice * 2,
+  );
   assert.equal(calculatePrice(vehicle, settings, 50, none, 2, 60000).total, 120000);
 });
 test('Les montants et quantités invalides sont refusés', () => {
   assert.throws(() => calculatePrice(vehicle, settings, 10, none, 0));
-  assert.throws(() => calculatePrice(vehicle, settings, 10, none, 1, null, 31000));
+  assert.equal(calculatePrice(vehicle, settings, 10, none, 1, null, 31000).total, 0);
   assert.throws(() => calculatePrice(vehicle, settings, 10, { ...none, labour: -1 }));
   assert.throws(() => tierOf(NaN, settings.distanceBounds));
+});
+test('La remise suit le calcul FCFA et pourcentage du fichier de référence', () => {
+  const base = calculatePrice(vehicle, settings, 10, none);
+  assert.notEqual(base.total, null);
+  const subtotal = base.lines.reduce((sum, line) => sum + line.total, 0);
+  const percent = calculatePrice(
+    vehicle,
+    settings,
+    10,
+    none,
+    1,
+    null,
+    25,
+    [],
+    undefined,
+    null,
+    'pct',
+    'fidélité',
+  );
+  assert.equal(percent.discount, Math.round(subtotal * 0.25));
+  assert.equal(percent.total, subtotal - percent.discount);
+  assert.equal(percent.discountLabel, 'Remise (25 %) · fidélité');
+  assert.equal(
+    calculatePrice(vehicle, settings, 10, none, 1, null, 150, [], undefined, null, 'pct').total,
+    0,
+  );
+  assert.equal(calculatePrice(vehicle, settings, 10, none, 1, null, subtotal + 1).total, 0);
+});
+test('La matrice de menuiserie applique local, import et taille comme la référence', () => {
+  const configured = {
+    ...settings,
+    montageP: {
+      armoire: {
+        local: 12000,
+        import: 18000,
+        u: 1000,
+        sz: { '4': { local: 15000, import: 22000 } },
+      },
+    },
+  };
+  assert.equal(assemblyUnitPrice(configured, 'armoire'), 12000);
+  assert.equal(assemblyUnitPrice(configured, 'armoire', 'import'), 18000);
+  assert.equal(assemblyUnitPrice(configured, 'armoire', 'local', 4), 15000);
+  assert.equal(assemblyUnitPrice(configured, 'armoire', 'local', 5), 16000);
+});
+test('Les tarifs importés reprennent le local configuré ou le forfait majoré de 50 %', () => {
+  assert.equal(assemblyUnitPrice(settings, 'table-basse', 'local'), 15000);
+  assert.equal(assemblyUnitPrice(settings, 'table-basse', 'import'), 22500);
+  assert.equal(
+    assemblyUnitPrice(
+      { ...settings, montageP: { armoire: { local: 12000 } } },
+      'armoire',
+      'import',
+    ),
+    12000,
+  );
+  assert.equal(assemblyUnitPrice({ ...settings, montageP: { armoire: 10000 } }, 'armoire'), 10000);
+  assert.equal(
+    assemblyUnitPrice({ ...settings, montageP: { armoire: 10000 } }, 'armoire', 'import'),
+    15000,
+  );
 });
 test('La date passée et la date invalide sont refusées, l’heure reste libre', () => {
   const now = new Date('2026-10-15T10:00:00Z');
@@ -236,6 +338,19 @@ test('Le téléphone est normalisé sans tronquer les numéros invalides', () =>
   assert.equal(normalizePhone('00221 77 123 45 67'), '+221771234567');
   assert.throws(() => normalizePhone('1234567771234567'));
 });
+test('L’inscription autorise les clients et employés préenregistrés, jamais un admin public', () => {
+  const phone = '771234567';
+  assert.equal(
+    registerSchema.parse({ name: 'Client test', phone, password: 'Client-2026' }).role,
+    'client',
+  );
+  assert.equal(registerSchema.safeParse({ phone, role: 'driver' }).success, false);
+  assert.equal(
+    registerSchema.safeParse({ name: 'Admin test', phone, password: 'Admin-2026', role: 'admin' })
+      .success,
+    false,
+  );
+});
 test('La connexion accepte les comptes historiques enregistrés sans +221', async () => {
   const user: UserCredentials = {
     id: 'user-1',
@@ -245,9 +360,34 @@ test('La connexion accepte les comptes historiques enregistrés sans +221', asyn
     active: true,
     passwordHash: 'valid-hash',
   };
+  const admin: UserCredentials = {
+    id: 'admin-1',
+    name: 'Admin test',
+    phone: '+221771234567',
+    email: 'admin@example.com',
+    role: 'admin',
+    active: true,
+    passwordHash: 'admin-hash',
+  };
+  const employee: UserCredentials = {
+    id: 'employee-1',
+    name: 'Employé test',
+    phone: '+221781234567',
+    role: 'driver',
+    active: true,
+    passwordHash: 'employee-hash',
+  };
   const auth = new AuthService(
     {
-      findByPhone: async (phone) => (phone === user.phone ? user : null),
+      findByPhone: async (phone) =>
+        phone === user.phone
+          ? user
+          : phone === admin.phone
+            ? admin
+            : phone === employee.phone
+              ? employee
+              : null,
+      findByEmail: async (email) => (email === admin.email ? admin : null),
       create: async () => user,
       updatePassword: async () => {},
       updateProfile: async (id, name, phone, photo) => ({
@@ -271,8 +411,16 @@ test('La connexion accepte les comptes historiques enregistrés sans +221', asyn
     { next: () => 'session-1' },
   );
 
-  const session = await auth.login('+221 77 141 12 51', 'correct-password');
+  const session = await auth.login('+221 77 141 12 51');
   assert.equal(session.user.id, user.id);
+  const adminSession = await auth.login('admin@example.com', 'correct-password');
+  assert.equal(adminSession.user.id, admin.id);
+  await assert.rejects(auth.login('admin@example.com'));
+  await assert.rejects(auth.login('+221771234567'));
+  await assert.rejects(auth.login('+221771234567', 'wrong-password'));
+  assert.equal((await auth.login('+221771234567', 'correct-password')).user.id, admin.id);
+  assert.equal((await auth.login(employee.phone, 'correct-password')).user.id, employee.id);
+  await assert.rejects(auth.login(employee.phone));
 });
 test('Les mots de passe sont salés et vérifiés sans stockage en clair', async () => {
   const h = new ScryptPasswords();
@@ -292,7 +440,7 @@ test('Les bornes et limites choisies par l’administration pilotent le calcul',
     maxTrips: 3,
   };
   assert.equal(calculatePrice(vehicle, configured, 12, none).total, 37000);
-  assert.equal(calculatePrice(vehicle, configured, 31, none).total, null);
+  assert.equal(calculatePrice(vehicle, configured, 31, none).total, 0);
   assert.throws(() => calculatePrice(vehicle, configured, 12, { ...none, labour: 3 }));
   assert.throws(() => calculatePrice(vehicle, configured, 12, none, 4));
 });

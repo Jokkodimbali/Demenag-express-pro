@@ -1,0 +1,154 @@
+.calendar-undated-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+}
+.calendar-undated > div:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.calendar-undated .calendar-booking {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-width: min(100%, 260px);
+}
+.revenue-definition {
+  margin: 0.6rem 0 1rem;
+  font-size: 0.85rem;
+}
+.schedule-editor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.65rem;
+  margin-top: 0.65rem;
+}
+.schedule-editor label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+}
+.schedule-editor input,
+.schedule-editor select {
+  min-height: 40px;
+}
+.booking-precision {
+  margin-top: 0.7rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line, #3b4249);
+  border-radius: 12px;
+}
+.driver-course-panel,
+.booking-trip-history {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #202226;
+}
+.booking-trip-history {
+  gap: 8px;
+  padding: 10px 12px;
+}
+.driver-course-heading,
+.driver-course-form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.driver-course-heading strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.driver-course-form {
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.driver-course-form h4,
+.driver-course-form p,
+.booking-trip-history h4 {
+  margin: 0;
+}
+.driver-course-form > p {
+  color: var(--muted);
+  font-size: 13px;
+}
+.booking-trip-proof {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  padding: 7px 0;
+  border-top: 1px solid var(--line);
+}
+.booking-trip-proof > strong {
+  flex: 0 0 auto;
+}
+.booking-trip-proof > div {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1 1 190px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.booking-trip-proof > div > span {
+  min-width: 82px;
+  color: var(--text);
+  font-weight: 700;
+}
+.booking-trip-proof img {
+  width: 56px;
+  height: 48px;
+  border-radius: 7px;
+  object-fit: cover;
+}
+.booking-precision-heading,
+.booking-precision-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+.booking-precision p {
+  margin: 0.55rem 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.booking-precision form {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.6rem;
+}
+.booking-precision textarea {
+  width: 100%;
+  min-height: 5rem;
+  resize: vertical;
+}
+.booking-precision-actions {
+  justify-content: flex-start;
+}
+@media (max-width: 600px) {
+  .schedule-editor {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .schedule-editor label,
+  .schedule-editor input,
+  .schedule-editor select {
+    width: 100%;
+  }
+}

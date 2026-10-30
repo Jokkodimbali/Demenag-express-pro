@@ -152,6 +152,7 @@
 .inventory-heading > div > span {
   color: #aeb4bb;
   font-size: 13px;
+  font-weight: 400;
 }
 .inventory-collapse {
   min-height: 40px;
@@ -525,6 +526,34 @@
   flex: 0 0 auto;
   white-space: nowrap;
 }
+.inventory-origin-toggle {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 3px;
+  padding: 2px;
+  border: 1px solid #3b4046;
+  border-radius: 9px;
+  background: #1e2023;
+}
+.inventory-origin-toggle button {
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #d5d9de;
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.inventory-origin-toggle button.active {
+  background: #f6d73c;
+  color: #1e2023;
+}
+.inventory-origin-toggle button:focus-visible {
+  outline: 2px solid #f6d73c;
+  outline-offset: 2px;
+}
 .inventory-size-stepper {
   display: inline-flex;
   align-items: center;
@@ -776,12 +805,6 @@
   height: 18px;
   flex: 0 0 18px;
 }
-.settings-form fieldset {
-  margin-top: 20px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 16px;
-}
 .user-list {
   margin-top: 20px;
 }
@@ -806,6 +829,15 @@
   flex: 0 0 auto;
   align-items: center;
   gap: 6px;
+}
+.user-reset-request {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  color: #ffd23f !important;
+  background: rgba(255, 210, 63, 0.08);
+  border: 1px solid rgba(255, 210, 63, 0.35);
+  border-radius: 8px;
+  font-weight: 700;
 }
 .account-dialog {
   position: fixed;
@@ -833,7 +865,7 @@
     position: static;
   }
 }
-@media (max-width: 600px) {
+@media (max-width: 759px) {
   .hero h1 {
     font-size: clamp(30px, 10vw, 46px);
     line-height: 1;
@@ -920,7 +952,8 @@
     color: var(--yellow);
   }
   .admin-tabs {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
   }
 }
 

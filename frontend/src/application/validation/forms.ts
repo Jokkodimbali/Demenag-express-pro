@@ -1,8 +1,9 @@
-import type { Catalogue, Driver, QuoteInput, User, Vehicle } from '../../domain/model';
+import type { Catalogue, Driver, QuoteInput, Settings, User, Vehicle } from '../../domain/model';
 import { messages } from '../../content/fr';
 import { vehicleCapacity } from '../../domain/vehicle-capacity';
-import { createLabourPriceMatrix, labourMatrixScenarios } from '../../domain/labour-price';
-import type { SettingsSection } from '../../pages/Settings';
+import { createLabourPriceMatrix } from '../../domain/labour-price';
+import { referenceInventoryKey } from '../../domain/inventory-assembly';
+import { normalizePaymentQr } from '../services/payment-qr';
 
 const role = (value: FormDataEntryValue | null): User['role'] =>
   value === 'admin' ? 'admin' : 'client';
@@ -23,14 +24,18 @@ export function quoteFromForm(
   version: number,
   extraLines: QuoteInput['extraLines'],
   options: NonNullable<QuoteInput['options']>,
+  tolls: NonNullable<QuoteInput['tolls']> = [],
 ): QuoteInput {
   return {
     kind: data.get('kind') === 'final' ? 'final' : 'provisional',
     trips: integer(data.get('trips')),
     customPrice: data.get('customPrice') ? integer(data.get('customPrice')) : null,
     discount: integer(data.get('discount')),
+    discountType: data.get('discountType') === 'pct' ? 'pct' : 'fcfa',
+    discountReason: String(data.get('discountReason') ?? ''),
     notes: String(data.get('notes')),
     extraLines,
+    tolls,
     options,
     version,
   };
@@ -71,7 +76,12 @@ export async function vehicleFromForm(data: FormData, existing: Vehicle): Promis
   const wheelWidth = String(data.get('wheelWidth'));
   return {
     ...existing,
-    name: String(data.get('name')),
+    name: String(data.get('name')).trim(),
+    shortName: String(
+      data.get('shortName') ||
+        existing.shortName ||
+        String(data.get('name')).trim().split(/\s+/).at(-1),
+    ).trim(),
     volume: vehicleCapacity(length, height, width, wheelWidth),
     length,
     height,
@@ -88,81 +98,105 @@ async function imageValue(value: FormDataEntryValue | null, fallback: string) {
   return dataUrl(value, fallback);
 }
 
-export async function catalogueFromForm(
-  data: FormData,
-  catalogue: Catalogue,
-  section: SettingsSection,
-): Promise<Catalogue> {
-  if (section === 'pricing') {
-    const labourMatrix = createLabourPriceMatrix(catalogue.settings);
-    for (const scenario of labourMatrixScenarios)
-      for (let fromFloor = 0; fromFloor <= 5; fromFloor += 1)
-        for (let toFloor = 0; toFloor <= 5; toFloor += 1) {
-          const key = `labourMatrix.${scenario.id}.${fromFloor}.${toFloor}`;
-          if (data.has(key)) labourMatrix[scenario.id][fromFloor][toFloor] = integer(data.get(key));
-        }
-    return {
-      ...catalogue,
-      vehicles: catalogue.vehicles.map((vehicle) => ({
-        ...vehicle,
-        prices: tuple([0, 1, 2].map((index) => integer(data.get(`${vehicle.id}-${index}`)))),
-      })),
-      settings: {
-        ...catalogue.settings,
-        distanceBounds: tuple([0, 1, 2].map((index) => integer(data.get(`distance-${index}`)))),
-        labourPrice: labourMatrix.none[0][0],
-        labourMatrix,
-        movingLaborPlanning: {
-          maxHandlingHours: Number(data.get('movingLaborPlanning.maxHandlingHours')),
-          maxDayHours: Number(data.get('movingLaborPlanning.maxDayHours')),
-          defaultStartHour: integer(data.get('movingLaborPlanning.defaultStartHour')),
-          maxMoversPerVehicle: integer(data.get('movingLaborPlanning.maxMoversPerVehicle')),
-          cubicMetersPerHourPerMover: Number(
-            data.get('movingLaborPlanning.cubicMetersPerHourPerMover'),
-          ),
-          pauseMinutes: integer(data.get('movingLaborPlanning.pauseMinutes')),
-        },
-        assemblyPrice: integer(data.get('assembly')),
-      },
-    };
+export async function catalogueFromForm(data: FormData, catalogue: Catalogue): Promise<Catalogue> {
+  const montageP = { ...(catalogue.settings.montageP ?? {}) };
+  for (const [legacyKey, canonicalKey] of Object.entries({
+    'table-manger': 'tablem',
+    bibliotheque: 'biblio',
+    congelateur: 'congel',
+    'machine-laver': 'mal',
+    'micro-ondes': 'micro',
+    climatiseur: 'clim',
+    ventilateur: 'ventilo',
+  })) {
+    if (montageP[legacyKey] && !montageP[canonicalKey])
+      montageP[canonicalKey] = montageP[legacyKey];
+    delete montageP[legacyKey];
   }
-  if (section === 'booking-rules')
-    return {
-      ...catalogue,
-      settings: {
-        ...catalogue.settings,
-        bookingsEnabled: data.get('bookingsEnabled') === 'on',
-        clientCancellation: data.get('clientCancellation') === 'on',
-        enabledSlots: Array.from({ length: integer(data.get('slotCount')) }, (_, index) => ({
-          label: String(data.get(`slotLabel-${index}`) ?? '').trim(),
-          startHour: integer(data.get(`slotHour-${index}`)),
-        })).filter((slot) => slot.label.length > 0),
-        maxAdvanceDays: integer(data.get('maxAdvanceDays')),
-        minNoticeHours: integer(data.get('minNoticeHours')),
-        maxOptions: integer(data.get('maxOptions')),
-        maxTrips: integer(data.get('maxTrips')),
-        cancellationNoticeHours: integer(data.get('cancellationNoticeHours')),
-      },
-    };
+  for (const [name, value] of data.entries()) {
+    const match = /^montageP\.([^.]+)\.(?:(local|import|u|uI)|(sz)\.(\d+)\.(local|import))$/.exec(
+      name,
+    );
+    if (!match) continue;
+    const [, formKey, baseOrigin, , size, sizeOrigin] = match;
+    const key = referenceInventoryKey(formKey);
+    const configured = montageP[key];
+    const current =
+      typeof configured === 'number'
+        ? { local: configured, import: Math.round(configured * 1.5) }
+        : (configured ?? {});
+    if (size && sizeOrigin) {
+      montageP[key] = {
+        ...current,
+        sz: {
+          ...(current.sz ?? {}),
+          [size]: { ...(current.sz?.[size] ?? {}), [sizeOrigin]: integer(value) },
+        },
+      };
+    } else if (baseOrigin) {
+      montageP[key] = { ...current, [baseOrigin]: integer(value) };
+    }
+  }
+  const labourPrice = integer(data.get('labourPrice'));
+  const labourFloorPrice = integer(data.get('labourFloorPrice'));
+  const labourLiftPrice = integer(data.get('labourLiftPrice'));
+  const whatsappCountryCode = String(
+    data.get('w.cc') ?? catalogue.settings.whatsappCountryCode ?? '221',
+  ).replace(/\D/g, '');
+  let whatsappLocalNumber = String(data.get('w.biz') ?? '').replace(/\D/g, '');
+  if (whatsappLocalNumber.startsWith('00')) whatsappLocalNumber = whatsappLocalNumber.slice(2);
+  const normalizedWhatsAppNumber = whatsappLocalNumber.replace(/^0+/, '');
+  const whatsappDigits =
+    normalizedWhatsAppNumber.length <= 9
+      ? whatsappCountryCode + normalizedWhatsAppNumber
+      : normalizedWhatsAppNumber;
+  const movingLaborPlanning = {
+    ...catalogue.settings.movingLaborPlanning,
+    maxHandlingHours: Number(data.get('movingLaborPlanning.maxHandlingHours')),
+    maxDayHours: Number(data.get('movingLaborPlanning.maxDayHours')),
+    defaultStartHour: integer(data.get('movingLaborPlanning.defaultStartHour')),
+    maxMoversPerVehicle: integer(data.get('movingLaborPlanning.maxMoversPerVehicle')),
+    cubicMetersPerHourPerMover: Number(data.get('movingLaborPlanning.cubicMetersPerHourPerMover')),
+    pauseMinutes: integer(data.get('movingLaborPlanning.pauseMinutes')),
+  };
+  const labourMatrix = createLabourPriceMatrix({
+    ...catalogue.settings,
+    labourPrice,
+    labourFloorPrice,
+    labourLiftPrice,
+  });
   return {
     ...catalogue,
+    vehicles: catalogue.vehicles.map((vehicle) => ({
+      ...vehicle,
+      prices: tuple([0, 1, 2].map((index) => integer(data.get(`${vehicle.id}-${index}`)))),
+    })),
     settings: {
       ...catalogue.settings,
-      businessPhone: String(data.get('phone')),
-      whatsappPhone: String(data.get('whatsappPhone')),
-      businessName: String(data.get('businessName')),
-      businessAddress: String(data.get('businessAddress')),
-      invoiceFooter: String(data.get('invoiceFooter')),
-      tiktokUrl: String(data.get('tiktokUrl') || '').trim() || null,
-      facebookUrl: String(data.get('facebookUrl') || '').trim() || null,
-      instagramUrl: String(data.get('instagramUrl') || '').trim() || null,
-      invoiceLogo:
-        (await dataUrl(data.get('invoiceLogo'), catalogue.settings.invoiceLogo ?? '')) || null,
-      invoiceStamp:
-        (await dataUrl(data.get('invoiceStamp'), catalogue.settings.invoiceStamp ?? '')) || null,
-      invoiceSignature:
-        (await dataUrl(data.get('invoiceSignature'), catalogue.settings.invoiceSignature ?? '')) ||
-        null,
+      distanceBounds: [15, 25, 35],
+      labourPrice,
+      labourFloorPrice,
+      labourLiftPrice,
+      labourMatrix,
+      assemblyPrice: integer(data.get('assembly')),
+      montageP,
+      movingLaborPlanning,
+      whatsappPhone: `+${whatsappDigits}`,
+      whatsappCountryCode,
+      whatsappMode: String(
+        data.get('w.mode') ?? catalogue.settings.whatsappMode ?? 'api',
+      ) as Settings['whatsappMode'],
+      whatsappQuoteTemplate: String(
+        data.get('w.tpl') ?? catalogue.settings.whatsappQuoteTemplate ?? '',
+      ),
+      paymentWave: data.get('paymentWave') === 'on',
+      paymentCash: data.get('paymentCash') === 'on',
+      paymentQr: await (async () => {
+        const file = data.get('paymentQr');
+        if (file instanceof File && file.size > 0) return normalizePaymentQr(file);
+        if (data.get('removePaymentQr') === 'on') return null;
+        return catalogue.settings.paymentQr ?? null;
+      })(),
     },
   };
 }

@@ -123,6 +123,12 @@
   border-radius: 50%;
   object-fit: cover;
 }
+.account-avatar-placeholder {
+  display: grid;
+  place-items: center;
+  background: #3b4046;
+  color: #f6d73c;
+}
 .account-menu > summary::-webkit-details-marker {
   display: none;
 }
@@ -171,6 +177,21 @@
   font-size: 12px;
   text-align: left;
   text-decoration: none;
+}
+.account-dropdown-profile {
+  display: grid;
+  gap: 3px;
+  padding: 8px 10px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.account-dropdown-profile strong {
+  overflow-wrap: anywhere;
+  color: #fff;
+  font-size: 13px;
+}
+.account-dropdown-profile span {
+  color: var(--muted);
+  font-size: 11px;
 }
 .account-dropdown a:hover,
 .account-dropdown button:hover {

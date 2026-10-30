@@ -1,3 +1,4 @@
+import { liveBookingPrice } from '../services/live-booking-price';
 import { useEffect, useState } from 'react';
 import { messages } from '../../content/fr';
 import type { Booking, BookingStatus, Quote, TollPoint } from '../../domain/model';
@@ -7,7 +8,7 @@ import { errorMessage } from '../error-message';
 import { quoteFromForm } from '../validation/forms';
 import { quoteNotificationUrl } from '../services/quote-notification';
 import { useMemo } from 'react';
-import { quoteTotal } from '../services/quote-total';
+import { quoteTotal, savedCustomTransportPrice } from '../services/quote-total';
 import { isQuotedServiceLine, quotedServiceOptions } from '../services/quote-service-options';
 type ExtraLine = { id: string; label: string; quantity: number; unitPrice: number };
 export function useBookingCard({
@@ -31,31 +32,50 @@ export function useBookingCard({
     [deleting, setDeleting] = useState(false),
     [deleteBusy, setDeleteBusy] = useState(false),
     [deleteError, setDeleteError] = useState(''),
-    [extraLines, setExtraLines] = useState<ExtraLine[]>(() => extrasFromLast(b, last, tollPoints)),
+    [extraLines, setExtraLines] = useState<ExtraLine[]>(() => extrasFromLast(last, tollPoints)),
     [quoteNotes, setQuoteNotes] = useState(() => last?.notes || b.notes || '');
   const [quoteDraft, setQuoteDraft] = useState(() => ({
     kind: b.driverFinishedAt ? ('final' as const) : (last?.kind ?? ('provisional' as const)),
     trips: b.driverFinishedAt ? (b.trips?.length ?? 1) : (last?.price.trips ?? 1),
-    customPrice:
-      last?.price.lines.find((line) => line.label.includes(b.vehicle.name))?.unitPrice ?? null,
-    discount: last?.price.discount ?? 0,
+    customPrice: savedCustomTransportPrice(b, last),
+    discount: last?.price.discountValue ?? last?.price.discount ?? 0,
+    discountType: last?.price.discountType ?? 'fcfa',
+    discountReason: last?.price.discountReason ?? '',
     options: quotedServiceOptions(b, last),
   }));
-  const quoteSettings = b.pricingSettings ?? catalogue?.settings;
-  const quotePreviewTotal = useMemo(
-    () => (quoteSettings ? quoteTotal(b, quoteSettings, quoteDraft, extraLines) : null),
-    [b, extraLines, quoteDraft, quoteSettings],
-  );
+  const quoteSettings = catalogue?.settings ?? b.pricingSettings;
+  const tollPointIds = new Set(tollPoints.map((point) => point.id));
+  const billableExtraLines = extraLines.filter((line) => !tollPointIds.has(line.id));
+  const quoteTolls = extraLines
+    .filter((line) => tollPointIds.has(line.id))
+    .map((line) => ({
+      tollPointId: line.id,
+      direction: line.label.endsWith(' · Aller-retour')
+        ? ('round-trip' as const)
+        : ('one-way' as const),
+      quantity: line.quantity,
+    }));
+  const quotePreviewTotal = useMemo(() => {
+    if (!quoteSettings) return null;
+    const vehicle = catalogue?.vehicles.find((item) => item.id === b.vehicle.id) ?? b.vehicle;
+    return quoteTotal(
+      vehicle === b.vehicle ? b : { ...b, vehicle },
+      quoteSettings,
+      quoteDraft,
+      billableExtraLines,
+    );
+  }, [b, billableExtraLines, catalogue?.vehicles, quoteDraft, quoteSettings]);
   useEffect(() => {
     setQuoteDraft({
       kind: b.driverFinishedAt ? 'final' : (last?.kind ?? 'provisional'),
       trips: b.driverFinishedAt ? (b.trips?.length ?? 1) : (last?.price.trips ?? 1),
-      customPrice:
-        last?.price.lines.find((line) => line.label.includes(b.vehicle.name))?.unitPrice ?? null,
-      discount: last?.price.discount ?? 0,
+      customPrice: savedCustomTransportPrice(b, last),
+      discount: last?.price.discountValue ?? last?.price.discount ?? 0,
+      discountType: last?.price.discountType ?? 'fcfa',
+      discountReason: last?.price.discountReason ?? '',
       options: quotedServiceOptions(b, last),
     });
-    setExtraLines(extrasFromLast(b, last, tollPoints));
+    setExtraLines(extrasFromLast(last, tollPoints));
     setQuoteNotes(last?.notes || b.notes || '');
   }, [b, last, tollPoints]);
   const terminal = ['completed', 'cancelled'].includes(b.status);
@@ -123,12 +143,17 @@ export function useBookingCard({
     }
   }
   async function createPdf(quote?: Quote): Promise<Blob | null> {
-    const settings = b.pricingSettings ?? catalogue?.settings;
+    const settings = catalogue?.settings ?? b.pricingSettings;
     if (!settings) return null;
     setError('');
     setBusy(true);
     try {
-      return await exportQuote(b, quote, settings);
+      const price = quote?.kind === 'final' ? quote.price : liveBookingPrice(b, catalogue, quote);
+      return await exportQuote(
+        { ...b, estimate: price },
+        quote ? { ...quote, price } : undefined,
+        settings,
+      );
     } catch {
       setError(messages.lePdfNAPasPuEtreGenere);
       return null;
@@ -141,9 +166,12 @@ export function useBookingCard({
     if (!blob) return null;
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `${quote?.reference || b.reference}.pdf`;
+    const kind = quote?.kind === 'final' ? 'final' : 'provisoire';
+    link.download = `Devis-${kind}-${quote?.reference || b.reference}.pdf`;
+    document.body.append(link);
     link.click();
-    window.setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(link.href), 30000);
     return blob;
   }
   async function shareQuote(quote: Quote, whatsappUrl: string) {
@@ -191,7 +219,10 @@ export function useBookingCard({
     form.set('notes', quoteNotes);
     try {
       onChange(
-        await api.quote(b.id, quoteFromForm(form, b.version, extraLines, quoteDraft.options)),
+        await api.quote(
+          b.id,
+          quoteFromForm(form, b.version, billableExtraLines, quoteDraft.options, quoteTolls),
+        ),
       );
       setEditing(false);
     } catch (e) {
@@ -200,9 +231,9 @@ export function useBookingCard({
       setBusy(false);
     }
   }
-  const wa = last ? quoteNotificationUrl(b, last) : '';
+  const wa = last ? quoteNotificationUrl(b, last, catalogue?.settings) : '';
   const finalQuote = b.quotes.filter((quote) => quote.kind === 'final').at(-1);
-  const finalWa = finalQuote ? quoteNotificationUrl(b, finalQuote) : '';
+  const finalWa = finalQuote ? quoteNotificationUrl(b, finalQuote, catalogue?.settings) : '';
   async function refresh() {
     setError('');
     try {
@@ -211,8 +242,23 @@ export function useBookingCard({
       setError(errorMessage(e));
     }
   }
+  async function recordReminder(): Promise<boolean> {
+    if (busy) return false;
+    setError('');
+    setBusy(true);
+    try {
+      onChange(await api.recordBookingReminder(b.id));
+      return true;
+    } catch (e) {
+      setError(errorMessage(e));
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
   return {
     refresh,
+    recordReminder,
     busy,
     error,
     setError,
@@ -251,20 +297,28 @@ export function useBookingCard({
   };
 }
 
-function extrasFromLast(
-  booking: Booking,
-  quote: Quote | undefined,
-  tollPoints: TollPoint[],
-): ExtraLine[] {
+function extrasFromLast(quote: Quote | undefined, tollPoints: TollPoint[]): ExtraLine[] {
   if (!quote) return [];
-  return quote.price.lines
-    .filter(
-      (line) => !isQuotedServiceLine(line.label) && !line.label.includes(booking.vehicle.name),
-    )
-    .map((line) => ({
-      id: tollPointForLine(line.label, tollPoints)?.id ?? crypto.randomUUID(),
-      label: line.label,
-      quantity: line.quantity,
-      unitPrice: line.unitPrice,
-    }));
+  const tollLines = (quote.tolls ?? []).map((line) => ({
+    id: line.tollPointId,
+    label: line.label,
+    quantity: line.quantity,
+    unitPrice: line.unitPrice,
+  }));
+  return [
+    ...tollLines,
+    ...quote.price.lines
+      .filter(
+        (line) =>
+          !isQuotedServiceLine(line.label) &&
+          !line.label.startsWith('Transport') &&
+          !line.label.startsWith('Menuisier · démontage / montage '),
+      )
+      .map((line) => ({
+        id: tollPointForLine(line.label, tollPoints)?.id ?? crypto.randomUUID(),
+        label: line.label,
+        quantity: line.quantity,
+        unitPrice: line.unitPrice,
+      })),
+  ];
 }

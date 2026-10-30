@@ -1,3 +1,4 @@
+import { uiText } from '../content/reference-ui-text';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { MapPin, Pencil, Save, X } from 'lucide-react';
@@ -5,8 +6,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { mapConfiguration } from '../config/maps';
 import type { Booking, Point, TollPoint } from '../domain/model';
 import { useApp } from '../application/context';
+import { useBookingCommands } from '../application/controllers/useBookingCommands';
 import { errorMessage } from '../application/error-message';
-import { getCachedRoute } from '../application/services/route-cache';
 import { addRouteLine } from './maps/route-line';
 import { addTollMarkers } from './maps/toll-markers';
 import { tollsOnRoute } from '../domain/tolls-on-route';
@@ -20,7 +21,8 @@ export function BookingRouteMap({
   admin?: boolean;
   onChange?: (booking: Booking) => void;
 }) {
-  const { api, tollPoints } = useApp();
+  const { tollPoints } = useApp();
+  const commands = useBookingCommands();
   const host = useRef<HTMLDivElement>(null);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(false);
@@ -41,8 +43,8 @@ export function BookingRouteMap({
       if (side === 'from') setDraftFrom(point);
       else setDraftTo(point);
       setError('');
-      void api
-        .reverse(point)
+      void commands
+        .reverseAddress(point)
         .then(({ label }) => {
           if (side === 'from') setDraftFromAddress(label);
           else setDraftToAddress(label);
@@ -53,7 +55,7 @@ export function BookingRouteMap({
           else setDraftToAddress(label);
         });
     },
-    [api],
+    [commands],
   );
 
   async function saveRoute() {
@@ -61,7 +63,7 @@ export function BookingRouteMap({
     setBusy(true);
     setError('');
     try {
-      onChange(await api.updateBookingRoute(booking.id, draftFrom, draftTo, booking.version));
+      onChange(await commands.updateRoute(booking.id, draftFrom, draftTo, booking.version));
       setEditing(false);
     } catch (reason) {
       setError(errorMessage(reason));
@@ -117,7 +119,8 @@ export function BookingRouteMap({
       map.on('click', (event) => changePoint(selected, [event.latlng.lat, event.latlng.lng]));
     }
 
-    void getCachedRoute(api, from, to)
+    void commands
+      .routeTicket(from, to)
       .then((route) => {
         if (!active) return;
         addRouteLine(map, route.geometry);
@@ -147,7 +150,7 @@ export function BookingRouteMap({
       resize.disconnect();
       map.remove();
     };
-  }, [admin, api, changePoint, editing, from, fromKey, selected, to, toKey, tollPoints]);
+  }, [admin, changePoint, commands, editing, from, fromKey, selected, to, toKey, tollPoints]);
 
   useEffect(() => {
     if (!editing) {
@@ -164,14 +167,14 @@ export function BookingRouteMap({
         <div className="booking-route-map-toolbar">
           {editing ? (
             <>
-              <span>Choisissez le point à déplacer :</span>
+              <span>{uiText['choisissezLePointADeplacer']}</span>
               <button
                 className={`button small ${selected === 'from' ? 'primary' : 'secondary'}`}
                 type="button"
                 aria-pressed={selected === 'from'}
                 onClick={() => setSelected('from')}
               >
-                <MapPin size={15} /> Départ
+                <MapPin size={15} /> {uiText['depart']}
               </button>
               <button
                 className={`button small ${selected === 'to' ? 'primary' : 'secondary'}`}
@@ -179,7 +182,7 @@ export function BookingRouteMap({
                 aria-pressed={selected === 'to'}
                 onClick={() => setSelected('to')}
               >
-                <MapPin size={15} /> Arrivée
+                <MapPin size={15} /> {uiText['arrivee']}
               </button>
               <button
                 className="button primary small"
@@ -198,7 +201,7 @@ export function BookingRouteMap({
                   setError('');
                 }}
               >
-                <X size={15} /> Annuler
+                <X size={15} /> {uiText['annuler2']}
               </button>
             </>
           ) : (
@@ -214,7 +217,7 @@ export function BookingRouteMap({
                 setEditing(true);
               }}
             >
-              <Pencil size={15} /> Modifier les lieux sur la carte
+              <Pencil size={15} /> {uiText['modifierLesLieuxSurLaCarte']}
             </button>
           )}
         </div>
@@ -227,26 +230,26 @@ export function BookingRouteMap({
       />
       {editing && (
         <small className="muted">
-          Cliquez sur la carte ou faites glisser un repère pour le déplacer.
+          {uiText['cliquezSurLaCarteOuFaitesGlisserUnReperePourLeDeplacer']}
         </small>
       )}
       <div className="booking-route-map-labels">
         <span>
-          <b>A</b> {editing ? draftFromAddress : booking.fromAddress}
+          <b>{uiText['a2']}</b> {editing ? draftFromAddress : booking.fromAddress}
         </span>
         <span>
-          <b>B</b> {editing ? draftToAddress : booking.toAddress}
+          <b>{uiText['b']}</b> {editing ? draftToAddress : booking.toAddress}
         </span>
       </div>
       {routeTolls.length > 0 && (
         <div className="route-tolls" role="status">
-          <strong>Péages repérés sur cet itinéraire</strong>
+          <strong>{uiText['peagesReperesSurCetItineraire']}</strong>
           <ul>
             {routeTolls.map((point) => (
               <li key={point.id}>{point.name}</li>
             ))}
           </ul>
-          <p>Repérage indicatif : l’équipe confirme les péages réellement empruntés.</p>
+          <p>{uiText['reperageIndicatifLEquipeConfirmeLesPeagesReellementEmp']}</p>
         </div>
       )}
       {error && <small className="booking-route-map-error">{error}</small>}

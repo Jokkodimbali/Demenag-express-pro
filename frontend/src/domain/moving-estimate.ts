@@ -81,8 +81,10 @@ export function estimatedInventoryItemVolume(
   const definition = inventoryItems.find((item) => item.key === key);
   const volume = definition?.sizeLabel
     ? base * Math.max(1, size)
-    : (definition?.volumeByFormat?.[formatIndexes[format]] ??
-      base * (genericFormatFactors[formatIndexes[format]] ?? 1));
+    : definition?.hasFormat
+      ? (definition.volumeByFormat?.[formatIndexes[format]] ??
+        base * (genericFormatFactors[formatIndexes[format]] ?? 1))
+      : base;
   const nonStackable = key === 'salon' ? 1.25 : 1;
   return volume * nonStackable * (dismantle ? inventoryDismantleFactor(key) : 1);
 }
@@ -175,18 +177,25 @@ export type MovingEstimate = {
   crew: number;
   recommendedCrew: number;
   carpenterCount: number;
+  dismantleFromMinutes: number;
+  dismantleToMinutes: number;
   loadingMinutes: number;
   unloadingMinutes: number;
+  handlingMinutes: number;
   packingMinutes: number;
   travelMinutes: number;
+  travelLegMinutes: number;
   totalMinutes: number;
+  rawTotalMinutes: number;
   lowDurationMinutes: number;
   highDurationMinutes: number;
   minimumDays: number;
   startTime: string;
   endTime: string;
+  endLate: boolean;
   planning: PlanningStep[];
   warnings: string[];
+  vehicleWarnings: string[];
   warning: string | null;
 };
 type EstimateOptions = {
@@ -194,6 +203,8 @@ type EstimateOptions = {
   crew?: number;
   startTime?: string;
   laborPlanning?: MovingLaborPlanningSettings;
+  trafficDurationMinutes?: number;
+  parallelVehicles?: 1 | 2;
 };
 
 export function estimateMovingWork(
@@ -209,6 +220,7 @@ export function estimateMovingWork(
   const trips = volume > 0 ? Math.max(1, Math.ceil(volume / (capacity * fillRate))) : 0;
   const requestedTrips = Math.max(1, Math.min(99, (options.trips ?? trips) || 1));
   const labor = { ...defaultMovingLaborPlanning, ...options.laborPlanning };
+  const parallelVehicles = options.parallelVehicles ?? 1;
   const categoryRates = {
     light: { rate: 1.4, stairs: 0.1, lift: 0.03 },
     furniture: { rate: 1, stairs: 0.15, lift: 0.05 },
@@ -242,7 +254,7 @@ export function estimateMovingWork(
     climatiseur: [0.75, 1.25],
   };
   const addDismantling = (key: string, size: number, quantity: number, dismantle: boolean) => {
-    const duration = dismantle ? dismantlingMinutes[key] : undefined;
+    const duration = dismantle ? (dismantlingMinutes[key] ?? [0.2, 0.3]) : undefined;
     if (!duration || quantity <= 0) return;
     const multiplier = key === 'armoire' ? size : 1;
     dismantlingBySide.from += duration[0] * multiplier * quantity;
@@ -283,8 +295,11 @@ export function estimateMovingWork(
     heavyCount > 0 &&
     ((inventory.fromFloor >= 2 && !inventory.fromLift) ||
       (inventory.toFloor >= 2 && !inventory.toLift));
-  const minimumCrew = stairsRequireExtra ? 3 : 2;
-  const efficiency = (crew: number) => (crew <= 4 ? crew : 4 + 0.6 * (crew - 4));
+  const minimumCrew = Math.max(stairsRequireExtra ? 3 : 2, 2 * parallelVehicles);
+  const efficiency = (crew: number) => {
+    const perVehicle = crew / parallelVehicles;
+    return parallelVehicles * (perVehicle <= 4 ? perVehicle : 4 + 0.6 * (perVehicle - 4));
+  };
   const loadingBase = siteHours(inventory.fromFloor, inventory.fromLift);
   const unloadingBase = siteHours(inventory.toFloor, inventory.toLift, true);
   const loadingWithCrew = (crew: number, carpenter: number) =>
@@ -292,20 +307,23 @@ export function estimateMovingWork(
   const unloadingWithCrew = (crew: number, carpenter: number) =>
     Math.max(unloadingBase / efficiency(crew), carpenter ? dismantlingBySide.to / carpenter : 0);
   let recommendedCrew = minimumCrew;
-  let recommendedCarpenters = dismantlingBySide.from + dismantlingBySide.to > 0 ? 1 : 0;
+  let recommendedCarpenters =
+    dismantlingBySide.from + dismantlingBySide.to > 0 ? parallelVehicles : 0;
+  let recommendationPass = 0;
   while (
     loadingWithCrew(recommendedCrew, recommendedCarpenters) +
       unloadingWithCrew(recommendedCrew, recommendedCarpenters) >
       labor.maxHandlingHours &&
-    (recommendedCrew < labor.maxMoversPerVehicle || recommendedCarpenters < 3)
+    recommendationPass++ < 80
   ) {
     const carpentryIsBottleneck =
       recommendedCarpenters > 0 &&
       (dismantlingBySide.from / recommendedCarpenters > loadingBase / efficiency(recommendedCrew) ||
         dismantlingBySide.to / recommendedCarpenters > unloadingBase / efficiency(recommendedCrew));
-    if (carpentryIsBottleneck && recommendedCarpenters < 3) recommendedCarpenters += 1;
-    else if (recommendedCrew < labor.maxMoversPerVehicle) recommendedCrew += 1;
-    else if (recommendedCarpenters < 3) recommendedCarpenters += 1;
+    if (carpentryIsBottleneck && recommendedCarpenters < 3 * parallelVehicles)
+      recommendedCarpenters += 1;
+    else if (recommendedCrew < Math.round(labor.maxMoversPerVehicle * parallelVehicles))
+      recommendedCrew += 1;
     else break;
   }
   const crew = Math.min(20, Math.max(1, options.crew || recommendedCrew));
@@ -322,14 +340,23 @@ export function estimateMovingWork(
   const routeBaseMinutes =
     routeKm <= 0
       ? 0
-      : routeDuration > 0 && averageSpeed > 8 && averageSpeed < 100
-        ? routeDuration * (1.15 + 0.35 * Math.exp(-routeKm / 30))
-        : (routeKm / (18 + 37 * (1 - Math.exp(-routeKm / 40)))) * 60;
-  const vehicleRouteFactor = vehicle.id === 'trafic' ? 1 : 1.05;
+      : options.trafficDurationMinutes && options.trafficDurationMinutes > 0
+        ? options.trafficDurationMinutes
+        : routeDuration > 0 && averageSpeed > 8 && averageSpeed < 100
+          ? routeDuration * (1.15 + 0.35 * Math.exp(-routeKm / 30))
+          : (routeKm / (18 + 37 * (1 - Math.exp(-routeKm / 40)))) * 60;
+  const vehicleRouteFactor =
+    options.trafficDurationMinutes && options.trafficDurationMinutes > 0
+      ? vehicle.id === 'trafic'
+        ? 1.05
+        : 1.1
+      : vehicle.id === 'trafic'
+        ? 1
+        : 1.05;
   const routeMinutes = routeBaseMinutes * vehicleRouteFactor;
   const legLoaded = routeMinutes ? 10 + routeMinutes : 0;
   const legEmpty = routeMinutes ? 10 + routeMinutes * 0.85 : 0;
-  const journeyCount = requestedTrips;
+  const journeyCount = Math.ceil(requestedTrips / parallelVehicles);
   const loadingMinutes = loadingHours * 60;
   const unloadingMinutes = unloadingHours * 60;
   const packingOnPreviousDay = packingMinutes > 90;
@@ -379,14 +406,10 @@ export function estimateMovingWork(
       );
     }
   }
-  addStep('Vérification finale', 'État des lieux et signature', 10);
+  addStep('Vérification finale', 'État des lieux, signature', 10);
   const startForPause = startAt;
-  let elapsed = 0;
-  planning.forEach((step) => {
-    elapsed += step.minutes;
-  });
   if (pauseMinutes) {
-    const target = (elapsed + pauseMinutes) / 2;
+    const target = activeWorkMinutes / 2;
     let running = 0;
     let position = Math.max(1, planning.length - 1);
     let closest = Number.POSITIVE_INFINITY;
@@ -412,6 +435,8 @@ export function estimateMovingWork(
   const totalMinutes = planning.reduce((sum, step) => sum + step.minutes, 0);
   const endAt = cursor;
   const warnings: string[] = [];
+  const dimensionsWarnings = vehicleWarnings(inventory, vehicle);
+  warnings.push(...dimensionsWarnings);
   const itemCount = (key: string) =>
     (inventory.entries[key]?.quantity ?? 0) +
     inventory.variants
@@ -443,8 +468,6 @@ export function estimateMovingWork(
     warnings.push('Certains objets ne passent pas dans les escaliers : prévoir un accès adapté.');
   if (inventory.stairs === 'verif')
     warnings.push('Le passage des objets dans les escaliers reste à vérifier.');
-  const dimensionsWarnings = vehicleWarnings(inventory, vehicle);
-  warnings.push(...dimensionsWarnings);
   const carpenterCount = recommendedCarpenters;
   return {
     vehicleName: vehicle.name,
@@ -456,18 +479,29 @@ export function estimateMovingWork(
     crew,
     recommendedCrew,
     carpenterCount,
+    dismantleFromMinutes: recommendedCarpenters
+      ? (dismantlingBySide.from / recommendedCarpenters) * 60
+      : 0,
+    dismantleToMinutes: recommendedCarpenters
+      ? (dismantlingBySide.to / recommendedCarpenters) * 60
+      : 0,
     loadingMinutes,
     unloadingMinutes,
+    handlingMinutes: loadingMinutes + unloadingMinutes,
     packingMinutes,
     travelMinutes: driveMinutes,
+    travelLegMinutes: legLoaded,
     totalMinutes,
+    rawTotalMinutes: activeWorkMinutes + pauseMinutes,
     lowDurationMinutes: totalMinutes * 0.85,
     highDurationMinutes: totalMinutes * 1.3,
     minimumDays: Math.max(1, Math.ceil(totalMinutes / (labor.maxDayHours * 60))),
     startTime: formatTime(startAt),
     endTime: formatTime(endAt),
+    endLate: endAt > 19 * 60,
     planning,
     warnings,
+    vehicleWarnings: dimensionsWarnings,
     warning:
       volume === 0
         ? 'Renseignez les objets ou le type de logement pour calculer une estimation.'
@@ -488,14 +522,14 @@ export function bookingInventorySnapshot(
       const format = entry.format ?? 'medium';
       const details = [
         definition.sizeLabel
-          ? `${entry.size} ${definition.sizeLabel}${definition.sizeName ? ` · ${definition.sizeName(entry.size)}` : ''}`
+          ? `${entry.size} ${entry.size === 1 ? definition.sizeLabel.replace(/s$/u, '') : definition.sizeLabel}`
           : definition.hasFormat
-            ? `${inventoryFormats.find((item) => item.value === format)?.label ?? 'Moyen'}${inventoryFormatHint(definition.key, format) ? ` · ${inventoryFormatHint(definition.key, format)}` : ''}`
+            ? `${inventoryFormats.find((item) => item.value === format)?.label ?? 'Moyen'} : ${inventoryFormatHint(definition.key, format)}`
             : '',
         entry.dismantle ? 'démontage et montage' : '',
       ]
         .filter(Boolean)
-        .join(' · ');
+        .join(', ');
       return {
         section: definition.section,
         label: definition.label,
@@ -511,9 +545,9 @@ export function bookingInventorySnapshot(
       const format = item.format ?? 'medium';
       return {
         section: 'Autres objets',
-        label: item.label,
+        label: item.label.charAt(0).toLocaleUpperCase('fr-FR') + item.label.slice(1),
         quantity: item.quantity,
-        details: `${inventoryFormats.find((option) => option.value === format)?.label ?? 'Moyen'} format${item.dismantle ? ' · démontage et montage' : ''}`,
+        details: item.dismantle ? 'démontage et montage' : '—',
         volumeM3: itemVolume('custom', 1, Boolean(item.dismantle), format) * item.quantity,
       };
     });
@@ -538,6 +572,7 @@ export function bookingInventorySnapshot(
     ? Math.max(0, (dwellingVolumes[inventory.dwellingType] ?? 0) - boxVolume)
     : 0;
   return {
+    sourceInventory: inventory,
     dwellingType: inventory.dwellingType,
     annexIncluded,
     annexVolumeM3,
@@ -553,13 +588,14 @@ export function bookingInventorySnapshot(
     totalVolumeM3: estimate.volume,
     vehicleCapacityM3: estimate.capacity,
     fillRate: estimate.fillRate,
-    estimatedTrips: estimate.plannedTrips,
+    estimatedTrips: estimate.trips,
     moverCount: estimate.crew,
     carpenterCount: estimate.carpenterCount,
     loadingMinutes: estimate.loadingMinutes,
     unloadingMinutes: estimate.unloadingMinutes,
     packingMinutes: estimate.packingMinutes,
     travelMinutes: estimate.travelMinutes,
+    travelLegMinutes: estimate.travelLegMinutes,
     totalMinutes: estimate.totalMinutes,
     lowDurationMinutes: estimate.lowDurationMinutes,
     highDurationMinutes: estimate.highDurationMinutes,
@@ -582,25 +618,29 @@ function vehicleWarnings(inventory: Inventory, vehicle: Vehicle): string[] {
       const itemHeight = [0.85, 1.6, 1.85][formatIndexes[item.format ?? 'medium']];
       if (height && itemHeight > height)
         warnings.push(
-          `Frigo debout ≈ ${itemHeight.toFixed(2)} m, hauteur utile ${height.toFixed(2)} m.`,
+          `Frigo debout ≈ ${itemHeight.toFixed(2)} m : dépasse la hauteur utile de ${height.toFixed(2)} m.`,
         );
     }
     if (key === 'vitrine' && item.format !== 'small' && height && height < 1.8)
-      warnings.push('Vitrine debout ≈ 1,80 m : vérifier la hauteur utile du véhicule.');
+      warnings.push(
+        `Vitrine debout ≈ 1,80 m : dépasse la hauteur utile de ${height.toFixed(2)} m.`,
+      );
     if (key === 'armoire' && !item.dismantle && height && height < 2)
-      warnings.push('Armoire montée ≈ 2 m de haut : à coucher ou démonter.');
+      warnings.push(
+        `Armoire montée ≈ 2 m : ne rentre pas debout dans ce véhicule (${height.toFixed(2)} m utiles). À coucher ou démonter.`,
+      );
     if (key === 'salon' && !item.dismantle && length) {
       const itemLength = item.size >= 6 ? 2.6 : item.size >= 3 ? 2.1 : 1.6;
       if (itemLength > length)
         warnings.push(
-          `Salon ≈ ${itemLength.toFixed(1)} m de long, plancher utile ${length.toFixed(1)} m.`,
+          `Salon ≈ ${itemLength.toFixed(1)} m : dépasse la longueur utile du plancher (${length.toFixed(1)} m).`,
         );
     }
     if (key === 'table-manger' && !item.dismantle && length) {
       const itemLength = item.size >= 8 ? 2.2 : item.size >= 6 ? 1.8 : 1.2;
       if (itemLength > length)
         warnings.push(
-          `Table ≈ ${itemLength.toFixed(1)} m de long, plancher utile ${length.toFixed(1)} m.`,
+          `Table ≈ ${itemLength.toFixed(1)} m : dépasse la longueur utile du plancher (${length.toFixed(1)} m).`,
         );
     }
   });

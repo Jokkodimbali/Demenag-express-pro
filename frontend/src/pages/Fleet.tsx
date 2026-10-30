@@ -1,3 +1,4 @@
+import { uiText } from '../content/reference-ui-text';
 import { Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useFleet } from '../application/controllers/useFleet';
@@ -94,12 +95,8 @@ export function Fleet() {
       </section>
       <section className="fleet-dimensions-section" aria-labelledby="fleet-dimensions-title">
         <div className="fleet-dimensions-intro">
-          <h3 id="fleet-dimensions-title">Dimensions des véhicules</h3>
-          <p>
-            Le volume utile est calculé à partir des quatre mesures : longueur × hauteur × largeur,
-            moins l’espace des passages de roue, puis × 0,95 pour les parois et le toit arrondis.
-            Cette valeur est utilisée dans l’estimation des allers-retours.
-          </p>
+          <h3 id="fleet-dimensions-title">{uiText['dimensionsDesVehicules']}</h3>
+          <p>{uiText['leVolumeUtileEstCalculeAPartirDesQuatreMesuresLongueur']}</p>
         </div>
         <div className="fleet-dimensions-list">
           {catalogue.vehicles.map((vehicle) => {
@@ -129,7 +126,7 @@ export function Fleet() {
                           className="button secondary"
                           onClick={() => openVehicleEditor(vehicle)}
                         >
-                          Modifier le véhicule
+                          {uiText['modifierLeVehicule']}
                         </button>
                         <button
                           className={
@@ -155,7 +152,7 @@ export function Fleet() {
                       </div>
                     </div>
                     <details className="fleet-row-details">
-                      <summary>Activité et chauffeur</summary>
+                      <summary>{uiText['activiteEtChauffeur']}</summary>
                       <dl className="fleet-metrics">
                         <div>
                           <dt>{messages.reservationsEnregistrees}</dt>
@@ -238,8 +235,7 @@ export function Fleet() {
                 <p className="eyebrow">{isNewVehicle ? 'NOUVEAU VÉHICULE' : 'MODIFICATION'}</p>
                 <h2 id="vehicle-title">{messages.ficheVehicule}</h2>
                 <p className="muted">
-                  Complétez les dimensions et cliquez directement sur les aperçus pour importer les
-                  photos.
+                  {uiText['completezLesDimensionsEtCliquezDirectementSurLesApercu']}
                 </p>
               </div>
               <button
@@ -292,7 +288,7 @@ export function Fleet() {
             <input type="hidden" name="image" value={previewImage} />
             <input type="hidden" name="interior" value={previewInterior} />
             <label className="vehicle-volume-field">
-              Volume utile calculé automatiquement
+              {uiText['volumeUtileCalculeAutomatiquement']}
               <input name="volumePreview" readOnly value={computedVolume} />
             </label>
             <div className="vehicle-editor-photos">

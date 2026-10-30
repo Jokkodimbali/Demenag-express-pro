@@ -1,3 +1,5 @@
+import { liveBookingPrice } from '../application/services/live-booking-price';
+import { uiText } from '../content/reference-ui-text';
 import { ChevronLeft, ChevronRight, FilePenLine, MessageCircle } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import {
@@ -11,6 +13,7 @@ import { clientIdentifier } from '../application/services/client-summary';
 import { messages } from '../content/fr';
 import { dateLabel, money } from '../domain/format';
 import type { Booking, Vehicle } from '../domain/model';
+import { useApp } from '../application/context';
 
 type DashboardProps = {
   bookings: Booking[];
@@ -43,6 +46,7 @@ function RevenueLegend({ provisional, definitive }: { provisional: number; defin
 }
 
 export function RevenueDashboard({ bookings, vehicles = [], onSelect }: DashboardProps) {
+  const { catalogue } = useApp();
   const [vehicleId, setVehicleId] = useState('');
   const [period, setPeriod] = useState<Period>('month');
   const [selectedDay, setSelectedDay] = useState(() => new Date().toISOString().slice(0, 10));
@@ -74,8 +78,8 @@ export function RevenueDashboard({ bookings, vehicles = [], onSelect }: Dashboar
       );
     });
   }, [month, period, selectedDay, vehicleBookings]);
-  const scopeRevenue = useMemo(() => revenueFor(scoped), [scoped]);
-  const globalRevenue = useMemo(() => revenueFor(bookings), [bookings]);
+  const scopeRevenue = useMemo(() => revenueFor(scoped, catalogue), [scoped, catalogue]);
+  const globalRevenue = useMemo(() => revenueFor(bookings, catalogue), [bookings, catalogue]);
   const dailyBookings = useMemo(
     () => vehicleBookings.filter((booking) => booking.date === selectedDay),
     [selectedDay, vehicleBookings],
@@ -201,7 +205,9 @@ function DailyBookings({
       <div className="section-heading">
         <div>
           <h2>{messages.reservationsDuJour(dateLabel(selectedDay))}</h2>
-          <p>{bookings.length} réservation(s)</p>
+          <p>
+            {bookings.length} {uiText['reservationS']}
+          </p>
         </div>
       </div>
       {bookings.length ? (
@@ -215,7 +221,10 @@ function DailyBookings({
               <span>
                 <span className="daily-booking-title">
                   <strong>{booking.customerName}</strong>
-                  <small className="calendar-client-id">ID {clientIdentifier(booking.phone)}</small>
+                  <small className="calendar-client-id">
+                    {uiText['id']}
+                    {clientIdentifier(booking.phone)}
+                  </small>
                 </span>
                 <small>{booking.timeSlot || 'Créneau à convenir'}</small>
               </span>
@@ -240,16 +249,17 @@ function DailyVehicleRevenue({
   bookings: Booking[];
   selectedDay: string;
 }) {
+  const { catalogue } = useApp();
   const rows = useMemo(() => {
     const grouped = new Map<string, Booking[]>();
     for (const booking of bookings)
       grouped.set(booking.vehicle.id, [...(grouped.get(booking.vehicle.id) ?? []), booking]);
     return [...grouped.values()].map((vehicleBookings) => ({
       vehicle: vehicleBookings[0].vehicle,
-      revenue: revenueFor(vehicleBookings),
+      revenue: revenueFor(vehicleBookings, catalogue),
       bookings: vehicleBookings.length,
     }));
-  }, [bookings]);
+  }, [bookings, catalogue]);
   return (
     <section className="panel daily-revenue">
       <div className="section-heading">
@@ -298,6 +308,7 @@ function BookingCalendar({
   selectedDay,
   onSelectDay,
 }: CalendarProps) {
+  const { catalogue } = useApp();
   const days = useMemo(() => {
     if (period === 'week') {
       const start = weekStart(selectedDay);
@@ -352,7 +363,7 @@ function BookingCalendar({
         {days.map((day) => {
           const key = day.toISOString().slice(0, 10);
           const dayBookings = byDay.get(key) ?? [];
-          const revenue = revenueFor(dayBookings);
+          const revenue = revenueFor(dayBookings, catalogue);
           return (
             <div
               className={
@@ -390,7 +401,8 @@ function BookingCalendar({
                   <span className="calendar-booking-title">
                     <strong>{booking.customerName}</strong>
                     <small className="calendar-client-id">
-                      ID {clientIdentifier(booking.phone)}
+                      {uiText['id']}
+                      {clientIdentifier(booking.phone)}
                     </small>
                   </span>
                   <span>{booking.timeSlot || 'Créneau à convenir'}</span>
@@ -403,21 +415,29 @@ function BookingCalendar({
       {bookings.some((booking) => !booking.date)
         ? (() => {
             const undatedBookings = bookings.filter((booking) => !booking.date);
-            const undatedRevenue = revenueFor(undatedBookings);
+            const undatedRevenue = revenueFor(undatedBookings, catalogue);
             return (
               <section
                 className="calendar-undated"
-                aria-label="Réservations sans date de rendez-vous"
+                aria-label={uiText['reservationsSansDateDeRendezVous']}
               >
                 <h3>
-                  Sans date de rendez-vous <span>{undatedBookings.length}</span>
+                  {uiText['sansDateDeRendezVous']}
+                  <span>{undatedBookings.length}</span>
                 </h3>
                 <div className="calendar-undated-totals">
                   <span className="provisional">
-                    Provisoire : {money(undatedRevenue.provisional)}
+                    {uiText['provisoire2']}
+                    {money(undatedRevenue.provisional)}
                   </span>
-                  <span className="definitive">Définitif : {money(undatedRevenue.definitive)}</span>
-                  <strong>Total : {money(undatedRevenue.total)}</strong>
+                  <span className="definitive">
+                    {uiText['definitif']}
+                    {money(undatedRevenue.definitive)}
+                  </span>
+                  <strong>
+                    {uiText['total']}
+                    {money(undatedRevenue.total)}
+                  </strong>
                 </div>
                 <div>
                   {undatedBookings.map((booking) => (
@@ -427,10 +447,10 @@ function BookingCalendar({
                       onClick={() => onSelect(booking)}
                     >
                       <span>
-                        {booking.customerName} · ID client : {clientIdentifier(booking.phone)} ·{' '}
-                        {booking.timeSlot || 'Heure à convenir'}
+                        {booking.customerName} {uiText['idClient']}
+                        {clientIdentifier(booking.phone)} · {booking.timeSlot || 'Heure à convenir'}
                       </span>
-                      <strong>{money(bookingRevenueAmount(booking))}</strong>
+                      <strong>{money(bookingRevenueAmount(booking, catalogue))}</strong>
                     </button>
                   ))}
                 </div>
@@ -447,6 +467,7 @@ export function DefinitiveQuotes({
   onSelect,
   onEdit,
 }: DashboardProps & { onEdit: (booking: Booking) => void }) {
+  const { catalogue } = useApp();
   const rows = bookings.filter(
     (booking) =>
       booking.status === 'in_progress' || booking.quotes.some((quote) => quote.kind === 'final'),
@@ -464,11 +485,7 @@ export function DefinitiveQuotes({
                   <strong>{booking.reference}</strong> · {booking.customerName}
                 </span>
                 <small>{booking.vehicle.name}</small>
-                <strong>
-                  {money(
-                    finalQuote?.price.total ?? lastQuote?.price.total ?? booking.estimate.total,
-                  )}
-                </strong>
+                <strong>{money(liveBookingPrice(booking, catalogue).total)}</strong>
               </button>
               <div className="finance-row-actions">
                 {booking.status === 'in_progress' && (
@@ -482,7 +499,7 @@ export function DefinitiveQuotes({
                     className="button primary small"
                     target="_blank"
                     rel="noreferrer"
-                    href={quoteNotificationUrl(booking, finalQuote)}
+                    href={quoteNotificationUrl(booking, finalQuote, catalogue?.settings)}
                   >
                     <MessageCircle size={16} />
                     {messages.envoyerLeDevisDefinitif}

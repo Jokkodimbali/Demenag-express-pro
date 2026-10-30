@@ -1,10 +1,30 @@
 import type { BookingRepository } from '../../../application/ports/index.js';
 import { AppError } from '../../../domain/errors.js';
 import { messages } from '../../../domain/messages/fr.js';
-import type { Booking, WorkPlanReview } from '../../../domain/model.js';
+import type { Booking, Quote, WorkPlanReview } from '../../../domain/model.js';
 import { type PrismaClient } from '../../../generated/prisma/client.js';
 import { conflict, json } from './helpers.js';
 import { toStatus } from './mapping.js';
+const quoteData = (quote: Quote) => ({
+  id: quote.id,
+  reference: quote.reference,
+  nature: quote.kind === 'final' ? 'definitif' : 'provisoire',
+  montantTotal: quote.price.total,
+  remise: quote.price.discount,
+  nombreTrajets: quote.price.trips,
+  tranche: quote.price.tier,
+  notes: quote.notes,
+  creeLe: new Date(quote.createdAt),
+  lignes: {
+    create: quote.price.lines.map((line, position) => ({
+      libelle: line.label,
+      quantite: line.quantity,
+      prixUnitaire: line.unitPrice,
+      montant: line.total,
+      position,
+    })),
+  },
+});
 export class PrismaBookings implements BookingRepository {
   constructor(private db: PrismaClient) {}
   private withTrips(row: {
@@ -12,44 +32,45 @@ export class PrismaBookings implements BookingRepository {
     courses: {
       id: string;
       sequence: number;
-      loadingPhotos: unknown;
-      unloadingPhotos: unknown;
+      loadingPhotos?: unknown;
+      unloadingPhotos?: unknown;
       startedAt: Date;
       finishedAt: Date | null;
     }[];
   }): Booking {
     const booking = row.donnees as Booking;
-    const workPlan = booking.workPlan?.length
-      ? booking.workPlan.map((step) => {
-          const legacyStep = step as typeof step & {
-            review?: WorkPlanReview;
-            driverReview?: WorkPlanReview;
-            adminReview?: WorkPlanReview;
-          };
-          if (legacyStep.review) return step;
-          const reviews = [legacyStep.driverReview, legacyStep.adminReview].filter(
-            (review): review is NonNullable<typeof review> => Boolean(review),
-          );
-          const review = reviews.sort(
-            (left, right) =>
-              new Date(right.checkedAt ?? 0).getTime() - new Date(left.checkedAt ?? 0).getTime(),
-          )[0] ?? {
-            status: 'pending' as const,
-            reason: '',
-            checkedAt: null,
-            checkedBy: null,
-          };
-          return { ...step, review };
-        })
-      : this.workPlanFromLegacyNotes(booking.notes);
+    const workPlan =
+      booking.workPlan !== undefined
+        ? booking.workPlan.map((step) => {
+            const legacyStep = step as typeof step & {
+              review?: WorkPlanReview;
+              driverReview?: WorkPlanReview;
+              adminReview?: WorkPlanReview;
+            };
+            if (legacyStep.review) return step;
+            const reviews = [legacyStep.driverReview, legacyStep.adminReview].filter(
+              (review): review is NonNullable<typeof review> => Boolean(review),
+            );
+            const review = reviews.sort(
+              (left, right) =>
+                new Date(right.checkedAt ?? 0).getTime() - new Date(left.checkedAt ?? 0).getTime(),
+            )[0] ?? {
+              status: 'pending' as const,
+              reason: '',
+              checkedAt: null,
+              checkedBy: null,
+            };
+            return { ...step, review };
+          })
+        : this.workPlanFromLegacyNotes(booking.notes);
     return {
       ...booking,
       workPlan,
       trips: row.courses.map((trip) => ({
         id: trip.id,
         sequence: trip.sequence,
-        loadingPhotos: trip.loadingPhotos as string[],
-        unloadingPhotos: trip.unloadingPhotos as string[] | null,
+        loadingPhotos: (trip.loadingPhotos as string[] | undefined) ?? [],
+        unloadingPhotos: (trip.unloadingPhotos as string[] | null | undefined) ?? null,
         startedAt: trip.startedAt.toISOString(),
         finishedAt: trip.finishedAt?.toISOString() ?? null,
       })),
@@ -80,7 +101,13 @@ export class PrismaBookings implements BookingRepository {
     }
     return items;
   }
-  async list(userId?: string, vehicleId?: string) {
+  async list(userId?: string, vehicleId?: string, includeTripPhotos = true) {
+    const courses = includeTripPhotos
+      ? { orderBy: { sequence: 'asc' as const } }
+      : {
+          orderBy: { sequence: 'asc' as const },
+          select: { id: true, sequence: true, startedAt: true, finishedAt: true },
+        };
     const rows = await this.db.reservation.findMany({
       where: {
         ...(userId ? { utilisateurId: userId } : {}),
@@ -88,7 +115,7 @@ export class PrismaBookings implements BookingRepository {
       },
       orderBy: { creeLe: 'desc' },
       take: userId ? 200 : undefined,
-      include: { courses: { orderBy: { sequence: 'asc' } } },
+      include: { courses },
     });
     return rows.map((r) => this.withTrips(r));
   }
@@ -184,6 +211,7 @@ export class PrismaBookings implements BookingRepository {
           creneau: booking.timeSlot,
           statut: toStatus[booking.status],
           donnees: json(booking),
+          devis: { create: booking.quotes.map(quoteData) },
         },
       });
       return row.donnees as unknown as Booking;
@@ -206,32 +234,26 @@ export class PrismaBookings implements BookingRepository {
         });
         if (!result.count)
           throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
-        for (const quote of next.quotes)
+        for (const quote of next.quotes) {
+          const previous = booking.quotes.find((item) => item.id === quote.id);
+          if (previous && JSON.stringify(previous) === JSON.stringify(quote)) continue;
+          const data = quoteData(quote);
           await tx.devis.upsert({
             where: { id: quote.id },
-            update: {},
-            create: {
-              id: quote.id,
-              reservationId: next.id,
-              reference: quote.reference,
-              nature: quote.kind === 'final' ? 'definitif' : 'provisoire',
-              montantTotal: quote.price.total,
-              remise: quote.price.discount,
-              nombreTrajets: quote.price.trips,
-              tranche: quote.price.tier,
-              notes: quote.notes,
-              creeLe: new Date(quote.createdAt),
-              lignes: {
-                create: quote.price.lines.map((line, position) => ({
-                  libelle: line.label,
-                  quantite: line.quantity,
-                  prixUnitaire: line.unitPrice,
-                  montant: line.total,
-                  position,
-                })),
-              },
+            update: {
+              reference: data.reference,
+              nature: data.nature,
+              montantTotal: data.montantTotal,
+              remise: data.remise,
+              nombreTrajets: data.nombreTrajets,
+              tranche: data.tranche,
+              notes: data.notes,
+              creeLe: data.creeLe,
+              lignes: { deleteMany: {}, create: data.lignes.create },
             },
+            create: { ...data, reservationId: next.id },
           });
+        }
         return next;
       });
     } catch (error) {

@@ -3,7 +3,21 @@ import { type NextFunction, type Request, type Response } from 'express';
 import { ZodError } from 'zod';
 import { AppError } from '../../../domain/errors.js';
 import { messages } from '../../../domain/messages/fr.js';
-import { Prisma } from '../../../generated/prisma/client.js';
+
+type PrismaErrorDetails = {
+  code: string;
+  meta?: { modelName?: string } & Record<string, unknown>;
+};
+
+function prismaErrorDetails(error: unknown): PrismaErrorDetails | null {
+  if (!error || typeof error !== 'object' || !('code' in error)) return null;
+  const { code } = error;
+  if (typeof code !== 'string' || !/^P\d{4}$/.test(code)) return null;
+  const meta =
+    'meta' in error && error.meta && typeof error.meta === 'object' ? error.meta : undefined;
+  return { code, ...(meta ? { meta: meta as PrismaErrorDetails['meta'] } : {}) };
+}
+
 export function registerErrorHandler(app: Express) {
   app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
     if (
@@ -30,11 +44,12 @@ export function registerErrorHandler(app: Express) {
       res.status(400).json({ message: messages.requeteJsonInvalide });
       return;
     }
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    const prismaError = prismaErrorDetails(error);
+    if (prismaError) {
       console.error('Erreur Prisma API :', {
-        code: error.code,
-        model: error.meta?.modelName,
-        meta: error.meta,
+        code: prismaError.code,
+        model: prismaError.meta?.modelName,
+        meta: prismaError.meta,
       });
     } else {
       console.error('Erreur API :', error instanceof Error ? error.name : 'UnknownError');

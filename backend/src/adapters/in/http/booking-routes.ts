@@ -7,9 +7,11 @@ import type { NotificationPublisher } from '../../../application/ports/index.js'
 import { messages } from '../../../domain/messages/fr.js';
 import {
   bookingSchema,
+  bookingCrewSchema,
   bookingRouteUpdateSchema,
   driverAssignmentSchema,
   estimateSchema,
+  adminEstimateSchema,
   quoteSchema,
   statusSchema,
   tripPhotosSchema,
@@ -40,7 +42,20 @@ export function registerBookingRoutes(
   };
   app.post(apiRoutes.estimates, async (req, res) => {
     const p = estimateSchema.parse(req.body);
-    res.json(await deps.moving.estimate(p.vehicleId, p.routeId, p.options, p.workAccess));
+    res.json(await deps.moving.estimate(p.vehicleId, p.routeId, p.options, p.workAccess, p.trips));
+  });
+  app.post(`${apiRoutes.adminEstimates}`, authenticate, admin, async (req, res) => {
+    const p = adminEstimateSchema.parse(req.body);
+    res.json(
+      await deps.moving.estimate(
+        p.vehicleId,
+        p.routeId,
+        p.options,
+        p.workAccess,
+        p.trips,
+        p.distanceKmOverride,
+      ),
+    );
   });
   app.get(apiRoutes.bookings, authenticate, async (_req, res) =>
     res.json(await deps.moving.list(getActor(res))),
@@ -60,8 +75,33 @@ export function registerBookingRoutes(
     );
     res.status(201).json(booking);
   });
+  app.patch(apiRoutes.clientBookingRequest, authenticate, async (req, res) => {
+    const p = bookingSchema.extend({ version: z.number().int().positive() }).parse(req.body);
+    res.json(
+      await deps.moving.updateClientRequest(
+        getActor(res),
+        z.uuid().parse(req.params.id),
+        p,
+        p.version,
+      ),
+    );
+  });
+  app.patch(`${apiRoutes.bookings}/:id/admin-edit`, authenticate, admin, async (req, res) => {
+    const p = bookingSchema.extend({ version: z.number().int().positive() }).parse(req.body);
+    res.json(
+      await deps.moving.updateAdminRequest(
+        getActor(res),
+        z.uuid().parse(req.params.id),
+        p,
+        p.version,
+      ),
+    );
+  });
   app.get(`${apiRoutes.bookings}/:id`, authenticate, async (req, res) =>
     res.json(await deps.moving.get(getActor(res), z.uuid().parse(req.params.id))),
+  );
+  app.post(`${apiRoutes.bookings}/:id/reminders`, authenticate, async (req, res) =>
+    res.json(await deps.moving.recordClientReminder(getActor(res), z.uuid().parse(req.params.id))),
   );
   app.delete(`${apiRoutes.bookings}/:id`, authenticate, admin, async (req, res) => {
     await deps.moving.delete(getActor(res), z.uuid().parse(req.params.id));
@@ -112,7 +152,7 @@ export function registerBookingRoutes(
   app.post(`${apiRoutes.bookings}/:id/driver-finished`, authenticate, async (req, res) => {
     res.json(await deps.moving.finishDriverWork(getActor(res), z.uuid().parse(req.params.id)));
   });
-  app.patch(`${apiRoutes.bookings}/:id/schedule`, authenticate, admin, async (req, res) => {
+  app.patch(`${apiRoutes.bookings}/:id/schedule`, authenticate, async (req, res) => {
     const p = z
       .object({
         date: z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal(''), z.null()]),
@@ -134,7 +174,7 @@ export function registerBookingRoutes(
       ),
     );
   });
-  app.patch(`${apiRoutes.bookings}/:id/notes`, authenticate, admin, async (req, res) => {
+  app.patch(`${apiRoutes.bookings}/:id/notes`, authenticate, async (req, res) => {
     const p = z
       .object({ notes: z.string().trim().max(2000), version: z.number().int().positive() })
       .parse(req.body);
@@ -163,6 +203,9 @@ export function registerBookingRoutes(
           p.status,
           p.reason,
           p.version,
+          p.actualTime,
+          p.photo,
+          { cause: p.cause, severity: p.severity, correctiveAction: p.correctiveAction },
         ),
       );
     },
@@ -186,6 +229,14 @@ export function registerBookingRoutes(
       z.uuid().parse(req.params.id),
       p.driverId,
       p.version,
+    );
+    res.json(booking);
+  });
+  app.patch(apiRoutes.bookingCrew, authenticate, admin, async (req, res) => {
+    const booking = await deps.moving.updateCrew(
+      getActor(res),
+      z.uuid().parse(req.params.id),
+      bookingCrewSchema.parse(req.body),
     );
     res.json(booking);
   });

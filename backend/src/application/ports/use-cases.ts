@@ -2,6 +2,8 @@ import type {
   Booking,
   BookingInput,
   BookingStatus,
+  WorkPlanCompliance,
+  WorkPlanReview,
   Catalogue,
   Driver,
   Options,
@@ -18,6 +20,7 @@ import type {
 } from '../../domain/model.js';
 import type {
   AccountingEntry,
+  AccountingFinanceConfiguration,
   BreakdownInput,
   ManualAccountingInput,
   VehicleInspectionInput,
@@ -27,11 +30,14 @@ export interface AccountingUseCases {
   list(actor: User, month?: string): Promise<AccountingEntry[]>;
   create(actor: User, input: ManualAccountingInput): Promise<AccountingEntry>;
   void(actor: User, id: string): Promise<void>;
+  configuration(actor: User): Promise<AccountingFinanceConfiguration | null>;
+  saveConfiguration(actor: User, value: AccountingFinanceConfiguration): Promise<void>;
 }
 export type AuthSession = { user: User; token: string };
 export interface AuthUseCases {
   register(name: string, phone: string, password: string): Promise<AuthSession>;
-  login(phone: string, password: string): Promise<AuthSession>;
+  login(identifier: string, password?: string): Promise<AuthSession>;
+  requestPasswordReset(phone: string): Promise<void>;
   current(token?: string): Promise<User | null>;
   logout(token?: string): Promise<void>;
   changePassword(user: User, oldPassword: string, newPassword: string): Promise<AuthSession>;
@@ -45,10 +51,25 @@ export interface MovingUseCases {
     routeId: string,
     options: Options,
     workAccess?: WorkAccess,
+    trips?: number,
+    distanceKmOverride?: number,
   ): Promise<Price>;
   create(user: User, input: BookingInput): Promise<Booking>;
+  updateClientRequest(
+    user: User,
+    id: string,
+    input: BookingInput,
+    version: number,
+  ): Promise<Booking>;
+  updateAdminRequest(
+    user: User,
+    id: string,
+    input: BookingInput,
+    version: number,
+  ): Promise<Booking>;
   list(user: User): Promise<Booking[]>;
   get(user: User, id: string): Promise<Booking>;
+  recordClientReminder(user: User, id: string): Promise<Booking>;
   status(user: User, id: string, next: BookingStatus, version: number): Promise<Booking>;
   startTrip(user: User, id: string, photos: string[]): Promise<Booking>;
   finishTrip(user: User, id: string, photos: string[]): Promise<Booking>;
@@ -65,47 +86,88 @@ export interface MovingUseCases {
     user: User,
     id: string,
     stepId: string,
-    status: 'respected' | 'not_respected',
+    status: WorkPlanCompliance,
     reason: string,
     version: number,
+    actualTime?: string,
+    photo?: string,
+    details?: Pick<WorkPlanReview, 'cause' | 'severity' | 'correctiveAction'>,
   ): Promise<Booking>;
   updateRoute(user: User, id: string, from: Point, to: Point, version: number): Promise<Booking>;
   assignDriver(user: User, id: string, driverId: string | null, version: number): Promise<Booking>;
+  updateCrew(
+    user: User,
+    id: string,
+    input: {
+      crew: NonNullable<Booking['crew']>;
+      crewBriefs: NonNullable<Booking['crewBriefs']>;
+      crewRefusedBy: NonNullable<Booking['crewRefusedBy']>;
+      crewReplies: NonNullable<Booking['crewReplies']>;
+      crewMessages: NonNullable<Booking['crewMessages']>;
+      version: number;
+    },
+  ): Promise<Booking>;
   quote(user: User, id: string, input: QuoteInput): Promise<Booking>;
   delete(user: User, id: string): Promise<void>;
 }
 export interface AdministrationUseCases {
   listUsers(actor: User): Promise<User[]>;
   listHiddenClients(actor: User): Promise<{ phone: string; hiddenAt: string }[]>;
+  listClientProfiles(actor: User): Promise<{ phone: string; name: string; address: string }[]>;
   hideClient(actor: User, phone: string): Promise<{ phone: string; hiddenAt: string }>;
-  updateClient(actor: User, phone: string, name: string, nextPhone: string): Promise<void>;
+  updateClient(
+    actor: User,
+    phone: string,
+    name: string,
+    nextPhone: string,
+    address: string,
+  ): Promise<void>;
   updateUser(actor: User, user: User): Promise<User>;
   createUser(actor: User, input: Omit<User, 'id'> & { password: string }): Promise<User>;
-  updateProfile(actor: User, input: Pick<User, 'name' | 'phone' | 'photo'>): Promise<User>;
+  resetClientPassword(actor: User, userId: string, password: string): Promise<void>;
+  updateProfile(
+    actor: User,
+    input: Pick<User, 'name' | 'phone' | 'photo' | 'email'>,
+  ): Promise<User>;
 }
 export interface CatalogueUseCases {
   get(): Promise<Catalogue>;
   update(actor: User, vehicles: Vehicle[], settings: Settings): Promise<void>;
+  removeVehicle(actor: User, id: string): Promise<void>;
   listTollPoints(): Promise<TollPoint[]>;
   createTollPoint(actor: User, input: TollPointInput): Promise<TollPoint>;
   updateTollPoint(actor: User, id: string, input: TollPointInput): Promise<TollPoint>;
   deleteTollPoint(actor: User, id: string): Promise<void>;
 }
-export type DriverCreation = {
-  name: string;
-  phone: string;
-  password: string;
-  photo: string | null;
-  vehicleId: string | null;
-};
+export type DriverCreation = Omit<Driver, 'id' | 'userId' | 'active'>;
+export type CreatedDriver = Driver & { initialPassword: string };
 export type DriverUpdate = Omit<Driver, 'userId'>;
 export interface DriverUseCases {
   list(actor: User): Promise<Driver[]>;
-  create(actor: User, input: DriverCreation): Promise<Driver>;
+  create(actor: User, input: DriverCreation): Promise<CreatedDriver>;
   update(actor: User, driver: DriverUpdate): Promise<Driver>;
+  remove(actor: User, id: string): Promise<{ removed: boolean; employee: Driver }>;
+  resetAccessPassword(actor: User, id: string): Promise<{ password: string }>;
   profile(actor: User): Promise<Driver>;
-  updateProfile(actor: User, input: Pick<Driver, 'name' | 'phone' | 'photo'>): Promise<Driver>;
+  updatePhoto(actor: User, photo: string | null): Promise<Driver>;
+  updateAvailability(
+    actor: User,
+    availability: NonNullable<Driver['availability']>,
+  ): Promise<Driver>;
   bookings(actor: User): Promise<Booking[]>;
+  addProofs(
+    actor: User,
+    bookingId: string,
+    kind: 'retrait' | 'depot',
+    photos: string[],
+  ): Promise<Booking>;
+  updateEmployeeProof(
+    actor: User,
+    bookingId: string,
+    proofId: string,
+    patch: { kind?: 'retrait' | 'depot'; image?: string; note?: string },
+  ): Promise<Booking>;
+  deleteEmployeeProof(actor: User, bookingId: string, proofId: string): Promise<Booking>;
 }
 export interface VehicleReportUseCases {
   submitInspection(actor: User, input: VehicleInspectionInput): Promise<VehicleReportRecord>;
@@ -116,6 +178,13 @@ export interface VehicleReportUseCases {
   adminReports(
     actor: User,
   ): Promise<{ inspections: VehicleReportRecord[]; breakdowns: VehicleReportRecord[] }>;
+  updateInspectionLevel(
+    actor: User,
+    id: string,
+    key: string,
+    good: boolean,
+  ): Promise<VehicleReportRecord>;
+  deleteInspection(actor: User, id: string): Promise<void>;
 }
 export interface NotificationUseCases {
   list(actor: User): Promise<{ items: import('./index.js').Notification[]; unreadCount: number }>;

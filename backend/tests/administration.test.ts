@@ -32,12 +32,14 @@ function fixture(count: number, currentActor: User = actor) {
   const repository: AdministrationRepository = {
     listUsers: async () => [actor, target],
     listHiddenClients: async () => [],
+    listClientProfiles: async () => [],
     hideClient: async (phone) => ({ phone, hiddenAt: new Date().toISOString() }),
     updateClient: async () => {},
     transaction: (work) => work(transaction),
   };
   const users: UserRepository = {
     findByPhone: async () => null,
+    findByEmail: async () => null,
     create: async (user) => user,
     updatePassword: async () => {},
     updateProfile: async (id, name, phone, photo) => ({

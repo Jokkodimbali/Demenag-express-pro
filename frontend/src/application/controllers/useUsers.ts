@@ -65,6 +65,23 @@ export function useUsers() {
       setBusy(false);
     }
   }
+  async function resetClientPassword(userId: string, password: string) {
+    if (busy) return false;
+    setBusy(true);
+    setError('');
+    try {
+      await api.resetClientPassword(userId, password);
+      setUsers((rows) =>
+        rows.map((row) => (row.id === userId ? { ...row, passwordResetRequestedAt: null } : row)),
+      );
+      return true;
+    } catch (cause) {
+      setError(errorMessage(cause));
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
   return {
     actor,
     users,
@@ -77,5 +94,6 @@ export function useUsers() {
     editing,
     setEditing,
     save,
+    resetClientPassword,
   };
 }

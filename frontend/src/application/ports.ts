@@ -1,4 +1,7 @@
 import type {
+  AccountingEntry,
+  AccountingFinanceConfiguration,
+  ManualAccountingInput,
   Booking,
   BookingInput,
   BookingStatus,
@@ -16,24 +19,37 @@ import type {
   Driver,
   VehicleInspectionPhotos,
   WorkPlanCompliance,
+  WorkPlanReview,
+} from '../domain/model';
+import type { FinanceMonth } from '../domain/accounting-forecast';
+export type {
+  AccountingEntry,
+  AccountingFinanceConfiguration,
+  ManualAccountingInput,
 } from '../domain/model';
 export interface UserRepository {
   users(): Promise<User[]>;
   updateUser(user: User): Promise<User>;
   createUser(user: Omit<User, 'id'> & { password: string }): Promise<User>;
+  resetClientPassword(id: string, password: string): Promise<void>;
 }
 export interface AdminProfileRepository {
   adminProfile(): Promise<User>;
-  updateAdminProfile(input: Pick<User, 'name' | 'phone' | 'photo'>): Promise<User>;
+  updateAdminProfile(input: Pick<User, 'name' | 'phone' | 'photo' | 'email'>): Promise<User>;
 }
 export interface ClientDirectoryRepository {
   hiddenClients(): Promise<{ phone: string; hiddenAt: string }[]>;
-  updateClient(phone: string, input: { name: string; phone: string }): Promise<void>;
+  clientProfiles(): Promise<{ phone: string; name: string; address: string }[]>;
+  updateClient(
+    phone: string,
+    input: { name: string; phone: string; address: string },
+  ): Promise<void>;
   hideClient(phone: string): Promise<{ phone: string; hiddenAt: string }>;
 }
 export interface CatalogueRepository {
   catalogue(): Promise<Catalogue>;
   updateCatalogue(value: Catalogue): Promise<Catalogue>;
+  deleteVehicle(id: string): Promise<void>;
 }
 export interface TollPointRepository {
   tollPoints(): Promise<TollPoint[]>;
@@ -44,8 +60,9 @@ export interface TollPointRepository {
 export interface AuthRepository {
   onSessionExpired?(listener: () => void): () => void;
   me(): Promise<User | null>;
-  login(phone: string, password: string): Promise<User>;
-  register(name: string, phone: string, password: string): Promise<User>;
+  login(identifier: string, password?: string): Promise<User>;
+  requestPasswordReset(phone: string): Promise<void>;
+  register(name: string, phone: string, password: string, role?: 'client'): Promise<User>;
   logout(): Promise<void>;
   changePassword(oldPassword: string, newPassword: string): Promise<User>;
 }
@@ -54,6 +71,9 @@ export interface BookingRepository {
   booking(id: string): Promise<Booking>;
   deleteBooking(id: string): Promise<void>;
   createBooking(input: BookingInput): Promise<Booking>;
+  updateClientBooking(id: string, input: BookingInput, version: number): Promise<Booking>;
+  updateAdminBooking(id: string, input: BookingInput, version: number): Promise<Booking>;
+  recordBookingReminder(id: string): Promise<Booking>;
   status(id: string, status: BookingStatus, version: number): Promise<Booking>;
   startBookingTrip(id: string, photos: string[]): Promise<Booking>;
   finishBookingTrip(id: string, photos: string[]): Promise<Booking>;
@@ -63,39 +83,42 @@ export interface BookingRepository {
   reviewWorkPlan(
     id: string,
     stepId: string,
-    status: Exclude<WorkPlanCompliance, 'pending'>,
+    status: WorkPlanCompliance,
     reason: string,
     version: number,
+    actualTime?: string,
+    photo?: string,
+    details?: Pick<WorkPlanReview, 'cause' | 'severity' | 'correctiveAction'>,
   ): Promise<Booking>;
   updateBookingRoute(id: string, from: Point, to: Point, version: number): Promise<Booking>;
   quote(id: string, input: QuoteInput): Promise<Booking>;
   assignDriver(id: string, driverId: string | null, version: number): Promise<Booking>;
+  updateCrew(
+    id: string,
+    input: {
+      crew: NonNullable<Booking['crew']>;
+      crewBriefs: NonNullable<Booking['crewBriefs']>;
+      crewRefusedBy: NonNullable<Booking['crewRefusedBy']>;
+      crewReplies: NonNullable<Booking['crewReplies']>;
+      crewMessages: NonNullable<Booking['crewMessages']>;
+      version: number;
+    },
+  ): Promise<Booking>;
 }
-export type AccountingEntry = {
-  id: string;
-  type: 'charge' | 'revenu';
-  category: string;
-  label: string;
-  amount: number;
-  date: string;
-  automatic: boolean;
-  bookingId?: string;
-  reference?: string;
-  bookingReference?: string;
-};
-export type ManualAccountingInput = Pick<
-  AccountingEntry,
-  'type' | 'category' | 'label' | 'amount' | 'date'
->;
 export interface AccountingRepository {
   accountingEntries(month?: string): Promise<AccountingEntry[]>;
   createAccountingEntry(input: ManualAccountingInput): Promise<AccountingEntry>;
   voidAccountingEntry(id: string): Promise<void>;
+  accountingConfiguration(): Promise<AccountingFinanceConfiguration | null>;
+  saveAccountingConfiguration(value: AccountingFinanceConfiguration): Promise<void>;
 }
-export type DriverCreation = Omit<Driver, 'id' | 'userId' | 'active'> & { password: string };
+export type DriverCreation = Omit<Driver, 'id' | 'userId' | 'active'>;
+export type CreatedDriver = Driver & { initialPassword: string };
 export type InspectionLevels = Record<string, 'good' | 'low' | 'empty'>;
 export type VehicleInspection = {
   id: string;
+  driverId: string;
+  vehicleId?: string;
   driverName: string;
   driverPhone: string;
   vehicleName: string;
@@ -131,11 +154,19 @@ export type AppNotification = {
 export type NotificationInbox = { items: AppNotification[]; unreadCount: number };
 export interface DriverRepository {
   drivers(): Promise<Driver[]>;
-  createDriver(input: DriverCreation): Promise<Driver>;
+  createDriver(input: DriverCreation): Promise<CreatedDriver>;
   updateDriver(driver: Omit<Driver, 'userId'>): Promise<Driver>;
+  deleteDriver(id: string): Promise<{ removed: boolean; employee: Driver }>;
+  resetDriverPassword(id: string): Promise<{ password: string }>;
   driverProfile(): Promise<Driver>;
-  updateDriverProfile(input: Pick<Driver, 'name' | 'phone' | 'photo'>): Promise<Driver>;
+  updateDriverPhoto(photo: string | null): Promise<Driver>;
+  updateDriverAvailability(availability: NonNullable<Driver['availability']>): Promise<Driver>;
   driverBookings(): Promise<Booking[]>;
+  addEmployeeProofs(id: string, kind: 'retrait' | 'depot', photos: string[]): Promise<Booking>;
+  submitEmployeeInspection(input: {
+    vehicleId: string;
+    items: Record<string, { image: string; ok: boolean }>;
+  }): Promise<VehicleInspection>;
   driverReports(): Promise<VehicleReports>;
   submitVehicleInspection(
     input: Omit<
@@ -147,6 +178,18 @@ export interface DriverRepository {
     input: Pick<BreakdownReport, 'description' | 'latitude' | 'longitude' | 'accuracy' | 'photos'>,
   ): Promise<BreakdownReport>;
   adminVehicleReports(): Promise<VehicleReports>;
+  updateInspectionLevel(
+    id: string,
+    key: 'engineOil' | 'brakeFluid' | 'coolant' | 'washerFluid' | 'fuel',
+    good: boolean,
+  ): Promise<VehicleInspection>;
+  deleteInspection(id: string): Promise<void>;
+  updateEmployeeProof(
+    bookingId: string,
+    proofId: string,
+    patch: { kind?: 'retrait' | 'depot'; image?: string; note?: string },
+  ): Promise<Booking>;
+  deleteEmployeeProof(bookingId: string, proofId: string): Promise<Booking>;
 }
 export interface MapsRepository {
   route(from: Point, to: Point): Promise<RouteTicket>;
@@ -160,6 +203,8 @@ export interface PricingRepository {
     options: Options,
     signal?: AbortSignal,
     workAccess?: import('../domain/model').WorkAccess,
+    trips?: number,
+    distanceKmOverride?: number | null,
   ): Promise<Price>;
 }
 export interface NotificationRepository {
@@ -188,3 +233,12 @@ export type QuoteExporter = (
   quote: Quote | undefined,
   settings: Settings,
 ) => Promise<Blob>;
+export type AccountingDocumentKind =
+  'journal' | 'gl' | 'bal' | 'cr' | 'bilan' | 'amort' | 'dette' | 'smt' | 'all';
+export type AccountingDocumentExporter = (
+  document: AccountingDocumentKind,
+  config: AccountingFinanceConfiguration,
+  months: FinanceMonth[],
+  entries: AccountingEntry[],
+  endMonth: string,
+) => Promise<void>;

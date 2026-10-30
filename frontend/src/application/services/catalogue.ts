@@ -11,6 +11,9 @@ export class CatalogueService {
         : [...catalogue.vehicles, vehicle],
     });
   }
+  removeVehicle(catalogue: Catalogue, vehicle: Vehicle): Promise<Catalogue> {
+    return this.repository.deleteVehicle(vehicle.id).then(() => this.repository.catalogue());
+  }
   deactivateVehicle(catalogue: Catalogue, vehicle: Vehicle): Promise<Catalogue> {
     return this.saveVehicle(catalogue, { ...vehicle, active: false });
   }

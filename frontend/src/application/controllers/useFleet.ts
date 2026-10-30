@@ -205,10 +205,13 @@ export function useFleet() {
     const currentDay = today();
     return {
       bookings: vehicleBookings.length,
-      todayRevenue: revenueFor(vehicleBookings.filter((booking) => booking.date === currentDay))
-        .total,
+      todayRevenue: revenueFor(
+        vehicleBookings.filter((booking) => booking.date === currentDay),
+        catalogue,
+      ).total,
       weekRevenue: revenueFor(
         vehicleBookings.filter((booking) => sameWeek(booking.date, currentDay)),
+        catalogue,
       ).total,
     };
   }

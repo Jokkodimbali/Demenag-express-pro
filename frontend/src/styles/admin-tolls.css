@@ -1,0 +1,474 @@
+.toll-reference-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  color: #fff;
+}
+
+.toll-reference-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.toll-reference-toolbar > span {
+  color: #aeb4bb;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.toll-reference-vehicle-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid #3b4046;
+  border-radius: 12px;
+  background: #1e2023;
+}
+
+.toll-reference-vehicle-tabs button {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #d5d9de;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.toll-reference-vehicle-tabs button.active {
+  background: #f6d73c;
+  color: #1e2023;
+}
+
+.toll-reference-saving {
+  margin: 0;
+  color: #aeb4bb;
+  font-size: 12px;
+}
+
+.toll-reference-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  align-items: start;
+  gap: 20px;
+}
+
+.toll-reference-map-panel,
+.toll-admin-map-frame {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #3b4046;
+  border-radius: clamp(14px, 4vw, 20px);
+  background: #30343a;
+}
+
+.toll-editor-map.toll-admin-reference-map {
+  width: 100%;
+  height: min(600px, 72vh);
+  min-height: 0;
+  background: #30343a;
+}
+
+.toll-admin-map-instruction {
+  position: absolute;
+  z-index: 500;
+  right: 10px;
+  bottom: 10px;
+  left: 56px;
+  display: flex;
+  justify-content: center;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgb(30 32 35 / 92%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  pointer-events: none;
+}
+
+.toll-admin-marker-host {
+  overflow: visible;
+  border: 0;
+  background: transparent;
+}
+
+.toll-admin-marker {
+  position: absolute;
+  bottom: -7px;
+  left: 0;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 3px;
+  transform: translateX(-50%);
+  cursor: grab;
+}
+
+.toll-admin-marker:active {
+  cursor: grabbing;
+}
+
+.toll-admin-marker-price {
+  padding: 6px 9px;
+  border: 2px solid var(--toll-marker-color);
+  border-radius: 999px;
+  background: #1e2023;
+  color: #fff;
+  font: 800 12.5px/1.1 sans-serif;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px #0006;
+}
+
+.toll-admin-marker.selected .toll-admin-marker-price {
+  background: var(--toll-marker-color);
+  color: #1e2023;
+}
+
+.toll-admin-marker-dot {
+  width: 13px;
+  height: 13px;
+  border: 2.5px solid #1e2023;
+  border-radius: 50%;
+  background: var(--toll-marker-color);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--toll-marker-color) 33%, transparent);
+}
+
+.toll-admin-marker.selected .toll-admin-marker-dot {
+  width: 16px;
+  height: 16px;
+}
+
+.toll-reference-side {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.toll-reference-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: clamp(14px, 4vw, 20px);
+  border: 1px solid #3b4046;
+  border-radius: clamp(14px, 4vw, 20px);
+  background: #272a2e;
+}
+
+.toll-reference-card-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #aeb4bb;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.toll-reference-card-heading small {
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: normal;
+}
+
+.toll-reference-card-heading button {
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: #f6d73c;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.toll-reference-axis-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toll-reference-axis-list > button {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr);
+  align-items: center;
+  gap: 4px 10px;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.toll-reference-axis-list > button.active {
+  background: #30343a;
+}
+
+.toll-reference-axis-list > button > i,
+.toll-reference-result > i {
+  grid-row: span 2;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.toll-reference-axis-list > button > i {
+  background: var(--axis-color);
+}
+
+.toll-reference-axis-list strong {
+  color: #fff;
+  font-size: 14px;
+}
+
+.toll-reference-axis-list span {
+  color: #aeb4bb;
+  font-size: 12.5px;
+}
+
+.toll-reference-empty {
+  margin: 0;
+  color: #aeb4bb;
+  font-size: 13px;
+}
+
+.toll-reference-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 11px;
+  border: 1px solid #3b4046;
+  border-radius: 9px;
+  background: #1e2023;
+  color: #aeb4bb;
+}
+
+.toll-reference-search input {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #fff;
+  font-size: 15px;
+}
+
+.toll-reference-results {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: min(520px, 60vh);
+  overflow-y: auto;
+}
+
+.toll-reference-result {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px 10px;
+  padding: 10px 12px;
+  border: 1px solid #30343a;
+  border-radius: 12px;
+  background: #1e2023;
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.toll-reference-result:hover,
+.toll-reference-result:focus-visible {
+  border-color: #f6d73c;
+}
+
+.toll-reference-result strong {
+  overflow: hidden;
+  font-size: 14.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toll-reference-result b {
+  color: #f6d73c;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.toll-reference-result small {
+  grid-column: 2 / -1;
+  overflow: hidden;
+  color: #aeb4bb;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toll-reference-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1.5px solid var(--axis-color);
+  border-radius: 14px;
+  background: #1e2023;
+}
+
+.toll-reference-editor > header,
+.toll-reference-editor > footer,
+.toll-reference-editor > footer > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toll-reference-editor > header > i {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--axis-color);
+}
+
+.toll-reference-editor > header > input {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.toll-reference-editor > header > button {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid #3b4046;
+  border-radius: 9px;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+
+.toll-reference-price-summary,
+.toll-reference-price-fields,
+.toll-reference-location-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 110px), 1fr));
+  gap: 8px;
+}
+
+.toll-reference-price-summary > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px;
+  border-radius: 10px;
+  background: #272a2e;
+}
+
+.toll-reference-price-summary span,
+.toll-reference-price-fields label > span {
+  color: #aeb4bb;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.toll-reference-price-summary strong {
+  color: #f6d73c;
+  font-size: 17px;
+}
+
+.toll-reference-price-summary small {
+  color: #aeb4bb;
+  font-size: 11.5px;
+}
+
+.toll-reference-price-fields label {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.toll-reference-price-fields input,
+.toll-reference-location-fields input {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  box-sizing: border-box;
+  padding: 9px 10px;
+  border: 1px solid #3b4046;
+  border-radius: 9px;
+  outline: none;
+  background: #1e2023;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.toll-reference-location-fields {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+}
+
+.toll-reference-editor > footer {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  color: #aeb4bb;
+  font-size: 12.5px;
+}
+
+.toll-reference-editor > footer > div {
+  flex-wrap: wrap;
+}
+
+.toll-reference-editor > footer a,
+.toll-reference-editor > footer button {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border: 1px solid #3b4046;
+  border-radius: 9px;
+  background: transparent;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.toll-reference-editor > footer button {
+  color: #ff6b6b;
+}
+
+@media (max-width: 700px) {
+  .toll-editor-map.toll-admin-reference-map {
+    height: min(600px, 72vh);
+  }
+
+  .toll-admin-map-instruction {
+    left: 50px;
+    font-size: 11px;
+  }
+}

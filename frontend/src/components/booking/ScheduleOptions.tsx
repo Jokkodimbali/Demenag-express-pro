@@ -1,7 +1,9 @@
+import { uiText } from '../../content/reference-ui-text';
 import { Minus, Plus } from 'lucide-react';
 import type { BookingViewState } from '../../application/contracts/booking-view';
 import { messages } from '../../content/fr';
 import { money, today } from '../../domain/format';
+import { assemblyUnitPrice } from '../../domain/labour-price';
 import type { Catalogue } from '../../domain/model';
 import { TollRateSelector } from '../TollRateSelector';
 
@@ -14,6 +16,7 @@ export function ScheduleOptions({
   administrativeQuote = false,
   tollLines = [],
   setTollLines,
+  referenceMode = false,
 }: Pick<BookingViewState, 'catalogue' | 'draft' | 'setDraft' | 'extras' | 'option'> & {
   catalogue: Catalogue;
   administrativeQuote?: boolean;
@@ -21,43 +24,54 @@ export function ScheduleOptions({
   setTollLines?: React.Dispatch<
     React.SetStateAction<{ id: string; label: string; quantity: number; unitPrice: number }[]>
   >;
+  referenceMode?: boolean;
 }) {
   return (
     <section className="panel">
-      <div className="step-title">
-        <span>{messages.text3}</span>
-        <div>
-          <h3>{messages.dateEtOptions}</h3>
-          <p>{messages.unDemenagementQuiSAdapteAVosBesoins}</p>
+      {!referenceMode && (
+        <div className="step-title">
+          <span>{messages.text3}</span>
+          <div>
+            <h3>{messages.dateEtOptions}</h3>
+            <p>{messages.unDemenagementQuiSAdapteAVosBesoins}</p>
+          </div>
         </div>
-      </div>
+      )}
+      {referenceMode && (
+        <h3 className="reference-edit-options-title">{uiText['optionsETQUANTITES']}</h3>
+      )}
       <div className="field-pair">
         <div>
           <label htmlFor="booking-date">{messages.dateSouhaitee}</label>
           <input
             id="booking-date"
             type="date"
-            min={today()}
-            max={new Date(Date.now() + catalogue.settings.maxAdvanceDays * 86400000)
-              .toISOString()
-              .slice(0, 10)}
+            min={referenceMode ? undefined : today()}
+            max={
+              referenceMode
+                ? undefined
+                : new Date(Date.now() + catalogue.settings.maxAdvanceDays * 86400000)
+                    .toISOString()
+                    .slice(0, 10)
+            }
             value={draft.date}
             onChange={(e) => setDraft((d) => ({ ...d, date: e.target.value }))}
           />
         </div>
         <div>
-          <label htmlFor="booking-slot">Heure souhaitée</label>
+          <label htmlFor="booking-slot">{uiText['heureSouhaitee']}</label>
           <input
             id="booking-slot"
             type="time"
             step="60"
-            required={Boolean(draft.date)}
             value={draft.timeSlot}
             onChange={(e) => setDraft((d) => ({ ...d, timeSlot: e.target.value }))}
           />
-          <small className="muted">
-            Choisissez l’heure qui vous convient. L’équipe confirmera le rendez-vous.
-          </small>
+          {!referenceMode && (
+            <small className="muted">
+              {uiText['choisissezLHeureQuiVousConvientLEquipeConfirmeraLeRend']}
+            </small>
+          )}
         </div>
       </div>
       <div className="options">
@@ -70,7 +84,10 @@ export function ScheduleOptions({
                 {money(
                   key === 'labour'
                     ? catalogue.settings.labourPrice
-                    : catalogue.settings.assemblyPrice,
+                    : assemblyUnitPrice(
+                        catalogue.settings,
+                        key === 'desk' ? 'bureau' : key === 'wardrobe' ? 'armoire' : 'lit',
+                      ),
                 )}
               </span>
             </div>

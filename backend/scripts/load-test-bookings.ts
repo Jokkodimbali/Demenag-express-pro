@@ -20,8 +20,14 @@ assert.equal(
   'Définissez ALLOW_BOOKING_LOAD_TESTS=true pour autoriser ce test destructif et nettoyé.',
 );
 assert.ok(url, 'Définissez LOAD_TEST_DATABASE_URL ou DATABASE_URL_UNPOOLED.');
-assert.ok(Number.isInteger(poolMax) && poolMax >= 1 && poolMax <= 50, 'LOAD_TEST_POOL_MAX doit être entre 1 et 50.');
-assert.ok(Number.isInteger(batchLimit) && batchLimit >= 1 && batchLimit <= clientCount, 'LOAD_TEST_BATCH_LIMIT doit être entre 1 et LOAD_TEST_CLIENTS.');
+assert.ok(
+  Number.isInteger(poolMax) && poolMax >= 1 && poolMax <= 50,
+  'LOAD_TEST_POOL_MAX doit être entre 1 et 50.',
+);
+assert.ok(
+  Number.isInteger(batchLimit) && batchLimit >= 1 && batchLimit <= clientCount,
+  'LOAD_TEST_BATCH_LIMIT doit être entre 1 et LOAD_TEST_CLIENTS.',
+);
 assert.ok(
   new URL(url).hostname.startsWith(expectedDevEndpoint),
   'Le test de charge est limité à la branche Neon dev-web-hexagonal.',
@@ -40,7 +46,9 @@ const sessionExpiry = new Date(Date.now() + 60 * 60_000);
 const originalFetch = globalThis.fetch;
 
 async function cleanup() {
-  await db.notification.deleteMany({ where: { reservationId: { in: bookingIds.filter(Boolean) } } });
+  await db.notification.deleteMany({
+    where: { reservationId: { in: bookingIds.filter(Boolean) } },
+  });
   await db.reservation.deleteMany({ where: { utilisateurId: { in: ids } } });
   await db.sessionConnexion.deleteMany({ where: { utilisateurId: { in: ids } } });
   await db.utilisateur.deleteMany({ where: { id: { in: ids } } });
@@ -135,7 +143,9 @@ async function run() {
     const errors = new Map<string, number>();
     const originalConsoleError = console.error;
     console.error = (...args: unknown[]) => {
-      const detail = args.find((value) => typeof value === 'object' && value !== null && 'code' in value) as { code?: unknown } | undefined;
+      const detail = args.find(
+        (value) => typeof value === 'object' && value !== null && 'code' in value,
+      ) as { code?: unknown } | undefined;
       const key = typeof detail?.code === 'string' ? detail.code : 'untyped';
       errors.set(key, (errors.get(key) ?? 0) + 1);
     };
@@ -203,7 +213,9 @@ async function run() {
     console.log(`Lot maximal simultané : ${batchLimit}`);
     console.log(`Erreurs internes : ${JSON.stringify(Object.fromEntries(errors))}`);
     const failures = responses.filter((response) => response.status >= 500).slice(0, 5);
-    console.log(`Exemples d'erreurs HTTP : ${JSON.stringify(failures.map(({ status, body }) => ({ status, body })))}`);
+    console.log(
+      `Exemples d'erreurs HTTP : ${JSON.stringify(failures.map(({ status, body }) => ({ status, body })))}`,
+    );
     console.log(
       `Débit API + PostgreSQL : ${(clientCount / (elapsedMs / 1000)).toFixed(1)} réservations/s`,
     );

@@ -1,7 +1,8 @@
+import { uiText } from '../content/reference-ui-text';
 import { Check, Play, Truck } from 'lucide-react';
 import { useState } from 'react';
 import type { Booking } from '../domain/model';
-import { useApp } from '../application/context';
+import { useBookingCommands } from '../application/controllers/useBookingCommands';
 import { PhotoPicker } from './PhotoPicker';
 
 async function compressPhoto(file: File): Promise<string> {
@@ -39,7 +40,7 @@ export function DriverCourseActions({
   onChange: (booking: Booking) => void;
   adminMode?: boolean;
 }) {
-  const { api } = useApp();
+  const commands = useBookingCommands();
   const [mode, setMode] = useState<'loading' | 'unloading' | null>(null);
   const [photos, setPhotos] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
@@ -58,16 +59,16 @@ export function DriverCourseActions({
       const encoded = await Promise.all(photos.map(compressPhoto));
       const updated =
         mode === 'loading'
-          ? await api.startBookingTrip(booking.id, encoded)
-          : await api.finishBookingTrip(booking.id, encoded);
+          ? await commands.startTrip(booking.id, encoded)
+          : await commands.finishTrip(booking.id, encoded);
       onChange(updated);
       setPhotos([]);
       setMode(null);
     } catch (reason) {
       try {
         const refreshed = adminMode
-          ? await api.booking(booking.id)
-          : (await api.driverBookings()).find((entry) => entry.id === booking.id);
+          ? await commands.booking(booking.id)
+          : (await commands.driverBookings()).find((entry) => entry.id === booking.id);
         if (!refreshed) {
           setError('La réservation n’est plus disponible.');
         } else {
@@ -102,7 +103,7 @@ export function DriverCourseActions({
     setBusy(true);
     setError('');
     try {
-      onChange(await api.finishDriverWork(booking.id));
+      onChange(await commands.finishDriverWork(booking.id));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Le signalement n’a pas pu être envoyé.');
     } finally {
@@ -120,13 +121,14 @@ export function DriverCourseActions({
     <section className="driver-course-panel">
       <div className="driver-course-heading">
         <strong>
-          <Truck size={17} /> Courses effectuées : {trips.length}
+          <Truck size={17} /> {uiText['coursesEffectuees']}
+          {trips.length}
         </strong>
       </div>
       {booking.driverFinishedAt ? (
         <p className="driver-course-complete" role="status">
-          <Check size={16} /> Fin signalée à l’administration pour {trips.length}{' '}
-          aller(s)-retour(s). En attente de vérification et clôture.
+          <Check size={16} /> {uiText['finSignaleeALAdministrationPour']}
+          {trips.length} {uiText['allerSRetourSEnAttenteDeVerificationEtCloture']}
         </p>
       ) : adminMode && booking.status === 'in_progress' && !openTrip && trips.length > 0 ? (
         <div className="driver-course-form-actions">
@@ -140,7 +142,8 @@ export function DriverCourseActions({
               setMode('loading');
             }}
           >
-            <Play size={16} /> Démarrer la course {nextSequence}
+            <Play size={16} /> {uiText['demarrerLaCourse']}
+            {nextSequence}
           </button>
           <button
             className="button primary small"
@@ -148,7 +151,7 @@ export function DriverCourseActions({
             disabled={busy}
             onClick={() => void signalFinished()}
           >
-            <Check size={16} /> Signaler la fin des courses
+            <Check size={16} /> {uiText['signalerLaFinDesCourses']}
           </button>
         </div>
       ) : booking.status === 'in_progress' && !openTrip && trips.length > 0 ? (
@@ -158,7 +161,7 @@ export function DriverCourseActions({
           disabled={busy}
           onClick={() => void signalFinished()}
         >
-          <Check size={16} /> Signaler la fin des courses à l’administration
+          <Check size={16} /> {uiText['signalerLaFinDesCoursesALAdministration']}
         </button>
       ) : openTrip && needsLoadingProof && !adminMode ? (
         <button
@@ -170,7 +173,8 @@ export function DriverCourseActions({
             setMode('loading');
           }}
         >
-          <Check size={16} /> Ajouter les preuves de chargement · course {openTrip.sequence}
+          <Check size={16} /> {uiText['ajouterLesPreuvesDeChargementCourse']}
+          {openTrip.sequence}
         </button>
       ) : booking.status === 'confirmed' || (booking.status === 'in_progress' && !openTrip) ? (
         <button
@@ -195,7 +199,8 @@ export function DriverCourseActions({
             setMode('unloading');
           }}
         >
-          <Check size={16} /> Terminer la course {openTrip.sequence}
+          <Check size={16} /> {uiText['terminerLaCourse']}
+          {openTrip.sequence}
         </button>
       ) : null}
       {mode && (
@@ -246,7 +251,7 @@ export function DriverCourseActions({
                 setPhotos([]);
               }}
             >
-              Annuler
+              {uiText['annuler']}
             </button>
           </div>
         </form>

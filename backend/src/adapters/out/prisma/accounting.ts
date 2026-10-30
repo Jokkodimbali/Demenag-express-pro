@@ -1,4 +1,5 @@
 import type {
+  AccountingFinanceConfiguration,
   AccountingEntry,
   AccountingRepository,
   ManualAccountingInput,
@@ -39,7 +40,8 @@ export class PrismaAccounting implements AccountingRepository {
           r."reference" AS "bookingReference", r."data"->>'customerName' AS "customerName"
         FROM "demenag"."devis" d
         JOIN "demenag"."bookings" r ON r."id" = d."reservation_id"
-        WHERE d."nature" = 'definitif' AND d."montant_total" IS NOT NULL ${period}
+        WHERE d."nature" = 'definitif' AND d."montant_total" IS NOT NULL
+          AND r."data"->>'status' IS DISTINCT FROM 'cancelled' ${period}
         ORDER BY d."cree_le" DESC
       `),
     ]);
@@ -95,5 +97,18 @@ export class PrismaAccounting implements AccountingRepository {
       data: { annuleLe: new Date() },
     });
     return result.count > 0;
+  }
+
+  async configuration(): Promise<AccountingFinanceConfiguration | null> {
+    const row = await this.db.configurationComptable.findUnique({ where: { identifiant: 'main' } });
+    return row ? (row.donnees as AccountingFinanceConfiguration) : null;
+  }
+
+  async saveConfiguration(value: AccountingFinanceConfiguration): Promise<void> {
+    await this.db.configurationComptable.upsert({
+      where: { identifiant: 'main' },
+      create: { identifiant: 'main', donnees: value },
+      update: { donnees: value },
+    });
   }
 }

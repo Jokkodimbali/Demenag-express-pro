@@ -11,15 +11,18 @@ import type {
   User,
   WorkAccess,
   WorkPlanReview,
+  WorkPlanCompliance,
 } from '../../domain/model.js';
 import {
   canReadBooking,
   requireActiveUser,
   requireAdministrator,
 } from '../../domain/policies/access.js';
-import { calculatePrice } from '../../domain/pricing.js';
+import { calculatePrice, labourUnitPrice } from '../../domain/pricing.js';
+import { fallbackWorkPlan } from './fallback-work-plan.js';
 import type {
   BookingRepository,
+  AccountingRepository,
   CatalogueRepository,
   Clock,
   DriverRepository,
@@ -30,6 +33,9 @@ import type {
   VehicleReportRepository,
 } from '../ports/index.js';
 import type { MovingUseCases } from '../ports/use-cases.js';
+import { createQuote } from './moving-quote.js';
+import { addressChangeForUpdate } from './moving-address-change.js';
+
 export class MovingService implements MovingUseCases {
   constructor(
     private bookings: BookingRepository,
@@ -41,6 +47,7 @@ export class MovingService implements MovingUseCases {
     private ids: IdGenerator,
     private vehicleReports?: VehicleReportRepository,
     private notifications?: NotificationPublisher,
+    private accounting?: AccountingRepository,
   ) {}
   async route(from: Point, to: Point) {
     const route = await this.routing.route(from, to);
@@ -63,22 +70,33 @@ export class MovingService implements MovingUseCases {
     routeId: string,
     options: Options,
     workAccess?: WorkAccess,
+    trips = 1,
+    distanceKmOverride?: number | null,
   ) {
     const [catalogue, route] = await Promise.all([this.catalogue.get(), this.routes.find(routeId)]);
     if (!route || +new Date(route.expiresAt) <= +this.clock.now())
       throw new AppError(400, messages.recalculezLeTrajetSonEstimationAExpire);
     const vehicle = catalogue.vehicles.find((v) => v.id === vehicleId);
     if (!vehicle || vehicle.active === false) throw new AppError(400, messages.vehiculeInconnu);
+    if (distanceKmOverride != null)
+      requireValue(
+        Number.isFinite(distanceKmOverride) &&
+          distanceKmOverride >= 0 &&
+          distanceKmOverride <= 100000,
+        'La distance personnalisée doit être comprise entre 0 et 100 000 km.',
+      );
+    const effectiveRoute =
+      distanceKmOverride == null ? route : { ...route, distanceKm: distanceKmOverride };
     return {
-      route,
+      route: effectiveRoute,
       settings: catalogue.settings,
       vehicle,
       estimate: calculatePrice(
         vehicle,
         catalogue.settings,
-        route.distanceKm,
+        effectiveRoute.distanceKm,
         options,
-        1,
+        trips,
         null,
         0,
         [],
@@ -86,16 +104,31 @@ export class MovingService implements MovingUseCases {
       ),
     };
   }
-  async estimate(vehicleId: string, routeId: string, options: Options, workAccess?: WorkAccess) {
-    return (await this.priceInput(vehicleId, routeId, options, workAccess)).estimate;
+  async estimate(
+    vehicleId: string,
+    routeId: string,
+    options: Options,
+    workAccess?: WorkAccess,
+    trips = 1,
+    distanceKmOverride?: number,
+  ) {
+    return (
+      await this.priceInput(vehicleId, routeId, options, workAccess, trips, distanceKmOverride)
+    ).estimate;
   }
   async create(user: User, input: BookingInput) {
     requireActiveUser(user);
+    requireValue(
+      user.role === 'admin' || input.distanceKmOverride == null,
+      'La distance personnalisée est réservée à l’administration.',
+    );
     const { route, vehicle, estimate, settings } = await this.priceInput(
       input.vehicleId,
       input.routeId,
       input.options,
-      user.role === 'admin' ? input.workAccess : undefined,
+      input.workAccess,
+      input.trips ?? 1,
+      user.role === 'admin' ? input.distanceKmOverride : undefined,
     );
     if (user.role !== 'admin')
       requireValue(
@@ -104,6 +137,21 @@ export class MovingService implements MovingUseCases {
       );
     if (input.date) validateDate(input.date, this.clock.now(), settings);
     const id = this.ids.next();
+    const provisionalQuote =
+      user.role === 'client'
+        ? (() => {
+            const quoteId = this.ids.next();
+            return {
+              id: quoteId,
+              reference: `DV-${this.clock.now().getUTCFullYear()}-${quoteId.slice(0, 8).toUpperCase()}`,
+              kind: 'provisional' as const,
+              createdAt: this.clock.now().toISOString(),
+              price: estimate,
+              notes: input.notes,
+              options: input.options,
+            };
+          })()
+        : null;
     return this.bookings.create(
       {
         id,
@@ -111,6 +159,7 @@ export class MovingService implements MovingUseCases {
         userId: user.id,
         customerName: input.customerName,
         phone: input.customerPhone,
+        source: user.role === 'admin' ? (input.source ?? '') : '',
         vehicle,
         fromAddress: input.fromAddress,
         toAddress: input.toAddress,
@@ -118,12 +167,16 @@ export class MovingService implements MovingUseCases {
         to: route.to,
         distanceKm: route.distanceKm,
         date: input.date,
+        month: input.date
+          ? input.date.slice(0, 7)
+          : ((user.role === 'admin' ? input.month : undefined) ??
+            this.clock.now().toISOString().slice(0, 7)),
         timeSlot: input.timeSlot,
         options: input.options,
-        workAccess: user.role === 'admin' ? input.workAccess : undefined,
+        workAccess: input.workAccess,
         notes: input.notes,
         questionnaireAnswers: user.role === 'admin' ? (input.questionnaireAnswers ?? []) : [],
-        inventorySnapshot: user.role === 'admin' ? input.inventorySnapshot : undefined,
+        inventorySnapshot: input.inventorySnapshot,
         workPlan:
           user.role === 'admin'
             ? (input.workPlan ?? []).map((step) => {
@@ -138,7 +191,7 @@ export class MovingService implements MovingUseCases {
             : [],
         pricingSettings: settings,
         estimate,
-        quotes: [],
+        quotes: provisionalQuote ? [provisionalQuote] : [],
         status: 'pending',
         createdAt: this.clock.now().toISOString(),
         version: 1,
@@ -146,9 +199,157 @@ export class MovingService implements MovingUseCases {
       input.requestId,
     );
   }
+  async updateClientRequest(user: User, id: string, input: BookingInput, version: number) {
+    requireActiveUser(user);
+    requireValue(user.role === 'client', 'Action réservée au client de la réservation.');
+    requireValue(
+      input.distanceKmOverride == null,
+      'La distance personnalisée est réservée à l’administration.',
+    );
+    const booking = await this.get(user, id);
+    if (booking.version !== version)
+      throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
+    requireValue(
+      ['pending', 'confirmed', 'cancelled'].includes(booking.status) &&
+        !booking.quotes.some((quote) => quote.kind === 'final'),
+      'Cette réservation ne peut plus être modifiée.',
+    );
+    requireValue(
+      !booking.driverId || input.vehicleId === booking.vehicle.id,
+      'Le véhicule ne peut plus être changé après l’affectation d’un chauffeur.',
+    );
+    const { route, vehicle, estimate, settings } = await this.priceInput(
+      input.vehicleId,
+      input.routeId,
+      input.options,
+      input.workAccess,
+      input.trips ?? 1,
+    );
+    if (input.date && input.date !== booking.date)
+      validateDate(input.date, this.clock.now(), settings);
+    const provisional = booking.quotes.filter((quote) => quote.kind === 'provisional').at(-1);
+    const nextQuote = {
+      id: provisional?.id ?? this.ids.next(),
+      reference:
+        provisional?.reference ??
+        `DV-${this.clock.now().getUTCFullYear()}-${this.ids.next().slice(0, 8).toUpperCase()}`,
+      kind: 'provisional' as const,
+      createdAt: provisional?.createdAt ?? this.clock.now().toISOString(),
+      price: estimate,
+      notes: input.notes,
+      options: input.options,
+    };
+    return this.bookings.update(
+      {
+        ...booking,
+        status: booking.status === 'cancelled' ? 'pending' : booking.status,
+        customerName: input.customerName,
+        phone: input.customerPhone,
+        source: booking.source ?? '',
+        vehicle,
+        from: route.from,
+        to: route.to,
+        distanceKm: route.distanceKm,
+        fromAddress: input.fromAddress,
+        toAddress: input.toAddress,
+        date: input.date || null,
+        timeSlot: input.date ? input.timeSlot : '',
+        options: input.options,
+        workAccess: input.workAccess ?? booking.workAccess,
+        notes: input.notes,
+        estimate,
+        quotes: [...booking.quotes.filter((quote) => quote.kind !== 'provisional'), nextQuote],
+      },
+      version,
+    );
+  }
+  async updateAdminRequest(user: User, id: string, input: BookingInput, version: number) {
+    requireAdministrator(user);
+    const booking = await this.get(user, id);
+    if (booking.version !== version)
+      throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
+    requireValue(
+      !['completed', 'cancelled'].includes(booking.status) &&
+        !booking.quotes.some((quote) => quote.kind === 'final'),
+      messages.cetteReservationEstCloturee,
+    );
+    const { route, vehicle, estimate, settings } = await this.priceInput(
+      input.vehicleId,
+      input.routeId,
+      input.options,
+      input.workAccess,
+      input.trips ?? 1,
+      input.distanceKmOverride,
+    );
+    if (input.date && input.date !== booking.date)
+      validateDate(input.date, this.clock.now(), { ...settings, maxAdvanceDays: 730 });
+    const crewAddressChange = addressChangeForUpdate(
+      booking,
+      input.fromAddress,
+      input.toAddress,
+      route.from,
+      route.to,
+      this.clock.now().toISOString(),
+    );
+    return this.bookings.update(
+      {
+        ...booking,
+        customerName: input.customerName,
+        phone: input.customerPhone,
+        source: input.source ?? booking.source ?? '',
+        vehicle,
+        from: route.from,
+        to: route.to,
+        distanceKm: route.distanceKm,
+        fromAddress: input.fromAddress,
+        toAddress: input.toAddress,
+        date: input.date || null,
+        month: input.date
+          ? input.date.slice(0, 7)
+          : (input.month ?? booking.month ?? booking.createdAt.slice(0, 7)),
+        timeSlot: input.date ? input.timeSlot : '',
+        options: input.options,
+        workAccess: input.workAccess ?? booking.workAccess,
+        notes: input.notes,
+        pricingSettings: settings,
+        questionnaireAnswers: input.questionnaireAnswers ?? booking.questionnaireAnswers,
+        workPlan:
+          input.workPlan !== undefined
+            ? input.workPlan.map((step) => ({
+                ...step,
+                review: (() => {
+                  const previous = booking.workPlan?.find((item) => item.id === step.id);
+                  if (
+                    previous &&
+                    previous.time === step.time &&
+                    previous.title === step.title &&
+                    previous.detail === step.detail &&
+                    previous.minutes === step.minutes
+                  )
+                    return previous.review;
+                  return {
+                    status: 'pending' as const,
+                    reason: '',
+                    checkedAt: null,
+                    checkedBy: null,
+                  };
+                })(),
+              }))
+            : booking.workPlan,
+        inventorySnapshot: input.inventorySnapshot ?? booking.inventorySnapshot,
+        estimate,
+        crewAddressChange,
+      },
+      version,
+    );
+  }
   list(user: User) {
     requireActiveUser(user);
-    return this.bookings.list(user.role === 'admin' ? undefined : user.id);
+    return this.bookings.list(
+      user.role === 'admin' ? undefined : user.id,
+      undefined,
+      user.role !== 'admin',
+    );
   }
   async get(user: User, id: string) {
     const booking = await this.bookings.find(id);
@@ -161,6 +362,35 @@ export class MovingService implements MovingUseCases {
       throw new AppError(404, messages.reservationIntrouvable);
     }
     return booking;
+  }
+  async recordClientReminder(user: User, id: string) {
+    requireActiveUser(user);
+    requireValue(user.role === 'client', 'Cette action est réservée au client.');
+    const booking = await this.get(user, id);
+    requireValue(
+      Boolean(booking.date) && !['completed', 'cancelled'].includes(booking.status),
+      'Aucun rappel WhatsApp n’est disponible pour cette réservation.',
+    );
+    let whatsappPhone = booking.phone.replace(/\D/g, '');
+    if (whatsappPhone.startsWith('00')) whatsappPhone = whatsappPhone.slice(2);
+    if (whatsappPhone.length <= 9) whatsappPhone = `221${whatsappPhone.replace(/^0+/, '')}`;
+    requireValue(
+      whatsappPhone.length >= 10,
+      'Le numéro du client ne permet pas de préparer un rappel WhatsApp.',
+    );
+    const now = this.clock.now();
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Dakar' }).format(now);
+    const daysBefore = Math.round(
+      (+new Date(`${booking.date}T12:00:00Z`) - +new Date(`${today}T12:00:00Z`)) / 86400000,
+    );
+    requireValue(daysBefore >= 0, 'La date de cette réservation est déjà passée.');
+    return this.bookings.update(
+      {
+        ...booking,
+        reminders: [...(booking.reminders ?? []), { at: now.toISOString(), daysBefore }],
+      },
+      booking.version,
+    );
   }
   async status(user: User, id: string, next: BookingStatus, version: number) {
     requireActiveUser(user);
@@ -413,8 +643,13 @@ export class MovingService implements MovingUseCases {
     }
   }
   async schedule(user: User, id: string, date: string | null, timeSlot: string, version: number) {
-    requireAdministrator(user);
+    requireActiveUser(user);
     const booking = await this.get(user, id);
+    requireValue(
+      user.role === 'admin' ||
+        (user.role === 'client' && ['pending', 'confirmed'].includes(booking.status)),
+      'Cette réservation ne peut plus être modifiée.',
+    );
     if (booking.version !== version)
       throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
     requireValue(
@@ -451,8 +686,13 @@ export class MovingService implements MovingUseCases {
     );
   }
   async updateNotes(user: User, id: string, notes: string, version: number) {
-    requireAdministrator(user);
+    requireActiveUser(user);
     const booking = await this.get(user, id);
+    requireValue(
+      user.role === 'admin' ||
+        (user.role === 'client' && ['pending', 'confirmed'].includes(booking.status)),
+      'Cette réservation ne peut plus être modifiée.',
+    );
     if (booking.version !== version)
       throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
     requireValue(
@@ -469,9 +709,12 @@ export class MovingService implements MovingUseCases {
     user: User,
     id: string,
     stepId: string,
-    status: 'respected' | 'not_respected',
+    status: WorkPlanCompliance,
     reason: string,
     version: number,
+    actualTime?: string,
+    photo?: string,
+    details?: Pick<WorkPlanReview, 'cause' | 'severity' | 'correctiveAction'>,
   ) {
     requireActiveUser(user);
     requireValue(
@@ -487,25 +730,25 @@ export class MovingService implements MovingUseCases {
       throw new AppError(404, messages.reservationIntrouvable);
     if (booking.version !== version)
       throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
-    const step = booking.workPlan?.find((entry) => entry.id === stepId);
+    const plan = booking.workPlan?.length ? booking.workPlan : fallbackWorkPlan(booking);
+    const step = plan.find((entry) => entry.id === stepId);
     if (!step) throw new AppError(404, 'Étape de planning introuvable.');
     const cleanReason = reason.trim();
-    requireValue(
-      status !== 'not_respected' || cleanReason.length >= 3,
-      'Justifiez en quelques mots pourquoi cet horaire n’a pas été respecté.',
-    );
     const review: WorkPlanReview = {
       status,
-      reason: status === 'not_respected' ? cleanReason : '',
+      reason: cleanReason,
+      actualTime: actualTime ?? step.review.actualTime ?? '',
+      photo: photo ?? step.review.photo ?? '',
+      cause: details?.cause ?? step.review.cause ?? '',
+      severity: details?.severity ?? step.review.severity ?? '',
+      correctiveAction: details?.correctiveAction ?? step.review.correctiveAction ?? '',
       checkedAt: this.clock.now().toISOString(),
       checkedBy: user.name,
     };
     return this.bookings.update(
       {
         ...booking,
-        workPlan: booking.workPlan?.map((entry) =>
-          entry.id === stepId ? { ...entry, review } : entry,
-        ),
+        workPlan: plan.map((entry) => (entry.id === stepId ? { ...entry, review } : entry)),
       },
       version,
     );
@@ -516,22 +759,24 @@ export class MovingService implements MovingUseCases {
     if (booking.version !== version)
       throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
     requireValue(
-      booking.quotes.length === 0,
-      'Le trajet est verrouillé après la création d’un devis. Les montants des devis existants doivent rester inchangés.',
+      !booking.quotes.some((quote) => quote.kind === 'final'),
+      'Le trajet est verrouillé après la création du devis final.',
     );
     requireValue(
       !['completed', 'cancelled'].includes(booking.status),
       messages.cetteReservationEstCloturee,
     );
-    if (!booking.pricingSettings) throw new AppError(409, messages.tarifsHistoriquesIndisponibles);
-    const [route, fromAddress, toAddress] = await Promise.all([
+    const [catalogue, route, fromAddress, toAddress] = await Promise.all([
+      this.catalogue.get(),
       this.routing.route(from, to),
       this.routing.reverse(from),
       this.routing.reverse(to),
     ]);
+    const vehicle =
+      catalogue.vehicles.find((item) => item.id === booking.vehicle.id) ?? booking.vehicle;
     const estimate = calculatePrice(
-      booking.vehicle,
-      booking.pricingSettings,
+      vehicle,
+      catalogue.settings,
       route.distanceKm,
       booking.options,
       1,
@@ -540,6 +785,84 @@ export class MovingService implements MovingUseCases {
       [],
       booking.workAccess,
     );
+    const crewAddressChange = addressChangeForUpdate(
+      booking,
+      fromAddress,
+      toAddress,
+      from,
+      to,
+      this.clock.now().toISOString(),
+    );
+    let quotes = booking.quotes;
+    const latestQuote = quotes.at(-1);
+    if (latestQuote?.kind === 'provisional') {
+      const currentSettings = catalogue.settings;
+      const pricingSettings = {
+        distanceBounds: currentSettings.distanceBounds,
+        maxTrips: currentSettings.maxTrips,
+        maxOptions: currentSettings.maxOptions,
+        labourPrice: currentSettings.labourPrice,
+        labourFloorPrice: currentSettings.labourFloorPrice,
+        labourLiftPrice: currentSettings.labourLiftPrice,
+        assemblyPrice: currentSettings.assemblyPrice,
+        montageP: currentSettings.montageP,
+      };
+      const legacyPricingInput = () => {
+        const transport = latestQuote.price.lines.find((line) => /^Transport\b/u.test(line.label));
+        const labour = latestQuote.price.lines.find((line) => /^Man[œo]uvre\b/iu.test(line.label));
+        const standardLines = new Set<string>([
+          messages.menuisierBureau,
+          messages.menuisierArmoire,
+          messages.menuisierLit,
+        ]);
+        const lines = latestQuote.price.lines.filter(
+          (line) =>
+            !/^Transport\b/u.test(line.label) &&
+            !/^Man[œo]uvre\b/iu.test(line.label) &&
+            !standardLines.has(line.label),
+        );
+        return {
+          settings: pricingSettings,
+          trips: latestQuote.price.trips,
+          customPrice: latestQuote.price.tier === 3 ? (transport?.unitPrice ?? null) : null,
+          discount: latestQuote.price.discountValue ?? latestQuote.price.discount,
+          discountType: latestQuote.price.discountType ?? 'fcfa',
+          discountReason: latestQuote.price.discountReason ?? '',
+          options: latestQuote.options ?? booking.options,
+          labourUnitPriceOverride:
+            labour && labour.unitPrice !== labourUnitPrice(pricingSettings, booking.workAccess)
+              ? labour.unitPrice
+              : null,
+          extraLines: lines.map(({ label, quantity, unitPrice }) => ({
+            label,
+            quantity,
+            unitPrice,
+          })),
+        } as const;
+      };
+      const pricingInput = latestQuote.pricingInput ?? legacyPricingInput();
+      const settings = {
+        ...pricingInput.settings,
+        maxTrips: Math.max(pricingInput.settings.maxTrips, pricingInput.trips),
+      };
+      const price = calculatePrice(
+        booking.vehicle,
+        settings,
+        route.distanceKm,
+        pricingInput.options,
+        pricingInput.trips,
+        pricingInput.customPrice,
+        pricingInput.discount,
+        pricingInput.extraLines,
+        booking.workAccess,
+        pricingInput.labourUnitPriceOverride,
+        pricingInput.discountType,
+        pricingInput.discountReason,
+      );
+      quotes = quotes.map((quote) =>
+        quote.id === latestQuote.id ? { ...quote, price, pricingInput } : quote,
+      );
+    }
     return this.bookings.update(
       {
         ...booking,
@@ -549,6 +872,8 @@ export class MovingService implements MovingUseCases {
         toAddress,
         distanceKm: route.distanceKm,
         estimate,
+        quotes,
+        crewAddressChange,
       },
       version,
     );
@@ -583,78 +908,73 @@ export class MovingService implements MovingUseCases {
     }
     return updated;
   }
-  async quote(user: User, id: string, input: QuoteInput) {
+  async updateCrew(
+    user: User,
+    id: string,
+    input: {
+      crew: NonNullable<Booking['crew']>;
+      crewBriefs: NonNullable<Booking['crewBriefs']>;
+      crewRefusedBy: NonNullable<Booking['crewRefusedBy']>;
+      crewReplies: NonNullable<Booking['crewReplies']>;
+      crewMessages: NonNullable<Booking['crewMessages']>;
+      version: number;
+    },
+  ) {
     requireAdministrator(user);
     const booking = await this.get(user, id);
     if (booking.version !== input.version)
       throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
-    requireValue(
-      !booking.quotes.some((quote) => quote.kind === 'final'),
-      'Un devis final existe déjà pour cette réservation.',
-    );
-    requireValue(
-      !['completed', 'cancelled'].includes(booking.status),
-      messages.cetteReservationEstCloturee,
-    );
-    if (input.kind === 'final') {
-      requireValue(
-        booking.status === 'in_progress',
-        messages.demarrezLeDemenagementAvantDeFinaliserSonDevis,
+    const roleIds = [...input.crew.chauffeur, ...input.crew.menuisier, ...input.crew.manoeuvre];
+    if (new Set(roleIds).size !== roleIds.length)
+      throw new AppError(
+        400,
+        'Un employé ne peut pas occuper plusieurs rôles sur la même mission.',
       );
-      requireValue(
-        booking.driverFinishedAt,
-        'Attendez que le chauffeur signale la fin de ses courses.',
-      );
-      const completedTrips = booking.trips?.filter((trip) => trip.finishedAt).length ?? 0;
-      requireValue(
-        completedTrips > 0 && completedTrips === booking.trips?.length,
-        'Toutes les courses doivent être terminées avant de créer le devis final.',
-      );
-      requireValue(
-        input.trips === completedTrips,
-        `Le devis final doit compter ${completedTrips} aller(s)-retour(s), selon les courses enregistrées.`,
-      );
+    if (input.crew.chef && !roleIds.includes(input.crew.chef))
+      throw new AppError(400, 'Le chef doit faire partie de l’équipe affectée.');
+    const members = await Promise.all(roleIds.map((memberId) => this.drivers.find(memberId)));
+    const expected = [
+      ...input.crew.chauffeur.map((memberId) => [memberId, 'chauffeur'] as const),
+      ...input.crew.menuisier.map((memberId) => [memberId, 'menuisier'] as const),
+      ...input.crew.manoeuvre.map((memberId) => [memberId, 'manoeuvre'] as const),
+    ];
+    for (const [index, [, role]] of expected.entries()) {
+      const member = members[index];
+      if (!member || !member.active || (member.role ?? 'chauffeur') !== role)
+        throw new AppError(
+          400,
+          'Un membre sélectionné est introuvable, inactif ou dans un autre rôle.',
+        );
     }
-    if (!booking.pricingSettings) throw new AppError(409, messages.tarifsHistoriquesIndisponibles);
-    const options = input.options ?? booking.options;
-    const pricingSettings = booking.pricingSettings;
-    const quoteSettings =
-      input.kind === 'final'
-        ? { ...pricingSettings, maxTrips: Math.max(pricingSettings.maxTrips, input.trips) }
-        : pricingSettings;
-    // Les prix du transport sont ceux du véhicule au moment de la réservation.
-    const price = calculatePrice(
-      booking.vehicle,
-      quoteSettings,
-      booking.distanceKm,
-      options,
-      input.trips,
-      input.customPrice,
-      input.discount,
-      input.extraLines,
-      booking.workAccess,
-    );
-    requireValue(
-      input.kind !== 'final' || price.total !== null,
-      messages.renseignezLeTarifDuTransportAvantDeFinaliser,
-    );
-    const quoteId = this.ids.next();
-    const quote = {
-      id: quoteId,
-      reference: `DV-${this.clock.now().getUTCFullYear()}-${quoteId.slice(0, 8).toUpperCase()}`,
-      kind: input.kind,
-      createdAt: this.clock.now().toISOString(),
-      price,
-      notes: input.notes,
-      options,
-    };
+    const lead = input.crew.chauffeur
+      .map((memberId) => members[roleIds.indexOf(memberId)])
+      .find((member) => member?.userId);
     return this.bookings.update(
       {
         ...booking,
-        quotes: [...booking.quotes, quote],
-        status: booking.status,
+        driverId: lead?.id ?? null,
+        crew: input.crew,
+        crewBriefs: input.crewBriefs,
+        crewRefusedBy: input.crewRefusedBy,
+        crewReplies: input.crewReplies,
+        crewMessages: input.crewMessages,
       },
       input.version,
+    );
+  }
+  quote(user: User, id: string, input: QuoteInput) {
+    return createQuote(
+      {
+        bookings: this.bookings,
+        catalogue: this.catalogue,
+        accounting: this.accounting,
+        ids: this.ids,
+        clock: this.clock,
+        getBooking: (actor, bookingId) => this.get(actor, bookingId),
+      },
+      user,
+      id,
+      input,
     );
   }
   async delete(user: User, id: string) {

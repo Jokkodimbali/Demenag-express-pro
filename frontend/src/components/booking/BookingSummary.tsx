@@ -1,3 +1,4 @@
+import { uiText } from '../../content/reference-ui-text';
 import { ArrowRight, ShieldCheck, Truck } from 'lucide-react';
 import type { BookingViewState } from '../../application/contracts/booking-view';
 import { messages } from '../../content/fr';
@@ -18,6 +19,7 @@ export function BookingSummary({
   user,
   selectedTolls = [],
   allowWhenBookingsClosed = false,
+  isEditing = false,
 }: Pick<
   BookingViewState,
   | 'catalogue'
@@ -35,6 +37,7 @@ export function BookingSummary({
   selected: Vehicle;
   selectedTolls?: { label: string; quantity: number; unitPrice: number }[];
   allowWhenBookingsClosed?: boolean;
+  isEditing?: boolean;
 }) {
   return (
     <aside className="summary">
@@ -70,13 +73,13 @@ export function BookingSummary({
         <div className="summary-details">
           {draft.customerName && (
             <div>
-              <span>Client</span>
+              <span>{uiText['client3']}</span>
               <strong>{draft.customerName}</strong>
             </div>
           )}
           {draft.date && (
             <div>
-              <span>Date souhaitée</span>
+              <span>{uiText['dateSouhaitee']}</span>
               <strong>
                 {draft.date.split('-').reverse().join('/')}
                 {draft.timeSlot ? ` · ${draft.timeSlot}` : ''}
@@ -115,7 +118,7 @@ export function BookingSummary({
       </div>
       {allowWhenBookingsClosed && inventoryNote(draft.inventory) && (
         <details className="summary-inventory">
-          <summary>Inventaire de la fiche d’appel</summary>
+          <summary>{uiText['inventaireDeLaFicheDAppel']}</summary>
           <pre>{inventoryNote(draft.inventory)}</pre>
         </details>
       )}
@@ -143,16 +146,18 @@ export function BookingSummary({
           estimating ||
           !price ||
           selected.active === false ||
-          (catalogue.settings.bookingsEnabled === false && !allowWhenBookingsClosed)
+          (catalogue.settings.bookingsEnabled === false && !allowWhenBookingsClosed && !isEditing)
         }
       >
         {submitting
           ? messages.enregistrement
-          : allowWhenBookingsClosed
-            ? 'Créer le devis'
-            : user
-              ? 'Envoyer ma demande'
-              : messages.meConnecterEtReserver}
+          : isEditing
+            ? 'Envoyer ma demande'
+            : allowWhenBookingsClosed
+              ? 'Créer le devis'
+              : user
+                ? 'Envoyer ma demande'
+                : messages.meConnecterEtReserver}
         <ArrowRight size={18} />
       </button>
       <p className="summary-note">

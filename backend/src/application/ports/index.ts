@@ -1,4 +1,14 @@
 import type {
+  AccountingFinanceConfiguration,
+  AccountingEntry,
+  ManualAccountingInput,
+} from '../../domain/model.js';
+export type {
+  AccountingFinanceConfiguration,
+  AccountingEntry,
+  ManualAccountingInput,
+} from '../../domain/model.js';
+import type {
   Booking,
   Catalogue,
   Driver,
@@ -20,26 +30,12 @@ export type Notification = {
   bookingId?: string;
   readAt?: string | null;
 };
-export type AccountingEntry = {
-  id: string;
-  type: 'charge' | 'revenu';
-  category: string;
-  label: string;
-  amount: number;
-  date: string;
-  automatic: boolean;
-  bookingId?: string;
-  reference?: string;
-  bookingReference?: string;
-};
-export type ManualAccountingInput = Omit<
-  AccountingEntry,
-  'id' | 'automatic' | 'bookingId' | 'reference' | 'bookingReference'
->;
 export interface AccountingRepository {
   list(month?: string): Promise<AccountingEntry[]>;
   create(input: ManualAccountingInput): Promise<AccountingEntry>;
   void(id: string): Promise<boolean>;
+  configuration(): Promise<AccountingFinanceConfiguration | null>;
+  saveConfiguration(value: AccountingFinanceConfiguration): Promise<void>;
 }
 export type NotificationDelivery = { userId: string; notification: Notification };
 export interface NotificationRepository {
@@ -61,9 +57,17 @@ export interface NotificationPublisher {
 }
 export interface UserRepository {
   findByPhone(phone: string): Promise<UserCredentials | null>;
+  findByEmail(email: string): Promise<UserCredentials | null>;
   create(user: UserCredentials): Promise<User>;
   updatePassword(userId: string, hash: string): Promise<void>;
-  updateProfile(userId: string, name: string, phone: string, photo?: string | null): Promise<User>;
+  requestPasswordReset?(userId: string, requestedAt: Date): Promise<void>;
+  updateProfile(
+    userId: string,
+    name: string,
+    phone: string,
+    photo?: string | null,
+    email?: string | null,
+  ): Promise<User>;
 }
 export interface SessionRepository {
   create(hash: string, userId: string, expiresAt: Date): Promise<void>;
@@ -74,13 +78,14 @@ export interface SessionRepository {
 export interface CatalogueRepository {
   get(): Promise<Catalogue>;
   update(vehicles: Vehicle[], settings: Settings): Promise<void>;
+  removeVehicle(id: string): Promise<void>;
   listTollPoints(): Promise<TollPoint[]>;
   createTollPoint(input: TollPointInput): Promise<TollPoint>;
   updateTollPoint(id: string, input: TollPointInput): Promise<TollPoint>;
   deleteTollPoint(id: string): Promise<void>;
 }
 export interface BookingRepository {
-  list(userId?: string, vehicleId?: string): Promise<Booking[]>;
+  list(userId?: string, vehicleId?: string, includeTripPhotos?: boolean): Promise<Booking[]>;
   find(id: string): Promise<Booking | null>;
   create(booking: Booking, requestId: string): Promise<Booking>;
   update(booking: Booking, expectedVersion: number): Promise<Booking>;
@@ -95,8 +100,11 @@ export interface DriverRepository {
   findByUserId(userId: string): Promise<Driver | null>;
   create(driver: Driver): Promise<Driver>;
   update(driver: Driver): Promise<Driver>;
+  delete?(id: string): Promise<void>;
 }
 export type VehicleInspectionInput = {
+  vehicleId?: string;
+  reference?: boolean;
   levels: Record<string, 'good' | 'low' | 'empty'>;
   condition: 'good' | 'attention' | 'unsafe';
   notes: string;
@@ -122,6 +130,12 @@ export interface VehicleReportRepository {
     vehicleId: string,
     input: BreakdownInput,
   ): Promise<VehicleReportRecord>;
+  updateInspectionLevel(
+    id: string,
+    key: string,
+    level: 'good' | 'low',
+  ): Promise<VehicleReportRecord>;
+  deleteInspection(id: string): Promise<void>;
   listInspections(): Promise<VehicleReportRecord[]>;
   listBreakdowns(): Promise<VehicleReportRecord[]>;
   listDriverInspections(driverId: string): Promise<VehicleReportRecord[]>;
@@ -154,8 +168,9 @@ export interface IdGenerator {
 export interface AdministrationRepository {
   listUsers(): Promise<User[]>;
   listHiddenClients(): Promise<{ phone: string; hiddenAt: string }[]>;
+  listClientProfiles(): Promise<{ phone: string; name: string; address: string }[]>;
   hideClient(phone: string): Promise<{ phone: string; hiddenAt: string }>;
-  updateClient(phone: string, name: string, nextPhone: string): Promise<void>;
+  updateClient(phone: string, name: string, nextPhone: string, address: string): Promise<void>;
   transaction<T>(work: (repository: AdministrationTransaction) => Promise<T>): Promise<T>;
 }
 export interface AdministrationTransaction {
@@ -163,4 +178,5 @@ export interface AdministrationTransaction {
   countActiveAdministrators(): Promise<number>;
   saveUser(user: User): Promise<User>;
   revokeSessions(userId: string): Promise<void>;
+  resetClientPassword?(userId: string, passwordHash: string): Promise<void>;
 }

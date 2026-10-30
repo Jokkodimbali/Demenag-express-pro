@@ -1,19 +1,27 @@
+import { uiText } from '../content/reference-ui-text';
 import { Check, Clock3, TriangleAlert } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { errorMessage } from '../application/error-message';
-import { useApp } from '../application/context';
+import { useBookingCommands } from '../application/controllers/useBookingCommands';
 import type { Booking, WorkPlanCompliance, WorkPlanReview, WorkPlanStep } from '../domain/model';
 
 type ReviewDraft = { status: WorkPlanCompliance; reason: string };
 
 function reviewLabel(review: WorkPlanReview): string {
   if (review.status === 'respected') return 'Respecté';
+  if (review.status === 'late') return 'En retard';
   if (review.status === 'not_respected') return 'Non respecté';
   return 'À vérifier';
 }
 
 function reviewTone(status: WorkPlanCompliance): string {
-  return status === 'respected' ? 'success' : status === 'not_respected' ? 'warning' : 'pending';
+  return status === 'respected'
+    ? 'success'
+    : status === 'late'
+      ? 'warning'
+      : status === 'not_respected'
+        ? 'danger'
+        : 'pending';
 }
 
 function reviewTime(review: WorkPlanReview): string {
@@ -51,7 +59,7 @@ function PlanStep({
   driverMode: boolean;
   onChange: (booking: Booking) => void;
 }) {
-  const { api } = useApp();
+  const commands = useBookingCommands();
   const editable = admin || driverMode;
   const [draft, setDraft] = useState<ReviewDraft>({
     status: step.review.status,
@@ -65,16 +73,16 @@ function PlanStep({
   }, [step.review.status, step.review.reason, booking.version]);
 
   async function saveReview() {
-    if (!editable || draft.status === 'pending' || busy) return;
+    if (!editable || busy) return;
     setBusy(true);
     setError('');
     try {
       onChange(
-        await api.reviewWorkPlan(
+        await commands.reviewWorkPlan(
           booking.id,
           step.id,
           draft.status,
-          draft.status === 'not_respected' ? draft.reason : '',
+          draft.reason,
           booking.version,
         ),
       );
@@ -106,11 +114,19 @@ function PlanStep({
             <div role="group" aria-label={`Respect de l’horaire ${step.title}`}>
               <button
                 type="button"
+                className={draft.status === 'late' ? 'selected warning' : ''}
+                aria-pressed={draft.status === 'late'}
+                onClick={() => setDraft((current) => ({ ...current, status: 'late' }))}
+              >
+                <Clock3 size={15} /> {uiText['enRetard']}
+              </button>
+              <button
+                type="button"
                 className={draft.status === 'respected' ? 'selected success' : ''}
                 aria-pressed={draft.status === 'respected'}
                 onClick={() => setDraft({ status: 'respected', reason: '' })}
               >
-                <Check size={15} /> Respecté
+                <Check size={15} /> {uiText['respecte']}
               </button>
               <button
                 type="button"
@@ -118,32 +134,26 @@ function PlanStep({
                 aria-pressed={draft.status === 'not_respected'}
                 onClick={() => setDraft((current) => ({ ...current, status: 'not_respected' }))}
               >
-                <TriangleAlert size={15} /> Non respecté
+                <TriangleAlert size={15} /> {uiText['nonRespecte']}
               </button>
             </div>
-            {draft.status === 'not_respected' && (
+            {(draft.status === 'late' || draft.status === 'not_respected') && (
               <label>
-                Justification obligatoire
+                {uiText['justificatifRaisonDeLEcart']}
                 <textarea
-                  required
-                  minLength={3}
                   maxLength={1000}
                   value={draft.reason}
                   onChange={(event) =>
                     setDraft((current) => ({ ...current, reason: event.target.value }))
                   }
-                  placeholder="Expliquez pourquoi l’horaire prévu n’a pas été respecté."
+                  placeholder={uiText['expliquezPourquoiLHorairePrevuNAPasEteRespecte']}
                 />
               </label>
             )}
             <button
               type="button"
               className="button secondary small"
-              disabled={
-                busy ||
-                draft.status === 'pending' ||
-                (draft.status === 'not_respected' && draft.reason.trim().length < 3)
-              }
+              disabled={busy}
               onClick={() => void saveReview()}
             >
               {busy ? 'Enregistrement…' : 'Enregistrer le contrôle'}
@@ -156,7 +166,7 @@ function PlanStep({
           </div>
         ) : (
           <p className="booking-plan-read-only">
-            Le contrôle et la justification sont réservés à l’administration et au chauffeur.
+            {uiText['leControleEtLaJustificationSontReservesALAdministratio']}
           </p>
         )}
       </div>
@@ -179,12 +189,12 @@ export function BookingWorkPlan({
   const plan = booking.workPlan ?? [];
   const reviewed = plan.filter((step) => step.review.status !== 'pending').length;
   return (
-    <section className="booking-work-plan" aria-label="Planning prévisionnel de la mission">
+    <section className="booking-work-plan" aria-label={uiText['planningPrevisionnelDeLaMission']}>
       <header>
         <div>
-          <strong>PLANNING PRÉVISIONNEL</strong>
+          <strong>{uiText['planningPREVISIONNEL']}</strong>
           <span>
-            {reviewed}/{plan.length} horaires contrôlés
+            {reviewed}/{plan.length} {uiText['horairesControles']}
           </span>
         </div>
       </header>
@@ -202,7 +212,7 @@ export function BookingWorkPlan({
           ))}
         </div>
       ) : (
-        <p className="muted">Aucun planning n’a été enregistré avec cette réservation.</p>
+        <p className="muted">{uiText['aucunPlanningNAEteEnregistreAvecCetteReservation']}</p>
       )}
     </section>
   );

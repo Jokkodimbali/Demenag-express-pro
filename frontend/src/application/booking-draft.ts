@@ -4,6 +4,7 @@ export type Draft = {
   vehicleId: string;
   customerName: string;
   customerPhone: string;
+  source: string;
   fromAddress: string;
   toAddress: string;
   fromNote: string;
@@ -11,8 +12,12 @@ export type Draft = {
   from: Point | null;
   to: Point | null;
   route: RouteTicket | null;
+  distanceKmOverride?: number | null;
   date: string;
+  noDate?: boolean;
+  month: string;
   timeSlot: string;
+  estimatedTrips: number;
   options: Options;
   notes: string;
   inventory: Inventory;
@@ -23,6 +28,7 @@ export const blankDraft = (catalogue?: Catalogue): Draft => ({
   vehicleId: catalogue?.vehicles.find((vehicle) => vehicle.active !== false)?.id ?? '',
   customerName: '',
   customerPhone: '',
+  source: '',
   fromAddress: '',
   toAddress: '',
   fromNote: '',
@@ -30,8 +36,12 @@ export const blankDraft = (catalogue?: Catalogue): Draft => ({
   from: null,
   to: null,
   route: null,
+  distanceKmOverride: null,
   date: '',
+  noDate: false,
+  month: new Date().toISOString().slice(0, 7),
   timeSlot: '',
+  estimatedTrips: 1,
   options: { labour: 0, desk: 0, wardrobe: 0, bed: 0 },
   notes: '',
   inventory: blankInventory(),

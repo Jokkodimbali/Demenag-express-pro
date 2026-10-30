@@ -30,6 +30,7 @@ export function compose(db: PrismaClient, routing: RoutingProvider) {
   const bookings = new PrismaBookings(db);
   const drivers = new PrismaDrivers(db);
   const vehicleReports = new PrismaVehicleReports(db);
+  const accountingRepository = new PrismaAccounting(db);
   const auth = new AuthService(
     new PrismaUsers(db),
     new PrismaSessions(db),
@@ -48,9 +49,10 @@ export function compose(db: PrismaClient, routing: RoutingProvider) {
     ids,
     vehicleReports,
     notifications,
+    accountingRepository,
   );
   return {
-    accounting: new AccountingService(new PrismaAccounting(db)),
+    accounting: new AccountingService(accountingRepository),
     drivers: new DriverService(
       drivers,
       new PrismaUsers(db),
@@ -58,6 +60,7 @@ export function compose(db: PrismaClient, routing: RoutingProvider) {
       new ScryptPasswords(),
       ids,
       notifications,
+      new PrismaSessions(db),
     ),
     administration: new AdministrationService(
       new PrismaAdministration(db),

@@ -1,57 +1,25 @@
-import {
-  ArrowUpRight,
-  ChevronDown,
-  ClipboardList,
-  ClipboardCheck,
-  CheckCircle2,
-  Facebook,
-  Instagram,
-  LogOut,
-  MessageCircle,
-  Music2,
-  Phone,
-  UserRound,
-} from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { uiText } from '../content/reference-ui-text';
+import { useEffect, useRef, useState } from 'react';
+import { BriefcaseBusiness, ChevronDown, LogOut, UserRound } from 'lucide-react';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useLayout } from '../application/controllers/useLayout';
-import { messages } from '../content/fr';
 import { routes } from '../routing/routes';
-import { NotificationCenter } from './NotificationCenter';
-
-function secureSocialUrl(value: string | null) {
-  if (!value) return null;
-  try {
-    const url = new URL(value);
-    return url.protocol === 'https:' ? url.toString() : null;
-  } catch {
-    return null;
-  }
-}
+import { whatsappUrl } from '../application/services/whatsapp';
 
 export function Layout() {
   const { user, catalogue, error, logout } = useLayout();
+  const { pathname, hash } = useLocation();
   const [headerSuccess, setHeaderSuccess] = useState('');
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const accountMenuRef = useRef<HTMLDetailsElement>(null);
-  const closeAccountMenu = useCallback(() => {
-    if (accountMenuRef.current) accountMenuRef.current.open = false;
-  }, []);
+
   useEffect(() => {
-    function closeOnOutsideClick(event: PointerEvent) {
-      if (event.target instanceof Node && !accountMenuRef.current?.contains(event.target))
-        closeAccountMenu();
+    if (pathname === routes.home && hash === '#reserver') {
+      requestAnimationFrame(() =>
+        document.getElementById('reserver')?.scrollIntoView({ behavior: 'smooth' }),
+      );
     }
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') closeAccountMenu();
-    }
-    document.addEventListener('pointerdown', closeOnOutsideClick);
-    document.addEventListener('keydown', closeOnEscape);
-    return () => {
-      document.removeEventListener('pointerdown', closeOnOutsideClick);
-      document.removeEventListener('keydown', closeOnEscape);
-    };
-  }, [closeAccountMenu]);
+  }, [pathname, hash]);
   useEffect(() => {
     function receiveSuccess(event: Event) {
       if (!(event instanceof CustomEvent) || typeof event.detail !== 'string') return;
@@ -66,102 +34,95 @@ export function Layout() {
     };
   }, []);
 
+  const accountRoute =
+    user?.role === 'admin'
+      ? routes.administration
+      : user?.role === 'driver'
+        ? routes.driverWorkspace
+        : routes.account;
+  const profileRoute = user?.role === 'driver' ? routes.driverProfile : routes.account;
+  const closeAccountMenu = () => accountMenuRef.current?.removeAttribute('open');
+
   return (
     <>
       <a className="skip-link" href="#main">
-        {messages.allerAuContenu}
+        {uiText['allerAuContenu']}
       </a>
-      <header className="site-header">
-        <div className="container header-inner">
-          <Link to={routes.home} className="brand" aria-label={messages.demenagExpressAccueil}>
-            <img src="/assets/logo.png" alt={messages.text} />
+      <header className="reference-header">
+        <div className="reference-header-inner">
+          <Link
+            to={routes.home}
+            className="reference-brand"
+            aria-label={uiText['demenagExpressProMTH']}
+          >
+            <img src="/assets/logo.png" alt={uiText['demenagExpressProMTH']} />
             <span>
-              <strong>{messages.demenagExpress}</strong>
-              <small>{messages.proMth}</small>
+              <strong>{uiText['demenagEXPRESS']}</strong>
+              <small>{uiText['proMTH']}</small>
             </span>
           </Link>
-          <nav aria-label={messages.navigationPrincipale}>
-            {user?.role !== 'driver' ? (
-              <NavLink to={routes.booking} className="nav-book">
-                {messages.reserver}
-                <ArrowUpRight size={15} />
-              </NavLink>
-            ) : null}
+          <nav aria-label={uiText['navigationPrincipale']}>
+            <Link className="reference-nav-book" to={`${routes.home}#reserver`}>
+              {uiText['reserver2']}
+            </Link>
             {user ? (
-              <>
-                {headerSuccess && (
-                  <span className="header-success" role="status">
-                    <CheckCircle2 size={16} />
-                    {headerSuccess}
-                  </span>
-                )}
-                <NotificationCenter user={user} />
-                <details className="account-menu" ref={accountMenuRef}>
-                  <summary aria-label={`${messages.menuDuCompte} ${user.name}`}>
-                    {user.photo ? (
-                      <img className="account-avatar" src={user.photo} alt="" />
-                    ) : (
-                      <UserRound size={17} />
-                    )}
-                    <span>{user.name}</span>
-                    <ChevronDown size={15} />
-                  </summary>
-                  <div className="account-dropdown">
-                    {user.role === 'driver' ? (
-                      <>
-                        <NavLink to={routes.driverWorkspace} onClick={closeAccountMenu}>
-                          <ClipboardList size={16} />
-                          {messages.mesMissions}
-                        </NavLink>
-                        <NavLink to={routes.driverVehicleCheck} onClick={closeAccountMenu}>
-                          <ClipboardCheck size={16} />
-                          Contrôle du véhicule
-                        </NavLink>
-                        <NavLink to={routes.driverProfile} onClick={closeAccountMenu}>
-                          <UserRound size={16} />
-                          {messages.monProfil}
-                        </NavLink>
-                      </>
-                    ) : user.role === 'admin' ? (
-                      <>
-                        <NavLink to={routes.administration} onClick={closeAccountMenu}>
-                          <ClipboardList size={16} />
-                          {messages.labelAdministration}
-                        </NavLink>
-                        <NavLink to={routes.account} onClick={closeAccountMenu}>
-                          <UserRound size={16} />
-                          {messages.monProfil}
-                        </NavLink>
-                      </>
-                    ) : (
-                      <NavLink to={routes.account} onClick={closeAccountMenu}>
-                        <UserRound size={16} />
-                        {messages.monEspace}
-                      </NavLink>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        closeAccountMenu();
-                        void logout();
-                      }}
-                    >
-                      <LogOut size={16} />
-                      {messages.seDeconnecter}
-                    </button>
+              <details className="account-menu" ref={accountMenuRef}>
+                <summary aria-label={`Compte de ${user.name}`}>
+                  {user.photo ? (
+                    <img className="account-avatar" src={user.photo} alt="" />
+                  ) : (
+                    <span className="account-avatar account-avatar-placeholder">
+                      <UserRound size={16} aria-hidden="true" />
+                    </span>
+                  )}
+                  <span>{user.name}</span>
+                  <ChevronDown size={15} aria-hidden="true" />
+                </summary>
+                <div className="account-dropdown">
+                  <div className="account-dropdown-profile">
+                    <strong>{user.name}</strong>
+                    <span>
+                      {user.role === 'admin'
+                        ? 'Administrateur'
+                        : user.role === 'driver'
+                          ? 'Employé'
+                          : 'Client'}
+                    </span>
                   </div>
-                </details>
-              </>
+                  <Link to={profileRoute} onClick={closeAccountMenu}>
+                    <UserRound size={16} aria-hidden="true" />
+                    {user.role === 'client' ? 'Mon profil et mes réservations' : 'Mon profil'}
+                  </Link>
+                  {accountRoute !== profileRoute && (
+                    <Link to={accountRoute} onClick={closeAccountMenu}>
+                      <BriefcaseBusiness size={16} aria-hidden="true" />
+                      {user.role === 'admin' ? 'Administration' : 'Mon espace missions'}
+                    </Link>
+                  )}
+                  <button type="button" onClick={() => void logout()}>
+                    <LogOut size={16} aria-hidden="true" />
+                    {uiText['deconnexion']}
+                  </button>
+                </div>
+              </details>
             ) : (
-              <Link className="button primary small" to={routes.login}>
-                <UserRound size={16} />
-                {messages.monCompte}
+              <Link className="reference-nav-login" to={routes.login}>
+                {uiText['monCompte']}
               </Link>
             )}
           </nav>
         </div>
-        <div className="flag-line" />
+        <div className="reference-flag" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
       </header>
+      {headerSuccess && (
+        <div className="reference-notice" role="status">
+          {headerSuccess}
+        </div>
+      )}
       {error && (
         <div className="container">
           <p className="alert error" role="alert">
@@ -172,82 +133,32 @@ export function Layout() {
       <main id="main">
         <Outlet />
       </main>
-      {catalogue && (
-        <footer className="footer">
-          <div className="container footer-inner">
+      {pathname === routes.home && catalogue && (
+        <footer className="reference-footer">
+          <div className="reference-footer-inner">
             <div>
-              <p>{messages.uneQuestion}</p>
-              <a className="footer-phone" href={'tel:' + catalogue.settings.businessPhone}>
-                {catalogue.settings.businessPhone}
-              </a>
-            </div>
-            <div className="footer-actions">
+              <span>{uiText['uneQUESTION']}</span>
               <a href={'tel:' + catalogue.settings.businessPhone}>
-                <Phone size={17} />
-                {messages.appel}
-              </a>
-              <a href={messages.sms + catalogue.settings.businessPhone}>
-                <MessageCircle size={17} />
-                {messages.sms2}
-              </a>
-              <a
-                href={
-                  'https://wa.me/' +
-                  (
-                    catalogue.settings.whatsappPhone ||
-                    catalogue.settings.businessPhone ||
-                    ''
-                  ).replace(/\D/g, '')
-                }
-                target="_blank"
-                rel="noreferrer"
-              >
-                <MessageCircle size={17} />
-                {messages.whatsapp}
+                {catalogue.settings.businessPhone === '+221775105104'
+                  ? '+221 77 510 51 04'
+                  : catalogue.settings.businessPhone}
               </a>
             </div>
-            {(secureSocialUrl(catalogue.settings.tiktokUrl) ||
-              secureSocialUrl(catalogue.settings.facebookUrl) ||
-              secureSocialUrl(catalogue.settings.instagramUrl)) && (
-              <div className="footer-social-section">
-                <p>{messages.reseauxSociaux}</p>
-                <div className="footer-socials">
-                  {secureSocialUrl(catalogue.settings.tiktokUrl) && (
-                    <a
-                      href={secureSocialUrl(catalogue.settings.tiktokUrl)!}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-label={messages.ouvrirLeCompteTikTok}
-                      title="TikTok"
-                    >
-                      <Music2 size={17} /> TikTok
-                    </a>
-                  )}
-                  {secureSocialUrl(catalogue.settings.facebookUrl) && (
-                    <a
-                      href={secureSocialUrl(catalogue.settings.facebookUrl)!}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-label={messages.ouvrirLaPageFacebook}
-                      title="Facebook"
-                    >
-                      <Facebook size={17} /> Facebook
-                    </a>
-                  )}
-                  {secureSocialUrl(catalogue.settings.instagramUrl) && (
-                    <a
-                      href={secureSocialUrl(catalogue.settings.instagramUrl)!}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-label={messages.ouvrirLeCompteInstagram}
-                      title="Instagram"
-                    >
-                      <Instagram size={17} /> Instagram
-                    </a>
-                  )}
-                </div>
-              </div>
-            )}
+            <div className="reference-footer-actions">
+              <a href={'tel:' + catalogue.settings.businessPhone}>{uiText['appel']}</a>
+              <a href={'sms:' + catalogue.settings.businessPhone}>{uiText['sms']}</a>
+              <a
+                href={whatsappUrl(
+                  catalogue.settings.whatsappPhone || catalogue.settings.businessPhone,
+                  '',
+                  catalogue.settings,
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {uiText['whatsapp']}
+              </a>
+            </div>
           </div>
         </footer>
       )}

@@ -116,9 +116,18 @@ function harness() {
       };
     },
   } as unknown as BookingRepository;
-  const settings = {} as Settings;
+  const settings = {
+    distanceBounds: [15, 25, 35],
+    maxTrips: 20,
+    maxOptions: 20,
+    labourPrice: 5000,
+    labourFloorPrice: 500,
+    labourLiftPrice: 500,
+    assemblyPrice: 5000,
+    montageP: {},
+  } as Settings;
   const catalogue = {
-    get: async () => ({ vehicles: [], settings }) as Catalogue,
+    get: async () => ({ vehicles: [booking.vehicle], settings }) as Catalogue,
   } as unknown as CatalogueRepository;
   const drivers = {
     findByUserId: async (userId: string) =>
@@ -129,7 +138,17 @@ function harness() {
     bookings,
     catalogue,
     {} as never,
-    {} as never,
+    {
+      route: async (from: [number, number], to: [number, number]) => ({
+        from,
+        to,
+        distanceKm: 10,
+        durationMinutes: 20,
+        geometry: [from, to],
+      }),
+      reverse: async (point: [number, number]) =>
+        point[0] === 14.7 ? 'Nouvelle adresse de départ' : 'Thiès',
+    } as never,
     drivers,
     { now: () => now },
     { next: () => 'generated-id' },
@@ -137,6 +156,12 @@ function harness() {
   return {
     service,
     getBooking: () => booking,
+    setWorkPlan: (workPlan: Booking['workPlan']) => {
+      booking = { ...booking, workPlan };
+    },
+    setQuotes: (quotes: Booking['quotes']) => {
+      booking = { ...booking, quotes };
+    },
     addFinalQuote: () => {
       booking = {
         ...booking,
@@ -154,6 +179,88 @@ function harness() {
     },
   };
 }
+
+test('admin route change recalculates the latest provisional quote and flags the changed address', async () => {
+  const { service, getBooking, setQuotes } = harness();
+  const options = { labour: 0, desk: 0, wardrobe: 0, bed: 0 };
+  setQuotes([
+    {
+      id: 'quote-provisional',
+      reference: 'DV-2026-PROVISIONAL',
+      kind: 'provisional',
+      createdAt: now.toISOString(),
+      price: { lines: [], total: 30000, discount: 0, tier: 3, trips: 1, currency: 'XOF' },
+      notes: '',
+      options,
+      pricingInput: {
+        settings: {
+          distanceBounds: [15, 25, 35],
+          maxTrips: 20,
+          maxOptions: 20,
+          labourPrice: 5000,
+          labourFloorPrice: 500,
+          labourLiftPrice: 500,
+          assemblyPrice: 5000,
+          montageP: {},
+        },
+        trips: 1,
+        customPrice: 30000,
+        discount: 0,
+        discountType: 'fcfa',
+        discountReason: '',
+        options,
+        labourUnitPriceOverride: null,
+        extraLines: [],
+      },
+    },
+  ]);
+  const originalVersion = getBooking().version;
+
+  const updated = await service.updateRoute(
+    admin,
+    'booking-1',
+    [14.7, -17.5],
+    getBooking().to,
+    originalVersion,
+  );
+
+  assert.equal(updated.fromAddress, 'Nouvelle adresse de départ');
+  assert.equal(updated.distanceKm, 10);
+  assert.equal(updated.quotes[0]?.reference, 'DV-2026-PROVISIONAL');
+  assert.equal(updated.quotes[0]?.price.total, 10000);
+  assert.deepEqual(updated.crewAddressChange, { from: true, to: false, at: now.toISOString() });
+});
+
+test('admin cannot change a route after a final quote exists', async () => {
+  const { service, getBooking, addFinalQuote } = harness();
+  addFinalQuote();
+
+  await assert.rejects(
+    service.updateRoute(admin, 'booking-1', [14.7, -17.5], getBooking().to, getBooking().version),
+    /devis final/u,
+  );
+});
+
+test('admin can review a reference fallback step when no work plan was saved', async () => {
+  const { service, getBooking, setWorkPlan } = harness();
+  setWorkPlan([]);
+  const updated = await service.reviewWorkPlan(
+    admin,
+    'booking-1',
+    'fallback-1',
+    'late',
+    'Retard au départ',
+    getBooking().version,
+    '08:20',
+  );
+  assert.equal(updated.workPlan?.length, 3);
+  assert.deepEqual(
+    updated.workPlan?.map((step) => step.title),
+    ['Arrivée au départ', 'Déménagement', 'Vérification finale'],
+  );
+  assert.equal(updated.workPlan?.[0]?.review.status, 'late');
+  assert.equal(updated.workPlan?.[0]?.review.actualTime, '08:20');
+});
 
 test('admin can start and finish courses without photos, then close with a final quote', async () => {
   const scenario = harness();
@@ -196,13 +303,50 @@ test('driver can refresh only bookings assigned to their vehicle', async () => {
   await assert.rejects(service.get({ ...driverUser, id: 'other-driver' }, 'booking-1'));
 });
 
-test('driver and admin update one shared schedule check and missed times require a reason', async () => {
-  const { service, getBooking } = harness();
+test('client can change only the schedule of their own open reservation', async () => {
+  const { service, getBooking, addFinalQuote } = harness();
+  const changed = await service.schedule(client, 'booking-1', '2026-10-25', '09:00', 1);
+  assert.equal(changed.date, '2026-10-25');
+  assert.equal(changed.timeSlot, '09:00');
   await assert.rejects(
-    service.reviewWorkPlan(admin, 'booking-1', 'plan-1', 'not_respected', '', 1),
-    /Justifiez/u,
+    service.schedule(
+      { ...client, id: 'another-client' },
+      'booking-1',
+      '2026-10-26',
+      '10:00',
+      getBooking().version,
+    ),
   );
+  await assert.rejects(
+    service.schedule(driverUser, 'booking-1', '2026-10-26', '10:00', getBooking().version),
+  );
+  addFinalQuote();
+  await assert.rejects(
+    service.schedule(client, 'booking-1', '2026-10-26', '10:00', getBooking().version),
+  );
+});
 
+test('client can update their own open reservation notes only', async () => {
+  const { service, getBooking, addFinalQuote } = harness();
+  const changed = await service.updateNotes(client, 'booking-1', 'Précisions client', 1);
+  assert.equal(changed.notes, 'Précisions client');
+  await assert.rejects(
+    service.updateNotes(
+      { ...client, id: 'another-client' },
+      'booking-1',
+      'Refusé',
+      getBooking().version,
+    ),
+  );
+  await assert.rejects(
+    service.updateNotes(driverUser, 'booking-1', 'Refusé', getBooking().version),
+  );
+  addFinalQuote();
+  await assert.rejects(service.updateNotes(client, 'booking-1', 'Refusé', getBooking().version));
+});
+
+test('driver and admin share schedule checks, including late status, time and proof', async () => {
+  const { service, getBooking } = harness();
   const driverChecked = await service.reviewWorkPlan(
     driverUser,
     'booking-1',
@@ -226,6 +370,43 @@ test('driver and admin update one shared schedule check and missed times require
   assert.equal(adminChecked.workPlan?.[0]?.review.status, 'respected');
   assert.equal(adminChecked.workPlan?.[0]?.review.reason, '');
   assert.equal(adminChecked.workPlan?.[0]?.review.checkedBy, admin.name);
+  const late = await service.reviewWorkPlan(
+    admin,
+    'booking-1',
+    'plan-1',
+    'late',
+    '',
+    getBooking().version,
+    '09:15',
+    'data:image/jpeg;base64,AA==',
+  );
+  assert.equal(late.workPlan?.[0]?.review.status, 'late');
+  assert.equal(late.workPlan?.[0]?.review.actualTime, '09:15');
+  assert.equal(late.workPlan?.[0]?.review.photo, 'data:image/jpeg;base64,AA==');
+  const qhse = await service.reviewWorkPlan(
+    admin,
+    'booking-1',
+    'plan-1',
+    'late',
+    'Circulation ralentie',
+    getBooking().version,
+    '09:15',
+    undefined,
+    { cause: 'Circulation', severity: 'maj', correctiveAction: 'Prévoir un départ plus tôt' },
+  );
+  assert.equal(qhse.workPlan?.[0]?.review.cause, 'Circulation');
+  assert.equal(qhse.workPlan?.[0]?.review.severity, 'maj');
+  assert.equal(qhse.workPlan?.[0]?.review.correctiveAction, 'Prévoir un départ plus tôt');
+  const pending = await service.reviewWorkPlan(
+    admin,
+    'booking-1',
+    'plan-1',
+    'pending',
+    '',
+    getBooking().version,
+  );
+  assert.equal(pending.workPlan?.[0]?.review.status, 'pending');
+  assert.equal(pending.workPlan?.[0]?.review.actualTime, '09:15');
   await assert.rejects(
     service.reviewWorkPlan(client, 'booking-1', 'plan-1', 'respected', '', getBooking().version),
     /réservée/u,

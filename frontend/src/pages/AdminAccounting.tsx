@@ -1,17 +1,31 @@
+import { useState } from 'react';
 import { ChevronLeft, ChevronRight, Download, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAccounting } from '../application/controllers/useAccounting';
+import { useApp } from '../application/context';
 import { accountingText } from '../content/accounting';
+import { AccountingFinanceSections } from '../components/AccountingFinanceSections';
 import { money } from '../domain/format';
 import { routes } from '../routing/routes';
 
 export function AdminAccounting() {
+  const [downloadError, setDownloadError] = useState('');
+  const { exportAccounting } = useApp();
   const {
     month,
     setMonth,
     all,
     setAll,
     entries,
+    allEntries,
+    financeConfiguration,
+    updateFinanceConfiguration,
+    financeSaving,
+    forecast,
+    currentForecast,
+    advertisingSummary,
+    historicalFinalQuotesWithoutSnapshot,
+    bookings,
     loading,
     busy,
     error,
@@ -28,14 +42,19 @@ export function AdminAccounting() {
     shiftMonth,
     exportCsv,
   } = useAccounting();
+  const currentMonth = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Dakar',
+    year: 'numeric',
+    month: '2-digit',
+  })
+    .formatToParts(new Date())
+    .reduce(
+      (result, part) => ({ ...result, [part.type]: part.value }),
+      {} as Record<string, string>,
+    );
+  const accountingMonth = `${currentMonth.year}-${currentMonth.month}`;
   return (
     <section className="accounting-page">
-      <div className="section-heading">
-        <div>
-          <h2>{accountingText.title}</h2>
-          <p>{accountingText.description}</p>
-        </div>
-      </div>
       <div className="accounting-period">
         <button
           className="accounting-period-arrow"
@@ -90,11 +109,41 @@ export function AdminAccounting() {
           <small>{accountingText.balanceHint}</small>
         </article>
       </div>
-      <p className="caption">{accountingText.invoicedNote}</p>
-      {error && (
+      {(error || downloadError) && (
         <p className="alert error" role="alert">
-          {error}
+          {error || downloadError}
         </p>
+      )}
+      {historicalFinalQuotesWithoutSnapshot > 0 && (
+        <p className="accounting-history-warning" role="status">
+          {accountingText.historicalCostsWarning(historicalFinalQuotesWithoutSnapshot)}
+        </p>
+      )}
+      {loading ? (
+        <p className="accounting-panel" role="status">
+          {accountingText.loading}
+        </p>
+      ) : (
+        <AccountingFinanceSections
+          config={financeConfiguration}
+          update={updateFinanceConfiguration}
+          forecast={forecast}
+          current={currentForecast}
+          period={all ? accountingMonth : month}
+          advertising={advertisingSummary}
+          bookings={bookings}
+          saving={financeSaving}
+          onDownload={(document) => {
+            setDownloadError('');
+            void exportAccounting(
+              document,
+              financeConfiguration,
+              forecast.months,
+              allEntries,
+              all ? accountingMonth : month,
+            ).catch(() => setDownloadError('Téléchargement impossible.'));
+          }}
+        />
       )}
       <div className="accounting-columns">
         <form className="accounting-panel accounting-form" onSubmit={addEntry}>
@@ -104,7 +153,7 @@ export function AdminAccounting() {
               <button
                 key={type}
                 type="button"
-                className={form.type === type ? 'active' : ''}
+                className={form.type === type ? `active ${type}` : ''}
                 onClick={() => setForm({ ...form, type, category: categories[type][0] })}
               >
                 {type === 'charge' ? accountingText.charge : accountingText.revenue}
@@ -161,7 +210,6 @@ export function AdminAccounting() {
           <button className="button primary" disabled={busy}>
             {accountingText.add}
           </button>
-          <p className="caption">{accountingText.autoNote}</p>
         </form>
         <div className="accounting-panel">
           <h3>{accountingText.chargeBreakdown}</h3>

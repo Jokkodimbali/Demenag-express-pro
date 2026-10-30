@@ -44,6 +44,23 @@ export class OpenStreetMaps implements RoutingProvider {
   }
 
   private async fetchRoute(from: Point, to: Point): Promise<Route> {
+    const fallback = (): Route => {
+      const radians = (value: number) => (value * Math.PI) / 180;
+      const latitude = radians(to[0] - from[0]);
+      const longitude = radians(to[1] - from[1]);
+      const haversine =
+        Math.sin(latitude / 2) ** 2 +
+        Math.cos(radians(from[0])) * Math.cos(radians(to[0])) * Math.sin(longitude / 2) ** 2;
+      const directKm = 2 * 6371 * Math.asin(Math.sqrt(haversine));
+      return {
+        from,
+        to,
+        distanceKm: Math.max(0.1, Math.round(directKm * 13) / 10),
+        durationMinutes: 0,
+        geometry: [from, to],
+        fallback: true,
+      };
+    };
     try {
       const response = await fetch(
         `${this.osrm}/route/v1/driving/${from[1]},${from[0]};${to[1]},${to[0]}?overview=full&geometries=geojson`,
@@ -54,26 +71,18 @@ export class OpenStreetMaps implements RoutingProvider {
         routes?: { distance: number; duration: number; geometry: { coordinates: Point[] } }[];
       };
       const route = data.routes?.[0];
-      if (
-        !route ||
-        !Number.isFinite(route.distance) ||
-        route.distance < 100 ||
-        route.distance > 1500000
-      )
+      if (!route || !Number.isFinite(route.distance) || route.distance > 1500000)
         throw new Error('Route');
+      if (route.distance < 100) return fallback();
       return {
         from,
         to,
         distanceKm: Math.round(route.distance / 100) / 10,
-        durationMinutes: Math.ceil(route.duration / 60),
+        durationMinutes: Math.round(route.duration / 60),
         geometry: route.geometry.coordinates.map(([lng, lat]): Point => [lat, lng]),
       };
     } catch {
-      throw new AppError(
-        503,
-        messages.leCalculDuTrajetEstIndisponibleReessayezDans,
-        'ROUTING_UNAVAILABLE',
-      );
+      return fallback();
     }
   }
 
@@ -159,19 +168,44 @@ export class OpenStreetMaps implements RoutingProvider {
       if (newlyCached && Date.now() - newlyCached.at < 3600000) return newlyCached.label;
       try {
         const response = await fetch(
-          `${this.nominatim}/reverse?format=jsonv2&lat=${point[0]}&lon=${point[1]}&zoom=18`,
+          `${this.nominatim}/reverse?format=jsonv2&lat=${point[0]}&lon=${point[1]}&zoom=17&accept-language=fr`,
           {
             signal: AbortSignal.timeout(10000),
             headers: { 'User-Agent': this.userAgent, 'Accept-Language': 'fr' },
           },
         );
         if (!response.ok) throw new Error('HTTP');
-        const result = (await response.json()) as { display_name?: string };
-        if (!result.display_name) throw new Error('Address');
+        const result = (await response.json()) as {
+          display_name?: string;
+          address?: {
+            city?: string;
+            town?: string;
+            village?: string;
+            municipality?: string;
+            county?: string;
+            neighbourhood?: string;
+            quarter?: string;
+            suburb?: string;
+            city_district?: string;
+            road?: string;
+            pedestrian?: string;
+            residential?: string;
+            footway?: string;
+          };
+        };
+        const address = result.address ?? {};
+        const locality =
+          address.city || address.town || address.village || address.municipality || address.county;
+        const neighborhood =
+          address.neighbourhood || address.quarter || address.suburb || address.city_district;
+        const street = address.road || address.pedestrian || address.residential || address.footway;
+        const formatted = [...new Set([locality, neighborhood, street].filter(Boolean))].join(', ');
+        const label = formatted || result.display_name;
+        if (!label) throw new Error('Address');
         if (this.reverseCache.size >= 500)
           this.reverseCache.delete(this.reverseCache.keys().next().value!);
-        this.reverseCache.set(key, { at: Date.now(), label: result.display_name });
-        return result.display_name;
+        this.reverseCache.set(key, { at: Date.now(), label });
+        return label;
       } catch {
         throw new AppError(503, messages.laRechercheDAdresseEstIndisponibleVousPouvez);
       }

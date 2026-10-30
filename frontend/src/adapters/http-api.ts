@@ -11,6 +11,19 @@ export class ApiError extends Error {
 }
 export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): ApplicationApi {
   const sessionExpiredListeners = new Set<() => void>();
+  const pendingReads = new Map<string, Promise<unknown>>();
+  function sharePendingRead<T>(key: string, load: () => Promise<T>): Promise<T> {
+    const pending = pendingReads.get(key);
+    if (pending) return pending as Promise<T>;
+    const next = load();
+    pendingReads.set(key, next);
+    void next
+      .finally(() => {
+        if (pendingReads.get(key) === next) pendingReads.delete(key);
+      })
+      .catch(() => undefined);
+    return next;
+  }
   async function request<T>(
     path: string,
     method = 'GET',
@@ -75,7 +88,10 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
     },
     changePassword: (oldPassword, newPassword) =>
       request(httpRoutes.authentication.password, 'POST', { oldPassword, newPassword }),
+    requestPasswordReset: (phone) =>
+      request(httpRoutes.authentication.passwordResetRequest, 'POST', { phone }),
     users: () => request(httpRoutes.users),
+    clientProfiles: () => request(httpRoutes.clients),
     hiddenClients: () => request(`${httpRoutes.clients}/hidden`),
     updateClient: (phone, input) => request(`${httpRoutes.clients}/${phone}`, 'PATCH', input),
     hideClient: (phone) => request(`${httpRoutes.clients}/${phone}`, 'DELETE'),
@@ -84,39 +100,80 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
       request(`${httpRoutes.accounting}${month ? `?month=${month}` : ''}`),
     createAccountingEntry: (input) => request(httpRoutes.accounting, 'POST', input),
     voidAccountingEntry: (id) => request(`${httpRoutes.accounting}/${id}`, 'DELETE'),
+    accountingConfiguration: () => request(httpRoutes.accountingConfiguration),
+    saveAccountingConfiguration: (value) =>
+      request(httpRoutes.accountingConfiguration, 'PUT', value),
     updateAdminProfile: (input) => request(httpRoutes.adminProfile, 'PUT', input),
     updateUser: (user) => request(`${httpRoutes.users}/${user.id}`, 'PUT', user),
     createUser: (user) => request(httpRoutes.users, 'POST', user),
-    drivers: () => request(httpRoutes.drivers),
+    resetClientPassword: (id, password) =>
+      request(httpRoutes.resetUserPassword(id), 'POST', { password }),
+    drivers: () => sharePendingRead(httpRoutes.drivers, () => request(httpRoutes.drivers)),
     createDriver: (input) => request(httpRoutes.drivers, 'POST', input),
     updateDriver: (driver) => request(`${httpRoutes.drivers}/${driver.id}`, 'PUT', driver),
+    deleteDriver: (id) => request(`${httpRoutes.drivers}/${id}`, 'DELETE'),
+    resetDriverPassword: (id) => request(httpRoutes.resetDriverPassword(id), 'POST', {}),
     driverProfile: () => request(httpRoutes.driver.profile),
-    updateDriverProfile: (input) => request(httpRoutes.driver.profile, 'PUT', input),
+    updateDriverPhoto: (photo) => request(httpRoutes.driver.profilePhoto, 'PUT', { photo }),
+    updateDriverAvailability: (availability) =>
+      request(httpRoutes.driver.availability, 'PUT', availability),
     driverBookings: () => request(httpRoutes.driver.bookings),
+    addEmployeeProofs: (id, kind, photos) =>
+      request(`${httpRoutes.driver.bookings}/${encodeURIComponent(id)}/proofs`, 'POST', {
+        kind,
+        photos,
+      }),
+    submitEmployeeInspection: (input) =>
+      request(`${httpRoutes.driver.inspections}/employee`, 'POST', input),
     driverReports: () => request(httpRoutes.driver.inspections),
     submitVehicleInspection: (input) => request(httpRoutes.driver.inspections, 'POST', input),
     reportBreakdown: (input) => request(httpRoutes.driver.breakdowns, 'POST', input),
-    adminVehicleReports: () => request(httpRoutes.vehicleReports),
+    adminVehicleReports: () =>
+      sharePendingRead(httpRoutes.vehicleReports, () => request(httpRoutes.vehicleReports)),
+    updateInspectionLevel: (id, key, good) =>
+      request(`${httpRoutes.vehicleInspection(id)}/item`, 'PATCH', { key, good }),
+    deleteInspection: (id) => request(httpRoutes.vehicleInspection(id), 'DELETE'),
+    updateEmployeeProof: (bookingId, proofId, patch) =>
+      request(httpRoutes.employeeProof(bookingId, proofId), 'PATCH', patch),
+    deleteEmployeeProof: (bookingId, proofId) =>
+      request(httpRoutes.employeeProof(bookingId, proofId), 'DELETE'),
     notifications: () => request(httpRoutes.notifications),
     markNotificationRead: (id) => request(`${httpRoutes.notifications}/${id}/read`, 'PATCH'),
     markAllNotificationsRead: () => request(`${httpRoutes.notifications}/read-all`, 'PATCH'),
     announceDrivers: (title, message) => request(httpRoutes.announce, 'POST', { title, message }),
-    catalogue: () => request(httpRoutes.catalogue),
-    tollPoints: () => request(httpRoutes.tollPoints),
+    catalogue: () => sharePendingRead(httpRoutes.catalogue, () => request(httpRoutes.catalogue)),
+    tollPoints: () => sharePendingRead(httpRoutes.tollPoints, () => request(httpRoutes.tollPoints)),
     createTollPoint: (input) => request(httpRoutes.tollPoints, 'POST', input),
     updateTollPoint: (id, input) => request(`${httpRoutes.tollPoints}/${id}`, 'PUT', input),
     deleteTollPoint: (id) => request(`${httpRoutes.tollPoints}/${id}`, 'DELETE'),
     updateCatalogue: (value) => request(httpRoutes.catalogue, 'PUT', value),
-    me: () => request(httpRoutes.authentication.current),
-    login: (phone, password) =>
-      request(httpRoutes.authentication.login, 'POST', { phone, password }),
-    register: (name, phone, password) =>
-      request(httpRoutes.authentication.register, 'POST', { name, phone, password }),
+    deleteVehicle: (id) =>
+      request(`${httpRoutes.catalogue}/vehicles/${encodeURIComponent(id)}`, 'DELETE'),
+    me: () =>
+      sharePendingRead(httpRoutes.authentication.current, () =>
+        request(httpRoutes.authentication.current),
+      ),
+    login: (identifier, password) =>
+      request(httpRoutes.authentication.login, 'POST', {
+        identifier,
+        ...(password ? { password } : {}),
+      }),
+    register: (name, phone, password, role = 'client') =>
+      request(httpRoutes.authentication.register, 'POST', {
+        role,
+        phone,
+        ...(role === 'client' ? { name, password } : {}),
+      }),
     logout: () => request(httpRoutes.authentication.logout, 'POST'),
-    bookings: () => request(httpRoutes.bookings),
+    bookings: () => sharePendingRead(httpRoutes.bookings, () => request(httpRoutes.bookings)),
     booking: (id) => request(`${httpRoutes.bookings}/${id}`),
     deleteBooking: (id) => request(`${httpRoutes.bookings}/${id}`, 'DELETE'),
     createBooking: (input) => request(httpRoutes.bookings, 'POST', input),
+    updateClientBooking: (id, input, version) =>
+      request(httpRoutes.bookingClientRequest(id), 'PATCH', { ...input, version }),
+    updateAdminBooking: (id, input, version) =>
+      request(`${httpRoutes.bookings}/${id}/admin-edit`, 'PATCH', { ...input, version }),
+    recordBookingReminder: (id) => request(httpRoutes.bookingReminders(id), 'POST'),
     status: (id, status, version) =>
       request(`${httpRoutes.bookings}/${id}/status`, 'PATCH', { status, version }),
     startBookingTrip: (id, photos) =>
@@ -128,17 +185,30 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
       request(`${httpRoutes.bookings}/${id}/schedule`, 'PATCH', { date, timeSlot, version }),
     updateBookingNotes: (id, notes, version) =>
       request(`${httpRoutes.bookings}/${id}/notes`, 'PATCH', { notes, version }),
-    reviewWorkPlan: (id, stepId, status, reason, version) =>
-      request(httpRoutes.bookingWorkPlanReview(id, stepId), 'PATCH', { status, reason, version }),
+    reviewWorkPlan: (id, stepId, status, reason, version, actualTime, photo, details) =>
+      request(httpRoutes.bookingWorkPlanReview(id, stepId), 'PATCH', {
+        status,
+        reason,
+        version,
+        actualTime,
+        photo,
+        ...details,
+      }),
     updateBookingRoute: (id, from, to, version) =>
       request(httpRoutes.bookingRoute(id), 'PATCH', { from, to, version }),
     assignDriver: (id, driverId, version) =>
       request(`${httpRoutes.bookings}/${id}/driver`, 'PATCH', { driverId, version }),
+    updateCrew: (id, input) => request(`${httpRoutes.bookings}/${id}/crew`, 'PATCH', input),
     quote: (id, input) => request(`${httpRoutes.bookings}/${id}/quotes`, 'POST', input),
     route: (from, to) => request(httpRoutes.maps.route, 'POST', { from, to }),
     search: (query) => request(`${httpRoutes.maps.search}?q=${encodeURIComponent(query)}`),
     reverse: (point) => request(`${httpRoutes.maps.reverse}?lat=${point[0]}&lon=${point[1]}`),
-    estimate: (vehicleId, routeId, options, signal, workAccess) =>
-      request(httpRoutes.estimates, 'POST', { vehicleId, routeId, options, workAccess }, signal),
+    estimate: (vehicleId, routeId, options, signal, workAccess, trips, distanceKmOverride) =>
+      request(
+        distanceKmOverride == null ? httpRoutes.estimates : httpRoutes.adminEstimates,
+        'POST',
+        { vehicleId, routeId, options, workAccess, trips, distanceKmOverride },
+        signal,
+      ),
   };
 }

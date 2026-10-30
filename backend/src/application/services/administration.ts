@@ -21,6 +21,10 @@ export class AdministrationService implements AdministrationUseCases {
     requireAdministrator(actor);
     return this.repository.listUsers();
   }
+  listClientProfiles(actor: User) {
+    requireAdministrator(actor);
+    return this.repository.listClientProfiles();
+  }
   listHiddenClients(actor: User) {
     requireAdministrator(actor);
     return this.repository.listHiddenClients();
@@ -29,9 +33,14 @@ export class AdministrationService implements AdministrationUseCases {
     requireAdministrator(actor);
     return this.repository.hideClient(phone);
   }
-  updateClient(actor: User, phone: string, name: string, nextPhone: string) {
+  updateClient(actor: User, phone: string, name: string, nextPhone: string, address: string) {
     requireAdministrator(actor);
-    return this.repository.updateClient(phone, name.trim(), normalizePhone(nextPhone));
+    return this.repository.updateClient(
+      phone,
+      name.trim(),
+      normalizePhone(nextPhone),
+      address.trim(),
+    );
   }
   updateUser(actor: User, user: User) {
     requireAdministrator(actor);
@@ -65,13 +74,28 @@ export class AdministrationService implements AdministrationUseCases {
       passwordHash: await this.passwords.hash(input.password),
     });
   }
-  async updateProfile(actor: User, input: Pick<User, 'name' | 'phone' | 'photo'>) {
+  async resetClientPassword(actor: User, userId: string, password: string) {
+    requireAdministrator(actor);
+    const passwordHash = await this.passwords.hash(password);
+    await this.repository.transaction(async (repository) => {
+      requireAdministrator(await repository.findUser(actor.id));
+      const target = await repository.findUser(userId);
+      if (!target || target.role !== 'client') throw new AppError(404, messages.compteIntrouvable);
+      if (!target.passwordResetRequestedAt)
+        throw new AppError(409, 'Aucune demande de réinitialisation en attente pour ce client.');
+      if (!repository.resetClientPassword)
+        throw new AppError(500, 'La réinitialisation des mots de passe est indisponible.');
+      await repository.resetClientPassword(userId, passwordHash);
+    });
+  }
+  async updateProfile(actor: User, input: Pick<User, 'name' | 'phone' | 'photo' | 'email'>) {
     requireAdministrator(actor);
     return this.users.updateProfile(
       actor.id,
       input.name.trim(),
       normalizePhone(input.phone),
       input.photo ?? null,
+      input.email?.trim().toLowerCase() || null,
     );
   }
 }

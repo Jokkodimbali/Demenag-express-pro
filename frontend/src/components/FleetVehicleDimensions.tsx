@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { uiText } from '../content/reference-ui-text';
+import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Vehicle } from '../domain/model';
 import { vehicleCapacity } from '../domain/vehicle-capacity';
@@ -7,6 +8,7 @@ type Dimensions = Pick<Vehicle, 'length' | 'height' | 'width' | 'wheelWidth'>;
 
 const numeric = (value: string) => Number.parseFloat(value.replace(',', '.')) || 0;
 const shown = (value: number) => value.toFixed(2).replace('.', ',');
+const formatted = (value: string) => shown(numeric(value));
 const inputValue = (value: string) => String(numeric(value)).replace('.', ',');
 const assetRatio = (source: string, fallback: string) => {
   const filename = source.split('/').pop()?.split('?')[0] ?? '';
@@ -51,6 +53,98 @@ const overlayStyle = (position: number[], width: number, height: number) => ({
   transform: 'translate(-50%, -50%)',
 });
 
+export function FleetVehicleImagePreview({ vehicle }: { vehicle: Vehicle }) {
+  const dimensions = valuesOf(vehicle);
+  const overlays = vehicleOverlays[vehicle.id];
+  const profileDimensions: [number, number] = vehicle.id === 'trafic' ? [960, 365] : [960, 355];
+  const interiorDimensions: [number, number] = vehicle.id === 'trafic' ? [590, 342] : [560, 500];
+  const volume = vehicleCapacity(
+    dimensions.length,
+    dimensions.height,
+    dimensions.width,
+    dimensions.wheelWidth,
+  );
+
+  return (
+    <div className="fleet-dimension-images reference-request-vehicle-images">
+      <div
+        className="fleet-dimension-profile"
+        style={{ aspectRatio: assetRatio(vehicle.image, '960 / 355') }}
+      >
+        <img src={vehicle.image} alt={`Profil du ${vehicle.name}`} />
+        <span
+          className={`fleet-dimension-length${overlays ? ' is-asset-annotated' : ''}`}
+          style={
+            overlays
+              ? overlayStyle(overlays.profile, profileDimensions[0], profileDimensions[1])
+              : undefined
+          }
+        >
+          {uiText['longueur3']}
+          <strong>
+            {formatted(dimensions.length)} {uiText['m']}
+          </strong>
+        </span>
+        <span className="fleet-dimension-volume-chip">
+          {uiText['volume']}
+          {volume} {uiText['m³']}
+        </span>
+      </div>
+      <div
+        className="fleet-dimension-interior"
+        style={{ aspectRatio: assetRatio(vehicle.interior, '560 / 500') }}
+      >
+        <img src={vehicle.interior} alt={`Intérieur du ${vehicle.name}`} />
+        {!overlays && <span className="fleet-interior-view-label">{uiText['vueINTERIEURE']}</span>}
+        <span
+          className={`fleet-dimension-height${overlays ? ' is-asset-annotated' : ''}`}
+          style={
+            overlays
+              ? overlayStyle(
+                  [overlays.height[0], overlays.height[1], 171, 39],
+                  ...interiorDimensions,
+                )
+              : undefined
+          }
+        >
+          {uiText['hauteur2']}
+          <strong>
+            {formatted(dimensions.height)} {uiText['m']}
+          </strong>
+        </span>
+        <span
+          className="fleet-dimension-width"
+          style={
+            overlays
+              ? overlayStyle([overlays.width[0], overlays.width[1], 169, 39], ...interiorDimensions)
+              : undefined
+          }
+        >
+          {uiText['largeur2']}
+          <strong>
+            {formatted(dimensions.width)} {uiText['m']}
+          </strong>
+        </span>
+        <span
+          className="fleet-wheel-width"
+          style={
+            overlays
+              ? {
+                  ...overlayStyle(overlays.wheel, ...interiorDimensions),
+                  background: '#17191de8',
+                  color: '#fff',
+                  whiteSpace: 'nowrap',
+                }
+              : undefined
+          }
+        >
+          {formatted(dimensions.wheelWidth)} {uiText['mEntrePassagesDeRoue']}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export function FleetVehicleDimensions({
   vehicle,
   disabled,
@@ -72,7 +166,7 @@ export function FleetVehicleDimensions({
   const width = numeric(dimensions.width);
   const wheelWidth = Math.min(numeric(dimensions.wheelWidth) || width, width);
   const gross = length * height * width;
-  const wheelSpace = Math.max(0, width - wheelWidth) * 0.3 * Math.min(length, 1.9);
+  const wheelSpace = Math.max(0, width - wheelWidth) * 0.3 * Math.min(length, 0.95 * 1.9);
   const volume = vehicleCapacity(
     dimensions.length,
     dimensions.height,
@@ -87,8 +181,12 @@ export function FleetVehicleDimensions({
   const overlays = vehicleOverlays[vehicle.id];
   const profileDimensions: [number, number] = vehicle.id === 'trafic' ? [960, 365] : [960, 355];
   const interiorDimensions: [number, number] = vehicle.id === 'trafic' ? [590, 342] : [560, 500];
+  const displayedLength = formatted(dimensions.length);
+  const displayedHeight = formatted(dimensions.height);
+  const displayedWidth = formatted(dimensions.width);
+  const displayedWheelWidth = formatted(dimensions.wheelWidth);
 
-  async function saveDimensions() {
+  const saveDimensions = useCallback(async () => {
     if (invalid || !dirty || disabled) return;
     try {
       await onSave({
@@ -103,7 +201,24 @@ export function FleetVehicleDimensions({
     } catch {
       setSaved(false);
     }
-  }
+  }, [
+    dimensions.height,
+    dimensions.length,
+    dimensions.wheelWidth,
+    dimensions.width,
+    disabled,
+    dirty,
+    invalid,
+    onSave,
+    vehicle,
+    volume,
+  ]);
+
+  useEffect(() => {
+    if (invalid || !dirty || disabled) return;
+    const timer = window.setTimeout(() => void saveDimensions(), 500);
+    return () => window.clearTimeout(timer);
+  }, [disabled, dirty, invalid, saveDimensions]);
 
   return (
     <article className="fleet-dimension-card">
@@ -122,16 +237,24 @@ export function FleetVehicleDimensions({
                 : undefined
             }
           >
-            LONGUEUR <strong>{dimensions.length} m</strong>
+            {uiText['longueur3']}
+            <strong>
+              {displayedLength} {uiText['m']}
+            </strong>
           </span>
-          <span className="fleet-dimension-volume-chip">VOLUME ~{volume}</span>
+          <span className="fleet-dimension-volume-chip">
+            {uiText['volume']}
+            {volume}
+          </span>
         </div>
         <div
           className="fleet-dimension-interior"
           style={{ aspectRatio: assetRatio(vehicle.interior, '560 / 500') }}
         >
           <img src={vehicle.interior} alt={`Intérieur du ${vehicle.name}`} />
-          {!overlays && <span className="fleet-interior-view-label">VUE INTÉRIEURE</span>}
+          {!overlays && (
+            <span className="fleet-interior-view-label">{uiText['vueINTERIEURE']}</span>
+          )}
           <span
             className={`fleet-dimension-height${overlays ? ' is-asset-annotated' : ''}`}
             style={
@@ -143,7 +266,10 @@ export function FleetVehicleDimensions({
                 : undefined
             }
           >
-            HAUTEUR <strong>{dimensions.height} m</strong>
+            {uiText['hauteur2']}
+            <strong>
+              {displayedHeight} {uiText['m']}
+            </strong>
           </span>
           <span
             className="fleet-dimension-width"
@@ -156,7 +282,10 @@ export function FleetVehicleDimensions({
                 : undefined
             }
           >
-            LARGEUR <strong>{dimensions.width} m</strong>
+            {uiText['largeur2']}
+            <strong>
+              {displayedWidth} {uiText['m']}
+            </strong>
           </span>
           <span
             className="fleet-wheel-width"
@@ -171,7 +300,7 @@ export function FleetVehicleDimensions({
                 : undefined
             }
           >
-            {dimensions.wheelWidth} m entre passages de roue
+            {displayedWheelWidth} {uiText['mEntrePassagesDeRoue']}
           </span>
         </div>
       </div>
@@ -201,33 +330,32 @@ export function FleetVehicleDimensions({
       </div>
       <div className="fleet-volume-breakdown">
         <div>
-          <strong>VOLUME UTILE CALCULÉ</strong>
-          <b>{volume}</b>
+          <strong>{uiText['volumeUTILECALCULE']}</strong>
+          <b>~{volume}</b>
         </div>
         <div className="fleet-volume-steps">
           <span>
-            {dimensions.length} m × {dimensions.height} m × {dimensions.width} m = {shown(gross)} m³
+            {displayedLength} {uiText['m2']}
+            {displayedHeight} {uiText['m2']}
+            {displayedWidth} {uiText['m3']}
+            {shown(gross)} {uiText['m³']}
           </span>
           <span>
-            Passages de roue : ({dimensions.width} m − {dimensions.wheelWidth} m) × 0,30 m ×{' '}
-            {Math.min(length, 1.9).toFixed(2).replace('.', ',')} m = − {shown(wheelSpace)} m³
+            {uiText['passagesDeRoue2']}
+            {displayedWidth} {uiText['m4']}
+            {displayedWheelWidth} {uiText['m030M190M']} {shown(wheelSpace)} {uiText['m³']}
           </span>
-          <span>Parois et toit arrondis : × 0,95 = {volume}</span>
+          <span>
+            {uiText['paroisEtToitArrondis095']}
+            {volume}
+          </span>
         </div>
       </div>
       <div className="fleet-dimension-management">{management}</div>
-      {(dirty || saved) && (
-        <div className="fleet-dimension-save-row">
-          {saved && <span role="status">Dimensions enregistrées.</span>}
-          <button
-            type="button"
-            className="button primary"
-            disabled={disabled || invalid || !dirty}
-            onClick={() => void saveDimensions()}
-          >
-            Enregistrer les dimensions
-          </button>
-        </div>
+      {saved && (
+        <span role="status" className="sr-only">
+          {uiText['dimensionsEnregistrees']}
+        </span>
       )}
     </article>
   );

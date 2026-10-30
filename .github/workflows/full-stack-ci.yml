@@ -53,6 +53,9 @@ jobs:
       - name: Installer les dépendances
         run: npm ci
 
+      - name: Vérifier le fichier de référence et ses ressources
+        run: npm run check:reference
+
       - name: Valider et générer Prisma
         run: npx prisma validate --schema prisma/schema.prisma && npx prisma generate --schema prisma/schema.prisma
         working-directory: backend

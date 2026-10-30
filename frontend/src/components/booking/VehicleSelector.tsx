@@ -1,3 +1,4 @@
+import { uiText } from '../../content/reference-ui-text';
 import { Check } from 'lucide-react';
 import type { BookingViewState } from '../../application/contracts/booking-view';
 import { messages } from '../../content/fr';
@@ -69,7 +70,10 @@ export function VehicleSelector({
       <div className="vehicle-detail">
         <div className="vehicle-diagram vehicle-diagram-profile">
           <img src={selected.image} alt={`Profil · ${selected.name}`} loading="lazy" />
-          <span>Longueur {selected.length}</span>
+          <span>
+            {uiText['longueur']}
+            {selected.length}
+          </span>
         </div>
         <div className="vehicle-diagram vehicle-diagram-interior">
           <img
@@ -77,9 +81,18 @@ export function VehicleSelector({
             alt={messages.dimensionsInterieuresDu + selected.name}
             loading="lazy"
           />
-          <span className="diagram-height">Hauteur {selected.height}</span>
-          <span className="diagram-width">Largeur {selected.width}</span>
-          <span className="diagram-wheel">Passages de roue {selected.wheelWidth}</span>
+          <span className="diagram-height">
+            {uiText['hauteur']}
+            {selected.height}
+          </span>
+          <span className="diagram-width">
+            {uiText['largeur']}
+            {selected.width}
+          </span>
+          <span className="diagram-wheel">
+            {uiText['passagesDeRoue']}
+            {selected.wheelWidth}
+          </span>
         </div>
         <div className="vehicle-specifications">
           <span className="eyebrow">{messages.dimensionsUtiles}</span>

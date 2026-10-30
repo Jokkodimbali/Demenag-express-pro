@@ -11,6 +11,10 @@ export class CatalogueService implements CatalogueUseCases {
     requireAdministrator(actor);
     await this.repository.update(vehicles, settings);
   }
+  async removeVehicle(actor: User, id: string) {
+    requireAdministrator(actor);
+    await this.repository.removeVehicle(id);
+  }
   listTollPoints() {
     return this.repository.listTollPoints();
   }

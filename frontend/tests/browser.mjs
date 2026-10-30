@@ -64,6 +64,7 @@ try {
   await page.getByLabel('Nom complet').fill(name);
   await page.getByLabel('Téléphone', { exact: true }).fill(phone);
   await page.getByLabel('Mot de passe', { exact: true }).fill(password);
+  await page.getByLabel('Confirmez le mot de passe').fill(password);
   await page.getByRole('button', { name: 'Créer mon compte', exact: true }).click();
   await page.getByLabel('Nom', { exact: true }).fill(name);
   await page.getByLabel('Téléphone', { exact: true }).fill(phone);
@@ -87,7 +88,7 @@ try {
   const admin = await adminContext.newPage();
   admin.on('pageerror', (e) => errors.push(e.message));
   await admin.goto(baseUrl + '/connexion');
-  await admin.getByLabel('Téléphone', { exact: true }).fill(env.ADMIN_PHONE);
+  await admin.getByLabel('Téléphone ou email administrateur').fill(env.ADMIN_PHONE);
   await admin.getByLabel('Mot de passe', { exact: true }).fill(env.ADMIN_PASSWORD);
   await admin.getByRole('button', { name: 'Me connecter', exact: true }).click();
   await expect(admin.getByRole('heading', { name: 'ADMINISTRATION' })).toBeVisible({

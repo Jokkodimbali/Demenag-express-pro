@@ -1,13 +1,15 @@
 import { CircleUserRound } from 'lucide-react';
 import { useState } from 'react';
 import { useApp } from '../application/context';
+import { useAdminProfile } from '../application/controllers/useAdminProfile';
 import { errorMessage } from '../application/error-message';
 import { dataUrl } from '../application/validation/forms';
 import { messages } from '../content/fr';
 import { PasswordForm } from './PasswordForm';
 
 export function AdminProfileForm() {
-  const { api, user, setUser } = useApp();
+  const { user } = useApp();
+  const { updateProfile } = useAdminProfile();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
@@ -24,13 +26,15 @@ export function AdminProfileForm() {
     const form = new FormData(event.currentTarget);
     try {
       const photo = await dataUrl(form.get('photo'), admin.photo ?? '');
-      setUser(
-        await api.updateAdminProfile({
-          name: String(form.get('name')),
-          phone: String(form.get('phone')),
-          photo: photo || null,
-        }),
-      );
+      await updateProfile({
+        name: String(form.get('name')),
+        phone: String(form.get('phone')),
+        email:
+          String(form.get('email') ?? '')
+            .trim()
+            .toLowerCase() || null,
+        photo: photo || null,
+      });
       setSaved(true);
     } catch (reason) {
       setError(errorMessage(reason));
@@ -77,6 +81,18 @@ export function AdminProfileForm() {
               required
               minLength={9}
               maxLength={25}
+            />
+          </div>
+          <div>
+            <label htmlFor="admin-profile-email">Email administrateur</label>
+            <input
+              id="admin-profile-email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              defaultValue={admin.email ?? ''}
+              maxLength={254}
+              placeholder="admin@exemple.com"
             />
           </div>
         </div>

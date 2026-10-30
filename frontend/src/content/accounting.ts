@@ -5,13 +5,15 @@ export const accountingText = {
   nextMonth: 'Mois suivant',
   allPeriods: 'Toutes les périodes',
   all: 'Tout',
-  revenues: 'REVENUS FACTURÉS',
+  revenues: 'REVENUS',
   charges: 'CHARGES',
   balance: 'SOLDE',
   entryCount: ' écriture(s)',
-  balanceHint: 'Revenus facturés − charges',
+  balanceHint: 'Revenus − charges',
   invoicedNote:
     'Les devis finaux sont comptés à leur date d’émission. Ce journal suit les montants facturés ; il ne confirme pas l’encaissement des paiements.',
+  historicalCostsWarning: (count: number) =>
+    `${count} devis final historique${count > 1 ? 's' : ''} n’a${count > 1 ? 'ont' : ''} pas de coûts figés. Ses charges automatiques sont estimées avec les paramètres actuels${count > 1 ? ' ; leurs' : ' ; son'} coût menuisier peut être incomplet si la fiche d’inventaire manque.`,
   addEntry: 'Ajouter une écriture',
   charge: 'Charge',
   revenue: 'Revenu',
@@ -19,8 +21,8 @@ export const accountingText = {
   category: 'CATÉGORIE',
   label: 'LIBELLÉ',
   amount: 'MONTANT (FCFA)',
-  chargeExample: 'Ex. Gasoil Sprinter',
-  revenueExample: 'Ex. Location véhicule',
+  chargeExample: 'Ex. Salaire manœuvre, gasoil…',
+  revenueExample: 'Ex. Déménagement payé en espèces',
   add: 'Ajouter',
   autoNote:
     'Chaque devis final crée automatiquement une ligne de revenu. Ne le saisissez pas une deuxième fois.',

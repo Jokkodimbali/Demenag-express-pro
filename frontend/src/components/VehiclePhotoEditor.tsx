@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { uiText } from '../content/reference-ui-text';
+import { useRef, useState } from 'react';
 import { Modal } from './Modal';
 import { dataUrl } from '../application/validation/forms';
 
@@ -23,7 +24,11 @@ export function VehiclePhotoEditor({
 }) {
   const [error, setError] = useState('');
   const [tracing, setTracing] = useState(false);
+  const [adjusting, setAdjusting] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [points, setPoints] = useState<TracePoint[]>([]);
+  const drag = useRef<{ x: number; y: number } | null>(null);
 
   async function chooseFile(file: File | null) {
     if (!file) return;
@@ -35,6 +40,10 @@ export function VehiclePhotoEditor({
     } catch {
       setError('Image trop volumineuse. Choisissez un fichier inférieur à 2,5 Mo.');
     }
+  }
+
+  function replacePhoto(file: File | null) {
+    void chooseFile(file);
   }
 
   function normalizeImage(source: string): Promise<string> {
@@ -146,6 +155,8 @@ export function VehiclePhotoEditor({
       canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
       const context = canvas.getContext('2d');
       if (!context) return setError('Le détourage manuel est indisponible sur ce navigateur.');
+      context.fillStyle = '#27292D';
+      context.fillRect(0, 0, canvas.width, canvas.height);
       context.beginPath();
       points.forEach((point, index) => {
         const x = (point.x / 1000) * canvas.width;
@@ -156,12 +167,55 @@ export function VehiclePhotoEditor({
       context.closePath();
       context.clip();
       context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      context.beginPath();
+      points.forEach((point, index) => {
+        const x = (point.x / 1000) * canvas.width;
+        const y = (point.y / 1000) * canvas.height;
+        if (index === 0) context.moveTo(x, y);
+        else context.lineTo(x, y);
+      });
+      context.closePath();
+      context.strokeStyle = 'rgba(39,41,45,0.55)';
+      context.lineWidth = 2;
+      context.stroke();
       onChange(canvas.toDataURL('image/webp', 0.9));
       setTracing(false);
       setPoints([]);
       setError('');
     };
     image.onerror = () => setError('Cette image ne peut pas être traitée.');
+    image.src = value;
+  }
+
+  function applyCrop() {
+    if (!value) return;
+    const image = new Image();
+    image.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = dimensions.width;
+      canvas.height = dimensions.height;
+      const context = canvas.getContext('2d');
+      if (!context) return setError('Le cadrage est indisponible sur ce navigateur.');
+      context.fillStyle = '#27292D';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      const scale =
+        Math.max(canvas.width / image.naturalWidth, canvas.height / image.naturalHeight) * zoom;
+      const width = image.naturalWidth * scale;
+      const height = image.naturalHeight * scale;
+      context.drawImage(
+        image,
+        (canvas.width - width) / 2 + offset.x,
+        (canvas.height - height) / 2 + offset.y,
+        width,
+        height,
+      );
+      onChange(canvas.toDataURL('image/webp', 0.9));
+      setAdjusting(false);
+      setOffset({ x: 0, y: 0 });
+      setZoom(1);
+      setError('');
+    };
+    image.onerror = () => setError('Cette image ne peut pas être cadrée.');
     image.src = value;
   }
 
@@ -175,7 +229,7 @@ export function VehiclePhotoEditor({
           <img src={value} alt={`Aperçu · ${label}`} />
         ) : (
           <span className="vehicle-photo-placeholder">
-            {label} · {dimensions.width} × {dimensions.height} px
+            {label} · {dimensions.width} × {dimensions.height} {uiText['px']}
           </span>
         )}
         {measurements.map((measurement) => (
@@ -186,9 +240,12 @@ export function VehiclePhotoEditor({
         <label className="vehicle-photo-upload-overlay" aria-label={`Importer ${label}`}>
           <input
             type="file"
-            accept="image/png,image/jpeg,image/webp"
+            accept="image/*"
             aria-required={required && !value}
-            onChange={(event) => void chooseFile(event.currentTarget.files?.item(0) ?? null)}
+            onChange={(event) => {
+              replacePhoto(event.currentTarget.files?.item(0) ?? null);
+              event.currentTarget.value = '';
+            }}
           />
           <span>
             {value ? 'Cliquer pour remplacer la photo' : 'Cliquer pour importer la photo'}
@@ -196,14 +253,25 @@ export function VehiclePhotoEditor({
         </label>
       </div>
       <p className="muted vehicle-photo-hint">
-        Toute taille d’image acceptée (2,5 Mo maximum). L’image est centrée et cadrée au format
+        {uiText['touteTailleDImageAcceptee25MoMaximumLImageEstCentreeEt']}
         {` ${dimensions.width} × ${dimensions.height} px`}.
       </p>
       {value && (
         <>
           <div className="vehicle-photo-actions">
+            <button
+              type="button"
+              className="button secondary small"
+              onClick={() => {
+                setZoom(1);
+                setOffset({ x: 0, y: 0 });
+                setAdjusting(true);
+              }}
+            >
+              {uiText['ajusterLeCadrage']}
+            </button>
             <button type="button" className="button secondary small" onClick={autoCutout}>
-              Détourage automatique
+              {uiText['detourageAutomatique']}
             </button>
             <button
               type="button"
@@ -213,12 +281,86 @@ export function VehiclePhotoEditor({
                 setTracing(true);
               }}
             >
-              Détourer à la main
+              {uiText['detourerALaMain']}
             </button>
           </div>
         </>
       )}
       {error && <p className="alert error">{error}</p>}
+      {adjusting && value && (
+        <Modal
+          titleId="vehicle-crop-title"
+          busy={false}
+          onClose={() => setAdjusting(false)}
+          className="account-dialog vehicle-cutout-dialog"
+        >
+          <h2 id="vehicle-crop-title">
+            {uiText['ajusterLeCadrage2']}
+            {label}
+          </h2>
+          <p className="muted">{uiText['glissezLaPhotoEtReglezLeZoomPourCadrerLeVehicule']}</p>
+          <div
+            className="vehicle-cutout-canvas"
+            style={{
+              aspectRatio: `${dimensions.width} / ${dimensions.height}`,
+              touchAction: 'none',
+            }}
+            onPointerDown={(event) => {
+              event.currentTarget.setPointerCapture(event.pointerId);
+              drag.current = { x: event.clientX, y: event.clientY };
+            }}
+            onPointerMove={(event) => {
+              if (!drag.current || event.buttons !== 1) return;
+              const bounds = event.currentTarget.getBoundingClientRect();
+              const dx = ((event.clientX - drag.current.x) / bounds.width) * dimensions.width;
+              const dy = ((event.clientY - drag.current.y) / bounds.height) * dimensions.height;
+              drag.current = { x: event.clientX, y: event.clientY };
+              setOffset((current) => ({ x: current.x + dx, y: current.y + dy }));
+            }}
+            onPointerUp={() => {
+              drag.current = null;
+            }}
+            onPointerCancel={() => {
+              drag.current = null;
+            }}
+          >
+            <img
+              src={value}
+              alt={uiText['cadrageDeLaPhotoDuVehicule']}
+              draggable={false}
+              style={{
+                position: 'absolute',
+                left: '50%',
+                top: '50%',
+                width: '100%',
+                height: '100%',
+                maxWidth: 'none',
+                objectFit: 'cover',
+                transform: `translate(calc(-50% + ${(offset.x / dimensions.width) * 100}%), calc(-50% + ${(offset.y / dimensions.height) * 100}%)) scale(${zoom})`,
+              }}
+            />
+          </div>
+          <label className="vehicle-crop-zoom">
+            <span>{uiText['zoom']}</span>
+            <input
+              type="range"
+              min="1"
+              max="3"
+              step="0.01"
+              value={zoom}
+              onChange={(event) => setZoom(Number(event.target.value))}
+            />
+          </label>
+          <div className="dialog-actions">
+            <button type="button" className="button secondary" onClick={() => setAdjusting(false)}>
+              {uiText['annuler']}
+            </button>
+            <button type="button" className="button primary" onClick={applyCrop}>
+              {uiText['validerLeCadrage']}
+            </button>
+          </div>
+        </Modal>
+      )}
       {tracing && value && (
         <Modal
           titleId="vehicle-cutout-title"
@@ -226,10 +368,12 @@ export function VehiclePhotoEditor({
           onClose={() => setTracing(false)}
           className="account-dialog vehicle-cutout-dialog"
         >
-          <h2 id="vehicle-cutout-title">Détourage manuel · {label}</h2>
+          <h2 id="vehicle-cutout-title">
+            {uiText['detourageManuel']}
+            {label}
+          </h2>
           <p className="muted">
-            Maintenez le clic (ou le doigt) et suivez le contour du véhicule. Faites le tour complet
-            avant d’appliquer le détourage.
+            {uiText['maintenezLeClicOuLeDoigtEtSuivezLeContourDuVehiculeFai']}
           </p>
           <div
             className="vehicle-cutout-canvas"
@@ -241,7 +385,7 @@ export function VehiclePhotoEditor({
               if (event.buttons === 1) addTracePoint(event);
             }}
           >
-            <img src={value} alt="Photo du véhicule à détourer" draggable={false} />
+            <img src={value} alt={uiText['photoDuVehiculeADetourer']} draggable={false} />
             <svg viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true">
               {points.length > 0 && (
                 <polyline
@@ -257,7 +401,7 @@ export function VehiclePhotoEditor({
           </div>
           <div className="dialog-actions">
             <button type="button" className="button secondary" onClick={() => setPoints([])}>
-              Effacer le tracé
+              {uiText['effacerLeTrace']}
             </button>
             <button
               type="button"
@@ -265,7 +409,7 @@ export function VehiclePhotoEditor({
               disabled={points.length < 3}
               onClick={applyTrace}
             >
-              Appliquer le détourage
+              {uiText['appliquerLeDetourage']}
             </button>
           </div>
         </Modal>

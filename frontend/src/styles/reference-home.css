@@ -1,0 +1,294 @@
+.reference-hero {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: clamp(24px, 6vw, 72px) 16px clamp(28px, 5vw, 48px);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr));
+  gap: clamp(40px, 6vw, 80px);
+  align-items: center;
+}
+.reference-hero-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.reference-hero-copy > span {
+  color: #f6d73c;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+}
+.reference-hero h1 {
+  margin: 0;
+  font-size: clamp(46px, 7.5vw, 96px);
+  line-height: 0.95;
+  letter-spacing: 0.01em;
+}
+.reference-hero h1 em {
+  color: #f6d73c;
+  font-style: normal;
+}
+.reference-hero p {
+  margin: 0;
+  max-width: 520px;
+  color: #d5d9de;
+  font-size: clamp(15px, 4vw, 18px);
+  line-height: 1.55;
+}
+.reference-hero-vehicle {
+  position: relative;
+  align-self: start;
+  container-type: inline-size;
+}
+.reference-hero-vehicle > img {
+  display: block;
+  width: 100%;
+  border-radius: clamp(14px, 4vw, 20px);
+}
+.reference-hero-length {
+  position: absolute;
+  left: 36.2%;
+  top: 15.92%;
+  width: 19.48%;
+  height: 10.99%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.63cqw;
+  padding: 0 3px;
+  border-radius: 0.94cqw;
+  background: #f6d73c;
+  color: #1e2023;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  white-space: nowrap;
+  line-height: 1;
+  pointer-events: none;
+}
+.reference-hero-length span {
+  font-size: clamp(5px, 1.25cqw, 13px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.reference-hero-length strong {
+  font-size: clamp(6px, 1.4cqw, 15px);
+  font-weight: 800;
+}
+.reference-booking {
+  background: #272a2e;
+  border-block: 1px solid #3b4046;
+}
+.reference-booking-inner {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: clamp(28px, 6vw, 64px) 14px;
+}
+.reference-booking h2 {
+  margin: 0 0 26px;
+  font-size: clamp(30px, 8vw, 52px);
+  line-height: 1;
+}
+.reference-vehicle-heading {
+  margin-bottom: 10px;
+  color: #aeb4bb;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+.reference-vehicle-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: 10px;
+  max-width: 800px;
+}
+.reference-vehicle-list button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px;
+  text-align: left;
+  background: #1e2023;
+  color: #fff;
+  border: 2px solid #3b4046;
+  border-radius: 14px;
+}
+.reference-vehicle-list button.selected {
+  border-color: #f6d73c;
+  background: #363629;
+}
+.reference-vehicle-list img {
+  width: 90px;
+  height: 66px;
+  object-fit: contain;
+  border-radius: 8px;
+  flex: none;
+}
+.reference-vehicle-list button span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.reference-vehicle-list strong {
+  font-size: 15px;
+}
+.reference-vehicle-list small {
+  color: #aeb4bb;
+  font-size: 13px;
+}
+.reference-vehicle-detail {
+  display: grid;
+  gap: 8px;
+  max-width: 800px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #3b4046;
+  border-radius: 14px;
+  background: #1e2023;
+}
+.reference-vehicle-images {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.reference-vehicle-images img {
+  display: block;
+  width: 100%;
+  border-radius: 10px;
+  background: #222428;
+}
+.reference-vehicle-detail > strong {
+  color: #f6d73c;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+}
+.reference-vehicle-facts,
+.reference-prices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.reference-vehicle-facts span {
+  padding: 5px 9px;
+  background: #30343a;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.reference-vehicle-facts .volume {
+  background: #f6d73c;
+  color: #1e2023;
+  font-weight: 800;
+}
+.reference-prices {
+  gap: 4px 14px;
+  color: #aeb4bb;
+  font-size: 12px;
+}
+.reference-prices strong {
+  color: #fff;
+}
+.reference-continue {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  max-width: 800px;
+  margin-top: 26px;
+  padding: clamp(14px, 4vw, 22px);
+  background: #1e2023;
+  border: 1px solid #3b4046;
+  border-radius: 16px;
+}
+.reference-continue > div {
+  flex: 1 1 260px;
+}
+.reference-continue strong {
+  font-size: 16px;
+}
+.reference-continue p {
+  margin: 4px 0 0;
+  color: #aeb4bb;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.reference-continue .button {
+  font-size: 16px;
+  border-radius: 12px;
+}
+.reference-mobile-action {
+  display: none;
+}
+.reference-footer {
+  background: #0e9f4a;
+}
+.reference-footer-inner {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: clamp(24px, 6vw, 40px) 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(14px, 4vw, 24px);
+  flex-wrap: wrap;
+}
+.reference-footer-inner > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.reference-footer-inner > div:first-child span {
+  color: #cde8d6;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+.reference-footer-inner > div:first-child a {
+  color: #fff;
+  font-family: Anton, sans-serif;
+  font-size: clamp(30px, 8vw, 44px);
+  line-height: 1;
+}
+.reference-footer-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.reference-footer-actions a {
+  padding: 12px 22px;
+  border-radius: 999px;
+  background: #fff;
+  color: #0e9f4a;
+  font-weight: 800;
+}
+@media (max-width: 760px) {
+  .reference-hero-vehicle {
+    display: none;
+  }
+  .reference-vehicle-images {
+    grid-auto-flow: column;
+    grid-auto-columns: 90%;
+    grid-template-columns: none;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+  }
+  .reference-vehicle-images img {
+    scroll-snap-align: start;
+  }
+  .reference-mobile-action {
+    position: fixed;
+    z-index: 30;
+    inset: auto 0 0;
+    display: block;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+    background: #272a2e;
+    border-top: 1px solid #3b4046;
+  }
+  .reference-mobile-action .button {
+    width: 100%;
+  }
+  body:has(.reference-mobile-action) {
+    padding-bottom: 72px;
+  }
+}

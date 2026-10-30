@@ -1,9 +1,10 @@
+import { uiText } from '../content/reference-ui-text';
 import { useState } from 'react';
 import { Send } from 'lucide-react';
-import { useApp } from '../application/context';
+import { useAdminAnnouncements } from '../application/controllers/useAdminAnnouncements';
 
 export function AdminAnnouncements() {
-  const { api } = useApp();
+  const { announceDrivers } = useAdminAnnouncements();
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [feedback, setFeedback] = useState('');
@@ -13,7 +14,7 @@ export function AdminAnnouncements() {
     setFeedback('');
     setBusy(true);
     try {
-      await api.announceDrivers(title, message);
+      await announceDrivers(title, message);
       setTitle('');
       setMessage('');
       setFeedback('Information envoyée aux chauffeurs.');
@@ -26,13 +27,13 @@ export function AdminAnnouncements() {
   return (
     <section className="panel admin-announcements">
       <div>
-        <p className="eyebrow">Communication</p>
-        <h2>Envoyer une information aux chauffeurs</h2>
-        <p>Chaque chauffeur recevra cette annonce dans sa cloche de notifications.</p>
+        <p className="eyebrow">{uiText['communication']}</p>
+        <h2>{uiText['envoyerUneInformationAuxChauffeurs']}</h2>
+        <p>{uiText['chaqueChauffeurRecevraCetteAnnonceDansSaClocheDeNotifi']}</p>
       </div>
       <form onSubmit={submit}>
         <label>
-          Titre
+          {uiText['titre']}
           <input
             required
             maxLength={100}
@@ -41,7 +42,7 @@ export function AdminAnnouncements() {
           />
         </label>
         <label>
-          Message
+          {uiText['message']}
           <textarea
             required
             maxLength={1000}

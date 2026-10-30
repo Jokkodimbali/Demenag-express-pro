@@ -1,4 +1,6 @@
-import { Pencil, Truck, UserRoundPlus } from 'lucide-react';
+import { uiText } from '../content/reference-ui-text';
+import { KeyRound, Pencil, Truck, UserRoundPlus } from 'lucide-react';
+import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useUsers } from '../application/controllers/useUsers';
 import { usePagination } from '../application/usePagination';
@@ -20,7 +22,9 @@ export function Users() {
     editing,
     setEditing,
     save,
+    resetClientPassword,
   } = useUsers();
+  const [resetTarget, setResetTarget] = useState<(typeof users)[number] | null>(null);
   const filteredUsers = users.filter((user) =>
     `${user.name} ${user.phone}`.toLowerCase().includes(query.toLowerCase()),
   );
@@ -73,8 +77,24 @@ export function Users() {
                       : messages.labelClient}{' '}
                   · {u.active === false ? messages.labelSuspendu : messages.labelActif}
                 </p>
+                {u.passwordResetRequestedAt && (
+                  <p className="user-reset-request" role="status">
+                    {uiText['demandeDeReinitialisation']}{' '}
+                    {new Date(u.passwordResetRequestedAt).toLocaleString('fr-FR')}
+                  </p>
+                )}
               </div>
-              {u.role === 'driver' ? (
+              {u.passwordResetRequestedAt ? (
+                <button
+                  className="button secondary small user-account-action"
+                  onClick={() => {
+                    setError('');
+                    setResetTarget(u);
+                  }}
+                >
+                  <KeyRound size={15} /> {uiText['reinitialiser']}
+                </button>
+              ) : u.role === 'driver' ? (
                 <Link
                   className="button secondary small user-account-action"
                   to={routes.administrationFleet}
@@ -184,6 +204,54 @@ export function Users() {
               </button>
               <button className="button primary" disabled={busy}>
                 {busy ? messages.enregistrement : messages.labelEnregistrer}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+      {resetTarget && (
+        <Modal
+          titleId="reset-client-password-title"
+          busy={busy}
+          onClose={() => setResetTarget(null)}
+        >
+          <form
+            onSubmit={async (event: FormEvent<HTMLFormElement>) => {
+              event.preventDefault();
+              const password = String(new FormData(event.currentTarget).get('password'));
+              if (await resetClientPassword(resetTarget.id, password)) setResetTarget(null);
+            }}
+          >
+            <h2 id="reset-client-password-title">{uiText['reinitialiserLeMotDePasse']}</h2>
+            <p>{uiText['verifiezDAbordLIdentiteDuClientParTelephoneCommuniquez']}</p>
+            <label htmlFor="reset-client-password">{uiText['nouveauMotDePasse']}</label>
+            <input
+              id="reset-client-password"
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              pattern="(?=.*[A-Za-z])(?=.*[0-9]).{10,128}"
+              minLength={10}
+              maxLength={128}
+              title={uiText['10CaracteresMinimumAvecAuMoinsUneLettreEtUnChiffre']}
+              required
+            />
+            {error && (
+              <p className="alert error" role="alert">
+                {error}
+              </p>
+            )}
+            <div className="dialog-actions">
+              <button
+                type="button"
+                className="button secondary"
+                disabled={busy}
+                onClick={() => setResetTarget(null)}
+              >
+                {uiText['annuler']}
+              </button>
+              <button className="button primary" disabled={busy}>
+                {busy ? 'Enregistrement…' : 'Changer le mot de passe'}
               </button>
             </div>
           </form>

@@ -1,238 +1,527 @@
-import { messages } from '../../content/fr';
-import { tierLabels } from '../../domain/format';
-import type { Catalogue } from '../../domain/model';
-import { useState } from 'react';
-import { createLabourPriceMatrix, labourMatrixScenarios } from '../../domain/labour-price';
+import { uiText } from '../../content/reference-ui-text';
+import { useState, type CSSProperties } from 'react';
+import { FleetVehicleDimensions } from '../FleetVehicleDimensions';
+import { useApp } from '../../application/context';
+import { errorMessage } from '../../application/error-message';
+import { labourUnitPrice } from '../../domain/labour-price';
+import { CatalogueService } from '../../application/services/catalogue';
+import type { Catalogue, LabourMatrixScenario } from '../../domain/model';
+import { inventoryItems } from '../../domain/inventory';
+import { referenceInventoryKey } from '../../domain/inventory-assembly';
+import { ReferenceVehicleSettings } from './ReferenceVehicleSettings';
+import { PaymentSettings } from './PaymentSettings';
+import { ReferenceWhatsappSettings } from './ReferenceWhatsappSettings';
+import { ReferenceGoogleMapsSettings } from './ReferenceGoogleMapsSettings';
 
+const tiers = ['Moins de 15 km', '15 – 25 km', '25 – 35 km'];
+const scenarios: { id: LabourMatrixScenario; label: string; from: boolean; to: boolean }[] = [
+  { id: 'none', label: 'Sans ascenseur', from: false, to: false },
+  { id: 'from', label: 'Ascenseur au départ', from: true, to: false },
+  { id: 'to', label: "Ascenseur à l'arrivée", from: false, to: true },
+  { id: 'both', label: 'Ascenseur des deux côtés', from: true, to: true },
+];
 const floors = ['RDC', '1er', '2e', '3e', '4e', '5e'];
+const planningDefaults = {
+  maxHandlingHours: 3,
+  maxDayHours: 8,
+  defaultStartHour: 8,
+  maxMoversPerVehicle: 6,
+  cubicMetersPerHourPerMover: 2.5,
+  pauseMinutes: 30,
+};
+const planningFields = [
+  [
+    'maxHandlingHours',
+    'Plafond chargement + déchargement (h)',
+    'Le nombre de manœuvres est calculé pour tenir ce temps.',
+  ],
+  [
+    'maxDayHours',
+    'Plafond de la journée (h)',
+    'Au-delà, la fiche propose un autre véhicule, 2 véhicules ou 2 jours.',
+  ],
+  [
+    'defaultStartHour',
+    'Heure de début par défaut',
+    'Utilisée si le créneau du devis n’est pas précisé.',
+  ],
+  [
+    'maxMoversPerVehicle',
+    'Manœuvres maximum par véhicule',
+    'Au-delà, ils se gênent dans l’escalier et le camion.',
+  ],
+  [
+    'cubicMetersPerHourPerMover',
+    'Cadence de chargement (m³ / h / manœuvre)',
+    'Meubles au rez-de-chaussée. Cartons ×1,4, objets lourds ×0,72.',
+  ],
+  ['pauseMinutes', 'Pause si la journée dépasse 5 h (min)', '0 pour ne pas compter de pause.'],
+] as const;
+const sectionStyle: CSSProperties = {
+  background: '#272a2e',
+  border: '1px solid #3b4046',
+  borderRadius: 'clamp(14px, 4vw, 20px)',
+  padding: 'clamp(14px, 4vw, 22px)',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 12,
+};
+const inputStyle: CSSProperties = {
+  background: '#1e2023',
+  border: '1px solid #3b4046',
+  borderRadius: 10,
+  padding: 11,
+  color: '#fff',
+  fontSize: 16,
+  fontWeight: 700,
+  outline: 'none',
+  minWidth: 0,
+  width: '100%',
+  boxSizing: 'border-box',
+};
+const lineStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'minmax(0, 1fr) minmax(90px, 150px)',
+  gap: 10,
+  alignItems: 'center',
+};
+const sizeRanges: Record<string, [number, number]> = {
+  salon: [1, 10],
+  tablem: [2, 12],
+  lit: [1, 4],
+  matelas: [1, 4],
+  armoire: [1, 8],
+};
+
+function amount(value: number) {
+  return Math.round(value || 0)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+}
 
 export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
-  const [scenario, setScenario] = useState('none');
-  const labourMatrix = createLabourPriceMatrix(catalogue.settings);
-  const planning = {
-    maxHandlingHours: 3,
-    maxDayHours: 8,
-    defaultStartHour: 8,
-    maxMoversPerVehicle: 6,
-    cubicMetersPerHourPerMover: 2.5,
-    pauseMinutes: 30,
-    ...catalogue.settings.movingLaborPlanning,
-  };
+  const [scenario, setScenario] = useState<LabourMatrixScenario>('none');
+  const [dimensionBusy, setDimensionBusy] = useState(false);
+  const [dimensionError, setDimensionError] = useState('');
+  const { api, setCatalogue } = useApp();
+  const selected = scenarios.find((entry) => entry.id === scenario)!;
+  const customConfigured = catalogue.settings.montageP?.custom;
+  const customPricing =
+    typeof customConfigured === 'number'
+      ? { local: customConfigured, import: Math.round(customConfigured * 1.5) }
+      : (customConfigured ?? {});
+  const rows = inventoryItems
+    .filter((item) => item.key !== 'climatiseur')
+    .map((item) => {
+      const key = referenceInventoryKey(item.key);
+      const configured =
+        catalogue.settings.montageP?.[key] ?? catalogue.settings.montageP?.[item.key];
+      const pricing =
+        typeof configured === 'number'
+          ? { local: configured, import: Math.round(configured * 1.5) }
+          : (configured ?? {});
+      const range = item.sizeLabel ? (sizeRanges[key] ?? [1, (item.defaultSize ?? 1) + 3]) : null;
+      return { item, key, pricing, range };
+    });
+  const assemblySections = Array.from(
+    new Map(
+      rows.map(({ item }) => [
+        item.section,
+        rows.filter((row) => row.item.section === item.section),
+      ]),
+    ),
+  );
+  const assemblyColumns = [
+    [assemblySections[0], assemblySections[3]].filter(Boolean),
+    [assemblySections[1], assemblySections[2]].filter(Boolean),
+  ];
+  const floorSupplement = catalogue.settings.labourFloorPrice ?? 500;
+  const liftSupplement = catalogue.settings.labourLiftPrice ?? 500;
+  const referenceVehicleOrder = ['sprinter', 'trafic', 'master'];
+  const vehicles = [...catalogue.vehicles].sort((left, right) => {
+    const leftIndex = referenceVehicleOrder.indexOf(left.id);
+    const rightIndex = referenceVehicleOrder.indexOf(right.id);
+    return (
+      (leftIndex < 0 ? referenceVehicleOrder.length : leftIndex) -
+      (rightIndex < 0 ? referenceVehicleOrder.length : rightIndex)
+    );
+  });
+  const planning = { ...planningDefaults, ...catalogue.settings.movingLaborPlanning };
+
+  async function saveVehicleDimensions(vehicle: Catalogue['vehicles'][number]) {
+    setDimensionBusy(true);
+    setDimensionError('');
+    try {
+      setCatalogue(await new CatalogueService(api).saveVehicle(catalogue, vehicle));
+    } catch (cause) {
+      setDimensionError(errorMessage(cause));
+      throw cause;
+    } finally {
+      setDimensionBusy(false);
+    }
+  }
+
   return (
-    <div className="panel">
-      <h2>{messages.tarifsDeTransport}</h2>
-      <p className="muted">{messages.prixEnFcfaParAllerRetourLesDevis}</p>
-      <div className="field-pair">
-        <div>
-          <label htmlFor="assembly">{messages.menuisierMeubleFcfa}</label>
-          <input
-            id="assembly"
-            name="assembly"
-            type="number"
-            min={0}
-            max={1000000}
-            step={1}
-            required
-            defaultValue={catalogue.settings.assemblyPrice}
-          />
-        </div>
-      </div>
-      <div className="field-pair">
-        {[0, 1, 2].map((i) => (
-          <div key={i}>
-            <label htmlFor={'distance-' + i}>
-              {messages.borneDeDistance}
-              {i + 1}
-              {messages.km3}
-            </label>
-            <input
-              type="number"
-              name={'distance-' + i}
-              id={'distance-' + i}
-              required
-              min={1}
-              max={1000}
-              step={1}
-              defaultValue={catalogue.settings.distanceBounds[i]}
-            />
-          </div>
+    <div className="reference-settings-page">
+      <div className="reference-settings-grid">
+        {vehicles.map((vehicle) => (
+          <section style={sectionStyle} key={vehicle.id}>
+            <span className="reference-settings-card-title">
+              {vehicle.name} {uiText['parAllerRetour']}
+            </span>
+            {tiers.map((label, index) => (
+              <label style={lineStyle} key={label}>
+                <span>{label}</span>
+                <input
+                  style={inputStyle}
+                  type="number"
+                  min="0"
+                  name={`${vehicle.id}-${index}`}
+                  defaultValue={vehicle.prices[index]}
+                />
+              </label>
+            ))}
+          </section>
         ))}
-      </div>
-      <div className="tariff-grid">
-        {catalogue.vehicles.map((v) => (
-          <div className="tariff-card" key={v.id}>
-            <img src={v.image} alt={messages.text} />
-            <h3>{v.name}</h3>
-            {tierLabels(catalogue.settings.distanceBounds)
-              .slice(0, 3)
-              .map((label, i) => (
-                <div key={label}>
-                  <label htmlFor={v.id + '-' + i}>{label}</label>
-                  <input
-                    id={v.id + '-' + i}
-                    name={v.id + '-' + i}
-                    type="number"
-                    min={1}
-                    max={10000000}
-                    step={1}
-                    required
-                    defaultValue={v.prices[i]}
-                  />
+
+        <section className="reference-settings-wide" style={sectionStyle}>
+          <span className="reference-settings-card-title">{uiText['supplementsFixes']}</span>
+          <div className="reference-settings-fixed-fields">
+            <label>
+              <span>{uiText['manœuvreParPersonne']}</span>
+              <input
+                style={inputStyle}
+                type="number"
+                min="0"
+                name="labourPrice"
+                defaultValue={catalogue.settings.labourPrice}
+              />
+            </label>
+            <label>
+              <span>{uiText['supplementParEtageSansAscenseurParManœuvre']}</span>
+              <input
+                style={inputStyle}
+                type="number"
+                min="0"
+                name="labourFloorPrice"
+                defaultValue={floorSupplement}
+              />
+            </label>
+            <label>
+              <span>{uiText['forfaitAvecAscenseurDesLe1erParManœuvre']}</span>
+              <input
+                style={inputStyle}
+                type="number"
+                min="0"
+                name="labourLiftPrice"
+                defaultValue={liftSupplement}
+              />
+            </label>
+          </div>
+          <input type="hidden" name="assembly" value={catalogue.settings.assemblyPrice} />
+
+          <span className="reference-settings-kicker">
+            {uiText['demontageMONTAGEPARMEUBLEPRIXCLIENT']}
+          </span>
+          <div className="reference-settings-assembly-columns">
+            {assemblyColumns.map((sections, columnIndex) => (
+              <div className="reference-settings-assembly-column" key={columnIndex}>
+                <div className="reference-settings-price-head">
+                  <span />
+                  <span className="reference-settings-column-title">{uiText['local']}</span>
+                  <span className="reference-settings-column-title">{uiText['importe']}</span>
+                </div>
+                {sections.map(([section, sectionRows]) => (
+                  <div className="reference-settings-assembly-category" key={section}>
+                    <strong className="reference-settings-category">{section.toUpperCase()}</strong>
+                    <div className="reference-settings-price-matrix">
+                      {sectionRows.map(({ item, key, pricing, range }) => {
+                        const local = pricing.local ?? catalogue.settings.assemblyPrice;
+                        const imported = pricing.import ?? Math.round(local * 1.5);
+                        const sizeLabel = item.sizeLabel ?? '';
+                        return (
+                          <div className="reference-settings-item-group" key={key}>
+                            <div className="reference-settings-price-row">
+                              <span>
+                                {item.label}
+                                {range ? ` (${item.defaultSize} ${sizeLabel})` : ''}
+                              </span>
+                              <input
+                                style={inputStyle}
+                                type="number"
+                                min="0"
+                                name={`montageP.${key}.local`}
+                                defaultValue={local}
+                                aria-label={`${item.label}, local`}
+                              />
+                              <input
+                                style={inputStyle}
+                                type="number"
+                                min="0"
+                                name={`montageP.${key}.import`}
+                                defaultValue={imported}
+                                aria-label={`${item.label}, importé`}
+                              />
+                            </div>
+                            {range && (
+                              <div className="reference-settings-size-row">
+                                <div className="reference-settings-size-labels">
+                                  <span>{uiText['local']}</span>
+                                  <span>{uiText['importe']}</span>
+                                </div>
+                                <div className="reference-settings-size-increment">
+                                  <span>
+                                    {uiText['supplementPar']}
+                                    {sizeLabel.replace(/s$/u, '')} {uiText['enPlus']}
+                                  </span>
+                                  <label>
+                                    <span>{uiText['local']}</span>
+                                    <input
+                                      style={inputStyle}
+                                      type="number"
+                                      min="0"
+                                      name={`montageP.${key}.u`}
+                                      defaultValue={pricing.u ?? 0}
+                                      aria-label={`${item.label}, supplément local par ${sizeLabel.replace(/s$/u, '')}`}
+                                    />
+                                  </label>
+                                  <label>
+                                    <span>{uiText['importe']}</span>
+                                    <input
+                                      style={inputStyle}
+                                      type="number"
+                                      min="0"
+                                      name={`montageP.${key}.uI`}
+                                      defaultValue={pricing.uI ?? pricing.u ?? 0}
+                                      aria-label={`${item.label}, supplément importé par ${sizeLabel.replace(/s$/u, '')}`}
+                                    />
+                                  </label>
+                                </div>
+                                {Array.from({ length: range[1] - range[0] + 1 }, (_, offset) => {
+                                  const size = range[0] + offset;
+                                  const savedSize = pricing.sz?.[String(size)];
+                                  const priceAtSize = (origin: 'local' | 'import') =>
+                                    savedSize?.[origin] ??
+                                    (origin === 'local' ? local : imported) +
+                                      Math.max(0, size - (item.defaultSize ?? 1)) *
+                                        (origin === 'local'
+                                          ? (pricing.u ?? 0)
+                                          : (pricing.uI ?? pricing.u ?? 0));
+                                  return (
+                                    <div className="reference-settings-size-card" key={size}>
+                                      <span>
+                                        {size}{' '}
+                                        {size === 1 ? sizeLabel.replace(/s$/, '') : sizeLabel}
+                                      </span>
+                                      <label>
+                                        <span>{uiText['local']}</span>
+                                        <input
+                                          style={inputStyle}
+                                          type="number"
+                                          min="0"
+                                          name={`montageP.${key}.sz.${size}.local`}
+                                          defaultValue={priceAtSize('local')}
+                                          aria-label={`${item.label}, ${size} ${sizeLabel}, local`}
+                                        />
+                                      </label>
+                                      <label>
+                                        <span>{uiText['importe']}</span>
+                                        <input
+                                          style={inputStyle}
+                                          type="number"
+                                          min="0"
+                                          name={`montageP.${key}.sz.${size}.import`}
+                                          defaultValue={priceAtSize('import')}
+                                          aria-label={`${item.label}, ${size} ${sizeLabel}, importé`}
+                                        />
+                                      </label>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+                {columnIndex === 0 && (
+                  <div className="reference-settings-assembly-category">
+                    <strong className="reference-settings-category">
+                      {uiText['autresOBJETS']}
+                    </strong>
+                    <div className="reference-settings-price-matrix">
+                      <div className="reference-settings-price-row">
+                        <span>{uiText['autreObjet']}</span>
+                        <input
+                          style={inputStyle}
+                          type="number"
+                          min="0"
+                          name="montageP.custom.local"
+                          defaultValue={customPricing.local ?? catalogue.settings.assemblyPrice}
+                          aria-label={uiText['autreObjetLocal']}
+                        />
+                        <input
+                          style={inputStyle}
+                          type="number"
+                          min="0"
+                          name="montageP.custom.import"
+                          defaultValue={
+                            customPricing.import ??
+                            Math.round(catalogue.settings.assemblyPrice * 1.5)
+                          }
+                          aria-label={uiText['autreObjetImporte']}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="reference-settings-wide" style={sectionStyle}>
+          <div className="reference-settings-section-heading">
+            <span className="reference-settings-card-title">
+              {uiText['grilleDePrixDesManœuvres']}
+            </span>
+            <span>{uiText['baseSupplementDepartSupplementArrivee']}</span>
+          </div>
+          <div
+            className="reference-settings-scenarios"
+            role="group"
+            aria-label={uiText['scenarioAscenseur']}
+          >
+            {scenarios.map((entry) => (
+              <button
+                type="button"
+                key={entry.id}
+                className={scenario === entry.id ? 'active' : ''}
+                onClick={() => setScenario(entry.id)}
+              >
+                {entry.label}
+              </button>
+            ))}
+          </div>
+          <div className="reference-settings-grid-scroll">
+            <div className="reference-settings-labour-grid">
+              <div className="reference-settings-axis">{uiText['departArrivee']}</div>
+              {floors.map((floor) => (
+                <strong className="reference-settings-col" key={floor}>
+                  {floor}
+                </strong>
+              ))}
+              {floors.map((fromFloor, fromIndex) => (
+                <div className="reference-settings-labour-row" key={fromFloor}>
+                  <strong>{fromFloor}</strong>
+                  {floors.map((_, toIndex) => {
+                    const value = labourUnitPrice(catalogue.settings, {
+                      fromFloor: fromIndex,
+                      toFloor: toIndex,
+                      fromLift: selected.from,
+                      toLift: selected.to,
+                    });
+                    return <span key={toIndex}>{amount(value)}</span>;
+                  })}
                 </div>
               ))}
-            <p className="caption">
-              {messages.auDelaDe}
-              {catalogue.settings.distanceBounds[2]}
-              {messages.kmTarifPersonnaliseSurDevis}
+            </div>
+          </div>
+        </section>
+
+        <section className="reference-settings-wide" style={sectionStyle}>
+          <span className="reference-settings-card-title">{uiText['dimensionsDesVehicules']}</span>
+          {dimensionError && (
+            <p role="alert" className="alert error">
+              {dimensionError}
             </p>
-          </div>
-        ))}
-      </div>
-      <section className="manoeuvre-price-grid" aria-labelledby="manoeuvre-grid-title">
-        <div>
-          <h3 id="manoeuvre-grid-title">Grille de prix des manœuvres</h3>
-          <p className="muted">
-            Saisissez directement chaque prix en FCFA par personne. Choisissez le scénario
-            d’ascenseur, modifiez les cases nécessaires puis enregistrez les paramètres.
-          </p>
-        </div>
-        <div className="manoeuvre-scenarios" role="group" aria-label="Ascenseurs disponibles">
-          {labourMatrixScenarios.map((item) => (
-            <button
-              className={scenario === item.id ? 'active' : ''}
-              key={item.id}
-              type="button"
-              aria-pressed={scenario === item.id}
-              onClick={() => setScenario(item.id)}
-            >
-              {item.label}
-            </button>
+          )}
+          {vehicles.map((vehicle) => (
+            <FleetVehicleDimensions
+              key={vehicle.id}
+              vehicle={vehicle}
+              disabled={dimensionBusy}
+              onSave={saveVehicleDimensions}
+              management={null}
+            />
           ))}
-        </div>
-        {labourMatrixScenarios.map((item) => (
-          <div className="manoeuvre-grid-scroll" key={item.id} hidden={scenario !== item.id}>
-            <table>
-              <caption>
-                Prix en FCFA par personne · {item.label} · modifiez directement chaque case
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col">Départ ↓ · Arrivée →</th>
-                  {floors.map((floor) => (
-                    <th scope="col" key={floor}>
-                      {floor}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {floors.map((from, fromFloor) => (
-                  <tr key={from}>
-                    <th scope="row">{from}</th>
-                    {floors.map((to, toFloor) => (
-                      <td key={to}>
-                        <input
-                          aria-label={`Prix par manœuvre, départ ${from}, arrivée ${to}, ${item.label}`}
-                          name={`labourMatrix.${item.id}.${fromFloor}.${toFloor}`}
-                          type="number"
-                          min={0}
-                          max={1000000}
-                          step={1}
-                          required
-                          defaultValue={labourMatrix[item.id][fromFloor][toFloor]}
-                        />
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        </section>
+
+        <section className="reference-settings-wide" style={sectionStyle}>
+          <div className="reference-settings-section-heading">
+            <span className="reference-settings-card-title">{uiText['mainDŒuvreEtDurees']}</span>
           </div>
-        ))}
-      </section>
-      <section className="manoeuvre-price-grid" aria-labelledby="moving-plan-settings-title">
-        <div>
-          <h3 id="moving-plan-settings-title">Paramètres du planning de déménagement</h3>
-          <p className="muted">
-            Ces paramètres pilotent l’estimation du nombre de manœuvres, du temps de manutention et
-            de la durée. Ils ne changent pas le prix des réservations déjà enregistrées.
-          </p>
-        </div>
-        <div className="field-pair">
-          <label>
-            Plafond chargement + déchargement (heures)
-            <input
-              name="movingLaborPlanning.maxHandlingHours"
-              type="number"
-              min="0.5"
-              max="12"
-              step="0.5"
-              required
-              defaultValue={planning.maxHandlingHours}
-            />
-          </label>
-          <label>
-            Plafond de la journée (heures)
-            <input
-              name="movingLaborPlanning.maxDayHours"
-              type="number"
-              min="1"
-              max="16"
-              step="0.5"
-              required
-              defaultValue={planning.maxDayHours}
-            />
-          </label>
-          <label>
-            Heure de début par défaut
-            <input
-              name="movingLaborPlanning.defaultStartHour"
-              type="number"
-              min="0"
-              max="23"
-              step="1"
-              required
-              defaultValue={planning.defaultStartHour}
-            />
-          </label>
-          <label>
-            Manœuvres maximum par véhicule
-            <input
-              name="movingLaborPlanning.maxMoversPerVehicle"
-              type="number"
-              min="2"
-              max="20"
-              step="1"
-              required
-              defaultValue={planning.maxMoversPerVehicle}
-            />
-          </label>
-          <label>
-            Cadence au RDC (m³ / heure / manœuvre)
-            <input
-              name="movingLaborPlanning.cubicMetersPerHourPerMover"
-              type="number"
-              min="0.1"
-              max="50"
-              step="0.1"
-              required
-              defaultValue={planning.cubicMetersPerHourPerMover}
-            />
-          </label>
-          <label>
-            Pause si la journée dépasse 5 h (minutes)
-            <input
-              name="movingLaborPlanning.pauseMinutes"
-              type="number"
-              min="0"
-              max="180"
-              step="5"
-              required
-              defaultValue={planning.pauseMinutes}
-            />
-          </label>
-        </div>
-      </section>
+          <div className="reference-settings-labor-fields">
+            {planningFields.map(([key, label, hint]) => (
+              <label key={key}>
+                <span>{label}</span>
+                <input
+                  style={inputStyle}
+                  type="number"
+                  min={
+                    key === 'maxDayHours'
+                      ? 1
+                      : key === 'maxMoversPerVehicle'
+                        ? 2
+                        : key === 'cubicMetersPerHourPerMover'
+                          ? 0.1
+                          : key === 'pauseMinutes'
+                            ? 0
+                            : key === 'defaultStartHour'
+                              ? 0
+                              : 0.5
+                  }
+                  max={
+                    key === 'maxHandlingHours'
+                      ? 12
+                      : key === 'maxDayHours'
+                        ? 16
+                        : key === 'defaultStartHour'
+                          ? 23
+                          : key === 'maxMoversPerVehicle'
+                            ? 20
+                            : key === 'cubicMetersPerHourPerMover'
+                              ? 50
+                              : 180
+                  }
+                  required
+                  step={
+                    key === 'cubicMetersPerHourPerMover' ||
+                    key === 'maxHandlingHours' ||
+                    key === 'maxDayHours'
+                      ? '0.5'
+                      : 1
+                  }
+                  name={`movingLaborPlanning.${key}`}
+                  defaultValue={planning[key]}
+                />
+                <small>{hint}</small>
+              </label>
+            ))}
+          </div>
+          <button
+            className="reference-settings-reset"
+            type="button"
+            onClick={(event) => {
+              const form = event.currentTarget.form;
+              for (const [key, ,] of planningFields) {
+                const input = form?.elements.namedItem(`movingLaborPlanning.${key}`);
+                if (input instanceof HTMLInputElement) input.value = String(planningDefaults[key]);
+              }
+              form?.requestSubmit();
+            }}
+          >
+            {uiText['revenirAuxValeursParDefaut']}
+          </button>
+        </section>
+
+        <ReferenceVehicleSettings catalogue={catalogue} />
+        <PaymentSettings catalogue={catalogue} />
+        <ReferenceGoogleMapsSettings />
+        <ReferenceWhatsappSettings catalogue={catalogue} />
+      </div>
     </div>
   );
 }

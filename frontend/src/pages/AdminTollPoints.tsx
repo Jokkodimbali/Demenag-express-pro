@@ -1,529 +1,510 @@
-import {
-  ChevronDown,
-  ChevronUp,
-  MapPin,
-  Pencil,
-  Plus,
-  Save,
-  Search,
-  Trash2,
-  X,
-} from 'lucide-react';
-import { useRef, useState, type FormEvent } from 'react';
+import { uiText } from '../content/reference-ui-text';
+import { messages } from '../content/fr';
+import { Search, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { useApp } from '../application/context';
+import { useTollPointCommands } from '../application/controllers/useTollPointCommands';
 import { errorMessage } from '../application/error-message';
-import { ConfirmationDialog } from '../components/ConfirmationDialog';
 import { TollPointEditorMap } from '../components/TollPointEditorMap';
-import type { TollPoint, TollPointInput } from '../domain/model';
-import { money } from '../domain/format';
+import type { TollPoint, TollPointInput, Vehicle } from '../domain/model';
 import { tollPrice } from '../domain/toll-prices';
+import { tollAxisColor } from '../components/maps/admin-toll-markers';
+import '../styles/admin-tolls.css';
 
-const emptyPoint: TollPointInput = {
-  name: '',
+const blankPoint = (latitude: number, longitude: number, vehicles: Vehicle[]): TollPointInput => ({
+  name: 'Nouveau péage',
   region: '',
   axis: '',
   heavyPrice: 0,
-  vehiclePrices: {},
-  latitude: null,
-  longitude: null,
+  vehiclePrices: Object.fromEntries(vehicles.map((vehicle) => [vehicle.id, 0])),
+  latitude,
+  longitude,
+});
+
+const shortPrice = (amount: number) => amount.toLocaleString('fr-FR');
+const referenceVehicleOrder = (vehicle: Vehicle) => {
+  const name = `${vehicle.shortName ?? ''} ${vehicle.name}`.toLocaleLowerCase('fr');
+  if (name.includes('sprinter')) return 0;
+  if (name.includes('trafic')) return 1;
+  if (name.includes('master')) return 2;
+  return 3;
 };
+const referenceVehicleTag = (vehicle: Vehicle) => {
+  const name = vehicle.shortName || vehicle.name;
+  return name
+    .replace(/^(?:mercedes|renault)\s+/i, '')
+    .replace(/\s+(?:iii|iv)(?:\s+phase\s+\d+)?$/i, '');
+};
+const referenceVehicleName = (vehicle: Vehicle) =>
+  (vehicle.shortName || vehicle.name).replace(/\s+(?:iii|iv)(?:\s+phase\s+\d+)?$/i, '');
 
 export function AdminTollPoints() {
-  const { api, catalogue, tollPoints, setTollPoints } = useApp();
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<TollPointInput>(emptyPoint);
-  const [formOpen, setFormOpen] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState<TollPoint | null>(null);
-  const [busy, setBusy] = useState(false);
+  const { catalogue, tollPoints, setTollPoints, requestConfirmation } = useApp();
+  const commands = useTollPointCommands();
+  const vehicles = useMemo(
+    () =>
+      [...(catalogue?.vehicles ?? [])].sort(
+        (first, second) => referenceVehicleOrder(first) - referenceVehicleOrder(second),
+      ),
+    [catalogue?.vehicles],
+  );
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [focusId, setFocusId] = useState<string | null>(null);
+  const [vehicleId, setVehicleId] = useState(() => vehicles[0]?.id ?? '');
+  const [axisFilter, setAxisFilter] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
   const [error, setError] = useState('');
-  const [saved, setSaved] = useState('');
-  const [focusRequest, setFocusRequest] = useState(0);
-  const mapPanel = useRef<HTMLElement>(null);
-  const searchRequest = useRef(0);
-  const [locationQuery, setLocationQuery] = useState('');
-  const [locationResults, setLocationResults] = useState<
-    { label: string; point: [number, number] }[]
-  >([]);
-  const [locationSearching, setLocationSearching] = useState(false);
-  const [locationError, setLocationError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [busy, setBusy] = useState(false);
+  const updateTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const revisions = useRef(new Map<string, number>());
+  const writesInFlight = useRef(new Set<string>());
+  const currentPoints = useRef(tollPoints);
+  currentPoints.current = tollPoints;
 
-  function edit(point: TollPoint) {
-    setFormOpen(true);
-    searchRequest.current += 1;
-    setLocationQuery(`${point.name}, Sénégal`);
-    setLocationResults([]);
-    setLocationError('');
-    setLocationSearching(false);
-    setEditingId(point.id);
-    setForm({
-      name: point.name,
-      region: point.region,
-      axis: point.axis,
-      heavyPrice: point.heavyPrice,
-      vehiclePrices: point.vehiclePrices ?? {},
-      latitude: point.latitude,
-      longitude: point.longitude,
-    });
-    setError('');
-    setSaved('');
-  }
+  useEffect(
+    () => () => {
+      updateTimers.current.forEach((timer) => clearTimeout(timer));
+      updateTimers.current.clear();
+    },
+    [],
+  );
 
-  function locate(point: TollPoint) {
-    edit(point);
-    setFocusRequest((current) => current + 1);
-    mapPanel.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
+  useEffect(() => {
+    if (!vehicles.some((vehicle) => vehicle.id === vehicleId) && vehicles[0])
+      setVehicleId(vehicles[0].id);
+  }, [vehicleId, vehicles]);
 
-  function reset() {
-    setFormOpen(false);
-    searchRequest.current += 1;
-    setLocationResults([]);
-    setEditingId(null);
-    setForm(emptyPoint);
-    setError('');
-  }
-
-  async function searchLocation() {
-    if (locationQuery.trim().length < 3) return;
-    const request = ++searchRequest.current;
-    setLocationSearching(true);
-    setLocationError('');
-    setLocationResults([]);
-    try {
-      const results = await api.search(locationQuery.trim());
-      if (request !== searchRequest.current) return;
-      setLocationResults(results);
-      if (!results.length)
-        setLocationError('Aucun lieu trouvé. Placez le point directement sur la carte.');
-    } catch (reason) {
-      if (request === searchRequest.current) setLocationError(errorMessage(reason));
-    } finally {
-      if (request === searchRequest.current) setLocationSearching(false);
-    }
-  }
-
-  async function save(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError('');
-    setSaved('');
-    if (form.latitude === null || form.longitude === null) {
-      setError('Placez le péage sur la carte ou renseignez ses deux coordonnées.');
-      return;
-    }
-    setBusy(true);
-    try {
-      const input = {
-        ...form,
-        name: form.name.trim(),
-        vehiclePrices: {
-          ...form.vehiclePrices,
-          ...Object.fromEntries(
-            (catalogue?.vehicles ?? []).map((vehicle) => [
-              vehicle.id,
-              form.vehiclePrices[vehicle.id] ?? form.heavyPrice,
-            ]),
-          ),
-        },
+  const axes = useMemo(() => {
+    const names = [...new Set(tollPoints.map((point) => point.axis || 'Autre route'))];
+    return names.map((name) => {
+      const points = tollPoints.filter((point) => (point.axis || 'Autre route') === name);
+      const regions = [...new Set(points.map((point) => point.region).filter(Boolean))];
+      return {
+        name,
+        color: tollAxisColor(name, tollPoints),
+        description: `${points.length} péage${points.length > 1 ? 's' : ''}${regions.length ? ` · ${regions.join(', ')}` : ''}`,
       };
-      const point = editingId
-        ? await api.updateTollPoint(editingId, input)
-        : await api.createTollPoint(input);
-      setTollPoints((current) =>
-        [...current.filter((item) => item.id !== point.id), point].sort((a, b) =>
-          a.name.localeCompare(b.name),
-        ),
-      );
-      reset();
-      setSaved(
-        editingId
-          ? 'Point de péage modifié.'
-          : 'Point de péage ajouté. Il apparaît sur les cartes.',
-      );
-    } catch (reason) {
-      setError(errorMessage(reason));
-    } finally {
-      setBusy(false);
-    }
-  }
+    });
+  }, [tollPoints]);
 
-  async function remove() {
-    if (!pendingDelete) return;
-    setBusy(true);
-    setError('');
-    try {
-      await api.deleteTollPoint(pendingDelete.id);
-      setTollPoints((current) => current.filter((point) => point.id !== pendingDelete.id));
-      if (editingId === pendingDelete.id) reset();
-      setPendingDelete(null);
-      setSaved('Point de péage supprimé.');
-    } catch (reason) {
-      setError(errorMessage(reason));
-    } finally {
-      setBusy(false);
-    }
-  }
+  const filteredPoints = useMemo(() => {
+    const needle = query.trim().toLocaleLowerCase('fr');
+    return tollPoints.filter((point) => {
+      const axis = point.axis || 'Autre route';
+      const matchesAxis = !axisFilter || axis === axisFilter;
+      const searchable = `${point.name} ${point.axis} ${point.region}`.toLocaleLowerCase('fr');
+      return matchesAxis && (!needle || searchable.includes(needle));
+    });
+  }, [axisFilter, query, tollPoints]);
+
+  const selectedPoint = tollPoints.find((point) => point.id === selectedId) ?? null;
+  const focusPoint = useCallback((point: TollPoint) => {
+    setSelectedId(point.id);
+    setFocusId(point.id);
+  }, []);
+
+  const addAt = useCallback(
+    async (latitude: number, longitude: number) => {
+      const input = blankPoint(latitude, longitude, vehicles);
+      setBusy(true);
+      setError('');
+      setNotice('');
+      try {
+        const point = await commands.createTollPoint(input);
+        setTollPoints((current) => [...current.filter((item) => item.id !== point.id), point]);
+        setSelectedId(point.id);
+      } catch (reason) {
+        setError(errorMessage(reason));
+      } finally {
+        setBusy(false);
+      }
+    },
+    [commands, setTollPoints, vehicles],
+  );
+
+  const updatePoint = useCallback(
+    (point: TollPoint, patch: Partial<TollPointInput>, delay = 350) => {
+      const next = { ...point, ...patch };
+      currentPoints.current = currentPoints.current.map((item) =>
+        item.id === point.id ? next : item,
+      );
+      setTollPoints((current) => current.map((item) => (item.id === point.id ? next : item)));
+      setError('');
+      setNotice('');
+      const revision = (revisions.current.get(point.id) ?? 0) + 1;
+      revisions.current.set(point.id, revision);
+      const previousTimer = updateTimers.current.get(point.id);
+      if (previousTimer) clearTimeout(previousTimer);
+      const timer = setTimeout(() => {
+        updateTimers.current.delete(point.id);
+        if (writesInFlight.current.has(point.id)) return;
+        writesInFlight.current.add(point.id);
+        void (async () => {
+          let persistedRevision = revision - 1;
+          try {
+            while (persistedRevision !== revisions.current.get(point.id)) {
+              const currentRevision = revisions.current.get(point.id) ?? revision;
+              const latest = currentPoints.current.find((item) => item.id === point.id);
+              if (!latest) return;
+              if (latest.name.trim().length < 2) {
+                setError('Le nom du péage doit contenir au moins deux caractères.');
+                return;
+              }
+              if (latest.heavyPrice < 0) {
+                setError('Le tarif du péage ne peut pas être négatif.');
+                return;
+              }
+              const savedPoint = await commands.updateTollPoint(point.id, latest);
+              persistedRevision = currentRevision;
+              if (revisions.current.get(point.id) === currentRevision) {
+                currentPoints.current = currentPoints.current.map((item) =>
+                  item.id === point.id ? savedPoint : item,
+                );
+                setTollPoints((current) =>
+                  current.map((item) => (item.id === point.id ? savedPoint : item)),
+                );
+                setNotice('Modifications enregistrées.');
+              }
+            }
+          } catch (reason) {
+            setError(errorMessage(reason));
+          } finally {
+            writesInFlight.current.delete(point.id);
+          }
+        })();
+      }, delay);
+      updateTimers.current.set(point.id, timer);
+    },
+    [commands, setTollPoints],
+  );
+
+  const movePoint = useCallback(
+    (point: TollPoint, latitude: number, longitude: number) => {
+      updatePoint(point, { latitude, longitude }, 0);
+    },
+    [updatePoint],
+  );
+
+  const removePoint = useCallback(
+    async (point: TollPoint) => {
+      const confirmed = await requestConfirmation({
+        titleId: 'delete-toll-point-title',
+        eyebrow: messages.confirmationRequise,
+        title: messages.supprimerPeageTitre,
+        description: messages.suppressionPeageDescription,
+        confirmLabel: uiText['supprimer'],
+      });
+      if (!confirmed) return;
+      setBusy(true);
+      setError('');
+      setNotice('');
+      try {
+        await commands.deleteTollPoint(point.id);
+        setTollPoints((current) => current.filter((item) => item.id !== point.id));
+        setSelectedId((current) => (current === point.id ? null : current));
+        setNotice('Péage supprimé.');
+      } catch (reason) {
+        setError(errorMessage(reason));
+      } finally {
+        setBusy(false);
+      }
+    },
+    [commands, requestConfirmation, setTollPoints],
+  );
+
+  const mapMovePoint = useCallback(
+    (point: TollPoint, latitude: number, longitude: number) =>
+      movePoint(point, latitude, longitude),
+    [movePoint],
+  );
+  const selectMapPoint = useCallback((point: TollPoint) => setSelectedId(point.id), []);
 
   return (
-    <div className="toll-admin-layout">
-      <section
-        ref={mapPanel}
-        className="toll-admin-map-panel"
-        aria-label="Carte des points de péage"
-      >
-        <TollPointEditorMap
-          points={tollPoints}
-          selectedId={editingId}
-          name={form.name}
-          latitude={form.latitude}
-          longitude={form.longitude}
-          region={form.region}
-          focusRequest={focusRequest}
-          onPointClick={edit}
-          onSelect={(latitude, longitude) => {
-            setFormOpen(true);
-            setForm((current) => ({ ...current, latitude, longitude }));
-          }}
-        />
-        <p className="toll-admin-map-hint">
-          {editingId && form.latitude === null
-            ? `Aucune position enregistrée pour ${form.name}. Cliquez sur l’emplacement exact, puis enregistrez.`
-            : 'Cliquez sur la carte pour placer un point. Sélectionnez un repère, puis déplacez-le si nécessaire.'}
-        </p>
-        <div className="toll-admin-location-search">
-          <div className="toll-admin-location-search-line">
-            <input
-              value={locationQuery}
-              onChange={(event) => setLocationQuery(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  void searchLocation();
-                }
-              }}
-              aria-label="Rechercher un lieu pour le péage"
-              placeholder="Rechercher un lieu pour le péage"
-            />
+    <div className="toll-reference-page">
+      <div className="toll-reference-toolbar">
+        <span>{uiText['tarifAfficheSurLaCarte']}</span>
+        <div className="toll-reference-vehicle-tabs" role="group" aria-label={uiText['vehicule']}>
+          {vehicles.map((vehicle) => (
             <button
-              className="button secondary small"
               type="button"
-              disabled={locationSearching || locationQuery.trim().length < 3}
-              onClick={() => void searchLocation()}
+              key={vehicle.id}
+              className={vehicleId === vehicle.id ? 'active' : ''}
+              aria-pressed={vehicleId === vehicle.id}
+              onClick={() => setVehicleId(vehicle.id)}
             >
-              <Search size={16} /> {locationSearching ? 'Recherche…' : 'Rechercher'}
+              {referenceVehicleTag(vehicle)}
             </button>
-          </div>
-          {locationError && (
-            <p className="muted" role="status">
-              {locationError}
-            </p>
-          )}
-          {locationResults.length > 0 && (
-            <div className="toll-admin-location-results" aria-label="Lieux trouvés">
-              {locationResults.map((result, index) => (
-                <button
-                  type="button"
-                  key={`${result.label}-${index}`}
-                  onClick={() => {
-                    setFormOpen(true);
-                    setForm((current) => ({
-                      ...current,
-                      latitude: result.point[0],
-                      longitude: result.point[1],
-                    }));
-                    setLocationResults([]);
-                    setFocusRequest((current) => current + 1);
-                  }}
-                >
-                  {result.label}
-                </button>
-              ))}
-            </div>
-          )}
-          <p>
-            La recherche propose une zone. Vérifiez le point exact sur la carte avant d’enregistrer.
-          </p>
+          ))}
         </div>
-      </section>
-      <div className="toll-admin-side">
-        <section className="panel toll-admin-form-panel">
-          <div className="section-heading">
-            <div>
-              <h3>{editingId ? 'Modifier un point de péage' : 'Ajouter un point de péage'}</h3>
-              <p>
-                Tarif par passage pour les poids lourds. Cliquez sur la carte pour placer le repère.
-              </p>
-            </div>
-            <div className="toll-admin-form-actions">
-              {editingId && formOpen && (
-                <button type="button" className="button secondary small" onClick={reset}>
-                  <X size={16} /> Annuler
+      </div>
+
+      {(error || notice) && (
+        <p className={error ? 'alert error' : 'alert success'} role={error ? 'alert' : 'status'}>
+          {error || notice}
+        </p>
+      )}
+
+      {busy && (
+        <p className="toll-reference-saving" role="status">
+          {uiText['enregistrement']}
+        </p>
+      )}
+
+      <div className="toll-reference-grid">
+        <section className="toll-reference-map-panel" aria-label={uiText['carteDesPointsDePeage']}>
+          <TollPointEditorMap
+            points={tollPoints}
+            selectedId={selectedId}
+            focusId={focusId}
+            vehicleId={vehicleId}
+            axisFilter={axisFilter}
+            query={query}
+            onSelect={selectMapPoint}
+            onAdd={(latitude, longitude) => void addAt(latitude, longitude)}
+            onMove={mapMovePoint}
+          />
+        </section>
+
+        <div className="toll-reference-side">
+          <section className="toll-reference-card">
+            <div className="toll-reference-card-heading">
+              <span>{uiText['legende']}</span>
+              {axisFilter && (
+                <button type="button" onClick={() => setAxisFilter(null)}>
+                  {uiText['toutAfficher']}
                 </button>
               )}
-              <button
-                type="button"
-                className="button secondary small"
-                aria-expanded={formOpen}
-                aria-controls="toll-admin-form"
-                onClick={() => setFormOpen((current) => !current)}
-              >
-                {formOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                {formOpen ? 'Réduire' : 'Ouvrir le formulaire'}
-              </button>
             </div>
-          </div>
-          {error && (
-            <p className="alert error" role="alert">
-              {error}
-            </p>
-          )}
-          {saved && (
-            <p className="alert success" role="status">
-              {saved}
-            </p>
-          )}
-          <form
-            id="toll-admin-form"
-            className="toll-admin-form"
-            hidden={!formOpen}
-            onSubmit={(event) => void save(event)}
-          >
-            <label>
-              Nom du point
-              <input
-                required
-                minLength={2}
-                maxLength={100}
-                value={form.name}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, name: event.target.value }))
-                }
-                placeholder="Ex. Péage de Rufisque"
-              />
-            </label>
-            <label>
-              Région
-              <input
-                maxLength={80}
-                value={form.region}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, region: event.target.value }))
-                }
-                placeholder="Ex. Thiès"
-                list="toll-admin-regions"
-              />
-            </label>
-            <label>
-              Axe routier
-              <input
-                maxLength={120}
-                value={form.axis}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, axis: event.target.value }))
-                }
-                placeholder="Ex. Autoroute Ila Touba"
-                list="toll-admin-axes"
-              />
-            </label>
-            <datalist id="toll-admin-regions">
-              {[
-                ...new Set([
-                  ...tollPoints.map((point) => point.region),
-                  'Dakar',
-                  'Thiès',
-                  'Diourbel',
-                  'Fatick',
-                  'Kaolack',
-                ]),
-              ]
-                .filter(Boolean)
-                .map((region) => (
-                  <option key={region} value={region} />
-                ))}
-            </datalist>
-            <datalist id="toll-admin-axes">
-              {[
-                ...new Set([
-                  ...tollPoints.map((point) => point.axis),
-                  'Autoroute de l’Avenir (Dakar–Diamniadio)',
-                  'Autoroute Diamniadio–AIBD–Mbour',
-                  'Autoroute Ila Touba',
-                  'Autoroute Mbour–Kaolack',
-                ]),
-              ]
-                .filter(Boolean)
-                .map((axis) => (
-                  <option key={axis} value={axis} />
-                ))}
-            </datalist>
-            <label>
-              Tarif poids lourd / passage (FCFA)
-              <input
-                required
-                type="number"
-                min={1}
-                max={10000000}
-                step={1}
-                value={form.heavyPrice || ''}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, heavyPrice: Number(event.target.value) }))
-                }
-              />
-            </label>
-            <div className="toll-admin-vehicle-prices" role="group" aria-label="Tarif par véhicule">
-              {(catalogue?.vehicles ?? []).map((vehicle) => (
-                <label key={vehicle.id}>
-                  {vehicle.name}
-                  <span className="toll-admin-price-input">
-                    <input
-                      type="number"
-                      required
-                      min={1}
-                      max={10000000}
-                      step={1}
-                      value={(form.vehiclePrices[vehicle.id] ?? form.heavyPrice) || ''}
-                      onChange={(event) =>
-                        setForm((current) => ({
-                          ...current,
-                          vehiclePrices: {
-                            ...current.vehiclePrices,
-                            [vehicle.id]: Number(event.target.value),
-                          },
-                        }))
-                      }
-                    />
-                    <span>FCFA</span>
-                  </span>
-                </label>
+            <div className="toll-reference-axis-list">
+              {axes.map((axis) => (
+                <button
+                  type="button"
+                  key={axis.name}
+                  className={axisFilter === axis.name ? 'active' : ''}
+                  style={
+                    {
+                      '--axis-color': axis.color,
+                      opacity: axisFilter && axisFilter !== axis.name ? 0.4 : 1,
+                    } as CSSProperties
+                  }
+                  onClick={() =>
+                    setAxisFilter((current) => (current === axis.name ? null : axis.name))
+                  }
+                >
+                  <i />
+                  <strong>{axis.name}</strong>
+                  <span>{axis.description}</span>
+                </button>
               ))}
+              {!axes.length && <span>{uiText['aucunPeageCliquezSurLaCartePourEnPlacerUn']}</span>}
             </div>
-            <div className="toll-admin-coordinate-fields">
-              <label>
-                Latitude
-                <input
-                  type="number"
-                  min={12}
-                  max={17}
-                  step="any"
-                  value={form.latitude ?? ''}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      latitude: event.target.value === '' ? null : Number(event.target.value),
-                    }))
-                  }
-                  placeholder="14.6928"
-                />
-              </label>
-              <label>
-                Longitude
-                <input
-                  type="number"
-                  min={-18.5}
-                  max={-11}
-                  step="any"
-                  value={form.longitude ?? ''}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      longitude: event.target.value === '' ? null : Number(event.target.value),
-                    }))
-                  }
-                  placeholder="-17.4467"
-                />
-              </label>
+          </section>
+
+          <section className="toll-reference-card toll-reference-list-card">
+            <div className="toll-reference-card-heading">
+              <span>{uiText['peages']}</span>
+              <small>
+                {tollPoints.length} {uiText['peageS']}
+              </small>
             </div>
-            <button className="button primary" type="submit" disabled={busy}>
-              <Save size={16} />{' '}
-              {busy
-                ? 'Enregistrement…'
-                : editingId
-                  ? 'Enregistrer les modifications'
-                  : 'Ajouter le péage'}
-            </button>
-          </form>
-        </section>
-        <section className="panel toll-admin-list-panel">
-          <div className="section-heading">
-            <div>
-              <h3>Points de péage ({tollPoints.length})</h3>
-              <p>Les tarifs définis ici sont proposés lors de la réservation.</p>
+            <label className="toll-reference-search">
+              <Search size={17} aria-hidden="true" />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={uiText['rechercherUnPeageUneVille']}
+                aria-label={uiText['rechercherUnPeageUneVille']}
+              />
+            </label>
+            {filteredPoints.length === 0 && tollPoints.length > 0 && (
+              <p className="toll-reference-empty">{uiText['aucunResultat']}</p>
+            )}
+            {tollPoints.length === 0 && (
+              <p className="toll-reference-empty">
+                {uiText['aucunPeageCliquezSurLaCartePourEnPlacerUn']}
+              </p>
+            )}
+            <div className="toll-reference-results">
+              {filteredPoints.map((point) =>
+                selectedId === point.id ? (
+                  <TollPointEditor
+                    key={point.id}
+                    point={selectedPoint ?? point}
+                    vehicles={vehicles}
+                    allPoints={tollPoints}
+                    busy={busy}
+                    onChange={(patch) => updatePoint(selectedPoint ?? point, patch)}
+                    onClose={() => {
+                      setSelectedId(null);
+                      setFocusId(null);
+                    }}
+                    onDelete={() => void removePoint(selectedPoint ?? point)}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    className="toll-reference-result"
+                    key={point.id}
+                    onClick={() => focusPoint(point)}
+                  >
+                    <i style={{ background: tollAxisColor(point.axis, tollPoints) }} />
+                    <strong>{point.name}</strong>
+                    <b>{shortPrice(tollPrice(point, vehicleId))}</b>
+                    <span />
+                    <small>
+                      {point.axis || uiText['autreRoute']}
+                      {point.region ? ` · ${point.region}` : ''}
+                    </small>
+                  </button>
+                ),
+              )}
             </div>
-            <Plus size={18} aria-hidden="true" />
-          </div>
-          <div className="toll-admin-cards">
-            {tollPoints.map((point) => (
-              <article
-                className={`toll-admin-card${editingId === point.id ? ' selected' : ''}`}
-                key={point.id}
-              >
-                <div className="toll-admin-card-heading">
-                  <strong>{point.name}</strong>
-                  <div className="toll-admin-card-actions">
-                    <button
-                      type="button"
-                      className="button secondary small"
-                      onClick={() => locate(point)}
-                      aria-label={`Localiser ${point.name}`}
-                      title={point.latitude === null ? 'Placer sur la carte' : 'Voir sur la carte'}
-                    >
-                      <MapPin size={16} />
-                    </button>
-                    <button
-                      type="button"
-                      className="button secondary small"
-                      onClick={() => edit(point)}
-                      aria-label={`Modifier ${point.name}`}
-                      title="Modifier les informations"
-                    >
-                      <Pencil size={16} />
-                    </button>
-                    <button
-                      type="button"
-                      className="button secondary small"
-                      onClick={() => {
-                        setError('');
-                        setPendingDelete(point);
-                      }}
-                      aria-label={`Supprimer ${point.name}`}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-                <div className="toll-admin-card-prices">
-                  {(catalogue?.vehicles ?? []).map((vehicle) => (
-                    <div key={vehicle.id}>
-                      <span>{vehicle.name}</span>
-                      <strong>{money(tollPrice(point, vehicle.id))}</strong>
-                    </div>
-                  ))}
-                </div>
-                <p className="toll-admin-card-meta">
-                  {point.axis || 'Autoroute à renseigner'} · {point.region || 'Région à renseigner'}{' '}
-                  ·{' '}
-                  {point.latitude === null || point.longitude === null
-                    ? 'À localiser'
-                    : 'Localisé sur la carte'}
-                </p>
-              </article>
-            ))}
-            {tollPoints.length === 0 && <p className="muted">Aucun point de péage enregistré.</p>}
-          </div>
-        </section>
+          </section>
+        </div>
       </div>
-      {pendingDelete && (
-        <ConfirmationDialog
-          titleId="delete-toll-title"
-          eyebrow="Péages"
-          title="Supprimer ce point de péage ?"
-          description={`« ${pendingDelete.name} » disparaîtra des cartes et des nouveaux devis. Les devis déjà enregistrés restent inchangés.`}
-          confirmLabel="Supprimer le péage"
-          busy={busy}
-          error={error}
-          onConfirm={() => void remove()}
-          onClose={() => setPendingDelete(null)}
-        />
-      )}
     </div>
+  );
+}
+
+function TollPointEditor({
+  point,
+  vehicles,
+  allPoints,
+  busy,
+  onChange,
+  onClose,
+  onDelete,
+}: {
+  point: TollPoint;
+  vehicles: Vehicle[];
+  allPoints: TollPoint[];
+  busy: boolean;
+  onChange: (patch: Partial<TollPointInput>) => void;
+  onClose: () => void;
+  onDelete: () => void;
+}) {
+  const axes = [...new Set(allPoints.map((item) => item.axis).filter(Boolean))];
+  const regions = [...new Set(allPoints.map((item) => item.region).filter(Boolean))];
+  const coordinateText =
+    point.latitude === null || point.longitude === null
+      ? '—'
+      : `${point.latitude.toFixed(4)}, ${point.longitude.toFixed(4)}`;
+  const mapsHref =
+    point.latitude === null || point.longitude === null
+      ? '#'
+      : `https://www.google.com/maps/search/?api=1&query=${point.latitude.toFixed(5)},${point.longitude.toFixed(5)}`;
+
+  return (
+    <article
+      className="toll-reference-editor"
+      style={{ '--axis-color': tollAxisColor(point.axis, allPoints) } as React.CSSProperties}
+    >
+      <header>
+        <i />
+        <input
+          value={point.name}
+          onChange={(event) => onChange({ name: event.target.value })}
+          placeholder={uiText['nomDuPeage']}
+          aria-label={uiText['nomDuPeage']}
+          maxLength={100}
+        />
+        <button
+          type="button"
+          title={uiText['fermer']}
+          aria-label={uiText['fermer']}
+          onClick={onClose}
+        >
+          <X size={18} />
+        </button>
+      </header>
+      <div className="toll-reference-price-summary">
+        {vehicles.map((vehicle) => (
+          <div key={vehicle.id}>
+            <span>{referenceVehicleName(vehicle)}</span>
+            <strong>
+              {shortPrice(tollPrice(point, vehicle.id))} {uiText['fcfa']}
+            </strong>
+            <small>
+              {uiText['allerRetour']} {shortPrice(2 * tollPrice(point, vehicle.id))}{' '}
+              {uiText['fcfa']}
+            </small>
+          </div>
+        ))}
+      </div>
+      <div className="toll-reference-price-fields">
+        {vehicles.map((vehicle) => (
+          <label key={vehicle.id}>
+            <span>
+              {uiText['prix']} {referenceVehicleTag(vehicle).toLocaleUpperCase('fr')}
+            </span>
+            <input
+              type="number"
+              min={0}
+              max={10000000}
+              step={1}
+              value={point.vehiclePrices[vehicle.id] ?? point.heavyPrice}
+              onChange={(event) =>
+                onChange({
+                  vehiclePrices: {
+                    ...point.vehiclePrices,
+                    [vehicle.id]: Math.max(0, Math.trunc(Number(event.target.value) || 0)),
+                  },
+                })
+              }
+            />
+          </label>
+        ))}
+      </div>
+      <div className="toll-reference-location-fields">
+        <input
+          list={`toll-axes-${point.id}`}
+          value={point.axis}
+          onChange={(event) => onChange({ axis: event.target.value })}
+          placeholder={uiText['autoroute']}
+          aria-label={uiText['axeRoutier']}
+          maxLength={120}
+        />
+        <datalist id={`toll-axes-${point.id}`}>
+          {axes.map((axis) => (
+            <option key={axis} value={axis} />
+          ))}
+          <option value="Autoroute de l'Avenir (Dakar–Diamniadio)" />
+          <option value="Autoroute Diamniadio–AIBD–Mbour" />
+          <option value="Autoroute Ila Touba" />
+          <option value="Autoroute Mbour–Kaolack" />
+        </datalist>
+        <input
+          list={`toll-regions-${point.id}`}
+          value={point.region}
+          onChange={(event) => onChange({ region: event.target.value })}
+          placeholder={uiText['region']}
+          aria-label={uiText['region']}
+          maxLength={80}
+        />
+        <datalist id={`toll-regions-${point.id}`}>
+          {regions.map((region) => (
+            <option key={region} value={region} />
+          ))}
+          {['Dakar', 'Thiès', 'Diourbel', 'Fatick', 'Kaolack'].map((region) => (
+            <option key={region} value={region} />
+          ))}
+        </datalist>
+      </div>
+      <footer>
+        <span>
+          {uiText['position']} {coordinateText}
+        </span>
+        <div>
+          <a href={mapsHref} target="_blank" rel="noreferrer">
+            {uiText['googleMaps']}
+          </a>
+          <button type="button" disabled={busy} onClick={onDelete}>
+            {uiText['supprimer']}
+          </button>
+        </div>
+      </footer>
+    </article>
   );
 }
