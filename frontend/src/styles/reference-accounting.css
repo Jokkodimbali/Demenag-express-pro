@@ -626,11 +626,11 @@
   font-size: 12px;
   line-height: 1.45;
 }
-.reference-accounting-objective {
+.accounting-panel.reference-accounting-objective {
   border-color: #f6d73c;
 }
 .reference-accounting-objective-heading,
-.reference-accounting-ai > div {
+.reference-accounting-ai > div:first-child {
   display: flex;
   align-items: center;
   justify-content: space-between;

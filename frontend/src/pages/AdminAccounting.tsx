@@ -29,6 +29,7 @@ export function AdminAccounting() {
     bookings,
     loading,
     busy,
+    financeSaving,
     error,
     form,
     setForm,
@@ -85,6 +86,7 @@ export function AdminAccounting() {
           {accountingText.all}
         </button>
       </div>
+      <p className="accounting-history-warning">{accountingText.invoicedNote}</p>
       {(error || downloadError) && (
         <p className="alert error" role="alert">
           {error || downloadError}
@@ -101,6 +103,23 @@ export function AdminAccounting() {
         </p>
       ) : (
         <>
+          <div className="accounting-history-warning" role="status">
+            <p>
+              {financeConfiguration.accountingDataVerified
+                ? accountingText.financeDataVerified
+                : accountingText.financeDataUnverified}
+            </p>
+            {!financeConfiguration.accountingDataVerified && (
+              <button
+                className="button secondary"
+                type="button"
+                disabled={busy || financeSaving}
+                onClick={() => updateFinanceConfiguration({ accountingDataVerified: true })}
+              >
+                {accountingText.confirmFinanceData}
+              </button>
+            )}
+          </div>
           <ReferenceAccountingOverview
             config={financeConfiguration}
             update={updateFinanceConfiguration}
@@ -129,6 +148,10 @@ export function AdminAccounting() {
             bookings={bookings}
             onDownload={(document) => {
               setDownloadError('');
+              if (!financeConfiguration.accountingDataVerified) {
+                setDownloadError(accountingText.accountingExportUnverified);
+                return;
+              }
               void exportAccounting(
                 document,
                 financeConfiguration,

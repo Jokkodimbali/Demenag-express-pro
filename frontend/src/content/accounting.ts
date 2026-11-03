@@ -12,6 +12,12 @@ export const accountingText = {
   balanceHint: 'Revenus − charges',
   invoicedNote:
     'Les devis finaux sont comptés à leur date d’émission. Ce journal suit les montants facturés ; il ne confirme pas l’encaissement des paiements.',
+  financeDataUnverified:
+    'Paramètres financiers non confirmés. Les prévisions ne sont pas un bilan réel : renseignez les montants issus de vos pièces comptables, puis confirmez-les. Le solde du journal reste calculé uniquement depuis les écritures enregistrées.',
+  confirmFinanceData: 'Confirmer les paramètres financiers vérifiés',
+  financeDataVerified: 'Paramètres financiers confirmés par l’administration.',
+  accountingExportUnverified:
+    'Export comptable bloqué : vérifiez et confirmez les paramètres financiers avant de produire un document.',
   historicalCostsWarning: (count: number) =>
     `${count} devis final historique${count > 1 ? 's' : ''} n’a${count > 1 ? 'ont' : ''} pas de coûts figés. Ses charges automatiques sont estimées avec les paramètres actuels${count > 1 ? ' ; leurs' : ' ; son'} coût menuisier peut être incomplet si la fiche d’inventaire manque.`,
   addEntry: 'Ajouter une écriture',

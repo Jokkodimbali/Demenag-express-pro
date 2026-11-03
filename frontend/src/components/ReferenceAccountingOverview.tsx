@@ -6,7 +6,11 @@ import type {
   Booking,
   Catalogue,
 } from '../domain/model';
-import { referenceFixedChargeKey, type FinanceMonth } from '../domain/accounting-forecast';
+import {
+  accountingMonthlyChargePlan,
+  referenceFixedChargeKey,
+  type FinanceMonth,
+} from '../domain/accounting-forecast';
 import {
   bookingRevenueAmount,
   completedBookingRevenueAmount,
@@ -93,35 +97,21 @@ export function ReferenceAccountingOverview({
       ? variableEntries.reduce((sum, entry) => sum + entry.amount, 0) / finals.length
       : config.moverCostPerMove * 3;
     const margin = average - variableCost;
-    const start = new Date(`${config.start}-01T12:00:00Z`);
-    const selected = new Date(`${endMonth}-01T12:00:00Z`);
-    const monthIndex =
-      (selected.getUTCFullYear() - start.getUTCFullYear()) * 12 +
-      selected.getUTCMonth() -
-      start.getUTCMonth();
-    const interval = Math.max(1, config.oilChangeIntervalMonths);
-    const oilChangeDue = monthIndex >= 0 && monthIndex % interval === 0;
-    const fleetCount =
-      config.vehicleCount +
-      config.vehiclePurchases.filter((purchase) => purchase.month <= endMonth).length;
-    const fleetBase =
-      config.fleetValue +
-      config.vehiclePurchases
-        .filter((purchase) => purchase.month <= endMonth)
-        .reduce((sum, purchase) => sum + purchase.price, 0);
-    const monthlyFleetAmortization = Math.round(fleetBase / (Math.max(1, config.fleetYears) * 12));
-    const monthlyAnnexAmortization = Math.round(
-      config.annexes.reduce((sum, annex) => sum + annex.value / (Math.max(1, annex.years) * 12), 0),
-    );
-    const monthlyDebt = Math.round(config.debt / Math.max(1, config.debtMonths));
-    const monthlyVehicleReserve = Math.round(config.newVehicleTarget / 12);
-    const debtStillDue = current
-      ? current.debtLeft > 0.5 || current.debtPaid > 0
-      : config.debt > 0.5;
+    const monthlyPlan = accountingMonthlyChargePlan(config, endMonth, current, entries);
+    const {
+      oilChangeDue,
+      vehicleCount: fleetCount,
+      monthlyFleetAmortization,
+      monthlyAnnexAmortization,
+      monthlyDebt,
+      monthlyVehicleReserve,
+      monthlyInsurance,
+      debtStillDue,
+    } = monthlyPlan;
     const operationCosts =
       config.salaries.reduce((sum, salary) => sum + salary.amount, 0) +
       (oilChangeDue ? Math.round(fleetCount * config.oilChangeCost) : 0) +
-      Math.round((fleetCount * config.vehicleInsuranceAnnual) / 12) +
+      monthlyInsurance +
       Object.values(config.advertising[endMonth] ?? {}).reduce((sum, amount) => sum + amount, 0);
     const advertisingCost = Object.values(config.advertising[endMonth] ?? {}).reduce(
       (sum, amount) => sum + amount,
@@ -135,24 +125,7 @@ export function ReferenceAccountingOverview({
     const suarl = current?.suarl ?? config.regime === 'suarl';
     const taxRate = suarl ? config.isRate / 100 : 0;
     const reserveRate = config.legalReservePercent / 100;
-    const capitalBase =
-      config.fleetValue +
-      config.annexes.reduce((sum, annex) => sum + annex.value, 0) +
-      config.vehiclePurchases
-        .filter((purchase) => purchase.month <= endMonth)
-        .reduce((sum, purchase) => sum + purchase.price, 0);
-    const legalReserveAlreadySaved = entries
-      .filter(
-        (entry) =>
-          entry.category === 'Réserve légale' &&
-          entry.type === 'charge' &&
-          entry.date.slice(0, 7) <= endMonth,
-      )
-      .reduce((sum, entry) => sum + entry.amount, 0);
-    const reserveRoom = current
-      ? current.legalReserveBalance < current.legalReserveCap - 1
-      : legalReserveAlreadySaved < (capitalBase * config.legalReserveCapitalPercent) / 100;
-    const legalRate = reserveRoom ? reserveRate : 0;
+    const legalRate = monthlyPlan.legalRoomAfterMonth ? reserveRate : 0;
     const monthlyAmortization = monthlyFleetAmortization + monthlyAnnexAmortization;
     const requiredProfit = Math.max(
       0,
@@ -193,12 +166,7 @@ export function ReferenceAccountingOverview({
         !oilChangeDue,
         'vid',
       ],
-      [
-        text.monthlyChargeInsurance(fleetCount),
-        Math.round((fleetCount * config.vehicleInsuranceAnnual) / 12),
-        false,
-        'ass',
-      ],
+      [text.monthlyChargeInsurance(fleetCount), monthlyInsurance, false, 'ass'],
       [text.monthlyChargeDepreciation(config.fleetYears), monthlyFleetAmortization, false, 'amo'],
       ...(config.annexes.length
         ? [
@@ -214,15 +182,11 @@ export function ReferenceAccountingOverview({
       ...(debtStillDue && monthlyDebt > 0
         ? [[text.monthlyChargeDebt, monthlyDebt, false, 'det'] as [string, number, boolean, string]]
         : []),
-      ...((
-        current
-          ? current.legalReserveBalance - current.legalReservePaid < current.legalReserveCap - 1
-          : true
-      )
+      ...(monthlyPlan.legalRoomBeforeMonth
         ? [
             [
               text.monthlyChargeLegalReserve(config.legalReservePercent),
-              Math.round(current?.legalReserveDue ?? 0),
+              monthlyPlan.legalReserveDue,
               false,
               'leg',
             ] as [string, number, boolean, string],
@@ -465,167 +429,185 @@ export function ReferenceAccountingOverview({
           </strong>
           <small>{text.accountingBalanceHint}</small>
         </article>
-        <article className="reference-accounting-hypothetical">
-          <span>{text.hypotheticalBalance}</span>
-          <strong
-            className={
-              values.hypotheticalBalance < 0 ? 'accounting-negative' : 'accounting-positive'
-            }
-          >
-            {money(values.hypotheticalBalance)}
-          </strong>
-          <small>
-            {values.remainingFixed > 0
-              ? text.fixedChargesRemaining(money(values.remainingFixed))
-              : text.allFixedChargesRecorded}
-          </small>
-          <small>{text.finalMovesCount(values.hypotheticalMoves, values.hypotheticalFinals)}</small>
-        </article>
+        {config.accountingDataVerified && (
+          <article className="reference-accounting-hypothetical">
+            <span>{text.hypotheticalBalance}</span>
+            <strong
+              className={
+                values.hypotheticalBalance < 0 ? 'accounting-negative' : 'accounting-positive'
+              }
+            >
+              {money(values.hypotheticalBalance)}
+            </strong>
+            <small>
+              {values.remainingFixed > 0
+                ? text.fixedChargesRemaining(money(values.remainingFixed))
+                : text.allFixedChargesRecorded}
+            </small>
+            <small>
+              {text.finalMovesCount(values.hypotheticalMoves, values.hypotheticalFinals)}
+            </small>
+          </article>
+        )}
       </div>
 
-      <section className="accounting-panel reference-accounting-objective">
-        <div className="reference-accounting-objective-heading">
-          <strong>{text.objectiveLabel(endMonth)}</strong>
-          <span>
-            {text.monthlySurplusTarget} : <strong>{money(config.monthlyProfitTarget)}</strong>
-          </span>
-        </div>
-        {values.requiredMoves > 0 ? (
-          <div className="reference-accounting-objective-grid">
-            <div>
-              <span>{text.movesNeeded}</span>
-              <strong>{text.movesNeededValue(values.requiredMoves)}</strong>
-              <div className="reference-accounting-progress">
-                <i style={{ width: `${completion}%` }} />
+      {config.accountingDataVerified ? (
+        <section className="accounting-panel reference-accounting-objective">
+          <div className="reference-accounting-objective-heading">
+            <strong>{text.objectiveLabel(endMonth)}</strong>
+            <span>
+              {text.monthlySurplusTarget} : <strong>{money(config.monthlyProfitTarget)}</strong>
+            </span>
+          </div>
+          {values.requiredMoves > 0 ? (
+            <>
+              <div className="reference-accounting-objective-grid">
+                <div>
+                  <span>{text.movesNeeded}</span>
+                  <strong>{text.movesNeededValue(values.requiredMoves)}</strong>
+                  <div className="reference-accounting-progress">
+                    <i style={{ width: `${completion}%` }} />
+                  </div>
+                  <small>
+                    {text.movesPlanned(values.monthBookings, values.finalCount)} ·{' '}
+                    {text.perDayOver26((values.requiredMoves / 26).toFixed(1).replace('.', ','))}
+                  </small>
+                </div>
+                <div>
+                  <span>{text.turnoverNeeded}</span>
+                  <strong>{money(values.requiredRevenue)}</strong>
+                  <div className="reference-accounting-progress revenue">
+                    <i style={{ width: `${revenueCompletion}%` }} />
+                  </div>
+                  <small>
+                    {text.plannedFinalProvisionalRevenue(
+                      money(values.finalRevenue),
+                      money(values.provisionalRevenue),
+                    )}
+                  </small>
+                </div>
               </div>
               <small>
-                {text.movesPlanned(values.monthBookings, values.finalCount)} ·{' '}
-                {text.perDayOver26((values.requiredMoves / 26).toFixed(1).replace('.', ','))}
+                {text.averagePriceAndMargin(money(values.average), money(values.margin))}
               </small>
+            </>
+          ) : (
+            <p className="accounting-finance-rule negative">
+              {values.average > 0 ? text.reviseRates : text.noAveragePrice}
+            </p>
+          )}
+          <button
+            className={`reference-accounting-details-toggle${showCalculation ? ' open' : ''}`}
+            onClick={() => setShowCalculation((value) => !value)}
+            aria-expanded={showCalculation}
+          >
+            <ChevronDown size={16} /> {text.calculationDetails}
+          </button>
+          {showCalculation && (
+            <div className="reference-accounting-details">
+              {detailRows.map(([label, value]) => (
+                <div key={label}>
+                  <span>{label}</span>
+                  <strong>{value}</strong>
+                </div>
+              ))}
             </div>
+          )}
+          <div className="reference-accounting-ai">
             <div>
-              <span>{text.turnoverNeeded}</span>
-              <strong>{money(values.requiredRevenue)}</strong>
-              <div className="reference-accounting-progress revenue">
-                <i style={{ width: `${revenueCompletion}%` }} />
-              </div>
-              <small>
-                {text.plannedFinalProvisionalRevenue(
-                  money(values.finalRevenue),
-                  money(values.provisionalRevenue),
-                )}
-              </small>
-            </div>
-          </div>
-        ) : (
-          <p className="accounting-finance-rule negative">
-            {values.average > 0 ? text.reviseRates : text.noAveragePrice}
-          </p>
-        )}
-        <small>{text.averagePriceAndMargin(money(values.average), money(values.margin))}</small>
-        <button
-          className={`reference-accounting-details-toggle${showCalculation ? ' open' : ''}`}
-          onClick={() => setShowCalculation((value) => !value)}
-          aria-expanded={showCalculation}
-        >
-          <ChevronDown size={16} /> {text.calculationDetails}
-        </button>
-        {showCalculation && (
-          <div className="reference-accounting-details">
-            {detailRows.map(([label, value]) => (
-              <div key={label}>
-                <span>{label}</span>
-                <strong>{value}</strong>
-              </div>
-            ))}
-          </div>
-        )}
-        <div className="reference-accounting-ai">
-          <div>
-            <strong>{text.analysisDiscussion}</strong>
-            <button className="button primary" onClick={() => void analyze()} disabled={analyzing}>
-              {analyzing
-                ? text.analysisInProgress
-                : analysis
-                  ? text.relaunchAnalysis
-                  : text.analyzeWithAI}
-            </button>
-          </div>
-          {analysis && <p>{analysis}</p>}
-          {analysisError && <p role="status">{analysisError}</p>}
-          <div className="reference-accounting-chat">
-            {(config.financeChat ?? []).length > 0 && (
-              <div className="reference-accounting-chat-messages" aria-live="polite">
-                {[...(config.financeChat ?? [])].reverse().map((message, index) => (
-                  <article
-                    className={`reference-accounting-chat-message ${message.speaker}`}
-                    key={`${message.speaker}-${index}-${message.message.slice(0, 24)}`}
-                  >
-                    <span>
-                      {message.speaker === 'user'
-                        ? text.financeChatUser
-                        : text.financeChatAssistant}
-                    </span>
-                    <p>{message.message}</p>
-                  </article>
-                ))}
-                {chatBusy && (
-                  <article className="reference-accounting-chat-message assistant">
-                    <span>{text.financeChatAssistant}</span>
-                    <p>{text.financeChatThinking}</p>
-                  </article>
-                )}
-              </div>
-            )}
-            {!(config.financeChat ?? []).length && (
-              <div className="reference-accounting-chat-suggestions">
-                {financeQuestions.map((question) => (
-                  <button
-                    type="button"
-                    key={question}
-                    disabled={chatBusy}
-                    onClick={() => void ask(question)}
-                  >
-                    {question}
-                  </button>
-                ))}
-              </div>
-            )}
-            <form
-              className="reference-accounting-chat-form"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void ask(chatInput);
-              }}
-            >
-              <input
-                value={chatInput}
-                onChange={(event) => setChatInput(event.target.value)}
-                placeholder={text.financeChatPlaceholder}
-                aria-label={text.financeChatPlaceholder}
-                disabled={chatBusy}
-                maxLength={3000}
-              />
+              <strong>{text.analysisDiscussion}</strong>
               <button
-                type="submit"
                 className="button primary"
-                disabled={chatBusy || !chatInput.trim()}
+                onClick={() => void analyze()}
+                disabled={analyzing}
               >
-                {chatBusy ? '…' : text.financeChatSend}
+                {analyzing
+                  ? text.analysisInProgress
+                  : analysis
+                    ? text.relaunchAnalysis
+                    : text.analyzeWithAI}
               </button>
-            </form>
-            {(config.financeChat ?? []).length > 0 && (
-              <button
-                type="button"
-                className="reference-accounting-chat-clear"
-                onClick={() => update({ financeChat: [] })}
+            </div>
+            {analysis && <p>{analysis}</p>}
+            {analysisError && <p role="status">{analysisError}</p>}
+            <div className="reference-accounting-chat">
+              {(config.financeChat ?? []).length > 0 && (
+                <div className="reference-accounting-chat-messages" aria-live="polite">
+                  {[...(config.financeChat ?? [])].reverse().map((message, index) => (
+                    <article
+                      className={`reference-accounting-chat-message ${message.speaker}`}
+                      key={`${message.speaker}-${index}-${message.message.slice(0, 24)}`}
+                    >
+                      <span>
+                        {message.speaker === 'user'
+                          ? text.financeChatUser
+                          : text.financeChatAssistant}
+                      </span>
+                      <p>{message.message}</p>
+                    </article>
+                  ))}
+                  {chatBusy && (
+                    <article className="reference-accounting-chat-message assistant">
+                      <span>{text.financeChatAssistant}</span>
+                      <p>{text.financeChatThinking}</p>
+                    </article>
+                  )}
+                </div>
+              )}
+              {!(config.financeChat ?? []).length && (
+                <div className="reference-accounting-chat-suggestions">
+                  {financeQuestions.map((question) => (
+                    <button
+                      type="button"
+                      key={question}
+                      disabled={chatBusy}
+                      onClick={() => void ask(question)}
+                    >
+                      {question}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <form
+                className="reference-accounting-chat-form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void ask(chatInput);
+                }}
               >
-                {text.financeChatClear}
-              </button>
-            )}
+                <input
+                  value={chatInput}
+                  onChange={(event) => setChatInput(event.target.value)}
+                  placeholder={text.financeChatPlaceholder}
+                  aria-label={text.financeChatPlaceholder}
+                  disabled={chatBusy}
+                  maxLength={3000}
+                />
+                <button
+                  type="submit"
+                  className="button primary"
+                  disabled={chatBusy || !chatInput.trim()}
+                >
+                  {chatBusy ? '…' : text.financeChatSend}
+                </button>
+              </form>
+              {(config.financeChat ?? []).length > 0 && (
+                <button
+                  type="button"
+                  className="reference-accounting-chat-clear"
+                  onClick={() => update({ financeChat: [] })}
+                >
+                  {text.financeChatClear}
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      ) : (
+        <p className="accounting-history-warning" role="status">
+          {text.forecastRequiresVerified}
+        </p>
+      )}
     </div>
   );
 }

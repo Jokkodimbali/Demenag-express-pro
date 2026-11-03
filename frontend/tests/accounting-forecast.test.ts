@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  accountingMonthlyChargePlan,
   buildSyscohadaEntries,
   defaultAccountingFinanceConfiguration,
-  jobLabourEntries,
   referenceFixedChargeEntries,
   simulateAccounting,
 } from '../src/domain/accounting-forecast.ts';
@@ -45,6 +45,30 @@ const journal: AccountingEntry[] = ['2026-01-15', '2026-02-15', '2026-03-15'].fl
     },
   ],
 );
+
+test('le plan de charges mensuelles centralise les mêmes montants que la prévision', () => {
+  const entries: AccountingEntry[] = [
+    {
+      id: 'plan-revenue',
+      type: 'revenu',
+      category: 'Déménagement',
+      label: 'Facture',
+      amount: 10_000,
+      date: '2026-01-15',
+      automatic: true,
+    },
+  ];
+  const plan = accountingMonthlyChargePlan(configuration, '2026-01', undefined, entries);
+  const forecast = simulateAccounting(configuration, entries, [], '2026-01').months[0];
+
+  assert.equal(plan.oilChangeDue, true);
+  assert.equal(plan.vehicleCount, configuration.vehicleCount);
+  assert.equal(plan.monthlyDebt, forecast?.debtDue);
+  assert.equal(plan.monthlyFleetAmortization, Math.round(configuration.fleetValue / 12));
+  assert.equal(plan.monthlyVehicleReserve, forecast?.reserveDue);
+  assert.equal(plan.legalReserveDue, forecast?.legalReserveDue);
+  assert.equal(plan.legalRoomAfterMonth, true);
+});
 
 test('les engagements restent à payer tant qu’ils ne sont pas inscrits au journal', () => {
   const result = simulateAccounting(configuration, journal, [], '2026-03');
@@ -153,6 +177,41 @@ test('la simulation accepte les remboursements anticipés et les versements sup�
   assert.equal(result.reserve, 300);
 });
 
+test('un versement supérieur à l’échéance ne crée pas de report négatif', () => {
+  const config = {
+    ...configuration,
+    debt: 24_000,
+    debtMonths: 3,
+    fleetValue: 12_000,
+    fleetYears: 1,
+    annexes: [{ id: 'annex', name: 'Annexe', value: 12_000, years: 1 }],
+    newVehicleTarget: 12_000,
+    monthlyFixedChargePostings: [
+      { month: '2026-01', key: 'det' as const, amount: 12_000 },
+      { month: '2026-01', key: 'amo' as const, amount: 2_000 },
+      { month: '2026-01', key: 'anx' as const, amount: 2_000 },
+      { month: '2026-01', key: 'res' as const, amount: 2_000 },
+    ],
+  };
+  const result = simulateAccounting(config, referenceFixedChargeEntries(config), [], '2026-02');
+
+  assert.equal(result.months[0]?.debtDue, 8_000);
+  assert.equal(result.months[0]?.debtPaid, 12_000);
+  assert.equal(result.months[0]?.debtLeft, 12_000);
+  assert.equal(result.months[1]?.debtDue, 8_000);
+  assert.equal(result.months[0]?.fleetDue, 1_000);
+  assert.equal(result.months[0]?.fleetPaid, 2_000);
+  assert.equal(result.months[1]?.fleetDue, 1_000);
+  assert.equal(result.months[0]?.annexDue, 1_000);
+  assert.equal(result.months[0]?.annexPaid, 2_000);
+  assert.equal(result.months[1]?.annexDue, 1_000);
+  assert.equal(result.months[0]?.reserveDue, 1_000);
+  assert.equal(result.months[0]?.reservePaid, 2_000);
+  assert.equal(result.months[1]?.reserveDue, 1_000);
+  assert.equal(result.months[0]?.carry, 0);
+  assert.equal(result.months[1]?.carry, 11_000);
+});
+
 test('les lignes des rapports SYSCOHADA sont équilibrées et reprennent les revenus/charges du journal', () => {
   const projection = simulateAccounting(configuration, journal, [], '2026-03');
   const ledger = buildSyscohadaEntries(configuration, projection.months, journal, '2026-03');
@@ -191,87 +250,28 @@ test('les écritures d’ouverture restent équilibrées si dette et valeur des 
   }
 });
 
-test('les devis finals anciens sans snapshot sont explicitement marqués comme estimés', () => {
-  const booking = {
-    id: 'booking-old',
-    reference: 'DEM-OLD',
+test('les anciennes catégories de remboursement ne sont pas comptées deux fois dans le grand livre', () => {
+  const legacyEntry: AccountingEntry = {
+    id: 'legacy-debt-payment',
+    type: 'charge',
+    category: 'Remboursement dette',
+    label: 'Remboursement saisi avant le champ de référence',
+    amount: 600,
     date: '2026-01-15',
-    estimate: { lines: [] },
-    quotes: [
-      {
-        id: 'quote-old',
-        reference: 'DV-OLD',
-        kind: 'final',
-        createdAt: '2026-01-15T12:00:00.000Z',
-        price: {
-          total: 100_000,
-          lines: [{ label: 'Manœuvre', quantity: 2 }],
-        },
-      },
-    ],
-  } as unknown as Booking;
+    automatic: false,
+  };
+  const projection = simulateAccounting(configuration, [legacyEntry], [], '2026-01');
+  const ledger = buildSyscohadaEntries(configuration, projection.months, [legacyEntry], '2026-01');
 
-  const entries = jobLabourEntries([booking], configuration);
-
-  assert.equal(entries.length, 1);
-  assert.equal(entries[0]?.amount, 10_000);
-  assert.match(entries[0]?.label ?? '', /tarif actuel estimatif/u);
-});
-
-test('les coûts enregistrés avec un devis final restent figés après changement des tarifs', () => {
-  const booking = {
-    id: 'booking-snapshot',
-    reference: 'DEM-SNAPSHOT',
-    date: '2026-01-15',
-    estimate: { lines: [] },
-    quotes: [
-      {
-        id: 'quote-snapshot',
-        reference: 'DV-SNAPSHOT',
-        kind: 'final',
-        createdAt: '2026-01-15T12:00:00.000Z',
-        price: {
-          total: 100_000,
-          lines: [{ label: 'Manœuvre', quantity: 2 }],
-        },
-        accountingCosts: {
-          movers: 2,
-          moverAmount: 7_000,
-          carpenters: 1,
-          carpenterAmount: 12_000,
-        },
-      },
-    ],
-  } as unknown as Booking;
-
-  const entries = jobLabourEntries([booking], configuration);
-
-  assert.deepEqual(
-    entries.map((entry) => entry.amount),
-    [7_000, 12_000],
+  assert.equal(projection.months[0]?.debtPaid, 600);
+  assert.equal(
+    ledger.filter((line) => line.account === '658').reduce((sum, line) => sum + line.debit, 0),
+    0,
   );
-  assert.ok(entries.every((entry) => !entry.label.includes('tarif actuel estimatif')));
-});
-
-test('les réservations annulées ne génèrent pas de charges de main-d’œuvre', () => {
-  const booking = {
-    id: 'booking-cancelled',
-    reference: 'DEM-CANCELLED',
-    date: '2026-01-15',
-    status: 'cancelled',
-    estimate: { lines: [] },
-    quotes: [
-      {
-        id: 'quote-cancelled',
-        reference: 'DV-CANCELLED',
-        kind: 'final',
-        createdAt: '2026-01-15T12:00:00.000Z',
-        price: { total: 100_000, lines: [{ label: 'Manœuvre', quantity: 2 }] },
-      },
-    ],
-  } as unknown as Booking;
-
-  assert.deepEqual(jobLabourEntries([booking], configuration), []);
+  assert.equal(
+    ledger.filter((line) => line.account === '168').reduce((sum, line) => sum + line.debit, 0),
+    600,
+  );
 });
 
 test('le nombre de manœuvres suit uniquement les déménagements terminés du mois', () => {
@@ -307,4 +307,22 @@ test('le nombre de manœuvres suit uniquement les déménagements terminés du m
   const result = simulateAccounting(configuration, [], bookings, '2026-01');
 
   assert.equal(result.months[0]?.moverCount, 3);
+});
+
+test('le nombre de manœuvres reste compté dans le journal après purge de la réservation', () => {
+  const archivedLabour: AccountingEntry = {
+    id: 'archived-movers',
+    type: 'charge',
+    category: 'Manœuvres',
+    label: 'Manœuvres 3 · DEM-ARCHIVED',
+    amount: 15_000,
+    date: '2026-01-15',
+    automatic: true,
+    quantity: 3,
+  };
+
+  const projection = simulateAccounting(configuration, [archivedLabour], [], '2026-01');
+
+  assert.equal(projection.months[0]?.moverCount, 3);
+  assert.equal(projection.months[0]?.movers, 15_000);
 });

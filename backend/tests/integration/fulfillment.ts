@@ -69,6 +69,7 @@ export async function createFinalQuoteAndClose(
   version: number,
 ) {
   const admin = context.clients.admin;
+  const tollPoint = await context.db.pointPeage.findFirstOrThrow();
   const finalQuote = await admin
     .post('/api/bookings/' + bookingId + '/quotes')
     .set(integrationHeader)
@@ -78,16 +79,35 @@ export async function createFinalQuoteAndClose(
       discount: 1_000,
       customPrice: null,
       notes: 'Terminé',
+      tolls: [{ tollPointId: tollPoint.id, direction: 'one-way', quantity: 2 }],
       version,
     });
   assert.equal(finalQuote.status, 201, JSON.stringify(finalQuote.body));
   assert.equal(finalQuote.body.status, 'completed');
   const createdQuote = (
-    finalQuote.body.quotes as { id: string; kind: string; price: { total: number } }[]
+    finalQuote.body.quotes as {
+      id: string;
+      kind: string;
+      price: { total: number };
+      tolls?: { tollPointId: string; quantity: number; unitPrice: number }[];
+    }[]
   ).find((quote) => quote.kind === 'final');
   assert.ok(createdQuote, 'Le devis final doit apparaître dans la réservation.');
   assert.equal(createdQuote.price.total, 94_000);
-  return { version: finalQuote.body.version as number, quoteId: createdQuote.id };
+  assert.equal(createdQuote.tolls?.length, 1);
+  assert.equal(createdQuote.tolls?.[0]?.tollPointId, tollPoint.id);
+  assert.equal(createdQuote.tolls?.[0]?.quantity, 2);
+  const tollPrices = tollPoint.tarifsVehicules as Record<string, number>;
+  assert.equal(
+    createdQuote.tolls?.[0]?.unitPrice,
+    tollPrices.sprinter ?? tollPoint.tarifLourd,
+    'Le tarif du péage final doit être figé avec le tarif du véhicule choisi.',
+  );
+  return {
+    version: finalQuote.body.version as number,
+    quoteId: createdQuote.id,
+    amount: createdQuote.price.total,
+  };
 }
 
 export async function verifyQuoteSnapshots(
@@ -114,7 +134,43 @@ export async function verifyQuoteSnapshots(
     (item) => item.kind === 'final',
   );
   assert.equal(finalQuote?.price.total, 94_000);
+  const savedQuote = await db.devis.findUniqueOrThrow({
+    where: { id: quoteId },
+    include: { lignes: { orderBy: { position: 'asc' } } },
+  });
+  assert.ok(savedQuote.montantTotal !== null);
+  const quoteSnapshot = (
+    persisted.quotes as {
+      id: string;
+      tolls?: { label: string; quantity: number; unitPrice: number }[];
+    }[]
+  ).find((item) => item.id === quoteId);
+  assert.equal(quoteSnapshot?.tolls?.length, 1);
+  assert.equal(
+    savedQuote.lignes.reduce((sum, line) => sum + line.montant, 0),
+    savedQuote.montantTotal + savedQuote.remise,
+    'Les lignes de la facture finale doivent conserver le sous-total avant remise.',
+  );
+  assert.equal(
+    savedQuote.lignes.some((line) => line.libelle.includes('Péage')),
+    false,
+    'Les péages à la charge du client ne doivent pas être intégrés aux lignes de déménagement.',
+  );
   assert.equal(persisted.estimate.total, 58_000);
+  const accounting = await context.clients.admin
+    .get('/api/admin/accounting')
+    .set(integrationHeader);
+  assert.equal(accounting.status, 200, JSON.stringify(accounting.body));
+  const finalRevenue = accounting.body.filter(
+    (entry: { id: string; type: string; amount: number }) =>
+      entry.id === quoteId && entry.type === 'revenu',
+  );
+  assert.equal(finalRevenue.length, 1);
+  assert.equal(
+    finalRevenue[0]?.amount,
+    94_000,
+    'Le revenu comptable final doit rester identique après modification des tarifs courants.',
+  );
 
   const duplicateFinal = await context.clients.admin
     .post('/api/bookings/' + bookingId + '/quotes')

@@ -68,6 +68,7 @@ const accountingEntrySchema = z.discriminatedUnion('type', [
   }),
 ]);
 const accountingConfigurationSchema = z.object({
+  accountingDataVerified: z.boolean(),
   regime: z.enum(['auto', 'informel', 'suarl']),
   suarlFrom: z.union([z.literal(''), accountingMonthValue]),
   isRate: z.number().min(0).max(100),

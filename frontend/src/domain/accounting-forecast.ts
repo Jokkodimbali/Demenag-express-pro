@@ -3,9 +3,7 @@ import type {
   AccountingFixedChargeKey,
   AccountingFinanceConfiguration,
   Booking,
-  BookingInventorySource,
 } from './model';
-import { inventoryItems } from './inventory';
 
 export const advertisingChannels = [
   'Facebook',
@@ -44,52 +42,6 @@ export function accountingMenuPrice(
   return asInt(base);
 }
 
-export function accountingMenuAmount(
-  source: BookingInventorySource | undefined,
-  config: AccountingFinanceConfiguration,
-) {
-  if (!source) return { count: 0, amount: 0 };
-  const items = new Map(inventoryItems.map((item) => [item.key, item]));
-  let count = 0;
-  let amount = 0;
-  const add = (
-    key: string,
-    quantity: number,
-    size: number,
-    origin: 'local' | 'import' | undefined,
-    dismantle: boolean,
-    menuisier: boolean,
-  ) => {
-    const normalizedKey = accountingItemKey(key);
-    if (
-      quantity <= 0 ||
-      normalizedKey === 'clim' ||
-      !(dismantle || (['salon', 'chaise'].includes(normalizedKey) && menuisier))
-    )
-      return;
-    const item = items.get(key);
-    const useSize = item?.sizeLabel ? size : undefined;
-    const price = accountingMenuPrice(
-      config,
-      normalizedKey,
-      origin === 'import' ? 'import' : 'local',
-      useSize,
-    );
-    count += quantity;
-    amount += quantity * price;
-  };
-  for (const [key, item] of Object.entries(source.entries)) {
-    add(key, item.quantity, item.size, item.origin, item.dismantle, !!item.menuisier);
-  }
-  for (const item of source.variants) {
-    add(item.itemKey, item.quantity, item.size, item.origin, item.dismantle, !!item.menuisier);
-  }
-  for (const item of source.custom) {
-    add('custom', item.quantity, 1, item.origin, !!item.dismantle, false);
-  }
-  return { count, amount: asInt(amount) };
-}
-
 const asInt = (value: number) => (Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0);
 const monthAfter = (month: string) => {
   const [year, number] = month.split('-').map(Number);
@@ -112,35 +64,30 @@ export function defaultAccountingFinanceConfiguration(
     );
   const currentMonth = `${month.year}-${month.month}`;
   return {
-    regime: 'auto',
+    accountingDataVerified: false,
+    regime: 'informel',
     suarlFrom: '',
-    isRate: 30,
+    isRate: 0,
     start: currentMonth,
-    debt: 30_000_000,
-    debtMonths: 18,
-    fleetValue: 30_000_000,
+    debt: 0,
+    debtMonths: 1,
+    fleetValue: 0,
     fleetYears: 7,
-    newVehicleTarget: 12_000_000,
-    profitCapPercent: 50,
-    moverCostPerMove: 5000,
-    monthlyProfitTarget: 3_000_000,
+    newVehicleTarget: 0,
+    profitCapPercent: 0,
+    moverCostPerMove: 0,
+    monthlyProfitTarget: 0,
     averageMovingPrice: 0,
-    vehicleCount: 3,
-    oilChangeCost: 150_000,
-    oilChangeIntervalMonths: 2,
-    vehicleInsuranceAnnual: 200_000,
+    vehicleCount: 0,
+    oilChangeCost: 0,
+    oilChangeIntervalMonths: 1,
+    vehicleInsuranceAnnual: 0,
     legalReservePercent: 10,
     legalReserveCapitalPercent: 20,
     monthlyFixedChargePostings: [],
     financeChat: [],
     menuPrices: {},
-    salaries: [
-      { id: 'default-developpeur', name: 'Développeur', amount: 250_000 },
-      { id: 'default-amadou', name: 'Amadou', amount: 100_000 },
-      { id: 'default-issa', name: 'Issa', amount: 100_000 },
-      { id: 'default-layine', name: 'Layine', amount: 100_000 },
-      { id: 'default-babacar', name: 'Babacar', amount: 150_000 },
-    ],
+    salaries: [],
     annexes: [],
     vehiclePurchases: [],
     advertising: {},
@@ -202,59 +149,6 @@ export function referenceFixedChargeEntries(
   });
 }
 
-export function jobLabourEntries(
-  bookings: Booking[],
-  config: AccountingFinanceConfiguration,
-): AccountingEntry[] {
-  return bookings.flatMap((booking) => {
-    if (booking.status === 'cancelled') return [];
-    const final = [...booking.quotes].reverse().find((quote) => quote.kind === 'final');
-    if (!final || final.price.total === null) return [];
-    const calculatedMovers =
-      booking.crew?.manoeuvre.length ||
-      final.price.lines.find((line) => /man[œo]uvre/i.test(line.label))?.quantity ||
-      booking.estimate.lines.find((line) => /man[œo]uvre/i.test(line.label))?.quantity ||
-      booking.inventorySnapshot?.sourceInventory?.crew ||
-      0;
-    const movers = final.accountingCosts?.movers ?? calculatedMovers;
-    const labourCost =
-      final.accountingCosts?.moverAmount ?? asInt(movers * config.moverCostPerMove);
-    const source = booking.inventorySnapshot?.sourceInventory;
-    const menu = accountingMenuAmount(source, config);
-    const carpenters = final.accountingCosts?.carpenters ?? menu.count;
-    const assemblyCost = final.accountingCosts?.carpenterAmount ?? menu.amount;
-    const date = final.createdAt.slice(0, 10) || booking.date;
-    if (!date) return [];
-    const estimatedRate = final.accountingCosts ? '' : ' · tarif actuel estimatif';
-    const entries: AccountingEntry[] = [];
-    if (labourCost > 0)
-      entries.push({
-        id: `auto-labour-${booking.id}`,
-        type: 'charge',
-        category: 'Manœuvres',
-        label: `Manœuvres ${movers} · ${booking.reference}${estimatedRate}`,
-        amount: labourCost,
-        date,
-        automatic: true,
-        bookingId: booking.id,
-        bookingReference: booking.reference,
-      });
-    if (assemblyCost > 0)
-      entries.push({
-        id: `auto-assembly-${booking.id}`,
-        type: 'charge',
-        category: 'Menuisier',
-        label: `Menuisier ${carpenters} meuble(s) · ${booking.reference}${estimatedRate}`,
-        amount: assemblyCost,
-        date,
-        automatic: true,
-        bookingId: booking.id,
-        bookingReference: booking.reference,
-      });
-    return entries;
-  });
-}
-
 export type FinanceMonth = {
   key: string;
   revenue: number;
@@ -290,6 +184,89 @@ export type FinanceMonth = {
   net: number;
   suarl: boolean;
 };
+
+export type AccountingMonthlyChargePlan = {
+  elapsedMonths: number;
+  oilChangeIntervalMonths: number;
+  oilChangeDue: boolean;
+  vehicleCount: number;
+  fleetBase: number;
+  monthlyFleetAmortization: number;
+  monthlyAnnexAmortization: number;
+  monthlyDebt: number;
+  monthlyVehicleReserve: number;
+  monthlyInsurance: number;
+  debtStillDue: boolean;
+  legalReserveDue: number;
+  legalRoomBeforeMonth: boolean;
+  legalRoomAfterMonth: boolean;
+};
+
+/** Single source for the recurring charge amounts shown by accounting views. */
+export function accountingMonthlyChargePlan(
+  config: AccountingFinanceConfiguration,
+  month: string,
+  current: FinanceMonth | undefined,
+  entries: AccountingEntry[],
+): AccountingMonthlyChargePlan {
+  const elapsedMonths =
+    (Number(month.slice(0, 4)) - Number(config.start.slice(0, 4))) * 12 +
+    Number(month.slice(5, 7)) -
+    Number(config.start.slice(5, 7));
+  const interval = Math.max(1, config.oilChangeIntervalMonths);
+  const vehiclePurchases = config.vehiclePurchases.filter((purchase) => purchase.month <= month);
+  const vehicleCount = config.vehicleCount + vehiclePurchases.length;
+  const fleetBase =
+    config.fleetValue + vehiclePurchases.reduce((sum, purchase) => sum + purchase.price, 0);
+  const annexCapital = config.annexes.reduce((sum, annex) => sum + annex.value, 0);
+  const legalReserveCap = (fleetBase + annexCapital) * (config.legalReserveCapitalPercent / 100);
+  const legalAlreadyPosted = current
+    ? current.legalReserveBalance - current.legalReservePaid
+    : entries
+        .filter(
+          (entry) =>
+            referenceFixedChargeKey(entry) === 'leg' &&
+            entry.date.slice(0, 7) >= config.start &&
+            entry.date.slice(0, 7) <= month,
+        )
+        .reduce((sum, entry) => sum + entry.amount, 0);
+  const ledgerBalance = entries
+    .filter((entry) => entry.date.slice(0, 7) === month && referenceFixedChargeKey(entry) !== 'leg')
+    .reduce((sum, entry) => sum + (entry.type === 'revenu' ? entry.amount : -entry.amount), 0);
+  const legalReserveDue = Math.round(
+    current?.legalReserveDue ??
+      Math.max(
+        0,
+        Math.min(
+          Math.max(0, ledgerBalance) * (config.legalReservePercent / 100),
+          legalReserveCap - legalAlreadyPosted,
+        ),
+      ),
+  );
+  return {
+    elapsedMonths,
+    oilChangeIntervalMonths: interval,
+    oilChangeDue: elapsedMonths >= 0 && elapsedMonths % interval === 0,
+    vehicleCount,
+    fleetBase,
+    monthlyFleetAmortization: Math.round(fleetBase / (Math.max(1, config.fleetYears) * 12)),
+    monthlyAnnexAmortization: Math.round(
+      config.annexes.reduce((sum, annex) => sum + annex.value / (Math.max(1, annex.years) * 12), 0),
+    ),
+    monthlyDebt: Math.round(config.debt / Math.max(1, config.debtMonths)),
+    monthlyVehicleReserve: Math.round(config.newVehicleTarget / 12),
+    monthlyInsurance: Math.round((vehicleCount * config.vehicleInsuranceAnnual) / 12),
+    debtStillDue: current ? current.debtLeft > 0.5 || current.debtPaid > 0 : config.debt > 0.5,
+    legalReserveDue,
+    legalRoomBeforeMonth: current
+      ? current.legalReserveBalance - current.legalReservePaid < current.legalReserveCap - 1
+      : legalReserveCap - legalAlreadyPosted > 0.5,
+    legalRoomAfterMonth: current
+      ? current.legalReserveBalance < current.legalReserveCap - 1
+      : legalAlreadyPosted < legalReserveCap - 1,
+  };
+}
+
 export type SyscohadaLine = {
   date: string;
   account: string;
@@ -352,17 +329,27 @@ export function simulateAccounting(
     const finalBookings = bookings.filter(
       (booking) => booking.status === 'completed' && booking.date?.slice(0, 7) === month,
     );
-    const moverCount = finalBookings.reduce((sum, booking) => {
-      const final = [...booking.quotes].reverse().find((quote) => quote.kind === 'final');
-      return (
-        sum +
-        (booking.crew?.manoeuvre.length ||
-          final?.price.lines.find((line) => /man[œo]uvre/i.test(line.label))?.quantity ||
-          booking.estimate.lines.find((line) => /man[œo]uvre/i.test(line.label))?.quantity ||
-          booking.inventorySnapshot?.sourceInventory?.crew ||
-          0)
-      );
-    }, 0);
+    const labourEntries = monthEntries.filter(
+      (entry) => entry.type === 'charge' && entry.category === 'Manœuvres' && entry.automatic,
+    );
+    const journalMoverCount = labourEntries.reduce((sum, entry) => sum + (entry.quantity ?? 0), 0);
+    const representedBookings = new Set(
+      labourEntries.flatMap((entry) => (entry.bookingId ? [entry.bookingId] : [])),
+    );
+    const unrepresentedMoverCount = finalBookings
+      .filter((booking) => !representedBookings.has(booking.id))
+      .reduce((sum, booking) => {
+        const final = [...booking.quotes].reverse().find((quote) => quote.kind === 'final');
+        return (
+          sum +
+          (booking.crew?.manoeuvre.length ||
+            final?.price.lines.find((line) => /man[œo]uvre/i.test(line.label))?.quantity ||
+            booking.estimate.lines.find((line) => /man[œo]uvre/i.test(line.label))?.quantity ||
+            booking.inventorySnapshot?.sourceInventory?.crew ||
+            0)
+        );
+      }, 0);
+    const moverCount = journalMoverCount + unrepresentedMoverCount;
     const movers = monthEntries
       .filter((entry) => entry.type === 'charge' && entry.category === 'Manœuvres')
       .reduce((sum, entry) => sum + entry.amount, 0);
@@ -393,7 +380,9 @@ export function simulateAccounting(
     // when the payment is larger than this month's nominal installment.
     const debtPaid = Math.min(debtLeft, asInt(fixedCharge('det') ?? 0));
     debtLeft -= debtPaid;
-    debtCarry = debtDue - debtPaid;
+    // La référence reporte uniquement le solde impayé, jamais un crédit
+    // créé par un remboursement anticipé.
+    debtCarry = Math.max(0, debtDue - debtPaid);
     const fleetDue = Math.max(
       0,
       Math.min(
@@ -408,7 +397,7 @@ export function simulateAccounting(
       asInt(fixedCharge('amo') ?? 0),
     );
     fleetAmortized += fleetPaid;
-    fleetCarry = fleetDue - fleetPaid;
+    fleetCarry = Math.max(0, fleetDue - fleetPaid);
     let annexDue = 0;
     let annexPaid = 0;
     let annexPosted = asInt(fixedCharge('anx') ?? 0);
@@ -423,7 +412,7 @@ export function simulateAccounting(
       const paid = Math.min(Math.max(0, annex.value - annex.amortized), annexPosted);
       annexPosted -= paid;
       annex.amortized += paid;
-      annex.carry = due - paid;
+      annex.carry = Math.max(0, due - paid);
       annexDue += due;
       annexPaid += paid;
     }
@@ -432,7 +421,7 @@ export function simulateAccounting(
     // remains a minimum target and the saved balance can grow faster.
     const reservePaid = asInt(fixedCharge('res') ?? 0);
     reserve += reservePaid;
-    reserveCarry = reserveDue - reservePaid;
+    reserveCarry = Math.max(0, reserveDue - reservePaid);
     const journalBalance = monthEntries
       .filter((entry) => referenceFixedChargeKey(entry) !== 'leg')
       .reduce((sum, entry) => sum + (entry.type === 'revenu' ? entry.amount : -entry.amount), 0);
@@ -465,16 +454,10 @@ export function simulateAccounting(
     const tax = suarl ? (Math.max(0, taxableResult) * config.isRate) / 100 : 0;
     const cash = profit - debtPaid - reservePaid - legalReservePaid - tax;
     const carry =
-      debtDue -
-      debtPaid +
-      fleetDue -
-      fleetPaid +
-      annexDue -
-      annexPaid +
-      reserveDue -
-      reservePaid +
-      legalReserveDue -
-      legalReservePaid;
+      Math.max(0, debtDue - debtPaid) +
+      Math.max(0, fleetDue - fleetPaid) +
+      Math.max(0, annexDue - annexPaid) +
+      Math.max(0, reserveDue - reservePaid);
     const net = taxableResult - tax;
     return {
       key: month,
@@ -571,7 +554,13 @@ export function buildSyscohadaEntries(
     const c = Math.round(credit || 0);
     if (d || c) result.push({ date, account, label, debit: d, credit: c });
   };
-  add(`${config.start}-01`, '245', 'Acquisition des 3 véhicules', config.fleetValue, 0);
+  add(
+    `${config.start}-01`,
+    '245',
+    `Acquisition des ${config.vehicleCount} véhicules`,
+    config.fleetValue,
+    0,
+  );
   add(`${config.start}-01`, '168', 'Financement par le père', 0, config.debt);
   const openingEquity = config.fleetValue - config.debt;
   if (openingEquity > 0)
@@ -582,7 +571,7 @@ export function buildSyscohadaEntries(
     (item) =>
       item.date.slice(0, 7) >= config.start &&
       item.date.slice(0, 7) <= endMonth &&
-      !['sal', 'amo', 'anx', 'res', 'det', 'leg'].includes(item.referenceFixedKey ?? '') &&
+      !['sal', 'amo', 'anx', 'res', 'det', 'leg'].includes(referenceFixedChargeKey(item) ?? '') &&
       !(item.automatic && item.category === 'Publicité'),
   )) {
     const account = accountByCategory[entry.category] ?? '658';

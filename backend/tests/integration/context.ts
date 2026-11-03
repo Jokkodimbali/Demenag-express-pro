@@ -39,6 +39,7 @@ export function createIntegrationContext(url: string) {
     prefix,
     testUserIds: [] as string[],
     testPhones: [] as string[],
+    testAccountingEntryIds: [] as string[],
     phone: (n: number) => '77' + String(seed + n).padStart(7, '0'),
     clients: {
       first: request.agent(app),

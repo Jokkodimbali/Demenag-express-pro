@@ -3,6 +3,8 @@ import { AppError } from '../../../domain/errors.js';
 import { messages } from '../../../domain/messages/fr.js';
 import type { Booking, Quote, WorkPlanReview } from '../../../domain/model.js';
 import { type PrismaClient } from '../../../generated/prisma/client.js';
+import type { AccountingFinanceConfiguration } from '../../../domain/model.js';
+import { captureAccountingCosts } from '../../../domain/accounting-costs.js';
 import { conflict, json } from './helpers.js';
 import { toStatus } from './mapping.js';
 const quoteData = (quote: Quote) => ({
@@ -208,6 +210,70 @@ export class PrismaBookings implements BookingRepository {
         where: { id, supprimeLe: { not: null } },
       });
       if (!row) return false;
+      const booking = row.donnees as Booking;
+      const finalQuotes = await tx.devis.findMany({
+        where: { reservationId: id, nature: 'definitif', montantTotal: { not: null } },
+        select: { id: true, reference: true, montantTotal: true, creeLe: true },
+      });
+      if (finalQuotes.length && booking.status !== 'cancelled') {
+        const configurationRow = await tx.configurationComptable.findUnique({
+          where: { identifiant: 'main' },
+        });
+        const configuration = configurationRow
+          ? (configurationRow.donnees as AccountingFinanceConfiguration)
+          : null;
+        await tx.ecritureComptable.createMany({
+          data: finalQuotes.flatMap((quote) => {
+            if (quote.montantTotal === null) return [];
+            const quoteSnapshot = booking.quotes?.find((item) => item.id === quote.id);
+            const costs = quoteSnapshot
+              ? (quoteSnapshot.accountingCosts ??
+                captureAccountingCosts(booking, quoteSnapshot.price, configuration))
+              : null;
+            const date = new Date(`${quote.creeLe.toISOString().slice(0, 10)}T00:00:00Z`);
+            return [
+              {
+                type: 'revenu',
+                categorie: 'Déménagement',
+                libelle: `Devis final ${quote.reference} · ${booking.reference} · ${booking.customerName || 'Client'}`,
+                montant: quote.montantTotal,
+                date,
+                sourceDevisId: quote.id,
+                sourceQuoteKind: 'revenue',
+              },
+              ...(costs && costs.moverAmount > 0
+                ? [
+                    {
+                      type: 'charge',
+                      categorie: 'Manœuvres',
+                      libelle: `Manœuvres ${costs.movers} · ${booking.reference}`,
+                      montant: costs.moverAmount,
+                      date,
+                      sourceDevisId: quote.id,
+                      sourceQuoteKind: 'movers',
+                      sourceQuoteQuantity: costs.movers,
+                    },
+                  ]
+                : []),
+              ...(costs && costs.carpenterAmount > 0
+                ? [
+                    {
+                      type: 'charge',
+                      categorie: 'Menuisier',
+                      libelle: `Menuisier ${costs.carpenters} meuble(s) · ${booking.reference}`,
+                      montant: costs.carpenterAmount,
+                      date,
+                      sourceDevisId: quote.id,
+                      sourceQuoteKind: 'assembly',
+                      sourceQuoteQuantity: costs.carpenters,
+                    },
+                  ]
+                : []),
+            ];
+          }),
+          skipDuplicates: true,
+        });
+      }
       await tx.notification.deleteMany({ where: { reservationId: id } });
       await tx.reservation.delete({ where: { id } });
       return true;

@@ -5,7 +5,7 @@ import { readFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createPrisma } from '../../backend/src/adapters/out/prisma/client.ts';
 const env = dotenv.parse(readFileSync(new URL('../../backend/.env', import.meta.url)));
-const db = createPrisma(env.DATABASE_URL);
+const db = createPrisma(process.env.TEST_DATABASE_URL || env.DATABASE_URL);
 const baseUrl = process.env.BROWSER_BASE_URL || 'http://localhost:5173';
 const output = fileURLToPath(new URL('../../.verification/', import.meta.url));
 mkdirSync(output, { recursive: true });
@@ -31,10 +31,9 @@ page.on('response', async (response) => {
 });
 try {
   await page.goto(baseUrl + '/');
-  await expect(page.getByRole('heading', { name: 'VÉHICULE', exact: true })).toBeVisible({
+  await expect(page.getByRole('heading', { name: 'RÉSERVER', exact: true })).toBeVisible({
     timeout: 30000,
   });
-  await page.waitForFunction(() => document.querySelectorAll('.leaflet-tile-loaded').length > 0);
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
   await page.screenshot({ path: output + 'desktop-home.png', fullPage: true });
   for (const width of [390, 320]) {
@@ -44,34 +43,54 @@ try {
     expect(overflow).toBe(false);
   }
   await page.setViewportSize({ width: 1280, height: 1000 });
+  await page.getByRole('button', { name: 'Continuer ma réservation' }).click();
+  await page.getByRole('button', { name: /TRAJET · CARTE/ }).click();
+  await page.getByLabel('Nom du client').fill(name);
+  await page.getByLabel('Téléphone').fill(phone);
+  await page
+    .getByLabel('Date prévue')
+    .fill(new Date(Date.now() + 86400000).toISOString().slice(0, 10));
+  await page.getByLabel('Début').fill('09:30');
   const map = page.locator('.leaflet-container');
   await map.scrollIntoViewIfNeeded();
+  await page.waitForFunction(() => document.querySelectorAll('.leaflet-tile-loaded').length > 0);
   const mapBounds = await map.boundingBox();
   if (!mapBounds) throw new Error('Carte invisible');
   const center = { x: mapBounds.width / 2, y: mapBounds.height / 2 };
   await map.click({ position: center });
   await page.waitForTimeout(500);
+  const routeResponse = page.waitForResponse(
+    (response) => response.url().endsWith('/api/maps/route') && response.ok(),
+  );
   await map.click({ position: { x: center.x + 80, y: center.y - 60 } });
-  await page.getByRole('button', { name: 'Calculer mon trajet' }).click();
-  await expect(page.getByRole('button', { name: 'Me connecter et réserver' })).toBeEnabled({
+  await routeResponse;
+  await expect(
+    page.getByRole('spinbutton', { name: 'Distance du trajet en kilomètres' }),
+  ).toHaveValue(/\d/);
+  await expect(page.getByRole('button', { name: 'Envoyer ma demande' })).toBeEnabled({
     timeout: 25000,
   });
-  await page
-    .getByLabel('Date souhaitée')
-    .fill(new Date(Date.now() + 86400000).toISOString().slice(0, 10));
-  await page.getByRole('button', { name: 'Me connecter et réserver' }).click();
+  await page.getByRole('button', { name: 'Envoyer ma demande' }).click();
   await page.getByRole('button', { name: 'Créer un compte', exact: true }).click();
   await page.getByLabel('Nom complet').fill(name);
-  await page.getByLabel('Téléphone', { exact: true }).fill(phone);
-  await page.getByLabel('Mot de passe', { exact: true }).fill(password);
-  await page.getByLabel('Confirmez le mot de passe').fill(password);
+  await page.getByLabel(/téléphone/i).fill(phone);
+  await page
+    .getByLabel(/mot de passe/i)
+    .first()
+    .fill(password);
+  await page.getByLabel(/confirmez le mot de passe/i).fill(password);
   await page.getByRole('button', { name: 'Créer mon compte', exact: true }).click();
-  await page.getByLabel('Nom', { exact: true }).fill(name);
-  await page.getByLabel('Téléphone', { exact: true }).fill(phone);
   await expect(page.getByRole('button', { name: 'Envoyer ma demande' })).toBeEnabled({
     timeout: 15000,
   });
-  userId = (await db.utilisateur.findUniqueOrThrow({ where: { telephone: '+221' + phone } })).id;
+  const authenticatedUser = await page.evaluate(async () => {
+    const response = await fetch('/api/auth/me', { credentials: 'include' });
+    if (!response.ok) throw new Error(`Session client absente : ${response.status}`);
+    return response.json();
+  });
+  userId = authenticatedUser.id;
+  if (!(await db.utilisateur.findUnique({ where: { id: userId } })))
+    throw new Error('Le compte connecté doit être présent dans la base de test.');
   await page.getByRole('button', { name: 'Envoyer ma demande' }).click();
   await expect(page.getByText('DEMANDE ENREGISTRÉE', { exact: true })).toBeVisible({
     timeout: 15000,
@@ -122,8 +141,8 @@ try {
   await expect(page.getByText('Mot de passe modifié.', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Se déconnecter' }).click();
   await page.getByRole('link', { name: 'Mon compte' }).click();
-  await page.getByLabel('Téléphone', { exact: true }).fill(phone);
-  await page.getByLabel('Mot de passe', { exact: true }).fill('Browser-changed-2026!');
+  await page.getByLabel(/téléphone/i).fill(phone);
+  await page.getByLabel(/mot de passe/i).fill('Browser-changed-2026!');
   await page.getByRole('button', { name: 'Me connecter', exact: true }).click();
   await expect(page.locator('.booking-card')).toHaveCount(1);
   await admin.getByRole('button', { name: 'Tarifs et paramètres' }).click();
@@ -140,7 +159,9 @@ try {
   await page.screenshot({ path: output + 'browser-failure.png', fullPage: true });
   throw error;
 } finally {
-  const user = await db.utilisateur.findUnique({ where: { telephone: '+221' + phone } });
+  const user = userId
+    ? await db.utilisateur.findUnique({ where: { id: userId } })
+    : await db.utilisateur.findUnique({ where: { telephone: '+221' + phone } });
   if (user) {
     await db.reservation.deleteMany({ where: { utilisateurId: user.id } });
     await db.utilisateur.delete({ where: { id: user.id } });

@@ -1,6 +1,10 @@
 import { useMemo } from 'react';
 import type { AccountingFinanceConfiguration, AccountingEntry } from '../domain/model';
-import { referenceFixedChargeKey, type FinanceMonth } from '../domain/accounting-forecast';
+import {
+  accountingMonthlyChargePlan,
+  referenceFixedChargeKey,
+  type FinanceMonth,
+} from '../domain/accounting-forecast';
 import { money } from '../domain/format';
 import { accountingFinanceText as text } from '../content/accounting-finance';
 
@@ -28,60 +32,26 @@ const monthLabel = (month: string) =>
 
 export function ReferenceMonthlyCharges({ config, update, entries, current, month }: Props) {
   const charges = useMemo<FixedCharge[]>(() => {
-    const elapsed =
-      (Number(month.slice(0, 4)) - Number(config.start.slice(0, 4))) * 12 +
-      Number(month.slice(5, 7)) -
-      Number(config.start.slice(5, 7));
-    const interval = Math.max(1, config.oilChangeIntervalMonths);
-    const oilDue = elapsed >= 0 && elapsed % interval === 0;
-    const vehicleCount =
-      config.vehicleCount +
-      config.vehiclePurchases.filter((purchase) => purchase.month <= month).length;
-    const vehicleBase =
-      config.fleetValue +
-      config.vehiclePurchases
-        .filter((purchase) => purchase.month <= month)
-        .reduce((sum, purchase) => sum + purchase.price, 0);
-    const annexDepreciation = config.annexes.reduce(
-      (sum, annex) => sum + annex.value / (Math.max(1, annex.years) * 12),
-      0,
-    );
-    const monthlyDebt = Math.round(config.debt / Math.max(1, config.debtMonths));
-    const debtStillDue = current
-      ? current.debtLeft > 0.5 || current.debtPaid > 0
-      : config.debt > 0.5;
-    const legalCapital =
-      (vehicleBase + config.annexes.reduce((sum, annex) => sum + annex.value, 0)) *
-      (config.legalReserveCapitalPercent / 100);
-    const legalAlreadyPosted = current
-      ? current.legalReserveBalance - current.legalReservePaid
-      : entries
-          .filter(
-            (entry) =>
-              referenceFixedChargeKey(entry) === 'leg' &&
-              entry.date.slice(0, 7) >= config.start &&
-              entry.date.slice(0, 7) <= month,
-          )
-          .reduce((sum, entry) => sum + entry.amount, 0);
-    const ledgerBalance = entries
-      .filter(
-        (entry) => entry.date.slice(0, 7) === month && referenceFixedChargeKey(entry) !== 'leg',
-      )
-      .reduce((sum, entry) => sum + (entry.type === 'revenu' ? entry.amount : -entry.amount), 0);
-    const legalDue = Math.round(
-      current?.legalReserveDue ??
-        Math.max(
-          0,
-          Math.min(
-            Math.max(0, ledgerBalance) * (config.legalReservePercent / 100),
-            legalCapital - legalAlreadyPosted,
-          ),
-        ),
-    );
-    const legalRoomBeforeMonth = legalCapital - legalAlreadyPosted > 0.5;
+    const plan = accountingMonthlyChargePlan(config, month, current, entries);
+    const {
+      elapsedMonths,
+      oilChangeIntervalMonths: interval,
+      oilChangeDue: oilDue,
+      vehicleCount,
+      monthlyAnnexAmortization,
+      monthlyDebt,
+      monthlyVehicleReserve,
+      monthlyInsurance,
+      debtStillDue,
+      legalReserveDue: legalDue,
+      legalRoomBeforeMonth,
+    } = plan;
     const oilNext = oilDue
       ? month
-      : monthAfter(month, elapsed < 0 ? -elapsed : interval - (elapsed % interval));
+      : monthAfter(
+          month,
+          elapsedMonths < 0 ? -elapsedMonths : interval - (elapsedMonths % interval),
+        );
     return [
       {
         key: 'sal',
@@ -98,26 +68,26 @@ export function ReferenceMonthlyCharges({ config, update, entries, current, mont
       {
         key: 'ass',
         label: text.monthlyChargeInsurance(vehicleCount),
-        amount: Math.round((vehicleCount * config.vehicleInsuranceAnnual) / 12),
+        amount: monthlyInsurance,
       },
       {
         key: 'amo',
         label: text.monthlyChargeDepreciation(config.fleetYears),
-        amount: Math.round(vehicleBase / (Math.max(1, config.fleetYears) * 12)),
+        amount: plan.monthlyFleetAmortization,
       },
-      ...(annexDepreciation > 0
+      ...(monthlyAnnexAmortization > 0
         ? [
             {
               key: 'anx' as const,
               label: text.monthlyChargeAnnex,
-              amount: Math.round(annexDepreciation),
+              amount: monthlyAnnexAmortization,
             },
           ]
         : []),
       {
         key: 'res',
         label: text.monthlyChargeReserve,
-        amount: Math.round(config.newVehicleTarget / 12),
+        amount: monthlyVehicleReserve,
       },
       ...(debtStillDue && monthlyDebt > 0
         ? [

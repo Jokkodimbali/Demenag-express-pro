@@ -19,6 +19,13 @@ import {
   verifyQuoteSnapshots,
 } from './fulfillment.js';
 import { verifySettingsRules } from './settings.js';
+import {
+  verifyAccountingJournal,
+  verifyArchivedFinalRevenue,
+  verifyCancelledAccounting,
+  verifyProvisionalAccounting,
+  verifyProvisionalQuoteCreation,
+} from './accounting.js';
 
 export async function runIntegrationScenario() {
   const url = process.env.TEST_DATABASE_URL;
@@ -43,12 +50,15 @@ export async function runIntegrationScenario() {
 
     const booking = await createAndAuthorizeBooking(context, route.body.id);
     const input = booking.input as Record<string, unknown>;
+    await verifyProvisionalAccounting(context, booking.bookingId);
+    await verifyProvisionalQuoteCreation(context, booking.collisionId);
     await advanceBookingToInProgress(
       context,
       booking.bookingId,
       booking.collisionId,
       booking.assigned,
     );
+    await verifyCancelledAccounting(context, booking.collisionId);
     await runVehicleInspection(context);
     const driverFinished = await completeRecordedTrips(context, booking.bookingId);
     const finalQuote = await createFinalQuoteAndClose(
@@ -56,10 +66,17 @@ export async function runIntegrationScenario() {
       booking.bookingId,
       driverFinished.version,
     );
+    await verifyAccountingJournal(context, finalQuote.quoteId, finalQuote.amount);
     await verifyQuoteSnapshots(context, booking.bookingId, finalQuote.quoteId, finalQuote.version);
     await verifyAccountAdministration(context, users.userIds);
     await verifySettingsRules(context, input);
     await verifySessionLifecycle(context);
+    await verifyArchivedFinalRevenue(
+      context,
+      booking.bookingId,
+      finalQuote.quoteId,
+      finalQuote.amount,
+    );
   } catch (error) {
     scenarioError = error;
   }

@@ -1,5 +1,7 @@
 export const accountingFinanceText = {
   hypotheticalBalance: 'SOLDE HYPOTHÉTIQUE',
+  forecastRequiresVerified:
+    'Prévisions masquées : confirmez d’abord les données financières utilisées par ces calculs.',
   accountingRevenue: 'REVENUS',
   accountingCharges: 'CHARGES',
   accountingBalance: 'SOLDE',

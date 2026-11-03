@@ -11,7 +11,6 @@ import { completedBookingRevenueAmount } from '../services/revenue';
 import {
   advertisingChannels,
   defaultAccountingFinanceConfiguration,
-  jobLabourEntries,
   referenceFixedChargeEntries,
   simulateAccounting,
 } from '../../domain/accounting-forecast';
@@ -122,6 +121,7 @@ export function useAccounting() {
           const normalized = {
             ...defaults,
             ...config,
+            accountingDataVerified: config.accountingDataVerified === true,
             menuPrices: config.menuPrices ?? {},
             advertising: config.advertising ?? {},
             salaries: config.salaries ?? defaults.salaries,
@@ -136,10 +136,6 @@ export function useAccounting() {
           const defaults = defaultAccountingFinanceConfiguration();
           financeRef.current = defaults;
           setFinanceConfiguration(defaults);
-          saveChain.current = saveChain.current
-            .catch(() => undefined)
-            .then(() => api.saveAccountingConfiguration(defaults));
-          await saveChain.current;
         }
       }
     } catch (cause) {
@@ -160,7 +156,11 @@ export function useAccounting() {
         | ((value: AccountingFinanceConfiguration) => AccountingFinanceConfiguration),
     ) => {
       const current = financeRef.current;
-      const next = typeof change === 'function' ? change(current) : { ...current, ...change };
+      const next = {
+        ...(typeof change === 'function' ? change(current) : { ...current, ...change }),
+        accountingDataVerified:
+          typeof change !== 'function' && change.accountingDataVerified === true,
+      };
       financeRef.current = next;
       setFinanceConfiguration(next);
       setFinanceSaving(true);
@@ -199,7 +199,6 @@ export function useAccounting() {
   );
 
   const generatedEntries = useMemo(() => {
-    const labour = jobLabourEntries(bookings, financeConfiguration);
     const advertising: AccountingEntry[] = Object.entries(financeConfiguration.advertising).flatMap(
       ([period, channels]) =>
         Object.entries(channels).flatMap(([channel, amount]) => {
@@ -220,8 +219,8 @@ export function useAccounting() {
           ];
         }),
     );
-    return [...labour, ...advertising, ...referenceFixedChargeEntries(financeConfiguration)];
-  }, [bookings, financeConfiguration]);
+    return [...advertising, ...referenceFixedChargeEntries(financeConfiguration)];
+  }, [financeConfiguration]);
   const historicalFinalQuotesWithoutSnapshot = useMemo(
     () =>
       bookings.filter((booking) => {

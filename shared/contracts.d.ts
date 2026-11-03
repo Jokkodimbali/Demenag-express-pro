@@ -2,6 +2,7 @@ export type Role = 'client' | 'admin' | 'driver';
 export type AccountingFixedChargeKey =
   'sal' | 'vid' | 'ass' | 'amo' | 'anx' | 'res' | 'det' | 'leg';
 export type AccountingFinanceConfiguration = {
+  accountingDataVerified: boolean;
   regime: 'auto' | 'informel' | 'suarl';
   suarlFrom: string;
   isRate: number;
@@ -44,6 +45,7 @@ export type AccountingEntry = {
   amount: number;
   date: string;
   automatic: boolean;
+  quantity?: number;
   bookingId?: string;
   reference?: string;
   bookingReference?: string;
