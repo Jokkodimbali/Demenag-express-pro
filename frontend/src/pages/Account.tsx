@@ -7,6 +7,7 @@ import { AdminProfileForm } from '../components/AdminProfileForm';
 import { ClientBookingCard } from '../components/ClientBookingCard';
 import { messages } from '../content/fr';
 import { routes } from '../routing/routes';
+import { visibleUiText } from '../content/visible-ui-text';
 export function Account() {
   const { user, bookings, setBookings, loading, error, setRetry } = useAccount();
   const [notice, setNotice] = useState('');
@@ -20,7 +21,7 @@ export function Account() {
             <p>{messages.informationsDuCompteAdministrateur}</p>
           </div>
           <Link className="button secondary small" to={routes.administration}>
-            <ArrowLeft size={16} /> Retour à l’administration
+            <ArrowLeft size={16} /> {visibleUiText.text74}
           </Link>
         </div>
         <AdminProfileForm />
@@ -43,8 +44,8 @@ export function Account() {
         </Link>
       </div>
       {user && (
-        <section className="reference-client-profile" aria-label="Profil du compte client">
-          <span>MON PROFIL</span>
+        <section className="reference-client-profile" aria-label={visibleUiText.text75}>
+          <span>{visibleUiText.text76}</span>
           <strong>{user.name}</strong>
           <span>{user.phone}</span>
         </section>

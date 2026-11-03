@@ -12,6 +12,8 @@ import { ReferenceVehicleSettings } from './ReferenceVehicleSettings';
 import { PaymentSettings } from './PaymentSettings';
 import { ReferenceWhatsappSettings } from './ReferenceWhatsappSettings';
 import { ReferenceGoogleMapsSettings } from './ReferenceGoogleMapsSettings';
+import { QuestionnaireSettings } from './QuestionnaireSettings';
+import { visibleUiText } from '../../content/visible-ui-text';
 
 const tiers = ['Moins de 15 km', '15 – 25 km', '25 – 35 km'];
 const scenarios: { id: LabourMatrixScenario; label: string; from: boolean; to: boolean }[] = [
@@ -550,10 +552,10 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
         </section>
 
         <section style={sectionStyle}>
-          <span className="reference-settings-card-title">Serviettes de déménagement</span>
+          <span className="reference-settings-card-title">{visibleUiText.text67}</span>
           <div className="reference-settings-blanket-fields">
             <label>
-              <span>LONGUEUR (CM)</span>
+              <span>{visibleUiText.text68}</span>
               <input
                 style={inputStyle}
                 type="number"
@@ -567,7 +569,7 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
               />
             </label>
             <label>
-              <span>LARGEUR (CM)</span>
+              <span>{visibleUiText.text69}</span>
               <input
                 style={inputStyle}
                 type="number"
@@ -581,7 +583,7 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
               />
             </label>
             <label>
-              <span>STOCK</span>
+              <span>{visibleUiText.text70}</span>
               <input
                 style={inputStyle}
                 type="number"
@@ -595,8 +597,9 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
             </label>
           </div>
           <small>
-            Surface : {((blanketLengthCm * blanketWidthCm) / 10000).toFixed(2).replace('.', ',')} m²
-            par serviette. Valeurs par défaut : 204 × 184 cm, stock de 20.
+            {visibleUiText.text71}
+            {((blanketLengthCm * blanketWidthCm) / 10000).toFixed(2).replace('.', ',')}{' '}
+            {visibleUiText.text72}
           </small>
           <button
             className="reference-settings-reset"
@@ -613,10 +616,11 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
               form?.requestSubmit();
             }}
           >
-            Revenir aux valeurs par défaut
+            {visibleUiText.text73}
           </button>
         </section>
 
+        <QuestionnaireSettings questions={catalogue.settings.questionnaire ?? []} />
         <ReferenceVehicleSettings catalogue={catalogue} />
         <PaymentSettings catalogue={catalogue} />
         <ReferenceGoogleMapsSettings />

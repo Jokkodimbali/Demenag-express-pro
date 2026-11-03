@@ -2,9 +2,6 @@
   .moving-estimate-details {
     grid-template-columns: 1fr;
   }
-  .questionnaire-setting-row {
-    grid-template-columns: 1fr;
-  }
   .admin-quote-identity {
     grid-template-columns: 1fr;
   }

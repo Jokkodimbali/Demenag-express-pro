@@ -16,6 +16,7 @@ import { bookingReminder } from '../application/services/booking-reminder';
 import { usePagination } from '../application/usePagination';
 import { Pagination } from '../components/Pagination';
 import { pageSizes } from '../config/pagination';
+import { visibleUiText } from '../content/visible-ui-text';
 
 type ReservationFilter = 'all' | 'provisional' | 'final' | 'undated';
 type ReservationPeriod = 'all' | 'day' | 'week';
@@ -238,7 +239,7 @@ export function Admin() {
         <ConfirmationDialog
           titleId="delete-reservation-title"
           eyebrow="SUPPRESSION D’UN RENDEZ-VOUS"
-          title="Placer cette réservation dans la corbeille ?"
+          title={visibleUiText.text13}
           description={`La réservation, son devis et ses photos iront dans la corbeille (Admin → Données). Vous pourrez la restaurer. ${deleteTarget.reference} · ${deleteTarget.customerName} · ${referenceDate(deleteTarget)} · ${deleteTarget.fromAddress || '—'} → ${deleteTarget.toAddress || '—'}`}
           confirmLabel="Supprimer"
           busy={deleteBusy}

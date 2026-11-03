@@ -320,8 +320,8 @@
 }
 .reference-settings-blanket-fields {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
 }
 .reference-settings-blanket-fields label {
   display: flex;
@@ -343,6 +343,165 @@
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
+}
+.reference-settings-questionnaire {
+  grid-column: 1 / -1;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+  padding: clamp(14px, 4vw, 22px);
+  border: 1px solid #3b4046;
+  border-radius: clamp(14px, 4vw, 20px);
+  background: #272a2e;
+  color: #fff;
+  font-family: Montserrat, sans-serif;
+}
+.reference-settings-questionnaire-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.reference-settings-questionnaire-heading > span {
+  flex: 0 0 auto;
+  color: #aeb4bb;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.reference-settings-questionnaire-toggle {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+.reference-settings-questionnaire-toggle strong {
+  font-size: 15px;
+  font-weight: 800;
+}
+.reference-settings-questionnaire-toggle svg {
+  flex: 0 0 16px;
+  color: #f6d73c;
+  transition: transform 0.2s;
+  transform: rotate(-90deg);
+}
+.reference-settings-questionnaire-toggle[aria-expanded='true'] svg {
+  transform: rotate(0deg);
+}
+.reference-settings-questionnaire-toggle:focus-visible {
+  outline: 2px solid #f6d73c;
+  outline-offset: 4px;
+  border-radius: 3px;
+}
+.reference-settings-questionnaire-panel {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+}
+.reference-settings-questionnaire-panel[hidden] {
+  display: none;
+}
+.reference-settings-questionnaire-description {
+  color: #aeb4bb;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.reference-settings-questionnaire-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.reference-settings-questionnaire-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  background: #1e2023;
+}
+.reference-settings-questionnaire-index {
+  padding-top: 9px;
+  color: #f6d73c;
+  font-size: 13px;
+  font-weight: 800;
+}
+.reference-settings-questionnaire-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+  gap: 6px;
+  min-width: 0;
+}
+.reference-settings-questionnaire-fields input:not([type='hidden']) {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid #3b4046;
+  border-radius: 10px;
+  outline: none;
+  background: #1e2023;
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+}
+.reference-settings-questionnaire-fields input[aria-label^='Question '] {
+  grid-column: span 2;
+  font-weight: 700;
+}
+.reference-settings-questionnaire-fields input[aria-label^='Conseil '] {
+  grid-column: 1 / -1;
+  color: #d5d9de;
+}
+.reference-settings-questionnaire-actions,
+.reference-settings-questionnaire-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.reference-settings-questionnaire-actions button {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border: 1px solid #3b4046;
+  border-radius: 9px;
+  background: transparent;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.reference-settings-questionnaire-actions button:last-child {
+  color: #ff5a5f;
+}
+.reference-settings-questionnaire-actions button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.reference-settings-questionnaire-footer {
+  gap: 8px;
+}
+.reference-settings-questionnaire-add {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 10px;
+  background: #f6d73c;
+  color: #1e2023;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.reference-settings-questionnaire-add:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 .reference-settings-vehicles,
 .reference-settings-whatsapp,

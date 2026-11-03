@@ -56,12 +56,7 @@ export async function runIntegrationScenario() {
       booking.bookingId,
       driverFinished.version,
     );
-    await verifyQuoteSnapshots(
-      context,
-      booking.bookingId,
-      finalQuote.quotes[0].id,
-      finalQuote.version,
-    );
+    await verifyQuoteSnapshots(context, booking.bookingId, finalQuote.quoteId, finalQuote.version);
     await verifyAccountAdministration(context, users.userIds);
     await verifySettingsRules(context, input);
     await verifySessionLifecycle(context);

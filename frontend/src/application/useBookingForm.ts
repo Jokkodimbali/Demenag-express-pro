@@ -2,14 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { messages } from '../content/fr';
 import { referenceTierLabels, tierLabels } from '../domain/format';
-import type {
-  Booking,
-  BookingInput,
-  BookingInventorySnapshot,
-  Options,
-  Price,
-  Quote,
-} from '../domain/model';
+import type { Booking, BookingInput, Options, Price, Quote } from '../domain/model';
 import { inventoryNote } from '../domain/inventory';
 import { tollPrice } from '../domain/toll-prices';
 import { quoteTollsFromLines, type TollExtraLine } from '../domain/toll-selection';
@@ -306,7 +299,7 @@ export function useBookingForm({
     e: React.FormEvent,
     quoteWorkSummary = '',
     workPlan: NonNullable<BookingInput['workPlan']> = [],
-    inventorySnapshot?: BookingInventorySnapshot,
+    inventorySnapshot?: BookingInput['inventorySnapshot'],
     quoteOptions?: Options,
   ) {
     e.preventDefault();
@@ -399,8 +392,7 @@ export function useBookingForm({
                 })),
             ]
           : [],
-        workPlan:
-          administrativeQuote && (!editingBooking || inventorySnapshot) ? workPlan : undefined,
+        workPlan: administrativeQuote ? workPlan : undefined,
         inventorySnapshot,
         requestId: draft.requestId,
       };

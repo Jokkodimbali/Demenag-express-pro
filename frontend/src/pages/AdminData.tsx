@@ -1,81 +1,22 @@
-import { useCallback, useEffect, useState } from 'react';
-import { useApp } from '../application/context';
-import { errorMessage } from '../application/error-message';
-import type { Booking } from '../domain/model';
-
-type TrashedBooking = { booking: Booking; deletedAt: string };
+import { useAdminData } from '../application/controllers/useAdminData';
+import { visibleUiText } from '../content/visible-ui-text';
 
 export function AdminData() {
-  const { api, requestConfirmation } = useApp();
-  const [items, setItems] = useState<TrashedBooking[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState('');
-  const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
-  const reload = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      setItems(await api.trashedBookings());
-    } catch (cause) {
-      setError(errorMessage(cause));
-    } finally {
-      setLoading(false);
-    }
-  }, [api]);
-  useEffect(() => {
-    void reload();
-  }, [reload]);
-
-  async function restore(id: string) {
-    setBusy(id);
-    setError('');
-    try {
-      await api.restoreBooking(id);
-      setItems((current) => current.filter((item) => item.booking.id !== id));
-      setNotice('Réservation restaurée.');
-    } catch (cause) {
-      setError(errorMessage(cause));
-    } finally {
-      setBusy('');
-    }
-  }
-
-  async function purge(item: TrashedBooking) {
-    const confirmed = await requestConfirmation({
-      titleId: 'purge-booking-title',
-      eyebrow: 'SUPPRESSION DÉFINITIVE',
-      title: 'Supprimer définitivement ?',
-      description: `${item.booking.reference} · ${item.booking.customerName} sera effacée pour toujours. Cette action est irréversible.`,
-      confirmLabel: 'Supprimer définitivement',
-    });
-    if (!confirmed) return;
-    setBusy(item.booking.id);
-    setError('');
-    try {
-      await api.purgeBooking(item.booking.id);
-      setItems((current) => current.filter((entry) => entry.booking.id !== item.booking.id));
-      setNotice('Supprimé définitivement.');
-    } catch (cause) {
-      setError(errorMessage(cause));
-    } finally {
-      setBusy('');
-    }
-  }
+  const { items, loading, busy, error, notice, restore, purge } = useAdminData();
 
   return (
     <section className="admin-data-page">
       <div className="admin-data-intro">
-        <h2>Données et sauvegarde</h2>
-        <p>
-          Rien n’est effacé sans votre décision : toute suppression passe par la corbeille. Seul «
-          Supprimer définitivement » efface pour de bon.
-        </p>
+        <h2>{visibleUiText.text77}</h2>
+        <p>{visibleUiText.text78}</p>
       </div>
       <div className="admin-data-card">
-        <h3>Corbeille · {items.length}</h3>
-        {loading && <p role="status">Chargement de la corbeille…</p>}
-        {!loading && !items.length && <p>La corbeille est vide.</p>}
+        <h3>
+          {visibleUiText.text79}
+          {items.length}
+        </h3>
+        {loading && <p role="status">{visibleUiText.text80}</p>}
+        {!loading && !items.length && <p>{visibleUiText.text81}</p>}
         {items.map((item) => (
           <article key={item.booking.id} className="admin-data-trash-item">
             <div>
@@ -85,7 +26,10 @@ export function AdminData() {
               <span>
                 {item.booking.fromAddress || '—'} → {item.booking.toAddress || '—'}
               </span>
-              <small>Supprimé le {new Date(item.deletedAt).toLocaleString('fr-FR')}</small>
+              <small>
+                {visibleUiText.text82}
+                {new Date(item.deletedAt).toLocaleString('fr-FR')}
+              </small>
             </div>
             <div>
               <button
@@ -93,10 +37,10 @@ export function AdminData() {
                 disabled={Boolean(busy)}
                 onClick={() => void restore(item.booking.id)}
               >
-                Restaurer
+                {visibleUiText.text83}
               </button>
               <button type="button" disabled={Boolean(busy)} onClick={() => void purge(item)}>
-                Supprimer définitivement
+                {visibleUiText.text84}
               </button>
             </div>
           </article>

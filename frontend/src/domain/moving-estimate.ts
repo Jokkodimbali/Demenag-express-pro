@@ -9,6 +9,7 @@ import {
 import type { BookingInventorySnapshot, MovingLaborPlanningSettings } from './model';
 import type { Route, Vehicle } from './model';
 import { referenceTravelMinutes } from './reference-traffic';
+import { vehicleDimensionWarnings } from './vehicle-dimensions';
 
 const itemVolumes: Record<string, number> = {
   salon: 0.6,
@@ -806,7 +807,7 @@ export function estimateMovingWork(
   const totalMinutes = planning.reduce((sum, step) => sum + step.minutes, 0);
   const endAt = cursor;
   const warnings: string[] = [];
-  const dimensionsWarnings = vehicleWarnings(inventory, vehicle);
+  const dimensionsWarnings = vehicleDimensionWarnings(inventory, vehicle);
   warnings.push(...dimensionsWarnings);
   const itemCount = (key: string) =>
     (inventory.entries[key]?.quantity ?? 0) +
@@ -976,76 +977,4 @@ export function bookingInventorySnapshot(
   };
 }
 
-function vehicleWarnings(inventory: Inventory, vehicle: Vehicle): string[] {
-  const height = numberFrom(vehicle.height);
-  const length = numberFrom(vehicle.length);
-  const warnings: string[] = [];
-  const entries = [
-    ...Object.entries(inventory.entries).map(([key, item]) => ({ key, ...item })),
-    ...inventory.variants.map((item) => ({ key: item.itemKey, ...item })),
-  ].filter((item) => item.quantity > 0);
-  entries.forEach((item) => {
-    const { key } = item;
-    if (key === 'frigo') {
-      const itemHeight = [0.85, 1.6, 1.85][formatIndexes[item.format ?? 'medium']];
-      if (height && itemHeight > height)
-        warnings.push(
-          `Frigo debout ≈ ${itemHeight.toFixed(2)} m : dépasse la hauteur utile de ${height.toFixed(2)} m.`,
-        );
-    }
-    if (key === 'vitrine' && item.format !== 'small' && height && height < 1.8)
-      warnings.push(
-        `Vitrine debout ≈ 1,80 m : dépasse la hauteur utile de ${height.toFixed(2)} m.`,
-      );
-    if (key === 'armoire' && !item.dismantle && height && height < 2)
-      warnings.push(
-        `Armoire montée ≈ 2 m : ne rentre pas debout dans ce véhicule (${height.toFixed(2)} m utiles). À coucher ou démonter.`,
-      );
-    if (key === 'salon' && !item.dismantle && length) {
-      const itemLength = item.size >= 6 ? 2.6 : item.size >= 3 ? 2.1 : 1.6;
-      if (itemLength > length)
-        warnings.push(
-          `Salon ≈ ${itemLength.toFixed(1)} m : dépasse la longueur utile du plancher (${length.toFixed(1)} m).`,
-        );
-    }
-    if (key === 'table-manger' && !item.dismantle && length) {
-      const itemLength = item.size >= 8 ? 2.2 : item.size >= 6 ? 1.8 : 1.2;
-      if (itemLength > length)
-        warnings.push(
-          `Table ≈ ${itemLength.toFixed(1)} m : dépasse la longueur utile du plancher (${length.toFixed(1)} m).`,
-        );
-    }
-  });
-  return [...new Set(warnings)];
-}
-
-export function movingEstimateNote(estimate: MovingEstimate): string {
-  const vehicleName = estimate.vehicleName.replace(/^(Mercedes|Renault)\s+/u, '');
-  return [
-    `Estimation des allers-retours : volume ≈ ${estimate.volume.toFixed(1).replace('.', ',')} m³, soit ${estimate.plannedTrips} aller-retour${estimate.plannedTrips > 1 ? 's' : ''} en ${vehicleName}.`,
-    `Main-d’œuvre : ${estimate.crew} manœuvre${estimate.crew > 1 ? 's' : ''}${estimate.carpenterCount ? ` + ${estimate.carpenterCount} menuisier${estimate.carpenterCount > 1 ? 's' : ''}` : ''}, chargement + déchargement ≈ ${formatDuration(estimate.loadingMinutes + estimate.unloadingMinutes)}.`,
-    ...(estimate.packingMinutes > 0
-      ? [
-          `Emballage : ≈ ${formatDuration(estimate.packingMinutes)}${estimate.packingMinutes > 90 ? ', la veille.' : ', le jour même avant le chargement.'}`,
-        ]
-      : []),
-    ...(estimate.travelMinutes > 0
-      ? [
-          `Trajet : ≈ ${formatDuration(estimate.travelMinutes)} pour ${estimate.plannedTrips} voyage${estimate.plannedTrips > 1 ? 's' : ''}.`,
-        ]
-      : []),
-    `Planning prévisionnel : de ${estimate.startTime} à ${estimate.endTime}, durée ≈ ${formatDuration(estimate.totalMinutes)} (entre ${formatDuration(estimate.lowDurationMinutes)} et ${formatDuration(estimate.highDurationMinutes)}).`,
-    ...(estimate.minimumDays > 1
-      ? [
-          `Durée à organiser sur environ ${estimate.minimumDays} jours ou avec un véhicule supplémentaire.`,
-        ]
-      : []),
-  ].join('\n');
-}
-
-export function formatDuration(minutes: number): string {
-  if (minutes < 60) return Math.ceil(minutes) + ' min';
-  const hours = Math.floor(minutes / 60);
-  const remaining = Math.round(minutes % 60);
-  return remaining ? hours + ' h ' + remaining.toString().padStart(2, '0') : hours + ' h';
-}
+export { movingEstimateNote, formatDuration } from './moving-estimate-note';

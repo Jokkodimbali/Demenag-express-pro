@@ -31,6 +31,7 @@ import { bookingReminder } from '../application/services/booking-reminder';
 import { BookingCardMain } from './BookingCardMain';
 import { bookingClosure } from '../domain/booking-closure';
 import { BookingPdfPreview } from './BookingPdfPreview';
+import { visibleUiText } from '../content/visible-ui-text';
 export function BookingCard({
   booking: b,
   onChange,
@@ -507,7 +508,7 @@ export function BookingCard({
             }}
           >
             <Trash2 size={16} />
-            Supprimer
+            {visibleUiText.text12}
           </button>
         )}
       </div>
@@ -966,7 +967,7 @@ export function BookingCard({
         <ConfirmationDialog
           titleId={'delete-booking-' + b.id}
           eyebrow="SUPPRESSION D’UN RENDEZ-VOUS"
-          title="Placer cette réservation dans la corbeille ?"
+          title={visibleUiText.text13}
           description={`La réservation ${b.reference}, son devis et ses photos iront dans la corbeille (Admin → Données). Vous pourrez la restaurer.`}
           confirmLabel="Supprimer"
           busy={deleteBusy}

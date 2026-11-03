@@ -9,6 +9,7 @@ import {
   type FinanceMonth,
 } from '../domain/accounting-forecast';
 import { accountingFinanceText } from '../content/accounting-finance';
+import { ReferenceAccountingAssets } from './ReferenceAccountingAssets';
 
 type DocumentKey = 'journal' | 'gl' | 'bal' | 'cr' | 'bilan' | 'amort' | 'dette' | 'smt' | 'all';
 type AdvertisingRow = {
@@ -84,23 +85,6 @@ function Accordion({
   );
 }
 
-function progress(label: string, value: number, target: number, color: string) {
-  const percent = target > 0 ? Math.min(100, (value / target) * 100) : 0;
-  return (
-    <div className="accounting-finance-progress" key={label}>
-      <div>
-        <span>{label}</span>
-        <strong>
-          {money(value)} / {money(target)}
-        </strong>
-      </div>
-      <div className="accounting-finance-track">
-        <span style={{ width: `${percent.toFixed(1)}%`, background: color }} />
-      </div>
-    </div>
-  );
-}
-
 function monthAfter(value: string) {
   const [year, month] = value.split('-').map(Number);
   const next = new Date(Date.UTC(year, month, 1));
@@ -116,7 +100,6 @@ export function AccountingFinanceSections({
   advertising,
   bookings,
   onDownload,
-  saving,
 }: {
   config: AccountingFinanceConfiguration;
   update: UpdateConfiguration;
@@ -132,7 +115,6 @@ export function AccountingFinanceSections({
   advertising: AdvertisingRow[];
   bookings: Booking[];
   onDownload: (document: DocumentKey) => void;
-  saving: boolean;
 }) {
   const [opened, setOpened] = useState<Record<string, boolean>>({});
   const toggle = (key: string) => setOpened((old) => ({ ...old, [key]: !old[key] }));
@@ -142,11 +124,9 @@ export function AccountingFinanceSections({
   const advertisingRevenue = advertising.reduce((sum, row) => sum + row.turnover, 0);
   const financialStatus = current
     ? current.profit <= 0
-      ? 'Suspendu ce mois'
-      : current.carry > 1
-        ? 'Reporté en partie'
-        : 'À jour'
-    : `Le suivi commence en ${config.start}.`;
+      ? 'Pas de bénéfice ce mois'
+      : `Bénéfice ${money(current.profit)}`
+    : '';
   const paidOffText = forecast.paidOff
     ? new Date(`${forecast.paidOff}-15T12:00:00`).toLocaleDateString('fr-FR', {
         month: 'long',
@@ -166,26 +146,9 @@ export function AccountingFinanceSections({
         ['Revenus', current.revenue, '#3DDC84'],
         ['Charges (journal, salaires, manœuvres, pub)', current.costs, '#FF5A5F'],
         ['Bénéfice', current.profit, current.profit > 0 ? '#3DDC84' : '#FF5A5F'],
-        [`Plafond ${config.profitCapPercent} %`, current.budget, '#F6D73C'],
         ['Impôt SUARL estimé', current.tax, current.tax ? '#FFD23F' : '#AEB4BB'],
         ['Trésorerie après engagements', current.cash, current.cash >= 0 ? '#3DDC84' : '#FF5A5F'],
       ] as const)
-    : [];
-  const obligations: [string, number, number][] = current
-    ? [
-        ['Remboursement du père', current.debtDue, current.debtPaid],
-        [`Amortissement véhicules (${config.fleetYears} ans)`, current.fleetDue, current.fleetPaid],
-        ...(config.annexes.length
-          ? [
-              ['Amortissements annexes', current.annexDue, current.annexPaid] as [
-                string,
-                number,
-                number,
-              ],
-            ]
-          : []),
-        ['Réserve nouveau véhicule', current.reserveDue, current.reservePaid],
-      ]
     : [];
   const sizeRanges: Record<string, [number, number]> = {
     salon: [1, 10],
@@ -241,16 +204,8 @@ export function AccountingFinanceSections({
     ).values(),
   );
 
-  function updateNumber(key: keyof AccountingFinanceConfiguration, value: number) {
-    update({
-      [key]: Math.max(0, Math.round(value || 0)),
-    } as Partial<AccountingFinanceConfiguration>);
-  }
   return (
     <div className="accounting-finance-sections">
-      <div className="accounting-finance-save" role="status">
-        {saving ? 'Enregistrement des paramètres…' : 'Paramètres enregistrés'}
-      </div>
       <Accordion
         title={accountingFinanceText.regimeTitle}
         summaryColor="#F6D73C"
@@ -353,31 +308,15 @@ export function AccountingFinanceSections({
       </Accordion>
 
       <Accordion
-        title={accountingFinanceText.debtTitle}
+        title={accountingFinanceText.accountingMonthReview}
         summary={financialStatus}
-        summaryColor={
-          current
-            ? current.profit <= 0
-              ? '#FF5A5F'
-              : current.carry > 1
-                ? '#FFD23F'
-                : '#3DDC84'
-            : '#AEB4BB'
-        }
-        open={!!opened.debt}
-        onToggle={() => toggle('debt')}
+        summaryColor={current ? (current.profit <= 0 ? '#FF5A5F' : '#3DDC84') : '#AEB4BB'}
+        open={!!opened.monthReview}
+        onToggle={() => toggle('monthReview')}
       >
         {current ? (
           <>
-            <p
-              className={`accounting-finance-rule ${current.profit <= 0 ? 'negative' : current.carry > 1 ? 'warning' : ''}`}
-            >
-              {current.profit <= 0
-                ? 'Pas de bénéfice ce mois : remboursement, amortissements et réserve véhicule sont suspendus et reportés au mois prochain.'
-                : current.carry > 1
-                  ? `Plafond de ${config.profitCapPercent} % du bénéfice atteint : ${money(current.carry)} reporté au mois prochain.`
-                  : `Tout est payé avec moins de ${config.profitCapPercent} % du bénéfice.`}
-            </p>
+            <p className="accounting-finance-rule">{accountingFinanceText.accountingMonthRule}</p>
             <div className="accounting-finance-kpis">
               {accountingRows.map(([label, value, color]) => (
                 <article key={label}>
@@ -386,61 +325,6 @@ export function AccountingFinanceSections({
                 </article>
               ))}
             </div>
-            <div className="accounting-finance-obligations">
-              {obligations.map(([label, due, paid]) => {
-                const status =
-                  due < 1
-                    ? ['Rien à payer', '#AEB4BB']
-                    : due <= paid
-                      ? ['Payé', '#3DDC84']
-                      : paid > 0
-                        ? ['Partiel', '#FFD23F']
-                        : ['Reporté', '#FF5A5F'];
-                return (
-                  <div key={label}>
-                    <div>
-                      <strong>{label}</strong>
-                      <span>
-                        {accountingFinanceText.due} {money(due)} {accountingFinanceText.paid}{' '}
-                        {money(paid)} {accountingFinanceText.carried} {money(due - paid)}
-                      </span>
-                    </div>
-                    <b style={{ color: status[1], borderColor: status[1] }}>{status[0]}</b>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="accounting-finance-bars">
-              {progress(
-                'Dette remboursée',
-                config.debt - forecast.debtLeft,
-                config.debt,
-                '#3DDC84',
-              )}
-              {progress('Véhicules amortis', forecast.fleetAmortized, current.fleetBase, '#F6D73C')}
-              {progress(
-                'Réserve nouveau véhicule',
-                forecast.reserve,
-                config.newVehicleTarget,
-                '#5AB0FF',
-              )}
-            </div>
-            {forecast.reserve >= config.newVehicleTarget - 1 ? (
-              <button
-                className="accounting-finance-buy"
-                onClick={() =>
-                  update((old) => ({
-                    ...old,
-                    vehiclePurchases: [
-                      ...old.vehiclePurchases,
-                      { id: `vehicle-${Date.now()}`, month, price: old.newVehicleTarget },
-                    ],
-                  }))
-                }
-              >
-                {accountingFinanceText.buyVehicle(money(config.newVehicleTarget))}
-              </button>
-            ) : null}
           </>
         ) : (
           <p className="accounting-finance-note">
@@ -451,7 +335,7 @@ export function AccountingFinanceSections({
           <table className="accounting-finance-history">
             <thead>
               <tr>
-                {['Mois', 'Bénéfice', 'Dette payée', 'Amortis', 'Réserve', 'Reporté'].map(
+                {['Mois', 'Bénéfice', 'Dette payée', 'Amortis', 'Rés. véhicule', 'Rés. légale'].map(
                   (label) => (
                     <th key={label}>{label}</th>
                   ),
@@ -465,132 +349,122 @@ export function AccountingFinanceSections({
                 .map((row) => (
                   <tr key={row.key}>
                     <td>
-                      {new Date(`${row.key}-15T12:00:00`).toLocaleDateString('fr-FR', {
+                      {new Date(`${row.key}-15T12:00:00Z`).toLocaleDateString('fr-FR', {
                         month: 'short',
                         year: '2-digit',
+                        timeZone: 'UTC',
                       })}
                     </td>
                     <td>{money(row.profit)}</td>
                     <td>{money(row.debtPaid)}</td>
                     <td>{money(row.fleetPaid + row.annexPaid)}</td>
                     <td>{money(row.reservePaid)}</td>
-                    <td>{row.carry > 1 ? money(row.carry) : '—'}</td>
+                    <td>{row.legalReservePaid > 1 ? money(row.legalReservePaid) : '—'}</td>
                   </tr>
                 ))}
             </tbody>
           </table>
         </div>
-        <span className="accounting-finance-subheading">{accountingFinanceText.parameters}</span>
+        <span className="accounting-finance-subheading">
+          {accountingFinanceText.accountingParameters}
+        </span>
         <div className="accounting-finance-fields accounting-finance-params">
           <label>
-            <span>{accountingFinanceText.trackingStart}</span>
+            <span>{accountingFinanceText.accountingTrackingStartLabel}</span>
             <input
               type="month"
               min="2000-01"
               value={config.start}
               onChange={(event) => event.target.value && update({ start: event.target.value })}
             />
+            <small>{accountingFinanceText.accountingTrackingStartHint}</small>
           </label>
-          {(
-            [
-              ['DETTE TOTALE (FCFA)', 'debt'],
-              ['REMBOURSEMENT (MOIS)', 'debtMonths'],
-              ['VALEUR DES VÉHICULES (FCFA)', 'fleetValue'],
-              ['AMORTISSEMENT (ANS)', 'fleetYears'],
-              ['NOUVEAU VÉHICULE / AN (FCFA)', 'newVehicleTarget'],
-              ['PLAFOND DU BÉNÉFICE (%)', 'profitCapPercent'],
-            ] as const
-          ).map(([label, key]) => (
-            <label key={key}>
-              <span>{label}</span>
-              <input
-                type="number"
-                min="0"
-                value={config[key]}
-                onChange={(event) => updateNumber(key, Number(event.target.value))}
-              />
-            </label>
-          ))}
-        </div>
-        <span className="accounting-finance-subheading">
-          {accountingFinanceText.extraDepreciation}
-        </span>
-        {config.annexes.map((annex) => (
-          <div className="accounting-finance-edit-row annex" key={annex.id}>
+          <label>
+            <span>{accountingFinanceText.accountingSurplusTargetLabel}</span>
             <input
-              aria-label={accountingFinanceText.annexLabel}
-              value={annex.label}
-              placeholder={accountingFinanceText.annexLabelPlaceholder}
-              onChange={(event) =>
-                update((old) => ({
-                  ...old,
-                  annexes: old.annexes.map((row) =>
-                    row.id === annex.id ? { ...row, label: event.target.value } : row,
-                  ),
-                }))
-              }
-            />
-            <input
-              aria-label={accountingFinanceText.annexValue}
               type="number"
               min="0"
-              value={annex.value}
+              value={config.monthlyProfitTarget}
               onChange={(event) =>
-                update((old) => ({
-                  ...old,
-                  annexes: old.annexes.map((row) =>
-                    row.id === annex.id
-                      ? { ...row, value: Math.max(0, Number(event.target.value) || 0) }
-                      : row,
-                  ),
-                }))
+                update({ monthlyProfitTarget: Math.max(0, Number(event.target.value) || 0) })
               }
             />
+            <small>{accountingFinanceText.accountingSurplusTargetHint}</small>
+          </label>
+          <label>
+            <span>{accountingFinanceText.accountingAveragePriceLabel}</span>
             <input
-              aria-label={accountingFinanceText.annexDuration}
+              type="number"
+              min="0"
+              value={config.averageMovingPrice}
+              onChange={(event) =>
+                update({ averageMovingPrice: Math.max(0, Number(event.target.value) || 0) })
+              }
+            />
+            <small>{accountingFinanceText.accountingAveragePriceHint}</small>
+          </label>
+          <label>
+            <span>{accountingFinanceText.accountingVehicleCountLabel}</span>
+            <input
+              type="number"
+              min="0"
+              value={config.vehicleCount}
+              onChange={(event) =>
+                update({ vehicleCount: Math.max(0, Math.round(Number(event.target.value) || 0)) })
+              }
+            />
+            <small>{accountingFinanceText.accountingVehicleCountHint}</small>
+          </label>
+          <label>
+            <span>{accountingFinanceText.accountingOilCostLabel}</span>
+            <input
+              type="number"
+              min="0"
+              value={config.oilChangeCost}
+              onChange={(event) =>
+                update({ oilChangeCost: Math.max(0, Number(event.target.value) || 0) })
+              }
+            />
+            <small>{accountingFinanceText.accountingOilCostHint}</small>
+          </label>
+          <label>
+            <span>{accountingFinanceText.accountingOilIntervalLabel}</span>
+            <input
               type="number"
               min="1"
-              value={annex.years}
+              value={config.oilChangeIntervalMonths}
               onChange={(event) =>
-                update((old) => ({
-                  ...old,
-                  annexes: old.annexes.map((row) =>
-                    row.id === annex.id
-                      ? { ...row, years: Math.max(1, Number(event.target.value) || 1) }
-                      : row,
-                  ),
-                }))
+                update({
+                  oilChangeIntervalMonths: Math.max(1, Math.round(Number(event.target.value) || 1)),
+                })
               }
             />
-            <button
-              className="accounting-finance-remove"
-              aria-label={`Retirer ${annex.label || 'cet amortissement'}`}
-              onClick={() =>
-                update((old) => ({
-                  ...old,
-                  annexes: old.annexes.filter((row) => row.id !== annex.id),
-                }))
+            <small>{accountingFinanceText.accountingOilIntervalHint}</small>
+          </label>
+          <label>
+            <span>{accountingFinanceText.accountingInsuranceLabel}</span>
+            <input
+              type="number"
+              min="0"
+              value={config.vehicleInsuranceAnnual}
+              onChange={(event) =>
+                update({ vehicleInsuranceAnnual: Math.max(0, Number(event.target.value) || 0) })
               }
-            >
-              <Trash2 size={16} />
-            </button>
-          </div>
-        ))}
-        <button
-          className="accounting-finance-add"
-          onClick={() =>
-            update((old) => ({
-              ...old,
-              annexes: [
-                ...old.annexes,
-                { id: `annex-${Date.now()}`, label: '', value: 0, years: 3 },
-              ],
-            }))
-          }
-        >
-          <Plus size={16} /> {accountingFinanceText.addDepreciation}
-        </button>
+            />
+            <small>{accountingFinanceText.accountingInsuranceHint}</small>
+          </label>
+        </div>
       </Accordion>
+
+      <ReferenceAccountingAssets
+        config={config}
+        update={update}
+        current={current}
+        debtLeft={forecast.debtLeft}
+        reserve={forecast.reserve}
+        fleetAmortized={forecast.fleetAmortized}
+        month={month}
+      />
 
       <Accordion
         title={accountingFinanceText.salaryTitle}

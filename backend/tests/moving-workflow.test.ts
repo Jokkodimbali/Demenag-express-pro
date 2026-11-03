@@ -6,7 +6,15 @@ import type {
   CatalogueRepository,
   DriverRepository,
 } from '../src/application/ports/index.js';
-import type { Booking, Catalogue, Driver, Settings, User } from '../src/domain/model.js';
+import type {
+  Booking,
+  BookingInput,
+  BookingInventorySnapshot,
+  Catalogue,
+  Driver,
+  Settings,
+  User,
+} from '../src/domain/model.js';
 
 const now = new Date('2026-10-22T12:00:00.000Z');
 const admin: User = { id: 'admin-1', name: 'Admin', phone: '+221770000001', role: 'admin' };
@@ -128,6 +136,7 @@ function harness() {
   } as Settings;
   const catalogue = {
     get: async () => ({ vehicles: [booking.vehicle], settings }) as Catalogue,
+    listTollPoints: async () => [],
   } as unknown as CatalogueRepository;
   const drivers = {
     findByUserId: async (userId: string) =>
@@ -137,7 +146,20 @@ function harness() {
   const service = new MovingService(
     bookings,
     catalogue,
-    {} as never,
+    {
+      find: async (id: string) =>
+        id === 'route-for-update'
+          ? {
+              id,
+              from: booking.from,
+              to: booking.to,
+              distanceKm: booking.distanceKm,
+              durationMinutes: 20,
+              geometry: [booking.from, booking.to],
+              expiresAt: new Date(now.getTime() + 60_000).toISOString(),
+            }
+          : null,
+    } as never,
     {
       route: async (from: [number, number], to: [number, number]) => ({
         from,
@@ -156,6 +178,9 @@ function harness() {
   return {
     service,
     getBooking: () => booking,
+    setInventorySnapshot: (inventorySnapshot: BookingInventorySnapshot) => {
+      booking = { ...booking, inventorySnapshot };
+    },
     setWorkPlan: (workPlan: Booking['workPlan']) => {
       booking = { ...booking, workPlan };
     },
@@ -179,6 +204,74 @@ function harness() {
     },
   };
 }
+
+test('admin edit clears an emptied inventory snapshot and its work plan', async () => {
+  const { service, getBooking, setInventorySnapshot } = harness();
+  setInventorySnapshot({
+    sourceInventory: {
+      dwellingType: 'T2',
+      fromFloor: 0,
+      toFloor: 0,
+      fromLift: false,
+      toLift: false,
+      entries: {},
+      variants: [],
+      flags: {},
+      custom: [],
+    },
+    dwellingType: 'T2',
+    annexIncluded: false,
+    annexVolumeM3: 0,
+    fromFloor: 0,
+    toFloor: 0,
+    fromLift: false,
+    toLift: false,
+    ready: '',
+    stairs: '',
+    flags: [],
+    items: [],
+    itemCount: 0,
+    totalVolumeM3: 0,
+    vehicleCapacityM3: 20,
+    fillRate: 0,
+    estimatedTrips: 1,
+    moverCount: 0,
+    carpenterCount: 0,
+    loadingMinutes: 0,
+    unloadingMinutes: 0,
+    packingMinutes: 0,
+    travelMinutes: 20,
+    totalMinutes: 20,
+    lowDurationMinutes: 20,
+    highDurationMinutes: 20,
+    startTime: '08:00',
+    endTime: '08:20',
+  });
+  const booking = getBooking();
+  const input: BookingInput = {
+    vehicleId: booking.vehicle.id,
+    routeId: 'route-for-update',
+    trips: 1,
+    customerName: booking.customerName,
+    customerPhone: booking.phone,
+    fromAddress: booking.fromAddress,
+    toAddress: booking.toAddress,
+    date: booking.date,
+    month: '2026-10',
+    timeSlot: booking.timeSlot,
+    options: booking.options,
+    notes: '',
+    questionnaireAnswers: [],
+    workPlan: [],
+    inventorySnapshot: null,
+    requestId: '00000000-0000-4000-8000-000000000001',
+  };
+
+  const updated = await service.updateAdminRequest(admin, booking.id, input, booking.version);
+
+  assert.equal(updated.inventorySnapshot, undefined);
+  assert.deepEqual(updated.workPlan, []);
+});
 
 test('admin route change recalculates the latest provisional quote and flags the changed address', async () => {
   const { service, getBooking, setQuotes } = harness();

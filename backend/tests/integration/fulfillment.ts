@@ -81,19 +81,13 @@ export async function createFinalQuoteAndClose(
       version,
     });
   assert.equal(finalQuote.status, 201, JSON.stringify(finalQuote.body));
-  assert.equal(finalQuote.body.status, 'in_progress');
-  assert.equal(finalQuote.body.quotes[0].price.total, 94_000);
-
-  const closed = await admin
-    .patch('/api/bookings/' + bookingId + '/status')
-    .set(integrationHeader)
-    .send({ status: 'completed', version: finalQuote.body.version });
-  assert.equal(closed.status, 200, JSON.stringify(closed.body));
-  assert.equal(closed.body.status, 'completed');
-  return {
-    ...finalQuote.body,
-    version: closed.body.version,
-  } as { version: number; quotes: { id: string }[] };
+  assert.equal(finalQuote.body.status, 'completed');
+  const createdQuote = (
+    finalQuote.body.quotes as { id: string; kind: string; price: { total: number } }[]
+  ).find((quote) => quote.kind === 'final');
+  assert.ok(createdQuote, 'Le devis final doit apparaître dans la réservation.');
+  assert.equal(createdQuote.price.total, 94_000);
+  return { version: finalQuote.body.version as number, quoteId: createdQuote.id };
 }
 
 export async function verifyQuoteSnapshots(
@@ -116,7 +110,10 @@ export async function verifyQuoteSnapshots(
   assert.equal(quote.lignes.length, 3);
   const persisted = (await context.clients.first.get('/api/bookings/' + bookingId)).body;
   assert.equal(persisted.status, 'completed');
-  assert.equal(persisted.quotes[0].price.total, 94_000);
+  const finalQuote = (persisted.quotes as { kind: string; price: { total: number } }[]).find(
+    (item) => item.kind === 'final',
+  );
+  assert.equal(finalQuote?.price.total, 94_000);
   assert.equal(persisted.estimate.total, 58_000);
 
   const duplicateFinal = await context.clients.admin

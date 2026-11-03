@@ -422,21 +422,8 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       current.trips === movingEstimateTrips ? current : { ...current, trips: movingEstimateTrips },
     );
   }, [inventoryEstimateKey, selectedVehicleId, movingEstimateTrips, quoteConfig.calcMode]);
-  const questionnaire = (catalogue?.settings.questionnaire ?? defaultClientQuestions).map(
-    (question) => {
-      const legacyLabels: Record<string, string> = {
-        floor: 'À quel étage, et y a-t-il un ascenseur, au départ et à l’arrivée ?',
-        lift: 'L’ascenseur est-il assez grand pour un canapé ?',
-      };
-      const previousLabels: Record<string, string> = {
-        floor: 'À quel étage, au départ et à l’arrivée ?',
-        lift: 'Y a-t-il un ascenseur assez grand pour les meubles ?',
-      };
-      return question.label === previousLabels[question.id]
-        ? { ...question, label: legacyLabels[question.id] }
-        : question;
-    },
-  );
+  const configuredQuestions = catalogue?.settings.questionnaire;
+  const questionnaire = configuredQuestions?.length ? configuredQuestions : defaultClientQuestions;
   const inventoryCount =
     Object.values(draft.inventory.entries).reduce((sum, entry) => sum + entry.quantity, 0) +
     draft.inventory.variants.reduce((sum, entry) => sum + entry.quantity, 0) +
@@ -450,16 +437,6 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     draft.inventory.toLift
       ? inventoryText
       : '';
-  const questionnaireAutoAnswers = {
-    q1: Boolean(draft.customerName.trim()),
-    q2: Boolean(draft.customerPhone.trim()),
-    q4: Boolean(draft.date),
-    q5: Boolean(draft.timeSlot),
-    q7: Boolean(draft.fromAddress.trim()),
-    q12: Boolean(draft.toAddress.trim()),
-    q16: Boolean(draft.inventory.dwellingType),
-    q17: inventoryCount > 0,
-  };
   const estimateText = movingEstimate?.volume
     ? referenceMovingEstimateNote(
         movingEstimate,
@@ -734,9 +711,10 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         notes: quote.notes,
         status: quoteKind === 'final' ? 'completed' : (editingBooking?.status ?? 'pending'),
         pricingSettings: pdfSettings,
-        inventorySnapshot: movingEstimate?.volume
-          ? bookingInventorySnapshot(estimateInventory, movingEstimate)
-          : editingBooking?.inventorySnapshot,
+        inventorySnapshot:
+          visibleInventoryText && movingEstimate
+            ? bookingInventorySnapshot(estimateInventory, movingEstimate)
+            : undefined,
         estimate: currentPrice,
         quotes: editingBooking?.quotes ?? [],
       };
@@ -866,7 +844,6 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     questionnaire,
     inventoryCount,
     visibleInventoryText,
-    questionnaireAutoAnswers,
     estimateText,
     questionnaireText,
     totalTolls,

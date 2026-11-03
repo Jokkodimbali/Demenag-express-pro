@@ -6,6 +6,12 @@ export type Revenue = { provisional: number; definitive: number; total: number }
 const lastQuote = (booking: Booking, kind: Quote['kind']) =>
   booking.quotes.filter((quote) => quote.kind === kind).at(-1);
 
+/** Montant reconnu comme revenu final, comme dans finVals/amtOf de la référence. */
+export function completedBookingRevenueAmount(booking: Booking) {
+  if (booking.status !== 'completed') return 0;
+  return lastQuote(booking, 'final')?.price.total || booking.estimate.total || 0;
+}
+
 /** Montant courant d'une réservation : définitif, puis provisoire, puis estimation initiale. */
 export function bookingRevenueAmount(booking: Booking, catalogue?: Catalogue | null) {
   if (catalogue) return liveBookingPrice(booking, catalogue).total ?? 0;

@@ -1,4 +1,12 @@
-import type { Catalogue, Driver, QuoteInput, Settings, User, Vehicle } from '../../domain/model';
+import type {
+  Catalogue,
+  ClientQuestion,
+  Driver,
+  QuoteInput,
+  Settings,
+  User,
+  Vehicle,
+} from '../../domain/model';
 import { messages } from '../../content/fr';
 import { vehicleCapacity } from '../../domain/vehicle-capacity';
 import { createLabourPriceMatrix } from '../../domain/labour-price';
@@ -9,6 +17,28 @@ const role = (value: FormDataEntryValue | null): User['role'] =>
   value === 'admin' ? 'admin' : 'client';
 const integer = (value: FormDataEntryValue | null) => Number(value);
 const tuple = (values: number[]): [number, number, number] => [values[0], values[1], values[2]];
+
+export function questionnaireFromForm(data: FormData, existing: ClientQuestion[]) {
+  const rawCount = data.get('questionnaire.count');
+  if (typeof rawCount !== 'string' || rawCount.trim() === '') return existing;
+  const count = Number(rawCount);
+  if (!Number.isInteger(count) || count < 0 || count > 100) return existing;
+
+  return Array.from({ length: count }, (_, index): ClientQuestion => {
+    const field = (name: string) => String(data.get(`questionnaire.${index}.${name}`) ?? '');
+    const current = existing.find((question) => question.id === field('id'));
+    const hint = field('hint').trim();
+    return {
+      id: field('id'),
+      group: field('group').trim(),
+      label: field('label').trim(),
+      ...(hint ? { hint } : {}),
+      answerType: field('answerType') === 'yes_no' ? 'yes_no' : 'text',
+      required: field('required') === 'true' || current?.required === true,
+      active: field('active') !== 'false' && current?.active !== false,
+    };
+  });
+}
 
 export function userFromForm(data: FormData): Omit<User, 'id'> {
   return {
@@ -186,6 +216,7 @@ export async function catalogueFromForm(data: FormData, catalogue: Catalogue): P
       assemblyPrice: integer(data.get('assembly')),
       montageP,
       movingLaborPlanning,
+      questionnaire: questionnaireFromForm(data, catalogue.settings.questionnaire ?? []),
       whatsappPhone: `+${whatsappDigits}`,
       whatsappCountryCode,
       whatsappMode: String(

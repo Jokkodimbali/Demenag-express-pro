@@ -79,6 +79,31 @@ const accountingConfigurationSchema = z.object({
   newVehicleTarget: z.number().int().min(0).max(10_000_000_000),
   profitCapPercent: z.number().min(0).max(100),
   moverCostPerMove: z.number().int().min(0).max(1_000_000_000),
+  monthlyProfitTarget: z.number().int().min(0).max(10_000_000_000),
+  averageMovingPrice: z.number().int().min(0).max(10_000_000_000),
+  vehicleCount: z.number().int().min(0).max(1000),
+  oilChangeCost: z.number().int().min(0).max(1_000_000_000),
+  oilChangeIntervalMonths: z.number().int().min(1).max(120),
+  vehicleInsuranceAnnual: z.number().int().min(0).max(1_000_000_000),
+  legalReservePercent: z.number().min(0).max(100),
+  legalReserveCapitalPercent: z.number().min(0).max(100),
+  monthlyFixedChargePostings: z
+    .array(
+      z.object({
+        month: accountingMonthValue,
+        key: z.enum(['sal', 'vid', 'ass', 'amo', 'anx', 'res', 'det', 'leg']),
+        amount: z.number().int().min(0).max(10_000_000_000),
+      }),
+    )
+    .max(2400),
+  financeChat: z
+    .array(
+      z.object({
+        speaker: z.enum(['user', 'assistant']),
+        message: z.string().trim().max(3000),
+      }),
+    )
+    .max(40),
   menuPrices: z.record(
     z.string().max(80),
     z.object({

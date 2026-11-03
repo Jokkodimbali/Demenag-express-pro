@@ -5,6 +5,7 @@ import { uiText } from '../content/reference-ui-text';
 import type { useAdminCreateQuoteModel } from '../application/controllers/useAdminCreateQuoteModel';
 import type { Catalogue, Vehicle } from '../domain/model';
 import type { ReactNode } from 'react';
+import { visibleUiText } from '../content/visible-ui-text';
 
 type Model = ReturnType<typeof useAdminCreateQuoteModel>;
 
@@ -211,9 +212,9 @@ export function AdminCreateQuoteAside({
         </p>
       </div>
       {!publicRequest && (
-        <section className="admin-quote-calculation" aria-label="Calcul du devis">
-          <span className="admin-quote-stage-label">CALCUL DU DEVIS</span>
-          <div className="admin-quote-stage-switch" role="group" aria-label="Mode de calcul">
+        <section className="admin-quote-calculation" aria-label={visibleUiText.text1}>
+          <span className="admin-quote-stage-label">{visibleUiText.text2}</span>
+          <div className="admin-quote-stage-switch" role="group" aria-label={visibleUiText.text3}>
             <button
               type="button"
               aria-pressed={quoteConfig.calcMode === 'auto'}
@@ -226,7 +227,7 @@ export function AdminCreateQuoteAside({
                 }));
               }}
             >
-              Automatique
+              {visibleUiText.text4}
             </button>
             <button
               type="button"
@@ -246,7 +247,7 @@ export function AdminCreateQuoteAside({
                 }));
               }}
             >
-              Manuel
+              {visibleUiText.text5}
             </button>
           </div>
           <span className="admin-quote-calculation-description">
@@ -338,8 +339,9 @@ export function AdminCreateQuoteAside({
           )}
           {quoteConfig.calcMode === 'manual' && movingEstimate && (
             <span className="admin-quote-calculation-advice">
-              Conseillé par l’inventaire : {movingEstimate.recommendedCrew} manœuvres ·{' '}
-              {movingEstimate.trips} aller(s)-retour(s)
+              {visibleUiText.text6}
+              {movingEstimate.recommendedCrew} {visibleUiText.text7} {movingEstimate.trips}{' '}
+              {visibleUiText.text8}
             </span>
           )}
         </section>
@@ -468,7 +470,7 @@ export function AdminCreateQuoteAside({
                   <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
                   <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
                 </svg>
-                Rappel
+                {visibleUiText.text9}
               </span>
             )}
           </div>

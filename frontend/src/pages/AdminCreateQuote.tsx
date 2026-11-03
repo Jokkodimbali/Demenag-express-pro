@@ -60,7 +60,6 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
     movingEstimate,
     questionnaire,
     visibleInventoryText,
-    questionnaireAutoAnswers,
     estimateText,
     questionnaireText,
     totalTolls,
@@ -171,11 +170,9 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
               detail: step.detail,
               minutes: step.minutes,
             })),
-            movingEstimate &&
-              (movingEstimate.volume > 0 ||
-                state.editingBooking?.inventorySnapshot?.sourceInventory)
+            visibleInventoryText && movingEstimate
               ? bookingInventorySnapshot(estimateInventory, movingEstimate)
-              : undefined,
+              : null,
             movingEstimate?.volume
               ? { ...draft.options, labour: movingEstimate.crew }
               : draft.options,
@@ -850,8 +847,6 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             <ClientQuestionnaire
               questions={questionnaire}
               answers={draft.questionnaireAnswers}
-              autoAnswers={questionnaireAutoAnswers}
-              autoQuestionIds={['q1', 'q2', 'q4', 'q5', 'q7', 'q12', 'q16', 'q17']}
               open={questionnaireOpen}
               onToggle={() => setQuestionnaireOpen((value) => !value)}
               onChange={(id, value) =>

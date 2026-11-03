@@ -9,6 +9,7 @@ import {
   renderQuoteTemplate,
   whatsappPaymentLine,
 } from '../../application/services/whatsapp-templates';
+import { visibleUiText } from '../../content/visible-ui-text';
 const modes = [
   ['api', 'api.whatsapp.com (recommandé)'],
   ['wame', 'wa.me'],
@@ -115,7 +116,7 @@ export function ReferenceWhatsappSettings({ catalogue }: { catalogue: Catalogue 
         </label>
       </div>
       <label className="reference-settings-whatsapp-template">
-        <span>MESSAGE DU DEVIS PROVISOIRE</span>
+        <span>{visibleUiText.text66}</span>
         <textarea
           name="w.tplP"
           rows={4}

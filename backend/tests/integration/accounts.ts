@@ -54,16 +54,16 @@ export async function registerScenarioUsers(context: IntegrationContext) {
       photo: '/assets/test-driver.jpg',
       active: true,
       vehicleId: 'sprinter',
-      password: integrationPassword,
     });
   if (driver.status === 201 && typeof driver.body.userId === 'string')
     testUserIds.push(driver.body.userId);
   assert.equal(driver.status, 201, JSON.stringify(driver.body));
+  assert.equal(typeof driver.body.initialPassword, 'string');
   context.driverId = driver.body.id;
   const login = await clients.driver
     .post('/api/auth/login')
     .set(integrationHeader)
-    .send({ phone: driverPhone, password: integrationPassword });
+    .send({ phone: driverPhone, password: driver.body.initialPassword });
   assert.equal(login.status, 200, JSON.stringify(login.body));
   return { userIds: testUserIds, driverId: driver.body.id };
 }

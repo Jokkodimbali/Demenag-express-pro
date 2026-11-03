@@ -4,6 +4,7 @@ import {
   buildSyscohadaEntries,
   defaultAccountingFinanceConfiguration,
   jobLabourEntries,
+  referenceFixedChargeEntries,
   simulateAccounting,
 } from '../src/domain/accounting-forecast.ts';
 import type { AccountingEntry, Booking } from '../src/domain/model.ts';
@@ -45,22 +46,110 @@ const journal: AccountingEntry[] = ['2026-01-15', '2026-02-15', '2026-03-15'].fl
   ],
 );
 
-test('la projection suit le plafond, la dette, les amortissements, la réserve et le passage SUARL', () => {
+test('les engagements restent à payer tant qu’ils ne sont pas inscrits au journal', () => {
   const result = simulateAccounting(configuration, journal, [], '2026-03');
 
   assert.equal(result.months.length, 3);
   assert.equal(result.months[0]?.profit, 9_200);
   assert.equal(result.months[0]?.budget, 4_600);
+  assert.equal(result.months[0]?.debtPaid, 0);
+  assert.equal(result.months[0]?.fleetPaid, 0);
+  assert.equal(result.months[0]?.reservePaid, 0);
+  assert.equal(result.months[0]?.debtLeft, 1_200);
+  assert.equal(result.months[0]?.legalReserveDue, 240);
+  assert.equal(result.months[0]?.legalReservePaid, 0);
+  assert.equal(result.months[0]?.tax, 0);
+  assert.equal(result.months[1]?.debtLeft, 1_200);
+  assert.equal(result.months[1]?.suarl, false);
+  assert.equal(result.paidOff, '');
+  assert.equal(result.months[2]?.suarl, false);
+  assert.equal(result.months[2]?.tax, 0);
+  assert.equal(result.months[2]?.cash, 9_200);
+  assert.equal(result.reserve, 0);
+});
+
+test('les salaires configurés restent inclus dans les charges prévisionnelles jusqu’à leur inscription', () => {
+  const config = { ...configuration, salaries: [{ id: 'salary', name: 'Employé', amount: 500 }] };
+  const entries = [
+    {
+      id: 'salary-revenue',
+      type: 'revenu' as const,
+      category: 'Déménagement',
+      label: 'Recette',
+      amount: 1_000,
+      date: '2026-01-15',
+      automatic: false,
+    },
+  ];
+
+  assert.equal(simulateAccounting(config, entries, [], '2026-01').months[0]?.salaries, 500);
+  assert.equal(
+    simulateAccounting(
+      {
+        ...config,
+        monthlyFixedChargePostings: [{ month: '2026-01', key: 'sal', amount: 300 }],
+      },
+      [
+        ...entries,
+        ...referenceFixedChargeEntries({
+          ...config,
+          monthlyFixedChargePostings: [{ month: '2026-01', key: 'sal', amount: 300 }],
+        }),
+      ],
+      [],
+      '2026-01',
+    ).months[0]?.salaries,
+    300,
+  );
+});
+
+test('les charges fixes ajoutées au journal sont prises en compte dans la simulation et le passage SUARL', () => {
+  const config = {
+    ...configuration,
+    monthlyFixedChargePostings: [
+      { month: '2026-01', key: 'det' as const, amount: 600 },
+      { month: '2026-01', key: 'amo' as const, amount: 100 },
+      { month: '2026-01', key: 'res' as const, amount: 100 },
+      { month: '2026-01', key: 'leg' as const, amount: 240 },
+      { month: '2026-02', key: 'det' as const, amount: 600 },
+      { month: '2026-02', key: 'amo' as const, amount: 100 },
+      { month: '2026-02', key: 'res' as const, amount: 100 },
+      { month: '2026-03', key: 'amo' as const, amount: 100 },
+      { month: '2026-03', key: 'res' as const, amount: 100 },
+    ],
+  };
+  const entries = [...journal, ...referenceFixedChargeEntries(config)];
+  const result = simulateAccounting(config, entries, [], '2026-03');
+
   assert.equal(result.months[0]?.debtPaid, 600);
   assert.equal(result.months[0]?.fleetPaid, 100);
   assert.equal(result.months[0]?.reservePaid, 100);
-  assert.equal(result.months[0]?.tax, 0);
+  assert.equal(result.months[0]?.legalReserveDue, 240);
+  assert.equal(result.months[0]?.legalReservePaid, 240);
   assert.equal(result.months[1]?.debtLeft, 0);
-  assert.equal(result.months[1]?.suarl, false);
   assert.equal(result.paidOff, '2026-02');
   assert.equal(result.months[2]?.suarl, true);
   assert.equal(result.months[2]?.tax, 2_730);
   assert.equal(result.months[2]?.cash, 6_370);
+  assert.equal(result.reserve, 300);
+});
+
+test('la simulation accepte les remboursements anticipés et les versements supérieurs au nominal', () => {
+  const config = {
+    ...configuration,
+    monthlyFixedChargePostings: [
+      { month: '2026-01', key: 'det' as const, amount: 1_200 },
+      { month: '2026-01', key: 'amo' as const, amount: 1_200 },
+      { month: '2026-01', key: 'res' as const, amount: 300 },
+    ],
+  };
+  const result = simulateAccounting(config, referenceFixedChargeEntries(config), [], '2026-01');
+
+  assert.equal(result.months[0]?.debtPaid, 1_200);
+  assert.equal(result.months[0]?.debtLeft, 0);
+  assert.equal(result.months[0]?.fleetPaid, 1_200);
+  assert.equal(result.months[0]?.fleetAmortized, 1_200);
+  assert.equal(result.months[0]?.reservePaid, 300);
   assert.equal(result.reserve, 300);
 });
 
@@ -185,16 +274,34 @@ test('les réservations annulées ne génèrent pas de charges de main-d’œuvr
   assert.deepEqual(jobLabourEntries([booking], configuration), []);
 });
 
-test('le nombre de manœuvres suit les devis finals non annulés du mois de la réservation', () => {
+test('le nombre de manœuvres suit uniquement les déménagements terminés du mois', () => {
   const finalQuote = {
     id: 'quote-final',
     kind: 'final',
     price: { lines: [{ label: 'Manœuvres', quantity: 3 }], total: 100_000 },
   };
   const bookings = [
-    { id: 'confirmed', date: '2026-01-15', status: 'confirmed', quotes: [finalQuote] },
-    { id: 'cancelled', date: '2026-01-16', status: 'cancelled', quotes: [finalQuote] },
-    { id: 'provisional', date: '2026-01-17', status: 'completed', quotes: [] },
+    {
+      id: 'confirmed',
+      date: '2026-01-15',
+      status: 'confirmed',
+      estimate: { lines: [] },
+      quotes: [finalQuote],
+    },
+    {
+      id: 'cancelled',
+      date: '2026-01-16',
+      status: 'cancelled',
+      estimate: { lines: [] },
+      quotes: [finalQuote],
+    },
+    {
+      id: 'completed',
+      date: '2026-01-17',
+      status: 'completed',
+      estimate: { lines: [] },
+      quotes: [finalQuote],
+    },
   ] as unknown as Booking[];
 
   const result = simulateAccounting(configuration, [], bookings, '2026-01');

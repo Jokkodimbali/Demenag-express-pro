@@ -35,6 +35,7 @@ import type {
 import type { MovingUseCases } from '../ports/use-cases.js';
 import { createQuote } from './moving-quote.js';
 import { addressChangeForUpdate } from './moving-address-change.js';
+import { createRouteTicket } from './moving-routing.js';
 
 export class MovingService implements MovingUseCases {
   constructor(
@@ -50,14 +51,7 @@ export class MovingService implements MovingUseCases {
     private accounting?: AccountingRepository,
   ) {}
   async route(from: Point, to: Point) {
-    const route = await this.routing.route(from, to);
-    const ticket = {
-      ...route,
-      id: this.ids.next(),
-      expiresAt: new Date(+this.clock.now() + 30 * 60000).toISOString(),
-    };
-    await this.routes.save(ticket);
-    return ticket;
+    return createRouteTicket(this.routing, this.routes, this.clock, this.ids, from, to);
   }
   search(query: string) {
     return this.routing.search(query);
@@ -176,7 +170,7 @@ export class MovingService implements MovingUseCases {
         workAccess: input.workAccess,
         notes: input.notes,
         questionnaireAnswers: user.role === 'admin' ? (input.questionnaireAnswers ?? []) : [],
-        inventorySnapshot: input.inventorySnapshot,
+        inventorySnapshot: input.inventorySnapshot ?? undefined,
         workPlan:
           user.role === 'admin'
             ? (input.workPlan ?? []).map((step) => {
@@ -336,7 +330,10 @@ export class MovingService implements MovingUseCases {
                 })(),
               }))
             : booking.workPlan,
-        inventorySnapshot: input.inventorySnapshot ?? booking.inventorySnapshot,
+        inventorySnapshot:
+          input.inventorySnapshot === null
+            ? undefined
+            : (input.inventorySnapshot ?? booking.inventorySnapshot),
         estimate,
         crewAddressChange,
       },

@@ -245,6 +245,11 @@ export class PrismaBookings implements BookingRepository {
     const next = { ...booking, version: expectedVersion + 1 };
     try {
       return await this.db.$transaction(async (tx) => {
+        const current = await tx.reservation.findUnique({
+          where: { id: booking.id },
+          select: { donnees: true },
+        });
+        const previousBooking = current?.donnees as Booking | undefined;
         const result = await tx.reservation.updateMany({
           where: { id: booking.id, version: expectedVersion, supprimeLe: null },
           data: {
@@ -257,7 +262,7 @@ export class PrismaBookings implements BookingRepository {
         if (!result.count)
           throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
         for (const quote of next.quotes) {
-          const previous = booking.quotes.find((item) => item.id === quote.id);
+          const previous = previousBooking?.quotes.find((item) => item.id === quote.id);
           if (previous && JSON.stringify(previous) === JSON.stringify(quote)) continue;
           const data = quoteData(quote);
           await tx.devis.upsert({

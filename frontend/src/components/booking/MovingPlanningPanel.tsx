@@ -8,6 +8,7 @@ import {
 } from '../../domain/moving-estimate';
 import type { MovingLaborPlanningSettings, Vehicle } from '../../domain/model';
 import type { Inventory } from '../../domain/inventory';
+import { visibleUiText } from '../../content/visible-ui-text';
 
 const vehicleNames: Record<string, string> = {
   sprinter: 'Sprinter',
@@ -322,7 +323,7 @@ export function MovingPlanningPanel({
             )}
             {onHeatChange && (
               <div className="moving-heat-control">
-                <span>Récupération chaleur</span>
+                <span>{visibleUiText.text57}</span>
                 <button
                   type="button"
                   className="moving-heat-toggle"
@@ -339,7 +340,7 @@ export function MovingPlanningPanel({
                   <div className="moving-heat-stepper">
                     <button
                       type="button"
-                      aria-label="Réduire la récupération chaleur"
+                      aria-label={visibleUiText.text58}
                       onClick={() =>
                         onHeatChange({
                           heatOff: false,
@@ -349,10 +350,12 @@ export function MovingPlanningPanel({
                     >
                       −
                     </button>
-                    <strong>{current.heat.rest} min</strong>
+                    <strong>
+                      {current.heat.rest} {visibleUiText.text59}
+                    </strong>
                     <button
                       type="button"
-                      aria-label="Augmenter la récupération chaleur"
+                      aria-label={visibleUiText.text60}
                       onClick={() =>
                         onHeatChange({
                           heatOff: false,

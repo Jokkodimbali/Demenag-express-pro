@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useAuthentication } from '../application/controllers/useAuthentication';
 import { messages } from '../content/fr';
+import { visibleUiText } from '../content/visible-ui-text';
 export function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [registerPassword, setRegisterPassword] = useState('');
@@ -64,7 +65,7 @@ export function Auth() {
         <form onSubmit={resetMode ? requestPasswordReset : submit}>
           {register && !resetMode && (
             <>
-              <label htmlFor="auth-registration-role">Type de compte</label>
+              <label htmlFor="auth-registration-role">{visibleUiText.text85}</label>
               <select
                 id="auth-registration-role"
                 name="accountRole"
@@ -75,13 +76,11 @@ export function Auth() {
                   setError('');
                 }}
               >
-                <option value="client">Client</option>
-                <option value="driver">Employé · compte créé par l’administration</option>
+                <option value="client">{visibleUiText.text86}</option>
+                <option value="driver">{visibleUiText.text87}</option>
               </select>
               {registrationRole === 'driver' ? (
-                <p className="caption">
-                  Utilisez le numéro et le mot de passe initial transmis par l’administration.
-                </p>
+                <p className="caption">{visibleUiText.text88}</p>
               ) : (
                 <>
                   <label htmlFor="auth-name">
@@ -161,11 +160,7 @@ export function Auth() {
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              {!register && (
-                <p className="caption">
-                  Mot de passe obligatoire pour l’administrateur uniquement.
-                </p>
-              )}
+              {!register && <p className="caption">{visibleUiText.text89}</p>}
               {register && registrationRole === 'client' && (
                 <>
                   <div className="auth-password-strength" aria-live="polite">

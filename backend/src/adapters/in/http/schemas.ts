@@ -120,6 +120,7 @@ const clientQuestionSchema = z.object({
   id: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
   group: z.string().trim().min(1).max(100),
   label: z.string().trim().min(3).max(500),
+  hint: z.string().trim().max(1000).optional(),
   answerType: z.enum(['text', 'yes_no']),
   required: z.boolean(),
   active: z.boolean(),
@@ -211,7 +212,7 @@ export const bookingSchema = estimateSchema
       )
       .max(50)
       .optional(),
-    inventorySnapshot: inventorySnapshotSchema.optional(),
+    inventorySnapshot: inventorySnapshotSchema.nullable().optional(),
     requestId: z.uuid(),
   })
   .refine((booking) => !booking.date || Boolean(booking.timeSlot), {

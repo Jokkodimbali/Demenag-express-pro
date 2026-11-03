@@ -1,4 +1,6 @@
 export type Role = 'client' | 'admin' | 'driver';
+export type AccountingFixedChargeKey =
+  'sal' | 'vid' | 'ass' | 'amo' | 'anx' | 'res' | 'det' | 'leg';
 export type AccountingFinanceConfiguration = {
   regime: 'auto' | 'informel' | 'suarl';
   suarlFrom: string;
@@ -11,6 +13,16 @@ export type AccountingFinanceConfiguration = {
   newVehicleTarget: number;
   profitCapPercent: number;
   moverCostPerMove: number;
+  monthlyProfitTarget: number;
+  averageMovingPrice: number;
+  vehicleCount: number;
+  oilChangeCost: number;
+  oilChangeIntervalMonths: number;
+  vehicleInsuranceAnnual: number;
+  legalReservePercent: number;
+  legalReserveCapitalPercent: number;
+  monthlyFixedChargePostings: { month: string; key: AccountingFixedChargeKey; amount: number }[];
+  financeChat: { speaker: 'user' | 'assistant'; message: string }[];
   menuPrices: Record<
     string,
     {
@@ -35,6 +47,7 @@ export type AccountingEntry = {
   bookingId?: string;
   reference?: string;
   bookingReference?: string;
+  referenceFixedKey?: AccountingFixedChargeKey;
 };
 export type ManualAccountingInput = Pick<
   AccountingEntry,
@@ -440,7 +453,7 @@ export type BookingInput = {
   notes: string;
   questionnaireAnswers?: ClientQuestionAnswer[];
   workPlan?: WorkPlanStepInput[];
-  inventorySnapshot?: BookingInventorySnapshot;
+  inventorySnapshot?: BookingInventorySnapshot | null;
   requestId: string;
 };
 export type QuoteInput = {

@@ -600,14 +600,14 @@
   background: #f6d73c;
   color: #1e2023;
   box-shadow: 0 2px 10px #0006;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.06em;
   cursor: pointer;
 }
 .questionnaire-panel {
   pointer-events: auto;
-  width: min(360px, calc(100vw - 48px));
+  width: min(360px, 88vw);
   height: 100%;
   overflow: hidden;
   background: #272a2e;
@@ -618,24 +618,20 @@
   flex-direction: column;
 }
 .questionnaire-panel > header {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 36px;
-  gap: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   padding: 16px 16px 12px;
   border-bottom: 1px solid #3b4046;
 }
-.questionnaire-panel-title {
+.questionnaire-panel-heading {
   display: flex;
-  flex-direction: column;
-  gap: 5px;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
 }
-.questionnaire-panel-title strong {
+.questionnaire-panel-heading > strong {
   font-size: 15px;
-}
-.questionnaire-panel-title span {
-  color: #aeb4bb;
-  font-size: 12px;
-  line-height: 1.4;
 }
 .questionnaire-close {
   width: 36px;
@@ -649,7 +645,6 @@
   cursor: pointer;
 }
 .questionnaire-progress {
-  grid-column: 1 / -1;
   height: 6px;
   overflow: hidden;
   border-radius: 99px;
@@ -662,11 +657,13 @@
   transition: width 160ms ease;
 }
 .questionnaire-progress-label {
-  grid-column: 1 / -1;
   color: #f6d73c;
   font-size: 12px;
 }
 .questionnaire-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   overflow: auto;
   padding: 8px 12px 18px;
 }
@@ -756,8 +753,11 @@
   grid-template-columns: 20px minmax(0, 1fr);
   align-items: start;
   gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
   padding: 8px;
   border-radius: 9px;
+  cursor: pointer;
 }
 .questionnaire-question.is-answered {
   background: #1e2023;
@@ -790,6 +790,15 @@
 .questionnaire-check:disabled {
   cursor: default;
 }
+.questionnaire-check:focus-visible,
+.questionnaire-group-toggle:focus-visible,
+.questionnaire-guided button:focus-visible,
+.questionnaire-key-choices button:focus-visible,
+.questionnaire-tab:focus-visible,
+.questionnaire-close:focus-visible {
+  outline: 2px solid #f6d73c;
+  outline-offset: 2px;
+}
 .questionnaire-question > div {
   display: flex;
   flex-direction: column;
@@ -802,14 +811,10 @@
   font-weight: 700;
   line-height: 1.4;
 }
-.questionnaire-question-status,
-.questionnaire-auto-status {
+.questionnaire-question-status {
   color: #aeb4bb;
   font-size: 11.5px;
   line-height: 1.4;
-}
-.questionnaire-auto-status {
-  color: #7fd8a0;
 }
 .questionnaire-key-questions {
   display: grid;
@@ -857,36 +862,6 @@
   font-size: 12px;
   font-weight: 500;
   line-height: 1.4;
-}
-.questionnaire-settings .section-heading {
-  align-items: flex-start;
-}
-.questionnaire-setting-row {
-  display: grid;
-  grid-template-columns:
-    minmax(140px, 0.7fr) minmax(240px, 1.5fr) minmax(170px, 0.8fr)
-    auto auto auto;
-  align-items: end;
-  gap: 10px;
-  margin: 14px 0;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-}
-.questionnaire-setting-row > label {
-  min-width: 0;
-}
-.questionnaire-setting-row input:not([type='checkbox']),
-.questionnaire-setting-row select {
-  width: 100%;
-  margin-top: 5px;
-}
-.questionnaire-setting-check {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 44px;
-  font-size: 12px;
 }
 .booking-client-questionnaire {
   display: grid;
