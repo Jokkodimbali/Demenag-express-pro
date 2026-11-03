@@ -139,8 +139,8 @@ test('la durée Google avec bouchons remplace la correction de trajet du modèle
     trafficDurationMinutes: 60,
   });
 
-  assert.equal(sprinter.travelMinutes, 76);
-  assert.equal(trafic.travelMinutes, 73);
+  assert.equal(sprinter.travelMinutes, 73);
+  assert.equal(trafic.travelMinutes, 70);
 });
 
 test('l’heure et les cadences de planning peuvent être réglées dans les paramètres admin', () => {
@@ -186,9 +186,10 @@ test('deux véhicules en parallèle reprennent la solution proposée par la réf
     format: 'medium',
     dismantle: false,
   };
-  const single = estimateMovingWork(inventory, vehicle);
+  const single = estimateMovingWork(inventory, vehicle, null, { heatOff: true });
   const parallel = estimateMovingWork(inventory, vehicle, null, {
     parallelVehicles: 2,
+    heatOff: true,
   });
 
   assert.equal(single.trips, 6);

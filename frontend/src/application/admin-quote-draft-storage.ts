@@ -2,6 +2,11 @@ import type { Draft } from './booking-draft';
 
 export type AdminQuoteConfig = {
   trips: number;
+  calcMode: 'auto' | 'manual';
+  legMinutes: number;
+  trafficOff: boolean;
+  heatOff: boolean;
+  heatRest: number;
   discount: number;
   discountType: 'fcfa' | 'pct';
   discountReason: string;
@@ -30,6 +35,11 @@ export function readAdminQuoteDraft(): AdminQuoteDraft | null {
       ...parsed,
       quoteConfig: {
         ...parsed.quoteConfig,
+        calcMode: parsed.quoteConfig.calcMode === 'manual' ? 'manual' : 'auto',
+        legMinutes: Math.max(0, Number(parsed.quoteConfig.legMinutes) || 0),
+        trafficOff: parsed.quoteConfig.trafficOff === true,
+        heatOff: parsed.quoteConfig.heatOff === true,
+        heatRest: Math.max(0, Number(parsed.quoteConfig.heatRest) || 0),
         labourUnitPriceOverride: parsed.quoteConfig.labourUnitPriceOverride ?? null,
         discountType: parsed.quoteConfig.discountType ?? 'fcfa',
         discountReason: parsed.quoteConfig.discountReason ?? '',
@@ -115,6 +125,13 @@ function isAdminQuoteDraft(value: unknown): value is AdminQuoteDraft {
     config !== null &&
     Number.isInteger(config.trips) &&
     config.trips >= 1 &&
+    (config.calcMode === undefined || ['auto', 'manual'].includes(config.calcMode)) &&
+    (config.legMinutes === undefined ||
+      (Number.isFinite(config.legMinutes) && config.legMinutes >= 0 && config.legMinutes <= 600)) &&
+    (config.trafficOff === undefined || typeof config.trafficOff === 'boolean') &&
+    (config.heatOff === undefined || typeof config.heatOff === 'boolean') &&
+    (config.heatRest === undefined ||
+      (Number.isFinite(config.heatRest) && config.heatRest >= 0 && config.heatRest <= 45)) &&
     Number.isInteger(config.discount) &&
     config.discount >= 0 &&
     (config.discountType === undefined || ['fcfa', 'pct'].includes(config.discountType)) &&

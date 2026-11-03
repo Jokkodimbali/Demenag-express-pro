@@ -713,8 +713,6 @@
   cursor: pointer;
 }
 .admin-quote-aside {
-  position: sticky;
-  top: 96px;
   display: flex;
   flex-direction: column;
   gap: 14px;

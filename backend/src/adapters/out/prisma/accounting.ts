@@ -41,6 +41,7 @@ export class PrismaAccounting implements AccountingRepository {
         FROM "demenag"."devis" d
         JOIN "demenag"."bookings" r ON r."id" = d."reservation_id"
         WHERE d."nature" = 'definitif' AND d."montant_total" IS NOT NULL
+          AND r."deleted_at" IS NULL
           AND r."data"->>'status' IS DISTINCT FROM 'cancelled' ${period}
         ORDER BY d."cree_le" DESC
       `),

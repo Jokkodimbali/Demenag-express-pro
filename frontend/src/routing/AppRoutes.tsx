@@ -30,6 +30,7 @@ const AdminFleet = lazy(() =>
 const AdminSettings = lazy(() =>
   import('../pages/AdminSettings').then((m) => ({ default: m.AdminSettings })),
 );
+const AdminData = lazy(() => import('../pages/AdminData').then((m) => ({ default: m.AdminData })));
 const AdminTollPoints = lazy(() =>
   import('../pages/AdminTollPoints').then((m) => ({ default: m.AdminTollPoints })),
 );
@@ -118,6 +119,7 @@ export function AppRoutes() {
             <Route path="flotte" element={<AdminFleet />} />
             <Route path="peages" element={<AdminTollPoints />} />
             <Route path="parametres" element={<AdminSettings />} />
+            <Route path="donnees" element={<AdminData />} />
             <Route path="comptes" element={<AdminUsers />} />
             <Route path="clients" element={<AdminClients />} />
             <Route path="vehicules/rapports" element={<AdminVehicleReports />} />

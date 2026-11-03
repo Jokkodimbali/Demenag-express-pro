@@ -3,7 +3,14 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
-const expectedDocument = 'c7891b503aa0b22eaff5f2627e4a1f64072d7ef4da691d89a144a5fada6a555a';
+const expectedDocument = 'c18cbd892c8a2476e0180d624b3f78b35f10a9db596d2486cb2661903fe4655c';
+const expectedReferenceScripts = {
+  'support.js': '8fe7df74405f3c55f49b7249c74ea1397e65d07dea2b1bd3b4a489bec2e28cbe',
+  'image-slot.js': '7fca2b8ffd71fa00e78c1f8ed0ba79bf888293397f9fc51c65a0f07ad6014890',
+  'gmaps-plus.js': 'e7c6271beb26d8b6f4f9703be0610177ed65bc4dc390acaec72e8e9006e101c7',
+  'loading-sim.js': 'cbfa72216f2c5d213eb5a44a7d26db27b119d87b2c6a4877b24c01a25be9b3a5',
+  'equip-art.js': 'ccee26898c273dfdfc36b28f6ba2446a76989763084f463c14610c593412b0d8',
+};
 const expectedAssets = {
   'logo.png': '987baabff136582af0494a4cf509f5d1800744438efe0304046e42e668e10df1',
   'sprinter-profil.png': 'ac5a80bc5b35b153040455dd4c55721dd18e09996d3d2a063f35db1af5bd6846',
@@ -33,4 +40,14 @@ for (const name of references) {
   const actual = digest(readFileSync(resolve(root, 'frontend/public/assets', name)));
   if (actual !== expected) throw new Error(`Ressource originale modifiée : ${name}`);
 }
-console.log(`Fichier de référence intact ; ${references.length} ressources originales vérifiées.`);
+for (const [name, expected] of Object.entries(expectedReferenceScripts)) {
+  const actual = digest(readFileSync(resolve(root, 'reference', name)));
+  if (actual !== expected) throw new Error(`Dépendance de référence modifiée : ${name}`);
+  if (name === 'loading-sim.js' || name === 'equip-art.js') {
+    const integrated = digest(readFileSync(resolve(root, 'frontend/public/reference', name)));
+    if (integrated !== expected) throw new Error(`Copie intégrée différente de la référence : ${name}`);
+  }
+}
+console.log(
+  `Fichier de référence intact ; ${references.length} ressources originales et ${Object.keys(expectedReferenceScripts).length} scripts locaux vérifiés.`,
+);

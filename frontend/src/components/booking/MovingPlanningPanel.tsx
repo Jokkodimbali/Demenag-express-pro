@@ -30,6 +30,13 @@ export function MovingPlanningPanel({
   onApply,
   laborPlanning,
   trafficDurationMinutes,
+  freeTrafficDurationMinutes,
+  ignoreTraffic,
+  manualLegMinutes,
+  onManualCalculation,
+  heatOff,
+  heatRest,
+  onHeatChange,
   volumeDetail,
   inventoryChecks = [],
   labourPriceEditor,
@@ -44,6 +51,13 @@ export function MovingPlanningPanel({
   onApply: (vehicleId: string, trips: number) => void;
   laborPlanning?: MovingLaborPlanningSettings;
   trafficDurationMinutes?: number;
+  freeTrafficDurationMinutes?: number;
+  ignoreTraffic?: boolean;
+  manualLegMinutes?: number;
+  onManualCalculation?: () => void;
+  heatOff?: boolean;
+  heatRest?: number;
+  onHeatChange?: (value: { heatOff: boolean; heatRest: number }) => void;
   volumeDetail?: string;
   inventoryChecks?: string[];
   labourPriceEditor?: ReactNode;
@@ -61,6 +75,13 @@ export function MovingPlanningPanel({
         startTime: draft.timeSlot,
         laborPlanning,
         trafficDurationMinutes,
+        freeTrafficDurationMinutes,
+        ignoreTraffic,
+        manualLegMinutes,
+        date: draft.date,
+        month: draft.month,
+        heatOff,
+        heatRest,
       })
     : null;
   const comparisons = vehicles
@@ -79,6 +100,12 @@ export function MovingPlanningPanel({
         startTime: draft.timeSlot,
         laborPlanning,
         trafficDurationMinutes,
+        freeTrafficDurationMinutes,
+        ignoreTraffic,
+        date: draft.date,
+        month: draft.month,
+        heatOff,
+        heatRest,
       }),
     }));
   const volume = comparisons[0]?.estimate.volume ?? 0;
@@ -220,13 +247,14 @@ export function MovingPlanningPanel({
                   type="button"
                   aria-label={uiText['retirerUneManœuvre']}
                   disabled={current.crew <= 1}
-                  onClick={() =>
+                  onClick={() => {
+                    onManualCalculation?.();
                     setDraft((value) => ({
                       ...value,
                       inventory: { ...value.inventory, crew: Math.max(1, current.crew - 1) },
                       options: { ...value.options, labour: Math.max(1, current.crew - 1) },
-                    }))
-                  }
+                    }));
+                  }}
                 >
                   −
                 </button>
@@ -235,13 +263,14 @@ export function MovingPlanningPanel({
                   type="button"
                   aria-label={uiText['ajouterUneManœuvre']}
                   disabled={current.crew >= 20}
-                  onClick={() =>
+                  onClick={() => {
+                    onManualCalculation?.();
                     setDraft((value) => ({
                       ...value,
                       inventory: { ...value.inventory, crew: Math.min(20, current.crew + 1) },
                       options: { ...value.options, labour: Math.min(20, current.crew + 1) },
-                    }))
-                  }
+                    }));
+                  }}
                 >
                   +
                 </button>
@@ -280,6 +309,57 @@ export function MovingPlanningPanel({
                   {formatDuration(current.dismantleFromMinutes)} {uiText['remontage']}{' '}
                   {formatDuration(current.dismantleToMinutes)}
                   {uiText['enParalleleDesManœuvres']}
+                </small>
+              </div>
+            )}
+            {onHeatChange && (
+              <div className="moving-heat-control">
+                <span>Récupération chaleur</span>
+                <button
+                  type="button"
+                  className="moving-heat-toggle"
+                  onClick={() =>
+                    onHeatChange({
+                      heatOff: Boolean(current.heat),
+                      heatRest: current.heat ? heatRest || 0 : heatRest || 15,
+                    })
+                  }
+                >
+                  {current.heat ? 'Supprimer' : 'Ajouter'}
+                </button>
+                {current.heat && (
+                  <div className="moving-heat-stepper">
+                    <button
+                      type="button"
+                      aria-label="Réduire la récupération chaleur"
+                      onClick={() =>
+                        onHeatChange({
+                          heatOff: false,
+                          heatRest: Math.max(5, (current.heat?.rest ?? 10) - 5),
+                        })
+                      }
+                    >
+                      −
+                    </button>
+                    <strong>{current.heat.rest} min</strong>
+                    <button
+                      type="button"
+                      aria-label="Augmenter la récupération chaleur"
+                      onClick={() =>
+                        onHeatChange({
+                          heatOff: false,
+                          heatRest: Math.min(45, (current.heat?.rest ?? 10) + 5),
+                        })
+                      }
+                    >
+                      +
+                    </button>
+                  </div>
+                )}
+                <small>
+                  {!current.heat
+                    ? 'Non comptée dans la durée'
+                    : `Par heure de portage, à l’ombre${current.heat?.manual ? ' (réglé)' : ' (ISO 7243)'}`}
                 </small>
               </div>
             )}

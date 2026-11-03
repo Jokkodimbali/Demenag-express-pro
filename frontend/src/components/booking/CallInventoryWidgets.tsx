@@ -30,6 +30,13 @@ export type CallInventoryProps = {
   onApplyEstimate: (vehicleId: string, trips: number) => void;
   laborPlanning?: MovingLaborPlanningSettings;
   trafficDurationMinutes?: number;
+  freeTrafficDurationMinutes?: number;
+  ignoreTraffic?: boolean;
+  manualLegMinutes?: number;
+  onManualCalculation?: () => void;
+  heatOff?: boolean;
+  heatRest?: number;
+  onHeatChange?: (value: { heatOff: boolean; heatRest: number }) => void;
   labourPriceEditor?: ReactNode;
   estimateInventory?: Inventory;
   audience?: 'admin' | 'client';

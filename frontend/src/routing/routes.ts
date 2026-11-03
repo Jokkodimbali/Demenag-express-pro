@@ -12,6 +12,7 @@ export const routes = {
   administrationAccounting: '/admin/comptabilite',
   administrationFleet: '/admin/flotte',
   administrationSettings: '/admin/parametres',
+  administrationData: '/admin/donnees',
   administrationTollPoints: '/admin/peages',
   administrationUsers: '/admin/comptes',
   administrationClients: '/admin/clients',

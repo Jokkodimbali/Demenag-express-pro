@@ -9,7 +9,7 @@ import type {
   UserCredentials,
   Vehicle,
 } from '../../../domain/model.js';
-import { defaultClientQuestions } from '../../../domain/questionnaire.js';
+import { defaultClientQuestions, isLegacyDefaultQuestions } from '../../../domain/questionnaire.js';
 import { vehicleCapacity } from '../../../domain/vehicle-capacity.js';
 import type {
   ParametreApplication,
@@ -178,6 +178,8 @@ export const fromSettings = (row: ParametreApplication): Settings => ({
     maxMoversPerVehicle: 6,
     cubicMetersPerHourPerMover: 2.5,
     pauseMinutes: 30,
+    heat: 1,
+    wbgtAdj: 0,
     ...(row.planificationManoeuvre as Partial<MovingLaborPlanningSettings>),
   },
   assemblyPrice: row.tarifMontage,
@@ -209,9 +211,10 @@ export const fromSettings = (row: ParametreApplication): Settings => ({
   clientCancellation: row.annulationClientAutorisee,
   cancellationNoticeHours: row.preavisAnnulationHeures,
   enabledSlots: row.creneauxOuverts as BookingSlot[],
-  questionnaire: Array.isArray(row.questionnaire)
-    ? (row.questionnaire as ClientQuestion[])
-    : defaultClientQuestions,
+  questionnaire:
+    Array.isArray(row.questionnaire) && !isLegacyDefaultQuestions(row.questionnaire)
+      ? (row.questionnaire as ClientQuestion[])
+      : defaultClientQuestions,
 });
 export const toSettings = (value: Settings) => ({
   bornesDistance: value.distanceBounds,
@@ -226,6 +229,8 @@ export const toSettings = (value: Settings) => ({
     maxMoversPerVehicle: 6,
     cubicMetersPerHourPerMover: 2.5,
     pauseMinutes: 30,
+    heat: 1,
+    wbgtAdj: 0,
   },
   tarifMontage: value.assemblyPrice,
   grillePrixMontage: (value.montageP ?? {}) as Prisma.InputJsonValue,

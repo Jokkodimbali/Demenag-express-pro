@@ -158,6 +158,8 @@ export async function catalogueFromForm(data: FormData, catalogue: Catalogue): P
     maxMoversPerVehicle: integer(data.get('movingLaborPlanning.maxMoversPerVehicle')),
     cubicMetersPerHourPerMover: Number(data.get('movingLaborPlanning.cubicMetersPerHourPerMover')),
     pauseMinutes: integer(data.get('movingLaborPlanning.pauseMinutes')),
+    heat: integer(data.get('movingLaborPlanning.heat')),
+    wbgtAdj: Number(data.get('movingLaborPlanning.wbgtAdj')),
   };
   const labourMatrix = createLabourPriceMatrix({
     ...catalogue.settings,

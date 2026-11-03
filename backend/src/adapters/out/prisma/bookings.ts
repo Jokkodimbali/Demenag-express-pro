@@ -110,6 +110,7 @@ export class PrismaBookings implements BookingRepository {
         };
     const rows = await this.db.reservation.findMany({
       where: {
+        supprimeLe: null,
         ...(userId ? { utilisateurId: userId } : {}),
         ...(vehicleId ? { vehiculeId: vehicleId } : {}),
       },
@@ -120,8 +121,8 @@ export class PrismaBookings implements BookingRepository {
     return rows.map((r) => this.withTrips(r));
   }
   async find(id: string) {
-    const row = await this.db.reservation.findUnique({
-      where: { id },
+    const row = await this.db.reservation.findFirst({
+      where: { id, supprimeLe: null },
       include: { courses: { orderBy: { sequence: 'asc' } } },
     });
     return row ? this.withTrips(row) : null;
@@ -177,18 +178,39 @@ export class PrismaBookings implements BookingRepository {
     });
   }
   async delete(id: string) {
-    await this.db.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT "id" FROM "demenag"."bookings" WHERE "id" = ${id}::uuid FOR UPDATE`;
-      const finalQuotes = await tx.devis.count({
-        where: { reservationId: id, nature: 'definitif' },
+    const result = await this.db.reservation.updateMany({
+      where: { id, supprimeLe: null },
+      data: { supprimeLe: new Date() },
+    });
+    if (!result.count) throw new AppError(404, messages.reservationIntrouvable);
+  }
+  async trashed() {
+    const rows = await this.db.reservation.findMany({
+      where: { supprimeLe: { not: null } },
+      orderBy: { supprimeLe: 'desc' },
+      take: 200,
+    });
+    return rows.map((row) => ({
+      booking: row.donnees as Booking,
+      deletedAt: row.supprimeLe!.toISOString(),
+    }));
+  }
+  async restore(id: string) {
+    const result = await this.db.reservation.updateMany({
+      where: { id, supprimeLe: { not: null } },
+      data: { supprimeLe: null },
+    });
+    return result.count > 0;
+  }
+  async purge(id: string) {
+    return this.db.$transaction(async (tx) => {
+      const row = await tx.reservation.findFirst({
+        where: { id, supprimeLe: { not: null } },
       });
-      if (finalQuotes)
-        throw new AppError(
-          409,
-          'Cette réservation possède un devis final et une écriture comptable : suppression impossible.',
-        );
+      if (!row) return false;
       await tx.notification.deleteMany({ where: { reservationId: id } });
       await tx.reservation.delete({ where: { id } });
+      return true;
     });
   }
   async create(booking: Booking, requestId: string) {
@@ -224,7 +246,7 @@ export class PrismaBookings implements BookingRepository {
     try {
       return await this.db.$transaction(async (tx) => {
         const result = await tx.reservation.updateMany({
-          where: { id: booking.id, version: expectedVersion },
+          where: { id: booking.id, version: expectedVersion, supprimeLe: null },
           data: {
             donnees: json(next),
             statut: toStatus[next.status],

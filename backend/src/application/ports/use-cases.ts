@@ -109,6 +109,9 @@ export interface MovingUseCases {
   ): Promise<Booking>;
   quote(user: User, id: string, input: QuoteInput): Promise<Booking>;
   delete(user: User, id: string): Promise<void>;
+  trashed(user: User): Promise<{ booking: Booking; deletedAt: string }[]>;
+  restore(user: User, id: string): Promise<void>;
+  purge(user: User, id: string): Promise<void>;
 }
 export interface AdministrationUseCases {
   listUsers(actor: User): Promise<User[]>;

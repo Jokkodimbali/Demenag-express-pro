@@ -498,7 +498,7 @@ export function BookingCard({
             {messages.envoyerLeDevisDefinitif}
           </button>
         )}
-        {admin && !finalQuote && (
+        {admin && (
           <button
             className="button text danger small"
             disabled={busy || deleteBusy}
@@ -507,7 +507,7 @@ export function BookingCard({
             }}
           >
             <Trash2 size={16} />
-            {uiText['supprimerDefinitivement']}
+            Supprimer
           </button>
         )}
       </div>
@@ -965,10 +965,10 @@ export function BookingCard({
       {deleting && (
         <ConfirmationDialog
           titleId={'delete-booking-' + b.id}
-          eyebrow={messages.suppressionDefinitive}
-          title={messages.supprimerReservationDefinitivement}
-          description={messages.confirmationSuppressionReservation(b.reference)}
-          confirmLabel={messages.supprimerDefinitivement}
+          eyebrow="SUPPRESSION D’UN RENDEZ-VOUS"
+          title="Placer cette réservation dans la corbeille ?"
+          description={`La réservation ${b.reference}, son devis et ses photos iront dans la corbeille (Admin → Données). Vous pourrez la restaurer.`}
+          confirmLabel="Supprimer"
           busy={deleteBusy}
           error={deleteError}
           onConfirm={() => void confirmDelete()}

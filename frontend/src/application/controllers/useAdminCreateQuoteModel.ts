@@ -54,6 +54,11 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const skipInitialSave = useRef(false);
   const [quoteConfig, setQuoteConfig] = useState<AdminQuoteConfig>({
     trips: 1,
+    calcMode: 'auto',
+    legMinutes: 0,
+    trafficOff: false,
+    heatOff: false,
+    heatRest: 0,
     discount: 0,
     discountType: 'fcfa',
     discountReason: '',
@@ -168,6 +173,11 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     }));
     setQuoteConfig({
       trips: 1,
+      calcMode: 'auto',
+      legMinutes: 0,
+      trafficOff: false,
+      heatOff: false,
+      heatRest: 0,
       discount: 0,
       discountType: 'fcfa',
       discountReason: '',
@@ -251,6 +261,11 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     );
     setQuoteConfig({
       trips: quote?.price.trips ?? booking.estimate.trips,
+      calcMode: 'auto',
+      legMinutes: 0,
+      trafficOff: false,
+      heatOff: false,
+      heatRest: 0,
       discount: quote?.price.discountValue ?? quote?.price.discount ?? booking.estimate.discount,
       discountType: quote?.price.discountType ?? 'fcfa',
       discountReason: quote?.price.discountReason ?? '',
@@ -355,7 +370,14 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         crew: draft.inventory.crew,
         startTime: draft.timeSlot,
         laborPlanning: catalogue?.settings.movingLaborPlanning,
-        trafficDurationMinutes: traffic?.minutes,
+        trafficDurationMinutes: quoteConfig.trafficOff ? undefined : traffic?.minutes,
+        freeTrafficDurationMinutes: traffic?.freeMinutes,
+        ignoreTraffic: quoteConfig.trafficOff,
+        manualLegMinutes: quoteConfig.calcMode === 'manual' ? quoteConfig.legMinutes : 0,
+        date: draft.date,
+        month: draft.month,
+        heatOff: quoteConfig.heatOff,
+        heatRest: quoteConfig.heatRest,
       })
     : null;
   const selectedVehicleId = selected?.id ?? '';
@@ -371,6 +393,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     stairs: estimateInventory.stairs,
   });
   useEffect(() => {
+    if (quoteConfig.calcMode === 'manual') return;
     if (!selectedVehicleId || movingEstimateVolume <= 0) return;
     setDraft((current) => {
       if (current.options.labour === movingEstimateCrew) return current;
@@ -388,13 +411,15 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     movingEstimateCrew,
     movingEstimateVolume,
     setDraft,
+    quoteConfig.calcMode,
   ]);
   useEffect(() => {
+    if (quoteConfig.calcMode === 'manual') return;
     if (!selectedVehicleId || movingEstimateTrips <= 0) return;
     setQuoteConfig((current) =>
       current.trips === movingEstimateTrips ? current : { ...current, trips: movingEstimateTrips },
     );
-  }, [inventoryEstimateKey, selectedVehicleId, movingEstimateTrips]);
+  }, [inventoryEstimateKey, selectedVehicleId, movingEstimateTrips, quoteConfig.calcMode]);
   const questionnaire = (catalogue?.settings.questionnaire ?? defaultClientQuestions).map(
     (question) => {
       const legacyLabels: Record<string, string> = {
@@ -424,15 +449,14 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       ? inventoryText
       : '';
   const questionnaireAutoAnswers = {
-    name: Boolean(draft.customerName.trim()),
-    phone: Boolean(draft.customerPhone.trim()),
-    date: Boolean(draft.date),
-    time: Boolean(draft.timeSlot),
-    from: Boolean(draft.fromAddress.trim()),
-    to: Boolean(draft.toAddress.trim()),
-    rep: Boolean(draft.fromNote.trim() && draft.toNote.trim()),
-    dwelling: Boolean(draft.inventory.dwellingType),
-    items: inventoryCount > 0,
+    q1: Boolean(draft.customerName.trim()),
+    q2: Boolean(draft.customerPhone.trim()),
+    q4: Boolean(draft.date),
+    q5: Boolean(draft.timeSlot),
+    q7: Boolean(draft.fromAddress.trim()),
+    q12: Boolean(draft.toAddress.trim()),
+    q16: Boolean(draft.inventory.dwellingType),
+    q17: inventoryCount > 0,
   };
   const estimateText = movingEstimate?.volume
     ? referenceMovingEstimateNote(
@@ -754,6 +778,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         inventory: { ...current.inventory, crew: labour },
       };
     });
+    setQuoteConfig((current) => ({ ...current, calcMode: 'manual' }));
   };
 
   function toggleQuoteSection(section: keyof typeof openQuoteSections) {

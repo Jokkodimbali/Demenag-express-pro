@@ -28,8 +28,20 @@ const planningDefaults = {
   maxMoversPerVehicle: 6,
   cubicMetersPerHourPerMover: 2.5,
   pauseMinutes: 30,
+  heat: 1,
+  wbgtAdj: 0,
 };
 const planningFields = [
+  [
+    'heat',
+    'Pauses chaleur ISO 7243 (1 = oui, 0 = non)',
+    'Pauses de récupération selon la chaleur (WBGT) du mois à Dakar.',
+  ],
+  [
+    'wbgtAdj',
+    'Correction WBGT (°C)',
+    'Ajoutée aux valeurs mensuelles de Dakar (ex. +1 en plein soleil, −1 à l’ombre).',
+  ],
   [
     'maxHandlingHours',
     'Plafond chargement + déchargement (h)',
@@ -461,34 +473,43 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
                   style={inputStyle}
                   type="number"
                   min={
-                    key === 'maxDayHours'
-                      ? 1
-                      : key === 'maxMoversPerVehicle'
-                        ? 2
-                        : key === 'cubicMetersPerHourPerMover'
-                          ? 0.1
-                          : key === 'pauseMinutes'
-                            ? 0
-                            : key === 'defaultStartHour'
-                              ? 0
-                              : 0.5
+                    key === 'wbgtAdj'
+                      ? -10
+                      : key === 'heat'
+                        ? 0
+                        : key === 'maxDayHours'
+                          ? 1
+                          : key === 'maxMoversPerVehicle'
+                            ? 2
+                            : key === 'cubicMetersPerHourPerMover'
+                              ? 0.1
+                              : key === 'pauseMinutes'
+                                ? 0
+                                : key === 'defaultStartHour'
+                                  ? 0
+                                  : 0.5
                   }
                   max={
-                    key === 'maxHandlingHours'
-                      ? 12
-                      : key === 'maxDayHours'
-                        ? 16
-                        : key === 'defaultStartHour'
-                          ? 23
-                          : key === 'maxMoversPerVehicle'
-                            ? 20
-                            : key === 'cubicMetersPerHourPerMover'
-                              ? 50
-                              : 180
+                    key === 'wbgtAdj'
+                      ? 10
+                      : key === 'heat'
+                        ? 1
+                        : key === 'maxHandlingHours'
+                          ? 12
+                          : key === 'maxDayHours'
+                            ? 16
+                            : key === 'defaultStartHour'
+                              ? 23
+                              : key === 'maxMoversPerVehicle'
+                                ? 20
+                                : key === 'cubicMetersPerHourPerMover'
+                                  ? 50
+                                  : 180
                   }
                   required
                   step={
                     key === 'cubicMetersPerHourPerMover' ||
+                    key === 'wbgtAdj' ||
                     key === 'maxHandlingHours' ||
                     key === 'maxDayHours'
                       ? '0.5'

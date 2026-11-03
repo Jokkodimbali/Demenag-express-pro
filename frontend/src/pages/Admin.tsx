@@ -238,7 +238,7 @@ export function Admin() {
     setDeleteError('');
     try {
       await removeBooking(deleteTarget.id);
-      setSuccessToast(`Réservation ${deleteTarget.reference} supprimée définitivement.`);
+      setSuccessToast(`Réservation ${deleteTarget.reference} placée dans la corbeille.`);
       setDeleteTarget(null);
     } catch (reason) {
       setDeleteError(
@@ -297,8 +297,8 @@ export function Admin() {
         <ConfirmationDialog
           titleId="delete-reservation-title"
           eyebrow="SUPPRESSION D’UN RENDEZ-VOUS"
-          title={uiText['voulezVousSupprimerDefinitivementCeRendezVous']}
-          description={`La réservation, son devis et ses photos seront effacés. Cette action est irréversible. ${deleteTarget.reference} · ${deleteTarget.customerName} · ${referenceDate(deleteTarget)} · ${deleteTarget.fromAddress || '—'} → ${deleteTarget.toAddress || '—'}`}
+          title="Placer cette réservation dans la corbeille ?"
+          description={`La réservation, son devis et ses photos iront dans la corbeille (Admin → Données). Vous pourrez la restaurer. ${deleteTarget.reference} · ${deleteTarget.customerName} · ${referenceDate(deleteTarget)} · ${deleteTarget.fromAddress || '—'} → ${deleteTarget.toAddress || '—'}`}
           confirmLabel="Supprimer"
           busy={deleteBusy}
           error={deleteError}

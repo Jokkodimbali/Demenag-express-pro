@@ -106,6 +106,7 @@ export type ClientQuestion = {
   id: string;
   group: string;
   label: string;
+  hint?: string;
   answerType: 'text' | 'yes_no';
   required: boolean;
   active: boolean;
@@ -161,6 +162,8 @@ export type MovingLaborPlanningSettings = {
   maxMoversPerVehicle: number;
   cubicMetersPerHourPerMover: number;
   pauseMinutes: number;
+  heat?: number;
+  wbgtAdj?: number;
 };
 export type LabourMatrixScenario = 'none' | 'from' | 'to' | 'both';
 export type LabourPriceMatrix = Record<LabourMatrixScenario, number[][]>;

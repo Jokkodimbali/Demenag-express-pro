@@ -981,13 +981,26 @@ export class MovingService implements MovingUseCases {
     requireAdministrator(user);
     const booking = await this.bookings.find(id);
     if (!booking) throw new AppError(404, messages.reservationIntrouvable);
-    if (booking.quotes.some((quote) => quote.kind === 'final'))
-      throw new AppError(
-        409,
-        'Cette réservation possède un devis final et une écriture comptable : suppression impossible.',
-      );
     if (!this.bookings.delete)
       throw new AppError(501, 'La suppression des réservations est indisponible.');
     await this.bookings.delete(id);
+  }
+  async trashed(user: User) {
+    requireAdministrator(user);
+    if (!this.bookings.trashed) throw new AppError(501, 'La corbeille est indisponible.');
+    return this.bookings.trashed();
+  }
+  async restore(user: User, id: string) {
+    requireAdministrator(user);
+    if (!this.bookings.restore) throw new AppError(501, 'La restauration est indisponible.');
+    if (!(await this.bookings.restore(id)))
+      throw new AppError(404, 'Réservation introuvable dans la corbeille.');
+  }
+  async purge(user: User, id: string) {
+    requireAdministrator(user);
+    if (!this.bookings.purge)
+      throw new AppError(501, 'La suppression définitive est indisponible.');
+    if (!(await this.bookings.purge(id)))
+      throw new AppError(404, 'Réservation introuvable dans la corbeille.');
   }
 }

@@ -64,6 +64,8 @@ export const defaultMovingLaborPlanning: MovingLaborPlanningSettings = {
   maxMoversPerVehicle: 6,
   cubicMetersPerHourPerMover: 2.5,
   pauseMinutes: 30,
+  heat: 1,
+  wbgtAdj: 0,
 };
 
 export function inventoryDismantleFactor(key: string): number {
@@ -167,6 +169,42 @@ function roundFive(minutes: number): number {
 }
 
 export type PlanningStep = { time: string; title: string; detail: string; minutes: number };
+export type HeatRecovery = {
+  wbgt: number;
+  reference: number;
+  work: number;
+  rest: number;
+  manual: boolean;
+};
+const dakarMonthlyWbgt = [22, 22, 23, 23, 25, 27, 28, 28.5, 29, 28.5, 26.5, 24];
+
+export function heatRecovery(
+  date: string,
+  month: string,
+  classLevel: number,
+  settings: MovingLaborPlanningSettings,
+  heatOff = false,
+  heatRest = 0,
+): HeatRecovery | null {
+  if (heatOff || (settings.heat === 0 && heatRest <= 0)) return null;
+  const rawMonth = Number((date || month).slice(5, 7)) - 1;
+  const monthIndex = rawMonth >= 0 && rawMonth < 12 ? rawMonth : new Date().getMonth();
+  const wbgt = dakarMonthlyWbgt[monthIndex] + (settings.wbgtAdj ?? 0);
+  const reference = classLevel >= 4 ? 25 : 26;
+  const delta = Math.round((wbgt - reference) * 10) / 10;
+  const workFraction = delta <= 0 ? 1 : delta <= 2 ? 0.75 : delta <= 4 ? 0.5 : 0.25;
+  if (heatRest > 0) {
+    const rest = Math.min(45, Math.max(5, Math.round(heatRest)));
+    return { wbgt, reference, work: 60 - rest, rest, manual: true };
+  }
+  return {
+    wbgt,
+    reference,
+    work: workFraction >= 1 ? 150 : Math.round(60 * workFraction),
+    rest: workFraction >= 1 ? 15 : Math.round(60 * (1 - workFraction)),
+    manual: false,
+  };
+}
 export type MovingEstimate = {
   vehicleName: string;
   volume: number;
@@ -194,6 +232,7 @@ export type MovingEstimate = {
   endTime: string;
   endLate: boolean;
   planning: PlanningStep[];
+  heat: HeatRecovery | null;
   warnings: string[];
   vehicleWarnings: string[];
   warning: string | null;
@@ -204,6 +243,13 @@ type EstimateOptions = {
   startTime?: string;
   laborPlanning?: MovingLaborPlanningSettings;
   trafficDurationMinutes?: number;
+  freeTrafficDurationMinutes?: number;
+  ignoreTraffic?: boolean;
+  manualLegMinutes?: number;
+  date?: string;
+  month?: string;
+  heatOff?: boolean;
+  heatRest?: number;
   parallelVehicles?: 1 | 2;
 };
 
@@ -340,19 +386,17 @@ export function estimateMovingWork(
   const routeBaseMinutes =
     routeKm <= 0
       ? 0
-      : options.trafficDurationMinutes && options.trafficDurationMinutes > 0
-        ? options.trafficDurationMinutes
-        : routeDuration > 0 && averageSpeed > 8 && averageSpeed < 100
-          ? routeDuration * (1.15 + 0.35 * Math.exp(-routeKm / 30))
-          : (routeKm / (18 + 37 * (1 - Math.exp(-routeKm / 40)))) * 60;
-  const vehicleRouteFactor =
-    options.trafficDurationMinutes && options.trafficDurationMinutes > 0
-      ? vehicle.id === 'trafic'
-        ? 1.05
-        : 1.1
-      : vehicle.id === 'trafic'
-        ? 1
-        : 1.05;
+      : options.manualLegMinutes && options.manualLegMinutes > 0
+        ? options.manualLegMinutes
+        : options.ignoreTraffic
+          ? (options.freeTrafficDurationMinutes ??
+              (routeKm / (25 + 40 * (1 - Math.exp(-routeKm / 40)))) * 60) * 1.15
+          : options.trafficDurationMinutes && options.trafficDurationMinutes > 0
+            ? options.trafficDurationMinutes
+            : routeDuration > 0 && averageSpeed > 8 && averageSpeed < 100
+              ? routeDuration * (1.15 + 0.35 * Math.exp(-routeKm / 30))
+              : (routeKm / (18 + 37 * (1 - Math.exp(-routeKm / 40)))) * 60;
+  const vehicleRouteFactor = vehicle.id === 'trafic' ? 1 : 1.05;
   const routeMinutes = routeBaseMinutes * vehicleRouteFactor;
   const legLoaded = routeMinutes ? 10 + routeMinutes : 0;
   const legEmpty = routeMinutes ? 10 + routeMinutes * 0.85 : 0;
@@ -400,13 +444,80 @@ export function estimateMovingWork(
       const loadedTravel = legLoaded ? roundFive(legLoaded) : 0;
       const emptyTravel = !last && legEmpty ? roundFive(legEmpty) : 0;
       addStep(
-        `Voyage ${trip} / ${journeyCount}`,
-        `Chargement ${formatDuration(loading)}${loadedTravel ? ` · trajet ${formatDuration(loadedTravel)}` : ''} · déchargement ${formatDuration(unloading)}${emptyTravel ? ` · retour à vide ${formatDuration(emptyTravel)}` : ''}`,
-        loading + loadedTravel + unloading + emptyTravel,
+        `Chargement ${trip} / ${journeyCount}`,
+        `${crew} manœuvres · mur par mur, sanglé`,
+        loading,
       );
+      if (loadedTravel)
+        addStep(
+          `Trajet ${trip} / ${journeyCount}`,
+          `${routeKm.toLocaleString('fr-FR')} km, stationnement compris`,
+          loadedTravel,
+        );
+      addStep(
+        `Déchargement ${trip} / ${journeyCount}`,
+        `${crew} manœuvres · placement pièce par pièce`,
+        unloading,
+      );
+      if (emptyTravel)
+        addStep(
+          `Retour à vide ${trip} / ${journeyCount}`,
+          'Vers le logement de départ',
+          emptyTravel,
+        );
     }
   }
   addStep('Vérification finale', 'État des lieux, signature', 10);
+  const heat = heatRecovery(
+    options.date ?? '',
+    options.month ?? '',
+    Math.max(
+      inventory.fromLift ? 0 : inventory.fromFloor,
+      inventory.toLift ? 0 : inventory.toFloor,
+    ) >= 2
+      ? 4
+      : 3,
+    labor,
+    options.heatOff,
+    options.heatRest,
+  );
+  if (heat) {
+    const scheduled = [...planning];
+    planning.length = 0;
+    let workSinceRest = 0;
+    for (const step of scheduled) {
+      if (/^(Trajet|Retour à vide)/.test(step.title)) {
+        planning.push(step);
+        workSinceRest = Math.max(0, workSinceRest - step.minutes);
+        continue;
+      }
+      let remaining = step.minutes;
+      let part = 0;
+      while (remaining > 0) {
+        if (workSinceRest >= heat.work) {
+          planning.push({
+            time: '',
+            title: heat.work < 150 ? 'Récupération chaleur' : 'Pause',
+            detail:
+              heat.work < 150
+                ? `${heat.rest} min à l’ombre et eau après ${heat.work} min de portage (ISO 7243 : WBGT ${String(heat.wbgt).replace('.', ',')} °C, référence ${heat.reference} °C)`
+                : '15 min toutes les 2 h 30 de portage, hydratation',
+            minutes: heat.rest,
+          });
+          workSinceRest = 0;
+        }
+        const chunk = Math.min(remaining, heat.work - workSinceRest);
+        planning.push({
+          ...step,
+          title: part ? `${step.title} (suite)` : step.title,
+          minutes: chunk,
+        });
+        remaining -= chunk;
+        workSinceRest += chunk;
+        part++;
+      }
+    }
+  }
   const startForPause = startAt;
   if (pauseMinutes) {
     const target = activeWorkMinutes / 2;
@@ -492,7 +603,7 @@ export function estimateMovingWork(
     travelMinutes: driveMinutes,
     travelLegMinutes: legLoaded,
     totalMinutes,
-    rawTotalMinutes: activeWorkMinutes + pauseMinutes,
+    rawTotalMinutes: totalMinutes,
     lowDurationMinutes: totalMinutes * 0.85,
     highDurationMinutes: totalMinutes * 1.3,
     minimumDays: Math.max(1, Math.ceil(totalMinutes / (labor.maxDayHours * 60))),
@@ -500,6 +611,7 @@ export function estimateMovingWork(
     endTime: formatTime(endAt),
     endLate: endAt > 19 * 60,
     planning,
+    heat,
     warnings,
     vehicleWarnings: dimensionsWarnings,
     warning:

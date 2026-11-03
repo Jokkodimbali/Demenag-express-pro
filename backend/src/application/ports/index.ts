@@ -93,6 +93,9 @@ export interface BookingRepository {
   addTripLoadingPhotos(bookingId: string, photos: string[]): Promise<void>;
   finishTrip(bookingId: string, photos: string[]): Promise<void>;
   delete?(id: string): Promise<void>;
+  trashed?(): Promise<{ booking: Booking; deletedAt: string }[]>;
+  restore?(id: string): Promise<boolean>;
+  purge?(id: string): Promise<boolean>;
 }
 export interface DriverRepository {
   list(): Promise<Driver[]>;

@@ -33,6 +33,10 @@ export function ClientQuestionnaire({
   const totalQuestions = activeQuestions.length + keyAnswers.length;
   const groups = [...new Set(activeQuestions.map((question) => question.group))];
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const [skipped, setSkipped] = useState<Record<string, boolean>>({});
+  const nextQuestion =
+    activeQuestions.find((question) => !isAnswered(question.id) && !skipped[question.id]) ??
+    activeQuestions.find((question) => !isAnswered(question.id));
   const progress = totalQuestions ? (answered / totalQuestions) * 100 : 0;
   const toggleQuestion = (id: string, checked: boolean) => {
     onChange(id, checked ? 'Question posée' : 'À poser');
@@ -72,6 +76,39 @@ export function ClientQuestionnaire({
             </strong>
           </header>
           <div className="questionnaire-groups">
+            {nextQuestion && (
+              <div className="questionnaire-guided">
+                <span>
+                  Question {activeQuestions.indexOf(nextQuestion) + 1} sur {activeQuestions.length}{' '}
+                  · {nextQuestion.group}
+                </span>
+                <strong>{nextQuestion.label}</strong>
+                {nextQuestion.hint && <small>{nextQuestion.hint}</small>}
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange(nextQuestion.id, 'Question posée');
+                      setSkipped((current) => {
+                        const next = { ...current };
+                        delete next[nextQuestion.id];
+                        return next;
+                      });
+                    }}
+                  >
+                    ✓ Posée, question suivante
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSkipped((current) => ({ ...current, [nextQuestion.id]: true }))
+                    }
+                  >
+                    Plus tard
+                  </button>
+                </div>
+              </div>
+            )}
             {!activeQuestions.length && <p>{uiText['aucuneQuestionActive']}</p>}
             <section className="questionnaire-key-questions">
               <strong>{uiText['questionsCLES']}</strong>

@@ -26,6 +26,9 @@ export function AdminCreateQuoteAside({
     effectiveDistance,
     previewLines,
     quoteConfig,
+    setQuoteConfig,
+    setDraft,
+    movingEstimate,
     previewDiscountLabel,
     previewDiscount,
     previewTotal,
@@ -204,6 +207,140 @@ export function AdminCreateQuoteAside({
             : `Devis temporaire, calculé sur ${quoteConfig.trips} aller(s)-retour(s) estimé(s). Le transport est facturé par aller-retour effectué : le devis final, basé sur le nombre réel d'allers-retours, sera envoyé par Demenag Express à la fin du déménagement.`}
         </p>
       </div>
+      {!publicRequest && (
+        <section className="admin-quote-calculation" aria-label="Calcul du devis">
+          <span className="admin-quote-stage-label">CALCUL DU DEVIS</span>
+          <div className="admin-quote-stage-switch" role="group" aria-label="Mode de calcul">
+            <button
+              type="button"
+              aria-pressed={quoteConfig.calcMode === 'auto'}
+              className={quoteConfig.calcMode === 'auto' ? 'active provisional' : ''}
+              onClick={() => {
+                setQuoteConfig((current) => ({ ...current, calcMode: 'auto', legMinutes: 0 }));
+                setDraft((current) => ({
+                  ...current,
+                  inventory: { ...current.inventory, crew: 0 },
+                }));
+              }}
+            >
+              Automatique
+            </button>
+            <button
+              type="button"
+              aria-pressed={quoteConfig.calcMode === 'manual'}
+              className={quoteConfig.calcMode === 'manual' ? 'active provisional' : ''}
+              onClick={() => {
+                const crew = movingEstimate?.crew || draft.options.labour || 2;
+                setQuoteConfig((current) => ({
+                  ...current,
+                  calcMode: 'manual',
+                  legMinutes: Math.max(0, Math.round((movingEstimate?.travelLegMinutes ?? 0) - 10)),
+                }));
+                setDraft((current) => ({
+                  ...current,
+                  options: { ...current.options, labour: crew },
+                  inventory: { ...current.inventory, crew },
+                }));
+              }}
+            >
+              Manuel
+            </button>
+          </div>
+          <span className="admin-quote-calculation-description">
+            {quoteConfig.calcMode === 'manual'
+              ? 'Vous fixez manœuvres, allers-retours et durée de trajet. L’inventaire ne les modifie plus. Le véhicule reste libre.'
+              : 'L’inventaire calcule les allers-retours et conseille le nombre de manœuvres. Le véhicule reste libre.'}
+          </span>
+          {quoteConfig.calcMode === 'manual' && (
+            <div className="admin-quote-calculation-values">
+              {[
+                {
+                  label: 'Manœuvres',
+                  value: draft.options.labour,
+                  min: 1,
+                  max: catalogue.settings.maxOptions,
+                  change: (delta: number) =>
+                    setDraft((current) => {
+                      const crew = Math.max(
+                        1,
+                        Math.min(catalogue.settings.maxOptions, current.options.labour + delta),
+                      );
+                      return {
+                        ...current,
+                        options: { ...current.options, labour: crew },
+                        inventory: { ...current.inventory, crew },
+                      };
+                    }),
+                },
+                {
+                  label: 'Allers-retours',
+                  value: quoteConfig.trips,
+                  min: 1,
+                  max: Math.min(30, catalogue.settings.maxTrips),
+                  change: (delta: number) =>
+                    setQuoteConfig((current) => ({
+                      ...current,
+                      trips: Math.max(
+                        1,
+                        Math.min(30, catalogue.settings.maxTrips, current.trips + delta),
+                      ),
+                    })),
+                },
+                ...(draft.route
+                  ? [
+                      {
+                        label: 'Trajet (aller)',
+                        value: quoteConfig.legMinutes,
+                        min: 5,
+                        max: 600,
+                        change: (delta: number) =>
+                          setQuoteConfig((current) => ({
+                            ...current,
+                            legMinutes: Math.max(
+                              5,
+                              Math.min(600, (current.legMinutes || 10) + delta * 5),
+                            ),
+                          })),
+                      },
+                    ]
+                  : []),
+              ].map((field) => (
+                <div className="admin-quote-calculation-value" key={field.label}>
+                  <span>{field.label}</span>
+                  <div>
+                    <button
+                      type="button"
+                      aria-label={`Réduire ${field.label}`}
+                      disabled={field.value <= field.min}
+                      onClick={() => field.change(-1)}
+                    >
+                      −
+                    </button>
+                    <strong>
+                      {field.value}
+                      {field.label === 'Trajet (aller)' ? ' min' : ''}
+                    </strong>
+                    <button
+                      type="button"
+                      aria-label={`Augmenter ${field.label}`}
+                      disabled={field.value >= field.max}
+                      onClick={() => field.change(1)}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {quoteConfig.calcMode === 'manual' && movingEstimate && (
+            <span className="admin-quote-calculation-advice">
+              Conseillé par l’inventaire : {movingEstimate.recommendedCrew} manœuvres ·{' '}
+              {movingEstimate.trips} aller(s)-retour(s)
+            </span>
+          )}
+        </section>
+      )}
       {!publicRequest && (
         <section className="admin-quote-stage" aria-label={uiText['etapeActuelleDuDevis']}>
           <span className="admin-quote-stage-label">{uiText['etapeACTUELLE']}</span>

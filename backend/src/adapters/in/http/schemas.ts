@@ -512,6 +512,8 @@ export const catalogueSchema = z.object({
         maxMoversPerVehicle: z.number().int().min(2).max(20),
         cubicMetersPerHourPerMover: z.number().min(0.1).max(50),
         pauseMinutes: z.number().int().min(0).max(180),
+        heat: z.number().int().min(0).max(1).optional(),
+        wbgtAdj: z.number().min(-10).max(10).optional(),
       })
       .default({
         maxHandlingHours: 3,
@@ -520,6 +522,8 @@ export const catalogueSchema = z.object({
         maxMoversPerVehicle: 6,
         cubicMetersPerHourPerMover: 2.5,
         pauseMinutes: 30,
+        heat: 1,
+        wbgtAdj: 0,
       }),
     assemblyPrice: z.number().int().min(0).max(1000000),
     montageP: z

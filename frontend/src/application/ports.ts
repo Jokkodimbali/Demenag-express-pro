@@ -70,6 +70,9 @@ export interface BookingRepository {
   bookings(): Promise<Booking[]>;
   booking(id: string): Promise<Booking>;
   deleteBooking(id: string): Promise<void>;
+  trashedBookings(): Promise<{ booking: Booking; deletedAt: string }[]>;
+  restoreBooking(id: string): Promise<void>;
+  purgeBooking(id: string): Promise<void>;
   createBooking(input: BookingInput): Promise<Booking>;
   updateClientBooking(id: string, input: BookingInput, version: number): Promise<Booking>;
   updateAdminBooking(id: string, input: BookingInput, version: number): Promise<Booking>;
