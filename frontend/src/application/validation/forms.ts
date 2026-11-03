@@ -160,6 +160,9 @@ export async function catalogueFromForm(data: FormData, catalogue: Catalogue): P
     pauseMinutes: integer(data.get('movingLaborPlanning.pauseMinutes')),
     heat: integer(data.get('movingLaborPlanning.heat')),
     wbgtAdj: Number(data.get('movingLaborPlanning.wbgtAdj')),
+    blanketLengthCm: integer(data.get('movingLaborPlanning.blanketLengthCm')),
+    blanketWidthCm: integer(data.get('movingLaborPlanning.blanketWidthCm')),
+    blanketStock: integer(data.get('movingLaborPlanning.blanketStock')),
   };
   const labourMatrix = createLabourPriceMatrix({
     ...catalogue.settings,
@@ -190,6 +193,9 @@ export async function catalogueFromForm(data: FormData, catalogue: Catalogue): P
       ) as Settings['whatsappMode'],
       whatsappQuoteTemplate: String(
         data.get('w.tpl') ?? catalogue.settings.whatsappQuoteTemplate ?? '',
+      ),
+      whatsappProvisionalTemplate: String(
+        data.get('w.tplP') ?? catalogue.settings.whatsappProvisionalTemplate ?? '',
       ),
       paymentWave: data.get('paymentWave') === 'on',
       paymentCash: data.get('paymentCash') === 'on',

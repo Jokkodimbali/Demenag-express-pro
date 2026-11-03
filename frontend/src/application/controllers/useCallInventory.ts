@@ -21,7 +21,11 @@ export function useCallInventory({
   quoteTrips,
   onApplyEstimate,
   laborPlanning,
-  trafficDurationMinutes,
+  ignoreTraffic,
+  manualLegMinutes,
+  hasToll,
+  heatOff,
+  heatRest,
   estimateInventory,
   audience,
   referenceMode,
@@ -34,7 +38,11 @@ export function useCallInventory({
   quoteTrips: number;
   onApplyEstimate: (vehicleId: string, trips: number) => void;
   laborPlanning?: MovingLaborPlanningSettings;
-  trafficDurationMinutes?: number;
+  ignoreTraffic?: boolean;
+  manualLegMinutes?: number;
+  hasToll?: boolean;
+  heatOff?: boolean;
+  heatRest?: number;
   estimateInventory?: Inventory;
   audience: 'admin' | 'client';
   referenceMode: boolean;
@@ -105,6 +113,15 @@ export function useCallInventory({
           crew: next.crew,
           startTime: draft.timeSlot,
           laborPlanning,
+          fromAddress: draft.fromAddress,
+          toAddress: draft.toAddress,
+          date: draft.date,
+          month: draft.month,
+          ignoreTraffic,
+          manualLegMinutes,
+          hasToll,
+          heatOff,
+          heatRest,
         })
       : null;
     setDraft((current) => {
@@ -179,7 +196,15 @@ export function useCallInventory({
         crew: inventory.crew,
         startTime: draft.timeSlot,
         laborPlanning,
-        trafficDurationMinutes,
+        fromAddress: draft.fromAddress,
+        toAddress: draft.toAddress,
+        date: draft.date,
+        month: draft.month,
+        ignoreTraffic,
+        manualLegMinutes,
+        hasToll,
+        heatOff,
+        heatRest,
       })
     : null;
   const hasVolume = currentEstimate ? currentEstimate.volume > 0 : total > 0;

@@ -8,6 +8,7 @@ import {
 } from './inventory';
 import type { BookingInventorySnapshot, MovingLaborPlanningSettings } from './model';
 import type { Route, Vehicle } from './model';
+import { referenceTravelMinutes } from './reference-traffic';
 
 const itemVolumes: Record<string, number> = {
   salon: 0.6,
@@ -62,7 +63,7 @@ export const defaultMovingLaborPlanning: MovingLaborPlanningSettings = {
   maxDayHours: 8,
   defaultStartHour: 8,
   maxMoversPerVehicle: 6,
-  cubicMetersPerHourPerMover: 2.5,
+  cubicMetersPerHourPerMover: 2.7,
   pauseMinutes: 30,
   heat: 1,
   wbgtAdj: 0,
@@ -92,6 +93,179 @@ export function estimatedInventoryItemVolume(
 }
 
 const itemVolume = estimatedInventoryItemVolume;
+
+const referenceWeights: Record<
+  string,
+  number | number[] | 'sofa' | 'mattress' | 'bed' | 'wardrobe' | 'table'
+> = {
+  salon: 'sofa',
+  matelas: 'mattress',
+  lit: 'bed',
+  armoire: 'wardrobe',
+  'table-manger': 'table',
+  frigo: [30, 65, 110],
+  congelateur: [35, 50, 70],
+  cuisiniere: [8, 45, 60],
+  'machine-laver': [55, 70, 80],
+  'micro-ondes': 12,
+  climatiseur: [30, 40, 55],
+  ventilateur: 5,
+  gaz: 15,
+  velo: 15,
+  pot: [8, 20, 40],
+  television: [8, 15, 25],
+  'table-basse': 20,
+  'meuble-tv': 35,
+  chaise: 6,
+  buffet: [40, 60, 90],
+  bibliotheque: 45,
+  vitrine: 50,
+  tapis: 10,
+  coiffeuse: 35,
+  commode: 45,
+  chevet: 12,
+  bureau: 40,
+  carton: [12, 15, 18],
+  sac: [8, 12, 18],
+  custom: 25,
+};
+
+function referenceLineWeight(
+  key: string,
+  size: number,
+  format: InventoryFormat,
+  dismantle: boolean,
+) {
+  const raw = referenceWeights[key] ?? 25;
+  const index = formatIndexes[format];
+  if (raw === 'sofa') {
+    const groups: Record<number, number[]> = {
+      1: [1],
+      2: [2],
+      3: [3],
+      4: [2, 2],
+      5: [3, 2],
+      6: [3, 2, 1],
+      7: [3, 2, 1, 1],
+      8: [3, 3, 1, 1],
+      9: [3, 3, 2, 1],
+      10: [3, 3, 2, 2],
+    };
+    const pieces = groups[Math.min(10, Math.max(1, size || 5))] ?? [3, 2];
+    return {
+      total: pieces.reduce((sum, part) => sum + 20 + part * 12, 0),
+      max: 20 + Math.max(...pieces) * 12,
+    };
+  }
+  if (raw === 'mattress') {
+    const kg = 10 + 8 * (size || 2);
+    return { total: kg, max: kg };
+  }
+  if (raw === 'bed') {
+    const kg = 30 + 10 * (size || 2);
+    return { total: kg, max: dismantle ? Math.round(kg * 0.4) : kg };
+  }
+  if (raw === 'wardrobe') {
+    const groups: Record<number, number[]> = {
+      1: [1],
+      2: [2],
+      3: [3],
+      4: [2, 2],
+      5: [3, 2],
+      6: [3, 3],
+      7: [3, 2, 2],
+      8: [3, 3, 2],
+    };
+    const parts = groups[Math.min(8, Math.max(1, size || 3))] ?? [3];
+    return {
+      total: parts.reduce((sum, part) => sum + 30 + 25 * part, 0),
+      max: dismantle ? 30 : 30 + 25 * Math.max(...parts),
+    };
+  }
+  if (raw === 'table') {
+    const kg = 25 + 3 * (size || 6);
+    return { total: kg, max: dismantle ? Math.round(kg * 0.6) : kg };
+  }
+  const weight = Array.isArray(raw) ? raw[index] : Number(raw);
+  return { total: weight, max: weight };
+}
+
+function inventoryWeight(inventory: Inventory, annexVolume: number) {
+  let total = 0;
+  let max = 0;
+  let largestHandlingCrew = 1;
+  const stairAccess =
+    (inventory.fromFloor > 0 && !inventory.fromLift) ||
+    (inventory.toFloor > 0 && !inventory.toLift);
+  const needs = (key: string, maxKg: number, dismantle: boolean, format: InventoryFormat) => {
+    const itemCount = Math.min(4, Math.max(1, Math.ceil(maxKg / 25)));
+    const kind = ['frigo', 'congelateur', 'machine-laver', 'cuisiniere', 'climatiseur'].includes(
+      key,
+    )
+      ? 'appliance'
+      : ['armoire', 'buffet', 'bibliotheque', 'commode'].includes(key)
+        ? 'case'
+        : ['vitrine', 'coiffeuse'].includes(key)
+          ? 'glass'
+          : key === 'salon'
+            ? 'sofa'
+            : key === 'matelas'
+              ? 'mattress'
+              : ['lit', 'table-manger', 'bureau'].includes(key)
+                ? 'table'
+                : key === 'television'
+                  ? 'tv'
+                  : ['carton', 'sac', 'gaz'].includes(key)
+                    ? 'single'
+                    : key === 'tapis'
+                      ? 'roll'
+                      : 'other';
+    let count = itemCount;
+    if (kind === 'appliance' || kind === 'glass' || kind === 'sofa') count = Math.max(2, count);
+    if (kind === 'case' && !dismantle) count = Math.max(2, count);
+    if (kind === 'mattress') count = sizeForHandling(key, inventory) >= 2 ? 2 : 1;
+    if (kind === 'table') count = dismantle ? Math.max(1, count) : Math.max(2, count);
+    if (kind === 'tv') count = maxKg > 15 || format === 'large' ? 2 : 1;
+    if (kind === 'single') count = 1;
+    if (kind === 'roll') count = maxKg > 25 ? 2 : 1;
+    if (stairAccess && maxKg > 33 && ['appliance', 'case'].includes(kind))
+      count = Math.min(4, count + 1);
+    largestHandlingCrew = Math.max(largestHandlingCrew, count);
+  };
+  const consume = (
+    key: string,
+    quantity: number,
+    size: number,
+    format: InventoryFormat,
+    dismantle: boolean,
+  ) => {
+    if (quantity <= 0) return;
+    const weight = referenceLineWeight(key, size, format, dismantle);
+    total += weight.total * quantity;
+    max = Math.max(max, weight.max);
+    needs(key, weight.max, dismantle, format);
+  };
+  Object.entries(inventory.entries).forEach(([key, item]) =>
+    consume(key, item.quantity, item.size, item.format ?? 'medium', item.dismantle),
+  );
+  inventory.variants.forEach((item) =>
+    consume(item.itemKey, item.quantity, item.size, item.format ?? 'medium', item.dismantle),
+  );
+  inventory.custom.forEach((item) =>
+    consume('custom', item.quantity, 0, item.format ?? 'medium', Boolean(item.dismantle)),
+  );
+  total += Math.round(annexVolume * 110);
+  return { total: Math.round(total), max, largestHandlingCrew };
+}
+
+function sizeForHandling(key: string, inventory: Inventory) {
+  const main = inventory.entries[key]?.size ?? 0;
+  return Math.max(
+    main,
+    ...inventory.variants.filter((item) => item.itemKey === key).map((item) => item.size),
+    0,
+  );
+}
 
 function vehicleCapacity(vehicle: Vehicle): number {
   return numberFrom(vehicle.volume) || 10;
@@ -242,8 +416,6 @@ type EstimateOptions = {
   crew?: number;
   startTime?: string;
   laborPlanning?: MovingLaborPlanningSettings;
-  trafficDurationMinutes?: number;
-  freeTrafficDurationMinutes?: number;
   ignoreTraffic?: boolean;
   manualLegMinutes?: number;
   date?: string;
@@ -251,6 +423,9 @@ type EstimateOptions = {
   heatOff?: boolean;
   heatRest?: number;
   parallelVehicles?: 1 | 2;
+  fromAddress?: string;
+  toAddress?: string;
+  hasToll?: boolean;
 };
 
 export function estimateMovingWork(
@@ -341,17 +516,82 @@ export function estimateMovingWork(
     heavyCount > 0 &&
     ((inventory.fromFloor >= 2 && !inventory.fromLift) ||
       (inventory.toFloor >= 2 && !inventory.toLift));
-  const minimumCrew = Math.max(stairsRequireExtra ? 3 : 2, 2 * parallelVehicles);
+  const smallVolume = (['carton', 'sac'] as const).reduce((sum, key) => {
+    const entry = inventory.entries[key];
+    const base = entry
+      ? itemVolume(key, entry.size, entry.dismantle, entry.format) * entry.quantity
+      : 0;
+    const variants = inventory.variants
+      .filter((item) => item.itemKey === key)
+      .reduce(
+        (total, item) =>
+          total + itemVolume(key, item.size, item.dismantle, item.format) * item.quantity,
+        0,
+      );
+    return sum + base + variants;
+  }, 0);
+  const annexVolume =
+    inventory.annexOn === false
+      ? 0
+      : Math.max(0, (dwellingVolumes[inventory.dwellingType] ?? 0) - smallVolume);
+  const weight = inventoryWeight(inventory, annexVolume);
+  const densityFactor =
+    volume > 0 ? Math.max(0.85, Math.min(1.4, Math.sqrt(weight.total / volume / 110))) : 1;
+  const isoLimit = (distance: number) =>
+    distance <= 1
+      ? 10000
+      : distance <= 20
+        ? 10000 - ((distance - 1) * 4000) / 19
+        : (6000 * 20) / distance;
+  const isoSiteLimit = (floor: number, lift: boolean) => {
+    const distance = Math.round(15 * (inventory.flags.acces ? 2 : 1) + (lift ? 2 : 15) * floor);
+    return Math.round(isoLimit(distance));
+  };
+  const isoCrew = Math.max(
+    1,
+    Math.ceil(
+      weight.total / isoSiteLimit(inventory.fromFloor, inventory.fromLift) +
+        weight.total / isoSiteLimit(inventory.toFloor, inventory.toLift) -
+        0.05,
+    ),
+  );
+  const stairFloors = Math.max(
+    inventory.fromLift ? 0 : inventory.fromFloor,
+    inventory.toLift ? 0 : inventory.toFloor,
+  );
+  const stairExtra =
+    stairFloors > 0
+      ? Math.ceil(stairFloors / 2)
+      : Math.max(inventory.fromFloor, inventory.toFloor) >= 4
+        ? 1
+        : 0;
+  const volumeCrew =
+    Math.max(Math.ceil(volume / 6), Math.ceil(weight.total / Math.max(100, 6 * 110))) + stairExtra;
+  const minimumCrew = Math.max(
+    stairsRequireExtra ? 3 : 2,
+    Math.min(labor.maxMoversPerVehicle, Math.max(volumeCrew, isoCrew)),
+    weight.largestHandlingCrew,
+    2 * parallelVehicles,
+  );
   const efficiency = (crew: number) => {
     const perVehicle = crew / parallelVehicles;
-    return parallelVehicles * (perVehicle <= 4 ? perVehicle : 4 + 0.6 * (perVehicle - 4));
+    const referenceEfficiency =
+      perVehicle <= 2
+        ? perVehicle
+        : perVehicle <= 4
+          ? 2 + 0.75 * (perVehicle - 2)
+          : 3.5 + 0.4 * (perVehicle - 4);
+    return parallelVehicles * referenceEfficiency;
   };
-  const loadingBase = siteHours(inventory.fromFloor, inventory.fromLift);
-  const unloadingBase = siteHours(inventory.toFloor, inventory.toLift, true);
+  const loadingBase = siteHours(inventory.fromFloor, inventory.fromLift) * densityFactor;
+  const unloadingBase = siteHours(inventory.toFloor, inventory.toLift, true) * densityFactor;
+  const tripOverheadHours = (15 / 60) * Math.ceil(requestedTrips / parallelVehicles);
   const loadingWithCrew = (crew: number, carpenter: number) =>
-    Math.max(loadingBase / efficiency(crew), carpenter ? dismantlingBySide.from / carpenter : 0);
+    Math.max(loadingBase / efficiency(crew), carpenter ? dismantlingBySide.from / carpenter : 0) +
+    tripOverheadHours;
   const unloadingWithCrew = (crew: number, carpenter: number) =>
-    Math.max(unloadingBase / efficiency(crew), carpenter ? dismantlingBySide.to / carpenter : 0);
+    Math.max(unloadingBase / efficiency(crew), carpenter ? dismantlingBySide.to / carpenter : 0) +
+    tripOverheadHours;
   let recommendedCrew = minimumCrew;
   let recommendedCarpenters =
     dismantlingBySide.from + dismantlingBySide.to > 0 ? parallelVehicles : 0;
@@ -381,93 +621,93 @@ export function estimateMovingWork(
       : 0;
   const packingMinutes = (packingHours / efficiency(crew)) * 60;
   const routeKm = route?.distanceKm ?? 0;
-  const routeDuration = route?.durationMinutes ?? 0;
-  const averageSpeed = routeDuration > 0 ? routeKm / (routeDuration / 60) : 0;
-  const routeBaseMinutes =
-    routeKm <= 0
-      ? 0
-      : options.manualLegMinutes && options.manualLegMinutes > 0
-        ? options.manualLegMinutes
-        : options.ignoreTraffic
-          ? (options.freeTrafficDurationMinutes ??
-              (routeKm / (25 + 40 * (1 - Math.exp(-routeKm / 40)))) * 60) * 1.15
-          : options.trafficDurationMinutes && options.trafficDurationMinutes > 0
-            ? options.trafficDurationMinutes
-            : routeDuration > 0 && averageSpeed > 8 && averageSpeed < 100
-              ? routeDuration * (1.15 + 0.35 * Math.exp(-routeKm / 30))
-              : (routeKm / (18 + 37 * (1 - Math.exp(-routeKm / 40)))) * 60;
-  const vehicleRouteFactor = vehicle.id === 'trafic' ? 1 : 1.05;
-  const routeMinutes = routeBaseMinutes * vehicleRouteFactor;
+  const routeMinutes = referenceTravelMinutes({
+    distanceKm: routeKm,
+    startTime: options.startTime ?? '',
+    date: options.date,
+    month: options.month,
+    from: options.fromAddress,
+    to: options.toAddress,
+    hasToll: options.hasToll,
+    ignoreTraffic: options.ignoreTraffic,
+    manualMinutes: options.manualLegMinutes,
+    vehicleId: vehicle.id,
+  });
   const legLoaded = routeMinutes ? 10 + routeMinutes : 0;
   const legEmpty = routeMinutes ? 10 + routeMinutes * 0.85 : 0;
   const journeyCount = Math.ceil(requestedTrips / parallelVehicles);
-  const loadingMinutes = loadingHours * 60;
-  const unloadingMinutes = unloadingHours * 60;
+  const loadingMinutes = roundFive((loadingHours * 60) / journeyCount) * journeyCount;
+  const unloadingMinutes = roundFive((unloadingHours * 60) / journeyCount) * journeyCount;
   const packingOnPreviousDay = packingMinutes > 90;
   const driveMinutes = journeyCount * legLoaded + Math.max(0, journeyCount - 1) * legEmpty;
-  const activeWorkMinutes =
-    25 +
-    (packingOnPreviousDay ? 0 : packingMinutes) +
-    loadingMinutes +
-    unloadingMinutes +
-    driveMinutes;
-  const pauseMinutes = activeWorkMinutes > 300 ? roundFive(labor.pauseMinutes) : 0;
   const startAt = startMinutes(options.startTime ?? '', labor.defaultStartHour);
-  const planning: PlanningStep[] = [];
-  const addStep = (title: string, detail: string, minutes: number) =>
-    planning.push({ time: '', title, detail, minutes: roundFive(minutes) });
-  addStep('Arrivée au départ', 'Stationnement, protection des sols et des portes', 15);
+  type PlanningSegment = {
+    title: string;
+    detail: string;
+    minutes: number;
+    split: boolean;
+    kind: string;
+  };
+  const segments: PlanningSegment[] = [];
+  const addSegment = (
+    title: string,
+    detail: string,
+    minutes: number,
+    split: boolean,
+    kind: string,
+  ) => {
+    if (minutes > 0) segments.push({ title, detail, minutes: roundFive(minutes), split, kind });
+  };
+  addSegment(
+    'Arrivée et briefing',
+    'Tour du logement avec le client, consignes du chef d’équipe, protection des sols et des portes',
+    20,
+    false,
+    'arrival',
+  );
   if (packingMinutes > 0 && !packingOnPreviousDay)
-    addStep('Emballage', 'Cartons, film et couvertures', packingMinutes);
-  if (journeyCount <= 1) {
-    addStep(
-      'Chargement',
-      `${crew} manœuvres${recommendedCarpenters ? ` · ${recommendedCarpenters} menuisier(s)` : ''}`,
-      loadingMinutes,
+    addSegment(
+      'Emballage',
+      'Cartons, film, serviettes de protection',
+      packingMinutes,
+      true,
+      'packing',
+    );
+  for (let trip = 1; trip <= journeyCount; trip += 1) {
+    const last = trip === journeyCount;
+    const tag = journeyCount > 1 ? ` ${trip} / ${journeyCount}` : '';
+    addSegment(
+      `Chargement${tag}`,
+      `${crew} manœuvres${recommendedCarpenters && trip === 1 ? ', démontage par le menuisier' : ''} · mur par mur, sanglé`,
+      loadingMinutes / journeyCount,
+      true,
+      'load',
     );
     if (legLoaded)
-      addStep(
-        'Trajet vers l’arrivée',
+      addSegment(
+        `Trajet${tag}`,
         `${routeKm.toLocaleString('fr-FR')} km, stationnement compris`,
         legLoaded,
+        false,
+        'drive',
       );
-    addStep(
-      'Déchargement',
-      `${crew} manœuvres${recommendedCarpenters ? ` · ${recommendedCarpenters} menuisier(s)` : ''}`,
-      unloadingMinutes,
+    addSegment(
+      `Déchargement${tag}`,
+      `${crew} manœuvres${recommendedCarpenters && last ? ', remontage par le menuisier' : ''} · placement pièce par pièce`,
+      unloadingMinutes / journeyCount,
+      true,
+      'unload',
     );
-  } else {
-    for (let trip = 1; trip <= journeyCount; trip++) {
-      const last = trip === journeyCount;
-      const loading = roundFive(loadingMinutes / journeyCount);
-      const unloading = roundFive(unloadingMinutes / journeyCount);
-      const loadedTravel = legLoaded ? roundFive(legLoaded) : 0;
-      const emptyTravel = !last && legEmpty ? roundFive(legEmpty) : 0;
-      addStep(
-        `Chargement ${trip} / ${journeyCount}`,
-        `${crew} manœuvres · mur par mur, sanglé`,
-        loading,
-      );
-      if (loadedTravel)
-        addStep(
-          `Trajet ${trip} / ${journeyCount}`,
-          `${routeKm.toLocaleString('fr-FR')} km, stationnement compris`,
-          loadedTravel,
-        );
-      addStep(
-        `Déchargement ${trip} / ${journeyCount}`,
-        `${crew} manœuvres · placement pièce par pièce`,
-        unloading,
-      );
-      if (emptyTravel)
-        addStep(
-          `Retour à vide ${trip} / ${journeyCount}`,
-          'Vers le logement de départ',
-          emptyTravel,
-        );
-    }
+    if (!last && legEmpty)
+      addSegment(`Retour à vide${tag}`, 'Vers le logement de départ', legEmpty, false, 'back');
   }
-  addStep('Vérification finale', 'État des lieux, signature', 10);
+  addSegment(
+    'Vérification finale',
+    'Tour des pièces avec le client, état des lieux, signature',
+    15,
+    false,
+    'finish',
+  );
   const heat = heatRecovery(
     options.date ?? '',
     options.month ?? '',
@@ -481,64 +721,84 @@ export function estimateMovingWork(
     options.heatOff,
     options.heatRest,
   );
-  if (heat) {
-    const scheduled = [...planning];
-    planning.length = 0;
-    let workSinceRest = 0;
-    for (const step of scheduled) {
-      if (/^(Trajet|Retour à vide)/.test(step.title)) {
-        planning.push(step);
-        workSinceRest = Math.max(0, workSinceRest - step.minutes);
+  const restRule = heat ?? { work: 150, rest: 15, wbgt: 0, reference: 0, manual: false };
+  const planning: PlanningStep[] = [];
+  let cursor = startAt;
+  let workSinceRest = 0;
+  let lunchTaken = false;
+  let dinnerTaken = false;
+  for (const segment of segments) {
+    let remaining = segment.minutes;
+    let part = 0;
+    while (remaining > 0) {
+      if (!lunchTaken && cursor >= 12 * 60 + 15 && cursor < 14 * 60 && cursor - startAt >= 120) {
+        planning.push({
+          time: '',
+          title: 'Pause déjeuner',
+          detail: 'Repas, eau, repos de l’équipe',
+          minutes: 45,
+        });
+        cursor += 45;
+        workSinceRest = 0;
+        lunchTaken = true;
         continue;
       }
-      let remaining = step.minutes;
-      let part = 0;
-      while (remaining > 0) {
-        if (workSinceRest >= heat.work) {
-          planning.push({
-            time: '',
-            title: heat.work < 150 ? 'Récupération chaleur' : 'Pause',
-            detail:
-              heat.work < 150
-                ? `${heat.rest} min à l’ombre et eau après ${heat.work} min de portage (ISO 7243 : WBGT ${String(heat.wbgt).replace('.', ',')} °C, référence ${heat.reference} °C)`
-                : '15 min toutes les 2 h 30 de portage, hydratation',
-            minutes: heat.rest,
-          });
-          workSinceRest = 0;
-        }
-        const chunk = Math.min(remaining, heat.work - workSinceRest);
+      if (!dinnerTaken && cursor >= 19 * 60 + 30 && cursor < 21 * 60 && cursor - startAt >= 180) {
         planning.push({
-          ...step,
-          title: part ? `${step.title} (suite)` : step.title,
-          minutes: chunk,
+          time: '',
+          title: 'Pause dîner',
+          detail: 'Repas et repos de l’équipe',
+          minutes: 30,
         });
-        remaining -= chunk;
-        workSinceRest += chunk;
-        part++;
+        cursor += 30;
+        workSinceRest = 0;
+        dinnerTaken = true;
+        continue;
       }
+      if (workSinceRest >= restRule.work) {
+        planning.push({
+          time: '',
+          title: heat && heat.work < 150 ? 'Récupération chaleur' : 'Pause',
+          detail:
+            heat && heat.work < 150
+              ? `${heat.rest} min à l’ombre et eau après ${heat.work} min de portage (ISO 7243 : WBGT ${String(heat.wbgt).replace('.', ',')} °C, référence ${heat.reference} °C)`
+              : '15 min toutes les 2 h 30 de portage, hydratation',
+          minutes: restRule.rest,
+        });
+        cursor += restRule.rest;
+        workSinceRest = 0;
+        continue;
+      }
+      let chunk = segment.split
+        ? Math.min(
+            remaining,
+            Number.POSITIVE_INFINITY,
+            Math.max(Math.min(30, restRule.work), restRule.work - workSinceRest),
+          )
+        : remaining;
+      if (
+        segment.split &&
+        !lunchTaken &&
+        cursor < 12 * 60 + 15 &&
+        cursor + chunk > 12 * 60 + 30 &&
+        12 * 60 + 15 - cursor >= 20
+      )
+        chunk = 12 * 60 + 15 - cursor;
+      if (segment.split && remaining - chunk < 15) chunk = remaining;
+      planning.push({
+        time: '',
+        title: `${segment.title}${part ? ' (suite)' : ''}`,
+        detail: segment.detail,
+        minutes: chunk,
+      });
+      cursor += chunk;
+      remaining -= chunk;
+      if (segment.kind !== 'drive' && segment.kind !== 'back') workSinceRest += chunk;
+      if (segment.kind === 'drive') workSinceRest = Math.max(0, workSinceRest - chunk);
+      part += 1;
     }
   }
-  const startForPause = startAt;
-  if (pauseMinutes) {
-    const target = activeWorkMinutes / 2;
-    let running = 0;
-    let position = Math.max(1, planning.length - 1);
-    let closest = Number.POSITIVE_INFINITY;
-    planning.forEach((step, index) => {
-      running += step.minutes;
-      if (index > 0 && index < planning.length - 1 && Math.abs(running - target) < closest) {
-        position = index + 1;
-        closest = Math.abs(running - target);
-      }
-    });
-    planning.splice(position, 0, {
-      time: '',
-      title: 'Pause',
-      detail: 'Repas et repos de l’équipe',
-      minutes: pauseMinutes,
-    });
-  }
-  let cursor = startForPause;
+  cursor = startAt;
   planning.forEach((step) => {
     step.time = formatTime(cursor);
     cursor += step.minutes;

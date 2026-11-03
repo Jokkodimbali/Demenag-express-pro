@@ -801,10 +801,9 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             quoteTrips={quoteConfig.trips}
             maxTrips={catalogue.settings.maxTrips}
             laborPlanning={catalogue.settings.movingLaborPlanning}
-            trafficDurationMinutes={quoteConfig.trafficOff ? undefined : traffic?.minutes}
-            freeTrafficDurationMinutes={traffic?.freeMinutes}
             ignoreTraffic={quoteConfig.trafficOff}
             manualLegMinutes={quoteConfig.calcMode === 'manual' ? quoteConfig.legMinutes : 0}
+            hasToll={tollLines.some((line) => line.quantity * line.unitPrice > 0)}
             onManualCalculation={() =>
               setQuoteConfig((current) => ({ ...current, calcMode: 'manual' }))
             }
@@ -870,18 +869,20 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
           publicRequest={publicRequest}
           catalogue={catalogue}
           selected={selected}
+          simulation={
+            !publicRequest ? (
+              <LoadingSimulation
+                draft={draft}
+                vehicles={catalogue.vehicles}
+                quoteConfig={quoteConfig}
+                crew={movingEstimate?.crew ?? 2}
+                estimate={movingEstimate}
+                setDraft={setDraft}
+                setQuoteConfig={setQuoteConfig}
+              />
+            ) : null
+          }
         />
-        {!publicRequest && (
-          <LoadingSimulation
-            draft={draft}
-            vehicles={catalogue.vehicles}
-            quoteConfig={quoteConfig}
-            crew={movingEstimate?.crew ?? 2}
-            estimate={movingEstimate}
-            setDraft={setDraft}
-            setQuoteConfig={setQuoteConfig}
-          />
-        )}
       </form>
     </div>
   );

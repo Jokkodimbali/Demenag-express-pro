@@ -97,6 +97,7 @@
   min-height: 48px;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   padding: 0 16px;
   border: 1.5px solid #3ddc84;
   border-radius: 10px;
@@ -106,7 +107,12 @@
   text-decoration: none;
   white-space: nowrap;
 }
-.admin-quote-reminder-disabled {
+.admin-quote-stage-actions .admin-quote-reminder--disabled {
+  border: 1.5px dashed #4a5057;
+  color: #6b737b;
+  cursor: not-allowed;
+}
+.admin-quote-reminder-help {
   color: #aeb4bb;
   font-size: 12px;
 }

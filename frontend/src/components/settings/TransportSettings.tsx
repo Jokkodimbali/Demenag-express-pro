@@ -1,5 +1,5 @@
 import { uiText } from '../../content/reference-ui-text';
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { FleetVehicleDimensions } from '../FleetVehicleDimensions';
 import { useApp } from '../../application/context';
 import { errorMessage } from '../../application/error-message';
@@ -26,10 +26,13 @@ const planningDefaults = {
   maxDayHours: 8,
   defaultStartHour: 8,
   maxMoversPerVehicle: 6,
-  cubicMetersPerHourPerMover: 2.5,
+  cubicMetersPerHourPerMover: 2.7,
   pauseMinutes: 30,
   heat: 1,
   wbgtAdj: 0,
+  blanketLengthCm: 204,
+  blanketWidthCm: 184,
+  blanketStock: 20,
 };
 const planningFields = [
   [
@@ -159,6 +162,14 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
     );
   });
   const planning = { ...planningDefaults, ...catalogue.settings.movingLaborPlanning };
+  const [blanketLengthCm, setBlanketLengthCm] = useState(planning.blanketLengthCm);
+  const [blanketWidthCm, setBlanketWidthCm] = useState(planning.blanketWidthCm);
+  const [blanketStock, setBlanketStock] = useState(planning.blanketStock);
+  useEffect(() => {
+    setBlanketLengthCm(planning.blanketLengthCm);
+    setBlanketWidthCm(planning.blanketWidthCm);
+    setBlanketStock(planning.blanketStock);
+  }, [planning.blanketLengthCm, planning.blanketWidthCm, planning.blanketStock]);
 
   async function saveVehicleDimensions(vehicle: Catalogue['vehicles'][number]) {
     setDimensionBusy(true);
@@ -535,6 +546,74 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
             }}
           >
             {uiText['revenirAuxValeursParDefaut']}
+          </button>
+        </section>
+
+        <section style={sectionStyle}>
+          <span className="reference-settings-card-title">Serviettes de déménagement</span>
+          <div className="reference-settings-blanket-fields">
+            <label>
+              <span>LONGUEUR (CM)</span>
+              <input
+                style={inputStyle}
+                type="number"
+                min={50}
+                max={400}
+                step={1}
+                required
+                name="movingLaborPlanning.blanketLengthCm"
+                value={blanketLengthCm}
+                onChange={(event) => setBlanketLengthCm(Number(event.target.value) || 0)}
+              />
+            </label>
+            <label>
+              <span>LARGEUR (CM)</span>
+              <input
+                style={inputStyle}
+                type="number"
+                min={50}
+                max={400}
+                step={1}
+                required
+                name="movingLaborPlanning.blanketWidthCm"
+                value={blanketWidthCm}
+                onChange={(event) => setBlanketWidthCm(Number(event.target.value) || 0)}
+              />
+            </label>
+            <label>
+              <span>STOCK</span>
+              <input
+                style={inputStyle}
+                type="number"
+                min={0}
+                step={1}
+                required
+                name="movingLaborPlanning.blanketStock"
+                value={blanketStock}
+                onChange={(event) => setBlanketStock(Number(event.target.value) || 0)}
+              />
+            </label>
+          </div>
+          <small>
+            Surface : {((blanketLengthCm * blanketWidthCm) / 10000).toFixed(2).replace('.', ',')} m²
+            par serviette. Valeurs par défaut : 204 × 184 cm, stock de 20.
+          </small>
+          <button
+            className="reference-settings-reset"
+            type="button"
+            onClick={(event) => {
+              const form = event.currentTarget.form;
+              for (const key of ['blanketLengthCm', 'blanketWidthCm', 'blanketStock'] as const) {
+                const input = form?.elements.namedItem(`movingLaborPlanning.${key}`);
+                if (input instanceof HTMLInputElement) input.value = String(planningDefaults[key]);
+              }
+              setBlanketLengthCm(planningDefaults.blanketLengthCm);
+              setBlanketWidthCm(planningDefaults.blanketWidthCm);
+              setBlanketStock(planningDefaults.blanketStock);
+              form?.requestSubmit();
+            }}
+          >
+            Revenir aux valeurs par défaut
           </button>
         </section>
 

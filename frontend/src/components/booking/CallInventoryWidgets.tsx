@@ -29,10 +29,9 @@ export type CallInventoryProps = {
   maxTrips: number;
   onApplyEstimate: (vehicleId: string, trips: number) => void;
   laborPlanning?: MovingLaborPlanningSettings;
-  trafficDurationMinutes?: number;
-  freeTrafficDurationMinutes?: number;
   ignoreTraffic?: boolean;
   manualLegMinutes?: number;
+  hasToll?: boolean;
   onManualCalculation?: () => void;
   heatOff?: boolean;
   heatRest?: number;

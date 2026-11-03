@@ -4,6 +4,7 @@ import type { Booking, Settings } from '../../domain/model';
 import { money } from '../../domain/format';
 import { routes } from '../../routing/routes';
 import { whatsappUrl } from '../../application/services/whatsapp';
+import { bookingConfirmationMessage } from '../../application/services/whatsapp-templates';
 
 export function BookingConfirmation({
   booking,
@@ -22,7 +23,7 @@ export function BookingConfirmation({
   const businessWhatsapp = settings.whatsappPhone || settings.businessPhone;
   const contactWhatsappUrl = whatsappUrl(
     businessWhatsapp,
-    'Bonjour Demenag Express, je viens d’envoyer ma demande ' + booking.reference + '.',
+    bookingConfirmationMessage(booking),
     settings,
   );
 

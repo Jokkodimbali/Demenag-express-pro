@@ -1,5 +1,6 @@
 import type { Booking, Settings } from '../../domain/model';
 import { whatsappNumber, whatsappUrl } from './whatsapp';
+import { whatsappPaymentLine } from './whatsapp-templates';
 
 export function bookingReminder(
   booking: Booking,
@@ -35,10 +36,7 @@ export function bookingReminder(
         timeZone: 'Africa/Dakar',
       })
     : '';
-  const paymentMethods = [
-    settings?.paymentWave !== false ? 'Wave' : '',
-    settings?.paymentCash !== false ? 'espèces' : '',
-  ].filter(Boolean);
+  const paymentLine = whatsappPaymentLine(settings);
   const reminderReason = !booking.date
     ? 'Ajoutez une date au rendez-vous.'
     : daysUntilMove < 0
@@ -48,10 +46,12 @@ export function bookingReminder(
         : !validNumber
           ? 'Le numéro WhatsApp du client est manquant ou invalide.'
           : '';
-  const reminderMessage = `Bonjour ${booking.customerName}, petit rappel de Demenag Express : votre déménagement (${booking.reference}) est prévu ${reminderWhen}, le ${reminderDate}${booking.timeSlot && booking.timeSlot !== 'À définir' ? ` à ${booking.timeSlot}` : ''}.\n${booking.fromAddress ? `Départ : ${booking.fromAddress}\n` : ''}${booking.toAddress ? `Arrivée : ${booking.toAddress}\n` : ''}Merci de préparer vos affaires pour le chargement.${paymentMethods.length ? `\nMode de paiement : ${paymentMethods.join(' ou ')}${paymentMethods.length > 1 ? ' (au choix)' : ''}.` : ''} Pour toute question, contactez-nous au ${settings?.businessPhone ?? ''}. À bientôt !`;
+  const reminderMessage = `Bonjour ${booking.customerName}, petit rappel de Demenag Express : votre déménagement (${booking.reference}) est prévu ${reminderWhen}, le ${reminderDate}${booking.timeSlot && booking.timeSlot !== 'À définir' ? ` à ${booking.timeSlot}` : ''}.\n${booking.fromAddress ? `Départ : ${booking.fromAddress}\n` : ''}${booking.toAddress ? `Arrivée : ${booking.toAddress}\n` : ''}Merci de préparer vos affaires pour le chargement.${paymentLine ? `\n${paymentLine}` : ''}\nPour toute question, contactez-nous au ${settings?.whatsappPhone || settings?.businessPhone || ''}. À bientôt !`;
   const lastReminder = booking.reminders?.at(-1);
   const lastReminderLabel = lastReminder
-    ? `Dernier rappel : ${new Date(lastReminder.at).toLocaleString('fr-FR', {
+    ? `${canSendReminder ? 'Dernier rappel :' : 'Rappel envoyé le'} ${new Date(
+        lastReminder.at,
+      ).toLocaleString('fr-FR', {
         day: '2-digit',
         month: '2-digit',
         hour: '2-digit',

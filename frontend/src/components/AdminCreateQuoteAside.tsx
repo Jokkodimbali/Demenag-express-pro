@@ -4,6 +4,7 @@ import { whatsappNumber } from '../application/services/whatsapp';
 import { uiText } from '../content/reference-ui-text';
 import type { useAdminCreateQuoteModel } from '../application/controllers/useAdminCreateQuoteModel';
 import type { Catalogue, Vehicle } from '../domain/model';
+import type { ReactNode } from 'react';
 
 type Model = ReturnType<typeof useAdminCreateQuoteModel>;
 
@@ -12,11 +13,13 @@ export function AdminCreateQuoteAside({
   publicRequest,
   catalogue,
   selected,
+  simulation,
 }: {
   model: Model;
   publicRequest: boolean;
   catalogue: Catalogue;
   selected: Vehicle;
+  simulation?: ReactNode;
 }) {
   const {
     displayBusinessPhone,
@@ -399,7 +402,7 @@ export function AdminCreateQuoteAside({
               {uiText['envoyerLeDevis']}
               {quoteKind === 'final' ? 'final' : 'provisoire'} {uiText['surWhatsApp']}
             </button>
-            {reminderCanSend && editingBooking && (
+            {reminderCanSend && editingBooking ? (
               <a
                 className="admin-quote-reminder"
                 href={reminderHref}
@@ -424,6 +427,20 @@ export function AdminCreateQuoteAside({
                     );
                 }}
               >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+                  <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+                </svg>
                 {uiText['rappel']}{' '}
                 {reminderDays === 0
                   ? 'aujourd’hui'
@@ -431,12 +448,34 @@ export function AdminCreateQuoteAside({
                     ? 'demain'
                     : `J-${reminderDays}`}
               </a>
+            ) : (
+              <span
+                className="admin-quote-reminder admin-quote-reminder--disabled"
+                title={reminderDisabledReason}
+                aria-disabled="true"
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+                  <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+                </svg>
+                Rappel
+              </span>
             )}
           </div>
           {!reminderCanSend && (
-            <span className="admin-quote-reminder-disabled">
+            <span className="admin-quote-reminder-help">
               {uiText['rappelIndisponible']}
-              {reminderDisabledReason}
+              {reminderDisabledReason}.
             </span>
           )}
           {reminderNotice && (
@@ -497,6 +536,7 @@ export function AdminCreateQuoteAside({
               ? 'Enregistrer les modifications'
               : 'Enregistrer'}
       </button>
+      {simulation}
       {!publicRequest && (
         <button
           type="button"

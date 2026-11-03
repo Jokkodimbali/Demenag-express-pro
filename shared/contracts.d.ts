@@ -140,6 +140,7 @@ export type Settings = BookingRules & {
   whatsappCountryCode?: string;
   whatsappMode?: 'api' | 'wame' | 'web' | 'app';
   whatsappQuoteTemplate?: string;
+  whatsappProvisionalTemplate?: string;
   businessName: string;
   businessAddress: string;
   invoiceFooter: string;
@@ -164,6 +165,9 @@ export type MovingLaborPlanningSettings = {
   pauseMinutes: number;
   heat?: number;
   wbgtAdj?: number;
+  blanketLengthCm?: number;
+  blanketWidthCm?: number;
+  blanketStock?: number;
 };
 export type LabourMatrixScenario = 'none' | 'from' | 'to' | 'both';
 export type LabourPriceMatrix = Record<LabourMatrixScenario, number[][]>;

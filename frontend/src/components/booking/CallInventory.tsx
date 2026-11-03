@@ -32,10 +32,9 @@ export function CallInventory({
   maxTrips,
   onApplyEstimate,
   laborPlanning,
-  trafficDurationMinutes,
-  freeTrafficDurationMinutes,
   ignoreTraffic,
   manualLegMinutes,
+  hasToll,
   onManualCalculation,
   heatOff,
   heatRest,
@@ -81,7 +80,11 @@ export function CallInventory({
     quoteTrips,
     onApplyEstimate,
     laborPlanning,
-    trafficDurationMinutes,
+    ignoreTraffic,
+    manualLegMinutes,
+    hasToll,
+    heatOff,
+    heatRest,
     estimateInventory,
     audience,
     referenceMode,
@@ -963,10 +966,9 @@ export function CallInventory({
               maxTrips={maxTrips}
               onApply={onApplyEstimate}
               laborPlanning={laborPlanning}
-              trafficDurationMinutes={trafficDurationMinutes}
-              freeTrafficDurationMinutes={freeTrafficDurationMinutes}
               ignoreTraffic={ignoreTraffic}
               manualLegMinutes={manualLegMinutes}
+              hasToll={hasToll}
               onManualCalculation={onManualCalculation}
               heatOff={heatOff}
               heatRest={heatRest}

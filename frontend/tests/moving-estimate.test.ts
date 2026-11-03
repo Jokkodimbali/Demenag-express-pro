@@ -6,6 +6,7 @@ import {
   estimateMovingWork,
   estimatedInventoryItemVolume,
 } from '../src/domain/moving-estimate.ts';
+import { referenceTravelMinutes } from '../src/domain/reference-traffic.ts';
 import type { Vehicle } from '../src/domain/model.ts';
 
 const vehicle: Vehicle = {
@@ -113,7 +114,7 @@ test('une réponse « pas prêt » ajoute le temps d’emballage au planning', (
   assert.equal(notReady.packingMinutes, 1.5);
 });
 
-test('le trajet utilise la correction de circulation et le facteur du véhicule du modèle', () => {
+test('le trajet reprend le calcul de circulation Dakar de la référence', () => {
   const inventory = blankInventory();
   inventory.custom = [{ id: 'objet', label: 'Objet', quantity: 1, format: 'medium' }];
   const estimate = estimateMovingWork(
@@ -123,24 +124,56 @@ test('le trajet utilise la correction de circulation et le facteur du véhicule 
     { trips: 1 },
   );
 
-  assert.ok(Math.abs(estimate.travelMinutes - 58.86632769355671) < 0.001);
+  assert.ok(Math.abs(estimate.travelMinutes - 56.39314914150304) < 0.001);
 });
 
-test('la durée Google avec bouchons remplace la correction de trajet du modèle', () => {
-  const inventory = blankInventory();
-  inventory.custom = [{ id: 'objet', label: 'Objet', quantity: 1, format: 'medium' }];
-  const route = { distanceKm: 20, durationMinutes: 35 };
-  const sprinter = estimateMovingWork(inventory, vehicle, route, {
-    trips: 1,
-    trafficDurationMinutes: 60,
+test('le trajet reprend les corrections de péage, d’horaires et de véhicule de la référence', () => {
+  const standard = referenceTravelMinutes({
+    distanceKm: 20,
+    startTime: '08:00',
+    vehicleId: 'sprinter',
   });
-  const trafic = estimateMovingWork(inventory, { ...vehicle, id: 'trafic' }, route, {
-    trips: 1,
-    trafficDurationMinutes: 60,
+  const toll = referenceTravelMinutes({
+    distanceKm: 20,
+    startTime: '08:00',
+    vehicleId: 'sprinter',
+    hasToll: true,
+  });
+  const offPeak = referenceTravelMinutes({
+    distanceKm: 20,
+    startTime: '08:00',
+    vehicleId: 'sprinter',
+    ignoreTraffic: true,
+  });
+  const manual = referenceTravelMinutes({
+    distanceKm: 20,
+    startTime: '08:00',
+    vehicleId: 'sprinter',
+    manualMinutes: 60,
   });
 
-  assert.equal(sprinter.travelMinutes, 73);
-  assert.equal(trafic.travelMinutes, 70);
+  assert.ok(toll < standard);
+  assert.ok(offPeak < standard);
+  assert.equal(manual, 60);
+  assert.ok(
+    referenceTravelMinutes({ distanceKm: 20, startTime: '08:00', vehicleId: 'trafic' }) < standard,
+  );
+  assert.ok(
+    referenceTravelMinutes({
+      distanceKm: 20,
+      startTime: '08:00',
+      vehicleId: 'sprinter',
+      date: '2026-05-27',
+    }) < standard,
+  );
+  assert.ok(
+    referenceTravelMinutes({
+      distanceKm: 20,
+      startTime: '08:00',
+      vehicleId: 'sprinter',
+      from: 'Plateau',
+    }) > standard,
+  );
 });
 
 test('l’heure et les cadences de planning peuvent être réglées dans les paramètres admin', () => {
@@ -173,7 +206,7 @@ test('le nombre de manœuvres se recalcule automatiquement quand l’inventaire 
   const largerInventory = estimateMovingWork(inventory, vehicle, null, { trips: 1 });
 
   assert.equal(smallInventory.recommendedCrew, 2);
-  assert.equal(largerInventory.recommendedCrew, 3);
+  assert.equal(largerInventory.recommendedCrew, 4);
   assert.equal(largerInventory.crew, largerInventory.recommendedCrew);
 });
 
@@ -193,10 +226,10 @@ test('deux véhicules en parallèle reprennent la solution proposée par la réf
   });
 
   assert.equal(single.trips, 6);
-  assert.equal(single.totalMinutes, 505);
+  assert.equal(single.totalMinutes, 785);
   assert.equal(parallel.crew, 12);
-  assert.equal(Math.round(parallel.handlingMinutes / 5) * 5, 225);
-  assert.equal(Math.round(parallel.rawTotalMinutes / 5) * 5, 250);
+  assert.equal(Math.round(parallel.handlingMinutes / 5) * 5, 315);
+  assert.equal(Math.round(parallel.rawTotalMinutes / 5) * 5, 410);
 });
 
 test('le choix manuel est conservé et reste comparé à la recommandation automatique', () => {
@@ -204,7 +237,7 @@ test('le choix manuel est conservé et reste comparé à la recommandation autom
   inventory.custom = [{ id: 'cartons', label: 'Cartons', quantity: 24, format: 'medium' }];
   const estimate = estimateMovingWork(inventory, vehicle, null, { trips: 1, crew: 2 });
 
-  assert.equal(estimate.recommendedCrew, 3);
+  assert.equal(estimate.recommendedCrew, 4);
   assert.equal(estimate.crew, 2);
   assert.ok(estimate.warnings.some((warning) => warning.includes('avec 2 manœuvres')));
 });

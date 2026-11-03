@@ -84,6 +84,10 @@ export function BookingPage() {
         crew: draft.inventory.crew,
         startTime: draft.timeSlot,
         laborPlanning: catalogue?.settings.movingLaborPlanning,
+        fromAddress: draft.fromAddress,
+        toAddress: draft.toAddress,
+        date: draft.date,
+        month: draft.month,
       })
     : null;
   const submitBooking = (event: React.FormEvent<HTMLFormElement>) =>

@@ -318,6 +318,20 @@
   font-weight: 400;
   line-height: 1.35;
 }
+.reference-settings-blanket-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  gap: 12px;
+}
+.reference-settings-blanket-fields label {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+  color: #aeb4bb;
+  font-size: 12px;
+  font-weight: 700;
+}
 .reference-settings-reset {
   align-self: flex-start;
   min-height: 40px;

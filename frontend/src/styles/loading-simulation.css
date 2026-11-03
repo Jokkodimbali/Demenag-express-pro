@@ -1,14 +1,32 @@
+.loading-simulation-wrapper {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
 .loading-simulation {
   display: flex;
   flex-direction: column;
-  grid-column: 1 / -1;
   min-width: 0;
+  width: 100%;
   gap: 14px;
   padding: clamp(14px, 4vw, 22px);
   border: 1px solid #3b4046;
   border-radius: clamp(14px, 4vw, 20px);
   background: #272a2e;
   color: #fff;
+}
+.loading-simulation-download {
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1.5px solid #3b4046;
+  border-radius: 10px;
+  background: transparent;
+  color: #aeb4bb;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
 }
 .loading-simulation-heading {
   display: flex;

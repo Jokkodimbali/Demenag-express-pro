@@ -25,6 +25,7 @@ import { bookingInventorySnapshot, estimateMovingWork } from '../../domain/movin
 import { defaultClientQuestions } from '../../domain/questionnaire';
 import { quoteNotificationUrl } from '../../application/services/quote-notification';
 import { whatsappNumber, whatsappUrl } from '../../application/services/whatsapp';
+import { whatsappPaymentLine } from '../../application/services/whatsapp-templates';
 
 const trafficDuration = (minutes: number) => {
   const rounded = Math.max(5, Math.round(minutes / 5) * 5);
@@ -370,12 +371,13 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         crew: draft.inventory.crew,
         startTime: draft.timeSlot,
         laborPlanning: catalogue?.settings.movingLaborPlanning,
-        trafficDurationMinutes: quoteConfig.trafficOff ? undefined : traffic?.minutes,
-        freeTrafficDurationMinutes: traffic?.freeMinutes,
         ignoreTraffic: quoteConfig.trafficOff,
         manualLegMinutes: quoteConfig.calcMode === 'manual' ? quoteConfig.legMinutes : 0,
         date: draft.date,
         month: draft.month,
+        fromAddress: draft.fromAddress,
+        toAddress: draft.toAddress,
+        hasToll: tollLines.some((line) => line.quantity * line.unitPrice > 0),
         heatOff: quoteConfig.heatOff,
         heatRest: quoteConfig.heatRest,
       })
@@ -622,14 +624,11 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         timeZone: 'Africa/Dakar',
       })
     : '';
-  const reminderPayment = [
-    catalogue?.settings.paymentWave !== false ? 'Wave' : '',
-    catalogue?.settings.paymentCash !== false ? 'espèces' : '',
-  ].filter(Boolean);
+  const reminderPayment = whatsappPaymentLine(catalogue?.settings);
   const reminderHref = editingBooking
     ? whatsappUrl(
         draft.customerPhone,
-        `Bonjour ${draft.customerName}, petit rappel de Demenag Express : votre déménagement (${editingBooking.reference}) est prévu ${reminderWhen}, le ${reminderDateLabel}${draft.timeSlot ? ` à ${draft.timeSlot}` : ''}.\n${draft.fromAddress ? `Départ : ${draft.fromAddress}\n` : ''}${draft.toAddress ? `Arrivée : ${draft.toAddress}\n` : ''}Merci de préparer vos affaires pour le chargement.${reminderPayment.length ? `\nMode de paiement : ${reminderPayment.join(' ou ')}${reminderPayment.length > 1 ? ' (au choix)' : ''}.` : ''} Pour toute question, contactez-nous au ${catalogue?.settings.businessPhone ?? ''}. À bientôt !`,
+        `Bonjour ${draft.customerName}, petit rappel de Demenag Express : votre déménagement (${editingBooking.reference}) est prévu ${reminderWhen}, le ${reminderDateLabel}${draft.timeSlot && draft.timeSlot !== 'À définir' ? ` à ${draft.timeSlot}` : ''}.\n${draft.fromAddress ? `Départ : ${draft.fromAddress}\n` : ''}${draft.toAddress ? `Arrivée : ${draft.toAddress}\n` : ''}Merci de préparer vos affaires pour le chargement.${reminderPayment ? `\n${reminderPayment}` : ''}\nPour toute question, contactez-nous au ${catalogue?.settings.whatsappPhone || catalogue?.settings.businessPhone || ''}. À bientôt !`,
         catalogue?.settings,
       )
     : '';

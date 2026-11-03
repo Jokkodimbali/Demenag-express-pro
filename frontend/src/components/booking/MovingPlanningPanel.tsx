@@ -29,10 +29,9 @@ export function MovingPlanningPanel({
   maxTrips,
   onApply,
   laborPlanning,
-  trafficDurationMinutes,
-  freeTrafficDurationMinutes,
   ignoreTraffic,
   manualLegMinutes,
+  hasToll,
   onManualCalculation,
   heatOff,
   heatRest,
@@ -50,10 +49,9 @@ export function MovingPlanningPanel({
   maxTrips: number;
   onApply: (vehicleId: string, trips: number) => void;
   laborPlanning?: MovingLaborPlanningSettings;
-  trafficDurationMinutes?: number;
-  freeTrafficDurationMinutes?: number;
   ignoreTraffic?: boolean;
   manualLegMinutes?: number;
+  hasToll?: boolean;
   onManualCalculation?: () => void;
   heatOff?: boolean;
   heatRest?: number;
@@ -74,10 +72,11 @@ export function MovingPlanningPanel({
         crew: inventory.crew,
         startTime: draft.timeSlot,
         laborPlanning,
-        trafficDurationMinutes,
-        freeTrafficDurationMinutes,
+        fromAddress: draft.fromAddress,
+        toAddress: draft.toAddress,
         ignoreTraffic,
         manualLegMinutes,
+        hasToll,
         date: draft.date,
         month: draft.month,
         heatOff,
@@ -99,9 +98,10 @@ export function MovingPlanningPanel({
       estimate: estimateMovingWork(inventory, vehicle, draft.route, {
         startTime: draft.timeSlot,
         laborPlanning,
-        trafficDurationMinutes,
-        freeTrafficDurationMinutes,
+        fromAddress: draft.fromAddress,
+        toAddress: draft.toAddress,
         ignoreTraffic,
+        hasToll,
         date: draft.date,
         month: draft.month,
         heatOff,
@@ -128,7 +128,15 @@ export function MovingPlanningPanel({
               parallelVehicles,
               startTime: draft.timeSlot,
               laborPlanning,
-              trafficDurationMinutes,
+              fromAddress: draft.fromAddress,
+              toAddress: draft.toAddress,
+              ignoreTraffic,
+              manualLegMinutes,
+              hasToll,
+              date: draft.date,
+              month: draft.month,
+              heatOff,
+              heatRest,
             });
             return proposal.rawTotalMinutes <= dayLimitMinutes
               ? [{ vehicle, parallelVehicles, estimate: proposal }]

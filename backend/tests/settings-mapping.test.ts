@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { ParametreApplication } from '../src/generated/prisma/client.js';
-import { fromSettings } from '../src/adapters/out/prisma/mapping.js';
+import { fromSettings, toSettings } from '../src/adapters/out/prisma/mapping.js';
 
 function settingsRow(matrix: unknown): ParametreApplication {
   return {
@@ -51,4 +51,20 @@ test('la matrice complète configurée reste disponible après lecture du catalo
   );
 
   assert.deepEqual(fromSettings(settingsRow(priceMatrix)).labourMatrix, priceMatrix);
+});
+
+test('les deux modèles WhatsApp restent distincts lors de la lecture et de la sauvegarde', () => {
+  const row = {
+    ...settingsRow({}),
+    modeleDevisWhatsapp: 'Modèle final {num}',
+    modeleDevisProvisoireWhatsapp: 'Modèle provisoire {num}',
+  } as ParametreApplication;
+  const mapped = fromSettings(row);
+
+  assert.equal(mapped.whatsappQuoteTemplate, 'Modèle final {num}');
+  assert.equal(mapped.whatsappProvisionalTemplate, 'Modèle provisoire {num}');
+
+  const saved = toSettings(mapped);
+  assert.equal(saved.modeleDevisWhatsapp, 'Modèle final {num}');
+  assert.equal(saved.modeleDevisProvisoireWhatsapp, 'Modèle provisoire {num}');
 });

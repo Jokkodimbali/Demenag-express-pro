@@ -2,9 +2,13 @@ import { uiText } from '../../content/reference-ui-text';
 import { useState } from 'react';
 import type { Catalogue } from '../../domain/model';
 import { whatsappUrl } from '../../application/services/whatsapp';
-
-const defaultTemplate =
-  'Bonjour {nom}, votre déménagement est terminé. Voici votre devis final Demenag Express {num} : {total} ({allers} aller(s)-retour(s), {vehicule}). Le PDF est disponible dans votre espace client. Merci !';
+import {
+  defaultFinalQuoteTemplate,
+  defaultLegacyFinalQuoteTemplate,
+  defaultProvisionalQuoteTemplate,
+  renderQuoteTemplate,
+  whatsappPaymentLine,
+} from '../../application/services/whatsapp-templates';
 const modes = [
   ['api', 'api.whatsapp.com (recommandé)'],
   ['wame', 'wa.me'],
@@ -28,8 +32,14 @@ export function ReferenceWhatsappSettings({ catalogue }: { catalogue: Catalogue 
     ),
   );
   const [mode, setMode] = useState(catalogue.settings.whatsappMode ?? 'api');
-  const [template, setTemplate] = useState(
-    catalogue.settings.whatsappQuoteTemplate || defaultTemplate,
+  const [provisionalTemplate, setProvisionalTemplate] = useState(
+    catalogue.settings.whatsappProvisionalTemplate || defaultProvisionalQuoteTemplate,
+  );
+  const [finalTemplate, setFinalTemplate] = useState(
+    !catalogue.settings.whatsappQuoteTemplate ||
+      catalogue.settings.whatsappQuoteTemplate === defaultLegacyFinalQuoteTemplate
+      ? defaultFinalQuoteTemplate
+      : catalogue.settings.whatsappQuoteTemplate,
   );
   const previewValues: Record<string, string> = {
     nom: 'Awa Ndiaye',
@@ -37,14 +47,22 @@ export function ReferenceWhatsappSettings({ catalogue }: { catalogue: Catalogue 
     num: 'DV-2026-0108',
     total: '125 000 FCFA (+ péages à votre charge : 2 000 FCFA)',
     peages: 'Péage · Rufisque : 2 × 1 000 FCFA\nTotal péages : 2 000 FCFA',
+    paiement: whatsappPaymentLine(catalogue.settings),
     allers: '3',
+    voyages: '3 allers-retours',
     vehicule: 'Renault Master',
     date: '18/10/2026',
+    heure: ' à 08h00',
     trajet: 'Ouakam → Almadies',
   };
-  let preview = template.replace(/\{(\w+)\}/g, (token, key: string) => previewValues[key] ?? token);
-  if (previewValues.peages && !template.includes('{peages}'))
-    preview += `\n\nPéages à votre charge (non inclus) :\n${previewValues.peages}`;
+  const provisionalPreview = renderQuoteTemplate(provisionalTemplate, previewValues, {
+    tollText: previewValues.peages,
+    paymentLine: previewValues.paiement,
+  });
+  const finalPreview = renderQuoteTemplate(finalTemplate, previewValues, {
+    tollText: previewValues.peages,
+    paymentLine: previewValues.paiement,
+  });
   const testUrl = whatsappUrl(businessNumber, 'Test Demenag Express', {
     whatsappCountryCode: countryCode,
     whatsappMode: mode,
@@ -97,23 +115,37 @@ export function ReferenceWhatsappSettings({ catalogue }: { catalogue: Catalogue 
         </label>
       </div>
       <label className="reference-settings-whatsapp-template">
+        <span>MESSAGE DU DEVIS PROVISOIRE</span>
+        <textarea
+          name="w.tplP"
+          rows={4}
+          maxLength={1000}
+          value={provisionalTemplate}
+          onChange={(event) => setProvisionalTemplate(event.target.value)}
+          required
+        />
+      </label>
+      <div className="reference-settings-whatsapp-preview" aria-live="polite">
+        {provisionalPreview}
+      </div>
+      <label className="reference-settings-whatsapp-template">
         <span>{uiText['messageDUDEVISFINAL']}</span>
         <textarea
           name="w.tpl"
           rows={4}
           maxLength={1000}
-          value={template}
-          onChange={(event) => setTemplate(event.target.value)}
+          value={finalTemplate}
+          onChange={(event) => setFinalTemplate(event.target.value)}
           required
         />
       </label>
       <span className="reference-settings-whatsapp-hint">
         {uiText['variables']}
-        {'{nom}'} {'{ref}'} {'{num}'} {'{total}'} {'{peages}'} {'{allers}'} {'{vehicule}'}{' '}
-        {'{date}'} {'{trajet}'}
+        {'{nom}'} {'{ref}'} {'{num}'} {'{total}'} {'{peages}'} {'{paiement}'} {'{allers}'}{' '}
+        {'{voyages}'} {'{vehicule}'} {'{date}'} {'{heure}'} {'{trajet}'}
       </span>
       <div className="reference-settings-whatsapp-preview" aria-live="polite">
-        {preview}
+        {finalPreview}
       </div>
       <div className="reference-settings-whatsapp-test">
         <a href={testUrl} target="_blank" rel="noopener noreferrer">

@@ -45,7 +45,8 @@ for (const [name, expected] of Object.entries(expectedReferenceScripts)) {
   if (actual !== expected) throw new Error(`Dépendance de référence modifiée : ${name}`);
   if (name === 'loading-sim.js' || name === 'equip-art.js') {
     const integrated = digest(readFileSync(resolve(root, 'frontend/public/reference', name)));
-    if (integrated !== expected) throw new Error(`Copie intégrée différente de la référence : ${name}`);
+    if (integrated !== expected)
+      throw new Error(`Copie intégrée différente de la référence : ${name}`);
   }
 }
 console.log(
