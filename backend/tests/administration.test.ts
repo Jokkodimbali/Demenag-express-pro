@@ -41,6 +41,7 @@ function fixture(count: number, currentActor: User = actor) {
     findByPhone: async () => null,
     findByEmail: async () => null,
     create: async (user) => user,
+    delete: async () => {},
     updatePassword: async () => {},
     updateProfile: async (id, name, phone, photo) => ({
       id,

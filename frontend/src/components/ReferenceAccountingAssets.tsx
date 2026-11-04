@@ -139,7 +139,7 @@ export function ReferenceAccountingAssets({
             ? `Mensualité théorique ${money(monthlyDebt)} · fin prévue ${debtEndLabel ?? '—'} si chaque mois est payé.`
             : 'Dette entièrement remboursée.'}
         </p>
-        <span className="accounting-finance-subheading">PARAMÈTRES</span>
+        <span className="accounting-finance-subheading">{text.parameters}</span>
         <div className="accounting-finance-fields">
           <label>
             <span>{text.accountingDebtTotalLabel}</span>
@@ -149,7 +149,7 @@ export function ReferenceAccountingAssets({
               value={config.debt}
               onChange={(event) => updateNumber('debt', event.target.value)}
             />
-            <small>Somme totale due à votre père.</small>
+            <small>{text.debtTotalHint}</small>
           </label>
           <label>
             <span>{text.accountingDebtDurationLabel}</span>
@@ -159,7 +159,7 @@ export function ReferenceAccountingAssets({
               value={config.debtMonths}
               onChange={(event) => updateNumber('debtMonths', event.target.value)}
             />
-            <small>Mensualité = dette ÷ durée.</small>
+            <small>{text.debtDurationHint}</small>
           </label>
         </div>
       </Section>
@@ -352,7 +352,7 @@ export function ReferenceAccountingAssets({
             {text.buyVehicle(money(config.newVehicleTarget))}
           </button>
         )}
-        <span className="accounting-finance-subheading">PARAMÈTRES</span>
+        <span className="accounting-finance-subheading">{text.parameters}</span>
         <div className="accounting-finance-fields">
           <label>
             <span>{text.accountingVehicleReserve}</span>

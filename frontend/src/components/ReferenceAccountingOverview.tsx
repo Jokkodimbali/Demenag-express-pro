@@ -429,185 +429,172 @@ export function ReferenceAccountingOverview({
           </strong>
           <small>{text.accountingBalanceHint}</small>
         </article>
-        {config.accountingDataVerified && (
-          <article className="reference-accounting-hypothetical">
-            <span>{text.hypotheticalBalance}</span>
-            <strong
-              className={
-                values.hypotheticalBalance < 0 ? 'accounting-negative' : 'accounting-positive'
-              }
-            >
-              {money(values.hypotheticalBalance)}
-            </strong>
-            <small>
-              {values.remainingFixed > 0
-                ? text.fixedChargesRemaining(money(values.remainingFixed))
-                : text.allFixedChargesRecorded}
-            </small>
-            <small>
-              {text.finalMovesCount(values.hypotheticalMoves, values.hypotheticalFinals)}
-            </small>
-          </article>
-        )}
+        <article className="reference-accounting-hypothetical">
+          <span>{text.hypotheticalBalance}</span>
+          <strong
+            className={
+              values.hypotheticalBalance < 0 ? 'accounting-negative' : 'accounting-positive'
+            }
+          >
+            {money(values.hypotheticalBalance)}
+          </strong>
+          <small>{text.forecastAssumptions}</small>
+          <small>
+            {values.remainingFixed > 0
+              ? text.fixedChargesRemaining(money(values.remainingFixed))
+              : text.allFixedChargesRecorded}
+          </small>
+          <small>{text.finalMovesCount(values.hypotheticalMoves, values.hypotheticalFinals)}</small>
+        </article>
       </div>
 
-      {config.accountingDataVerified ? (
-        <section className="accounting-panel reference-accounting-objective">
-          <div className="reference-accounting-objective-heading">
-            <strong>{text.objectiveLabel(endMonth)}</strong>
-            <span>
-              {text.monthlySurplusTarget} : <strong>{money(config.monthlyProfitTarget)}</strong>
-            </span>
-          </div>
-          {values.requiredMoves > 0 ? (
-            <>
-              <div className="reference-accounting-objective-grid">
-                <div>
-                  <span>{text.movesNeeded}</span>
-                  <strong>{text.movesNeededValue(values.requiredMoves)}</strong>
-                  <div className="reference-accounting-progress">
-                    <i style={{ width: `${completion}%` }} />
-                  </div>
-                  <small>
-                    {text.movesPlanned(values.monthBookings, values.finalCount)} ·{' '}
-                    {text.perDayOver26((values.requiredMoves / 26).toFixed(1).replace('.', ','))}
-                  </small>
+      <section className="accounting-panel reference-accounting-objective">
+        <div className="reference-accounting-objective-heading">
+          <strong>{text.objectiveLabel(endMonth)}</strong>
+          <span>
+            {text.monthlySurplusTarget} : <strong>{money(config.monthlyProfitTarget)}</strong>
+          </span>
+        </div>
+        {values.requiredMoves > 0 ? (
+          <>
+            <div className="reference-accounting-objective-grid">
+              <div>
+                <span>{text.movesNeeded}</span>
+                <strong>{text.movesNeededValue(values.requiredMoves)}</strong>
+                <div className="reference-accounting-progress">
+                  <i style={{ width: `${completion}%` }} />
                 </div>
-                <div>
-                  <span>{text.turnoverNeeded}</span>
-                  <strong>{money(values.requiredRevenue)}</strong>
-                  <div className="reference-accounting-progress revenue">
-                    <i style={{ width: `${revenueCompletion}%` }} />
-                  </div>
-                  <small>
-                    {text.plannedFinalProvisionalRevenue(
-                      money(values.finalRevenue),
-                      money(values.provisionalRevenue),
-                    )}
-                  </small>
-                </div>
+                <small>
+                  {text.movesPlanned(values.monthBookings, values.finalCount)} ·{' '}
+                  {text.perDayOver26((values.requiredMoves / 26).toFixed(1).replace('.', ','))}
+                </small>
               </div>
-              <small>
-                {text.averagePriceAndMargin(money(values.average), money(values.margin))}
-              </small>
-            </>
-          ) : (
-            <p className="accounting-finance-rule negative">
-              {values.average > 0 ? text.reviseRates : text.noAveragePrice}
-            </p>
-          )}
-          <button
-            className={`reference-accounting-details-toggle${showCalculation ? ' open' : ''}`}
-            onClick={() => setShowCalculation((value) => !value)}
-            aria-expanded={showCalculation}
-          >
-            <ChevronDown size={16} /> {text.calculationDetails}
-          </button>
-          {showCalculation && (
-            <div className="reference-accounting-details">
-              {detailRows.map(([label, value]) => (
-                <div key={label}>
-                  <span>{label}</span>
-                  <strong>{value}</strong>
+              <div>
+                <span>{text.turnoverNeeded}</span>
+                <strong>{money(values.requiredRevenue)}</strong>
+                <div className="reference-accounting-progress revenue">
+                  <i style={{ width: `${revenueCompletion}%` }} />
                 </div>
-              ))}
-            </div>
-          )}
-          <div className="reference-accounting-ai">
-            <div>
-              <strong>{text.analysisDiscussion}</strong>
-              <button
-                className="button primary"
-                onClick={() => void analyze()}
-                disabled={analyzing}
-              >
-                {analyzing
-                  ? text.analysisInProgress
-                  : analysis
-                    ? text.relaunchAnalysis
-                    : text.analyzeWithAI}
-              </button>
-            </div>
-            {analysis && <p>{analysis}</p>}
-            {analysisError && <p role="status">{analysisError}</p>}
-            <div className="reference-accounting-chat">
-              {(config.financeChat ?? []).length > 0 && (
-                <div className="reference-accounting-chat-messages" aria-live="polite">
-                  {[...(config.financeChat ?? [])].reverse().map((message, index) => (
-                    <article
-                      className={`reference-accounting-chat-message ${message.speaker}`}
-                      key={`${message.speaker}-${index}-${message.message.slice(0, 24)}`}
-                    >
-                      <span>
-                        {message.speaker === 'user'
-                          ? text.financeChatUser
-                          : text.financeChatAssistant}
-                      </span>
-                      <p>{message.message}</p>
-                    </article>
-                  ))}
-                  {chatBusy && (
-                    <article className="reference-accounting-chat-message assistant">
-                      <span>{text.financeChatAssistant}</span>
-                      <p>{text.financeChatThinking}</p>
-                    </article>
+                <small>
+                  {text.plannedFinalProvisionalRevenue(
+                    money(values.finalRevenue),
+                    money(values.provisionalRevenue),
                   )}
-                </div>
-              )}
-              {!(config.financeChat ?? []).length && (
-                <div className="reference-accounting-chat-suggestions">
-                  {financeQuestions.map((question) => (
-                    <button
-                      type="button"
-                      key={question}
-                      disabled={chatBusy}
-                      onClick={() => void ask(question)}
-                    >
-                      {question}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <form
-                className="reference-accounting-chat-form"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void ask(chatInput);
-                }}
-              >
-                <input
-                  value={chatInput}
-                  onChange={(event) => setChatInput(event.target.value)}
-                  placeholder={text.financeChatPlaceholder}
-                  aria-label={text.financeChatPlaceholder}
-                  disabled={chatBusy}
-                  maxLength={3000}
-                />
-                <button
-                  type="submit"
-                  className="button primary"
-                  disabled={chatBusy || !chatInput.trim()}
-                >
-                  {chatBusy ? '…' : text.financeChatSend}
-                </button>
-              </form>
-              {(config.financeChat ?? []).length > 0 && (
-                <button
-                  type="button"
-                  className="reference-accounting-chat-clear"
-                  onClick={() => update({ financeChat: [] })}
-                >
-                  {text.financeChatClear}
-                </button>
-              )}
+                </small>
+              </div>
             </div>
+            <small>{text.averagePriceAndMargin(money(values.average), money(values.margin))}</small>
+          </>
+        ) : values.average <= 0 ? (
+          <p className="accounting-finance-rule negative">{text.noAveragePrice}</p>
+        ) : values.margin <= 0 && values.requiredProfit > 0 ? (
+          <p className="accounting-finance-rule negative">{text.reviseRates}</p>
+        ) : (
+          <p className="accounting-finance-rule">{text.noSurplusObjective}</p>
+        )}
+        <button
+          className={`reference-accounting-details-toggle${showCalculation ? ' open' : ''}`}
+          onClick={() => setShowCalculation((value) => !value)}
+          aria-expanded={showCalculation}
+        >
+          <ChevronDown size={16} /> {text.calculationDetails}
+        </button>
+        {showCalculation && (
+          <div className="reference-accounting-details">
+            {detailRows.map(([label, value]) => (
+              <div key={label}>
+                <span>{label}</span>
+                <strong>{value}</strong>
+              </div>
+            ))}
           </div>
-        </section>
-      ) : (
-        <p className="accounting-history-warning" role="status">
-          {text.forecastRequiresVerified}
-        </p>
-      )}
+        )}
+        <div className="reference-accounting-ai">
+          <div>
+            <strong>{text.analysisDiscussion}</strong>
+            <button className="button primary" onClick={() => void analyze()} disabled={analyzing}>
+              {analyzing
+                ? text.analysisInProgress
+                : analysis
+                  ? text.relaunchAnalysis
+                  : text.analyzeWithAI}
+            </button>
+          </div>
+          {analysis && <p>{analysis}</p>}
+          {analysisError && <p role="status">{analysisError}</p>}
+          <div className="reference-accounting-chat">
+            {(config.financeChat ?? []).length > 0 && (
+              <div className="reference-accounting-chat-messages" aria-live="polite">
+                {[...(config.financeChat ?? [])].reverse().map((message, index) => (
+                  <article
+                    className={`reference-accounting-chat-message ${message.speaker}`}
+                    key={`${message.speaker}-${index}-${message.message.slice(0, 24)}`}
+                  >
+                    <span>
+                      {message.speaker === 'user'
+                        ? text.financeChatUser
+                        : text.financeChatAssistant}
+                    </span>
+                    <p>{message.message}</p>
+                  </article>
+                ))}
+                {chatBusy && (
+                  <article className="reference-accounting-chat-message assistant">
+                    <span>{text.financeChatAssistant}</span>
+                    <p>{text.financeChatThinking}</p>
+                  </article>
+                )}
+              </div>
+            )}
+            {!(config.financeChat ?? []).length && (
+              <div className="reference-accounting-chat-suggestions">
+                {financeQuestions.map((question) => (
+                  <button
+                    type="button"
+                    key={question}
+                    disabled={chatBusy}
+                    onClick={() => void ask(question)}
+                  >
+                    {question}
+                  </button>
+                ))}
+              </div>
+            )}
+            <form
+              className="reference-accounting-chat-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void ask(chatInput);
+              }}
+            >
+              <input
+                value={chatInput}
+                onChange={(event) => setChatInput(event.target.value)}
+                placeholder={text.financeChatPlaceholder}
+                aria-label={text.financeChatPlaceholder}
+                disabled={chatBusy}
+                maxLength={3000}
+              />
+              <button
+                type="submit"
+                className="button primary"
+                disabled={chatBusy || !chatInput.trim()}
+              >
+                {chatBusy ? '…' : text.financeChatSend}
+              </button>
+            </form>
+            {(config.financeChat ?? []).length > 0 && (
+              <button
+                type="button"
+                className="reference-accounting-chat-clear"
+                onClick={() => update({ financeChat: [] })}
+              >
+                {text.financeChatClear}
+              </button>
+            )}
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

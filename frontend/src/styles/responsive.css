@@ -713,6 +713,11 @@
   .admin-reservations-desktop {
     display: none;
   }
+  .workspace-page.admin-workspace .admin-reference-heading .admin-tabs {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
   .admin-reservations-mobile {
     display: flex;
     flex-direction: column;

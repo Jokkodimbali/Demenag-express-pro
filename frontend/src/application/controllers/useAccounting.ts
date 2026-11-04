@@ -121,7 +121,6 @@ export function useAccounting() {
           const normalized = {
             ...defaults,
             ...config,
-            accountingDataVerified: config.accountingDataVerified === true,
             menuPrices: config.menuPrices ?? {},
             advertising: config.advertising ?? {},
             salaries: config.salaries ?? defaults.salaries,
@@ -158,8 +157,6 @@ export function useAccounting() {
       const current = financeRef.current;
       const next = {
         ...(typeof change === 'function' ? change(current) : { ...current, ...change }),
-        accountingDataVerified:
-          typeof change !== 'function' && change.accountingDataVerified === true,
       };
       financeRef.current = next;
       setFinanceConfiguration(next);

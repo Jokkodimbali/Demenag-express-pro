@@ -9,6 +9,9 @@ export class PrismaDrivers implements DriverRepository {
   async list() {
     return (await this.db.chauffeur.findMany({ orderBy: { nom: 'asc' } })).map(fromDriver);
   }
+  async vehicleExists(id: string) {
+    return (await this.db.vehicule.findUnique({ where: { id }, select: { id: true } })) !== null;
+  }
   async find(id: string) {
     const row = await this.db.chauffeur.findUnique({ where: { id } });
     return row ? fromDriver(row) : null;
@@ -19,16 +22,42 @@ export class PrismaDrivers implements DriverRepository {
   }
   async create(driver: Driver) {
     try {
-      return fromDriver(await this.db.chauffeur.create({ data: toDriver(driver) }));
+      return await this.db.$transaction(async (transaction) => {
+        if (driver.vehicleId)
+          await transaction.chauffeur.updateMany({
+            where: { vehiculeId: driver.vehicleId, id: { not: driver.id } },
+            data: { vehiculeId: null },
+          });
+        return fromDriver(await transaction.chauffeur.create({ data: toDriver(driver) }));
+      });
     } catch (error) {
       conflict(error);
     }
   }
   async update(driver: Driver) {
     try {
-      return fromDriver(
-        await this.db.chauffeur.update({ where: { id: driver.id }, data: toDriver(driver) }),
-      );
+      return await this.db.$transaction(async (transaction) => {
+        if (driver.vehicleId)
+          await transaction.chauffeur.updateMany({
+            where: { vehiculeId: driver.vehicleId, id: { not: driver.id } },
+            data: { vehiculeId: null },
+          });
+        const row = await transaction.chauffeur.update({
+          where: { id: driver.id },
+          data: toDriver(driver),
+        });
+        if (driver.userId)
+          await transaction.utilisateur.update({
+            where: { id: driver.userId },
+            data: {
+              nom: driver.name,
+              telephone: driver.phone,
+              photo: driver.photo,
+              actif: driver.active,
+            },
+          });
+        return fromDriver(row);
+      });
     } catch (error) {
       conflict(error);
     }

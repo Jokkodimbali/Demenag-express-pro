@@ -60,12 +60,17 @@ export async function registerScenarioUsers(context: IntegrationContext) {
   assert.equal(driver.status, 201, JSON.stringify(driver.body));
   assert.equal(typeof driver.body.initialPassword, 'string');
   context.driverId = driver.body.id;
+  context.driverPassword = driver.body.initialPassword;
   const login = await clients.driver
     .post('/api/auth/login')
     .set(integrationHeader)
     .send({ phone: driverPhone, password: driver.body.initialPassword });
   assert.equal(login.status, 200, JSON.stringify(login.body));
-  return { userIds: testUserIds, driverId: driver.body.id };
+  return {
+    userIds: testUserIds,
+    driverId: driver.body.id,
+    initialDriverPassword: driver.body.initialPassword as string,
+  };
 }
 
 export async function verifyAccountAdministration(context: IntegrationContext, userIds: string[]) {

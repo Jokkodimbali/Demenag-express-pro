@@ -3,10 +3,11 @@ import request, { type Response } from 'supertest';
 import type { IntegrationContext } from './context.js';
 import { integrationHeader } from './context.js';
 import { createBookingInput } from './configuration.js';
+import type { Booking } from '../../src/domain/model.js';
 
 export async function createAndAuthorizeBooking(context: IntegrationContext, routeId: string) {
   const { db, app, clients } = context;
-  const { first, second, admin } = clients;
+  const { first, second, admin, driver } = clients;
   assert.equal((await first.put('/api/catalogue').set(integrationHeader).send({})).status, 403);
   assert.equal((await request(app).get('/api/bookings')).status, 401);
   assert.equal((await first.post('/api/bookings').send({})).status, 403);
@@ -53,7 +54,177 @@ export async function createAndAuthorizeBooking(context: IntegrationContext, rou
     .patch('/api/bookings/' + bookingId + '/driver')
     .set(integrationHeader)
     .send({ driverId: context.driverId, version: 1 });
-  return { bookingId, input, collisionId: collision.body.id, assigned };
+  assert.equal(assigned.status, 200, JSON.stringify(assigned.body));
+  assert.equal(
+    (
+      await first
+        .patch('/api/bookings/' + bookingId + '/crew')
+        .set(integrationHeader)
+        .send({})
+    ).status,
+    403,
+  );
+  const driverId = context.driverId;
+  assert.ok(driverId);
+  const crew = { chauffeur: [driverId], menuisier: [], manoeuvre: [], chef: driverId };
+  const teamPath = '/api/bookings/' + bookingId + '/crew';
+  const crewAssigned = await admin.patch(teamPath).set(integrationHeader).send({
+    crew,
+    crewBriefs: {},
+    crewRefusedBy: [],
+    crewReplies: {},
+    crewMessages: {},
+    version: assigned.body.version,
+  });
+  assert.equal(crewAssigned.status, 200, JSON.stringify(crewAssigned.body));
+  assert.deepEqual(crewAssigned.body.crew, crew);
+  const persisted = await db.reservation.findUniqueOrThrow({ where: { id: bookingId } });
+  assert.deepEqual((persisted.donnees as Booking).crew, crew);
+
+  const duplicateRole = await admin
+    .patch(teamPath)
+    .set(integrationHeader)
+    .send({
+      crew: { ...crew, manoeuvre: [driverId] },
+      crewBriefs: {},
+      crewRefusedBy: [],
+      crewReplies: {},
+      crewMessages: {},
+      version: crewAssigned.body.version,
+    });
+  assert.equal(duplicateRole.status, 400);
+  const invalidChef = await admin
+    .patch(teamPath)
+    .set(integrationHeader)
+    .send({
+      crew: { ...crew, chef: '00000000-0000-4000-8000-000000000001' },
+      crewBriefs: {},
+      crewRefusedBy: [],
+      crewReplies: {},
+      crewMessages: {},
+      version: crewAssigned.body.version,
+    });
+  assert.equal(invalidChef.status, 400);
+  const wrongRole = await admin
+    .patch(teamPath)
+    .set(integrationHeader)
+    .send({
+      crew: { chauffeur: [], menuisier: [driverId], manoeuvre: [], chef: driverId },
+      crewBriefs: {},
+      crewRefusedBy: [],
+      crewReplies: {},
+      crewMessages: {},
+      version: crewAssigned.body.version,
+    });
+  assert.equal(wrongRole.status, 400);
+  const unknownMember = await admin
+    .patch(teamPath)
+    .set(integrationHeader)
+    .send({
+      crew: {
+        chauffeur: ['00000000-0000-4000-8000-000000000001'],
+        menuisier: [],
+        manoeuvre: [],
+        chef: '00000000-0000-4000-8000-000000000001',
+      },
+      crewBriefs: {},
+      crewRefusedBy: [],
+      crewReplies: {},
+      crewMessages: {},
+      version: crewAssigned.body.version,
+    });
+  assert.equal(unknownMember.status, 400);
+  const briefAt = new Date().toISOString();
+  const teamProgress = await admin
+    .patch(teamPath)
+    .set(integrationHeader)
+    .send({
+      crew,
+      crewBriefs: { [driverId]: briefAt },
+      crewRefusedBy: [],
+      crewReplies: { [driverId]: 'ok' },
+      crewMessages: { [driverId]: 'Brief de test intégré.' },
+      version: crewAssigned.body.version,
+    });
+  assert.equal(teamProgress.status, 200, JSON.stringify(teamProgress.body));
+  const persistedProgress = await db.reservation.findUniqueOrThrow({ where: { id: bookingId } });
+  const savedBooking = persistedProgress.donnees as Booking;
+  assert.equal(savedBooking.crewBriefs?.[driverId], briefAt);
+  assert.equal(savedBooking.crewReplies?.[driverId], 'ok');
+  assert.equal(savedBooking.crewMessages?.[driverId], 'Brief de test intégré.');
+  const stale = await admin.patch(teamPath).set(integrationHeader).send({
+    crew,
+    crewBriefs: {},
+    crewRefusedBy: [],
+    crewReplies: {},
+    crewMessages: {},
+    version: crewAssigned.body.version,
+  });
+  assert.equal(stale.status, 409);
+
+  const removed = await admin
+    .delete('/api/admin/drivers/' + driverId)
+    .set(integrationHeader)
+    .send({});
+  assert.equal(removed.status, 200, JSON.stringify(removed.body));
+  assert.equal(removed.body.removed, false);
+  assert.equal(removed.body.employee.active, false);
+  const unassigned = await db.reservation.findUniqueOrThrow({ where: { id: bookingId } });
+  assert.equal(unassigned.chauffeurId, null);
+  assert.deepEqual((unassigned.donnees as Booking).crew, {
+    chauffeur: [],
+    menuisier: [],
+    manoeuvre: [],
+    chef: '',
+  });
+  assert.equal((await db.chauffeur.findUniqueOrThrow({ where: { id: driverId } })).actif, false);
+  assert.equal(
+    (await db.utilisateur.findUniqueOrThrow({ where: { id: removed.body.employee.userId } })).actif,
+    false,
+  );
+  assert.equal((await driver.get('/api/driver/profile').set(integrationHeader)).status, 401);
+  const inactiveAssignment = await admin.patch(teamPath).set(integrationHeader).send({
+    crew,
+    crewBriefs: {},
+    crewRefusedBy: [],
+    crewReplies: {},
+    crewMessages: {},
+    version: unassigned.version,
+  });
+  assert.equal(inactiveAssignment.status, 400);
+
+  const reactivated = await admin
+    .put('/api/admin/drivers/' + driverId)
+    .set(integrationHeader)
+    .send({ ...removed.body.employee, active: true });
+  assert.equal(reactivated.status, 200, JSON.stringify(reactivated.body));
+  assert.equal(
+    (await db.utilisateur.findUniqueOrThrow({ where: { id: removed.body.employee.userId } })).actif,
+    true,
+  );
+  assert.equal(
+    (
+      await driver
+        .post('/api/auth/login')
+        .set(integrationHeader)
+        .send({ phone: reactivated.body.phone, password: context.driverPassword })
+    ).status,
+    200,
+  );
+  const reassigned = await admin.patch(teamPath).set(integrationHeader).send({
+    crew,
+    crewBriefs: {},
+    crewRefusedBy: [],
+    crewReplies: {},
+    crewMessages: {},
+    version: unassigned.version,
+  });
+  assert.equal(reassigned.status, 200, JSON.stringify(reassigned.body));
+  assert.equal(
+    (await db.reservation.findUniqueOrThrow({ where: { id: bookingId } })).chauffeurId,
+    driverId,
+  );
+  return { bookingId, input, collisionId: collision.body.id, assigned: reassigned };
 }
 
 export async function advanceBookingToInProgress(

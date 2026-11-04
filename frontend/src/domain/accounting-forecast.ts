@@ -64,7 +64,6 @@ export function defaultAccountingFinanceConfiguration(
     );
   const currentMonth = `${month.year}-${month.month}`;
   return {
-    accountingDataVerified: false,
     regime: 'informel',
     suarlFrom: '',
     isRate: 0,

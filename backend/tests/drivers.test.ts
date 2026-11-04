@@ -45,13 +45,17 @@ test('Un employé peut mettre à jour sa photo de profil sans modifier ses autre
     role: 'driver',
     active: true,
   };
-  const updatedUsers: User[] = [];
+  const updatedDrivers: Driver[] = [];
   const drivers: DriverRepository = {
     list: async () => [],
+    vehicleExists: async () => true,
     find: async () => null,
     findByUserId: async () => first,
     create: async (driver) => driver,
-    update: async (driver) => driver,
+    update: async (driver) => {
+      updatedDrivers.push(driver);
+      return driver;
+    },
   };
   const users: UserRepository = {
     findByPhone: async () => null,
@@ -59,11 +63,10 @@ test('Un employé peut mettre à jour sa photo de profil sans modifier ses autre
     create: async () => {
       throw new Error('Non utilisé par ce test');
     },
+    delete: async () => {},
     updatePassword: async () => {},
     updateProfile: async (id, name, phone, photo) => {
-      const user = { id, name, phone, role: 'driver' as const, active: true, photo: photo ?? null };
-      updatedUsers.push(user);
-      return user;
+      return { id, name, phone, role: 'driver', active: true, photo: photo ?? null };
     },
   };
   const service = new DriverService(
@@ -78,9 +81,9 @@ test('Un employé peut mettre à jour sa photo de profil sans modifier ses autre
   assert.equal(updated.name, first.name);
   assert.equal(updated.phone, first.phone);
   assert.equal(updated.photo, 'data:image/jpeg;base64,photo');
-  assert.equal(updatedUsers[0]?.name, first.name);
-  assert.equal(updatedUsers[0]?.phone, first.phone);
-  assert.equal(updatedUsers[0]?.photo, 'data:image/jpeg;base64,photo');
+  assert.equal(updatedDrivers[0]?.name, first.name);
+  assert.equal(updatedDrivers[0]?.phone, first.phone);
+  assert.equal(updatedDrivers[0]?.photo, 'data:image/jpeg;base64,photo');
 });
 
 test('La création d’un employé génère un mot de passe initial et ne stocke que son hash', async () => {
@@ -90,6 +93,7 @@ test('La création d’un employé génère un mot de passe initial et ne stocke
   const createdDrivers: Driver[] = [];
   const drivers: DriverRepository = {
     list: async () => [],
+    vehicleExists: async () => true,
     find: async () => null,
     findByUserId: async () => null,
     create: async (driver) => {
@@ -113,6 +117,7 @@ test('La création d’un employé génère un mot de passe initial et ne stocke
         email: user.email,
       };
     },
+    delete: async () => {},
     updatePassword: async () => {},
     updateProfile: async (id, name, phone, photo) => ({
       id,
@@ -166,6 +171,57 @@ test('La création d’un employé génère un mot de passe initial et ne stocke
   assert.equal(createdDrivers[0]?.phone, '+221770000003');
 });
 
+test('Une création de profil échouée supprime le compte employé précréé', async () => {
+  const deletedUsers: string[] = [];
+  const drivers: DriverRepository = {
+    list: async () => [],
+    vehicleExists: async () => true,
+    find: async () => null,
+    findByUserId: async () => null,
+    create: async () => {
+      throw new Error('Échec de création du profil');
+    },
+    update: async (driver) => driver,
+  };
+  const users: UserRepository = {
+    findByPhone: async () => null,
+    findByEmail: async () => null,
+    create: async (user) => ({
+      id: user.id,
+      name: user.name,
+      phone: user.phone,
+      role: user.role,
+      active: user.active,
+      photo: user.photo ?? null,
+    }),
+    delete: async (id) => {
+      deletedUsers.push(id);
+    },
+    updatePassword: async () => {},
+    updateProfile: async () => {
+      throw new Error('Non utilisé par ce test');
+    },
+  };
+  const service = new DriverService(
+    drivers,
+    users,
+    {} as BookingRepository,
+    { hash: async (value) => value, verify: async () => false },
+    { next: () => 'employee-account-id' },
+  );
+
+  await assert.rejects(
+    service.create(actor, {
+      name: 'Awa Ndiaye',
+      phone: '770000004',
+      photo: null,
+      vehicleId: null,
+    }),
+    /Échec de création du profil/,
+  );
+  assert.deepEqual(deletedUsers, ['employee-account-id']);
+});
+
 test('La validation administrateur conserve la disponibilité et refuse un horaire incohérent', () => {
   const availability = Array.from({ length: 7 }, (_, index) => ({
     available: index !== 6,
@@ -197,10 +253,15 @@ test('Changer un chauffeur de véhicule libère automatiquement le chauffeur dé
   const values = [first, second];
   const drivers: DriverRepository = {
     list: async () => values,
+    vehicleExists: async () => true,
     find: async (id) => values.find((driver) => driver.id === id) ?? null,
     findByUserId: async (id) => values.find((driver) => driver.userId === id) ?? null,
     create: async (driver) => driver,
     update: async (driver) => {
+      if (driver.vehicleId)
+        for (const value of values)
+          if (value.id !== driver.id && value.vehicleId === driver.vehicleId)
+            value.vehicleId = null;
       const index = values.findIndex((value) => value.id === driver.id);
       values[index] = driver;
       return driver;
@@ -210,6 +271,7 @@ test('Changer un chauffeur de véhicule libère automatiquement le chauffeur dé
     findByPhone: async () => null,
     findByEmail: async () => null,
     create: async (user) => user,
+    delete: async () => {},
     updatePassword: async () => {},
     updateProfile: async (id, name, phone, photo) => ({
       id,
@@ -302,6 +364,7 @@ test('Un employé voit ses missions affectées, indépendamment du véhicule', a
   let requestedVehicleId: string | undefined;
   const drivers: DriverRepository = {
     list: async () => [driver],
+    vehicleExists: async () => true,
     find: async () => driver,
     findByUserId: async () => driver,
     create: async (value) => value,
@@ -311,6 +374,7 @@ test('Un employé voit ses missions affectées, indépendamment du véhicule', a
     findByPhone: async () => null,
     findByEmail: async () => null,
     create: async (value) => value,
+    delete: async () => {},
     updatePassword: async () => {},
     updateProfile: async (id, name, phone, photo) => ({
       id,

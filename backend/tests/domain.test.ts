@@ -389,6 +389,7 @@ test('La connexion accepte les comptes historiques enregistrés sans +221', asyn
               : null,
       findByEmail: async (email) => (email === admin.email ? admin : null),
       create: async () => user,
+      delete: async () => {},
       updatePassword: async () => {},
       updateProfile: async (id, name, phone, photo) => ({
         id,

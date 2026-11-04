@@ -5,6 +5,7 @@ import { useApp } from '../../application/context';
 import { messages } from '../../content/fr';
 import { useAdminFleet } from '../../application/controllers/useAdminFleet';
 import { errorMessage } from '../../application/error-message';
+import { queueTeamSave } from '../../application/services/team-save-queue';
 import type { Booking, Driver, Point } from '../../domain/model';
 import {
   activeBookings,
@@ -97,6 +98,8 @@ export function useAdminFleetPageModel() {
   const [customMessages, setCustomMessages] = useState<Record<string, string>>({});
   const employeeSaveQueuesRef = useRef(new Map<string, Promise<Driver>>());
   const confirmedEmployeesRef = useRef(new Map<string, Driver>());
+  const bookingSaveQueuesRef = useRef(new Map<string, Promise<Booking | null>>());
+  const confirmedBookingsRef = useRef(new Map<string, Booking>());
 
   useEffect(() => {
     let alive = true;
@@ -242,25 +245,26 @@ export function useAdminFleetPageModel() {
   );
   const saveTeam = useCallback(
     async (booking: Booking, patch: Partial<Booking>) => {
-      const next = { ...booking, ...patch };
       setSavingBooking(booking.id);
       setPageError('');
+      const save = queueTeamSave(
+        booking,
+        patch,
+        bookingSaveQueuesRef.current,
+        confirmedBookingsRef.current,
+        fleetCommands.updateCrew,
+      );
       try {
-        const updated = await fleetCommands.updateCrew(booking.id, {
-          crew: teamOf(next),
-          crewBriefs: next.crewBriefs ?? {},
-          crewRefusedBy: next.crewRefusedBy ?? [],
-          crewReplies: next.crewReplies ?? {},
-          crewMessages: next.crewMessages ?? {},
-          version: booking.version,
-        });
-        setBookings((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+        const updated = await save;
+        setBookings((currentBookings) =>
+          currentBookings.map((item) => (item.id === updated.id ? updated : item)),
+        );
         return updated;
       } catch (cause) {
         setPageError(errorMessage(cause));
         return null;
       } finally {
-        setSavingBooking('');
+        if (!bookingSaveQueuesRef.current.has(booking.id)) setSavingBooking('');
       }
     },
     [fleetCommands, setBookings],

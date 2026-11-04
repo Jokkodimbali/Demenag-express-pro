@@ -78,6 +78,12 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
         {uiText['chargementDuCatalogue']}
       </div>
     );
+  if (publicRequest && done && catalogue)
+    return (
+      <div className="reference-request-page">
+        <BookingConfirmation booking={done} settings={catalogue.settings} isClient />
+      </div>
+    );
   if (error || !catalogue || !selected)
     return (
       <div className="alert error" role="alert">
@@ -99,13 +105,6 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
         </div>
       </section>
     );
-  if (publicRequest && done)
-    return (
-      <div className="reference-request-page">
-        <BookingConfirmation booking={done} settings={catalogue.settings} isClient />
-      </div>
-    );
-
   return (
     <div className={`admin-quote-page${publicRequest ? ' reference-request-page' : ''}`}>
       {publicRequest && (

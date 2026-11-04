@@ -30,6 +30,8 @@ export class DriverService implements DriverUseCases {
   }
   async create(actor: User, input: DriverCreation) {
     requireAdministrator(actor);
+    if (input.vehicleId && !(await this.drivers.vehicleExists(input.vehicleId)))
+      throw new AppError(400, 'Le véhicule sélectionné est introuvable.');
     const phone = normalizePhone(input.phone);
     if (await this.users.findByPhone(phone))
       throw new AppError(409, messages.unCompteUtiliseDejaCeNumero);
@@ -41,6 +43,7 @@ export class DriverService implements DriverUseCases {
       passwordHash: await this.passwords.hash(initialPassword),
       role: 'driver',
       active: true,
+      photo: input.photo,
     });
     const driver = {
       id: this.ids.next(),
@@ -61,24 +64,33 @@ export class DriverService implements DriverUseCases {
       refusals: input.refusals ?? [],
       clearedRefusals: input.clearedRefusals ?? 0,
     };
-    await this.releaseVehicle(driver.vehicleId, driver.id);
-    const created = await this.drivers.create(driver);
-    if (created.vehicleId) await this.notifyVehicleAssignment(created);
-    return { ...created, initialPassword };
+    try {
+      const created = await this.drivers.create(driver);
+      if (created.vehicleId) await this.notifyVehicleAssignment(created);
+      return { ...created, initialPassword };
+    } catch (error) {
+      await this.users.delete(user.id);
+      throw error;
+    }
   }
   async update(actor: User, input: DriverUpdate) {
     requireAdministrator(actor);
     const current = await this.drivers.find(input.id);
     if (!current) throw new AppError(404, messages.chauffeurIntrouvable);
+    if (
+      input.vehicleId &&
+      input.vehicleId !== current.vehicleId &&
+      !(await this.drivers.vehicleExists(input.vehicleId))
+    )
+      throw new AppError(400, 'Le véhicule sélectionné est introuvable.');
     const phone = await this.availablePhone(input.phone, current.userId);
-    await this.releaseVehicle(input.vehicleId, current.id);
     const updated = await this.drivers.update({
       ...current,
       ...input,
       userId: current.userId,
       phone,
     });
-    if (current.userId) await this.users.updateProfile(current.userId, updated.name, updated.phone);
+    if (!updated.active && updated.userId) await this.sessions?.deleteForUser(updated.userId);
     if (current.vehicleId !== updated.vehicleId && updated.vehicleId)
       await this.notifyVehicleAssignment(updated);
     return updated;
@@ -122,6 +134,7 @@ export class DriverService implements DriverUseCases {
     }
     if (employee.userId) {
       const disabled = await this.drivers.update({ ...employee, active: false });
+      await this.sessions?.deleteForUser(employee.userId);
       return { removed: false, employee: disabled };
     }
     if (!this.drivers.delete)
@@ -152,9 +165,7 @@ export class DriverService implements DriverUseCases {
   }
   async updatePhoto(actor: User, photo: string | null) {
     const current = await this.requireProfile(actor);
-    const updated = await this.drivers.update({ ...current, photo });
-    await this.users.updateProfile(actor.id, current.name, current.phone, photo);
-    return updated;
+    return this.drivers.update({ ...current, photo });
   }
   async updateAvailability(actor: User, availability: NonNullable<Driver['availability']>) {
     const current = await this.requireProfile(actor);
@@ -250,13 +261,6 @@ export class DriverService implements DriverUseCases {
     if (existing && existing.id !== userId)
       throw new AppError(409, messages.unCompteUtiliseDejaCeNumero);
     return phone;
-  }
-  private async releaseVehicle(vehicleId: string | null, driverId: string | null) {
-    if (!vehicleId) return;
-    const assigned = (await this.drivers.list()).find(
-      (driver) => driver.vehicleId === vehicleId && driver.id !== driverId,
-    );
-    if (assigned) await this.drivers.update({ ...assigned, vehicleId: null });
   }
   private async notifyVehicleAssignment(driver: Driver) {
     if (!driver.userId) return;

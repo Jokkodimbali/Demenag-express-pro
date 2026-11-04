@@ -1,7 +1,7 @@
 export const accountingFinanceText = {
   hypotheticalBalance: 'SOLDE HYPOTHÉTIQUE',
-  forecastRequiresVerified:
-    'Prévisions masquées : confirmez d’abord les données financières utilisées par ces calculs.',
+  forecastAssumptions:
+    'Estimation selon les paramètres financiers saisis ; ce montant n’est pas un solde bancaire.',
   accountingRevenue: 'REVENUS',
   accountingCharges: 'CHARGES',
   accountingBalance: 'SOLDE',
@@ -107,6 +107,8 @@ export const accountingFinanceText = {
   profitRequired: (taxRate: number) =>
     `Bénéfice requis pour engagements + surplus${taxRate ? ` + IS ${taxRate} %` : ''}`,
   reviseRates: 'Le coût variable moyen atteint ou dépasse le prix moyen : revoyez les tarifs.',
+  noSurplusObjective:
+    'Aucun surplus visé n’est renseigné. Ajoutez un objectif et vos charges pour calculer le volume nécessaire.',
   noAveragePrice: 'Aucun prix moyen : créez des devis ou saisissez un prix moyen.',
   analysisDiscussion: 'Analyse et discussion · Claude',
   analyzeWithAI: 'Analyser avec l’IA',
@@ -137,6 +139,8 @@ export const accountingFinanceText = {
   buyVehicle: (amount: string) => `Enregistrer l’achat du nouveau véhicule (${amount})`,
   trackingStarts: (month: string) => `Le suivi commence en ${month}.`,
   parameters: 'PARAMÈTRES',
+  debtTotalHint: 'Somme totale due à votre père.',
+  debtDurationHint: 'Mensualité = dette ÷ durée.',
   trackingStart: 'DÉBUT DU SUIVI',
   extraDepreciation: 'AMORTISSEMENTS ANNEXES',
   annexLabel: 'Libellé amortissement annexe',

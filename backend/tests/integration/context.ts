@@ -48,6 +48,7 @@ export function createIntegrationContext(url: string) {
       driver: request.agent(app),
     },
     driverId: null as string | null,
+    driverPassword: '',
   };
 }
 
@@ -56,14 +57,19 @@ export type IntegrationContext = ReturnType<typeof createIntegrationContext>;
 export interface OriginalConfiguration {
   settings: Awaited<ReturnType<PrismaClient['parametreApplication']['findUniqueOrThrow']>>;
   vehicle: Awaited<ReturnType<PrismaClient['vehicule']['findUniqueOrThrow']>>;
+  drivers: Awaited<ReturnType<PrismaClient['chauffeur']['findMany']>>;
+  users: Awaited<ReturnType<PrismaClient['utilisateur']['findMany']>>;
 }
 
 export async function captureOriginalConfiguration(
   db: PrismaClient,
 ): Promise<OriginalConfiguration> {
-  const [settings, vehicle] = await Promise.all([
+  const [settings, vehicle, drivers] = await Promise.all([
     db.parametreApplication.findUniqueOrThrow({ where: { id: 'main' } }),
     db.vehicule.findUniqueOrThrow({ where: { id: 'sprinter' } }),
+    db.chauffeur.findMany(),
   ]);
-  return { settings, vehicle };
+  const userIds = drivers.flatMap((driver) => (driver.utilisateurId ? [driver.utilisateurId] : []));
+  const users = await db.utilisateur.findMany({ where: { id: { in: userIds } } });
+  return { settings, vehicle, drivers, users };
 }

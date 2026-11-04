@@ -36,6 +36,12 @@ import type { MovingUseCases } from '../ports/use-cases.js';
 import { createQuote } from './moving-quote.js';
 import { addressChangeForUpdate } from './moving-address-change.js';
 import { createRouteTicket } from './moving-routing.js';
+import {
+  deleteBooking,
+  listTrashedBookings,
+  purgeTrashedBooking,
+  restoreTrashedBooking,
+} from './moving-trash.js';
 
 export class MovingService implements MovingUseCases {
   constructor(
@@ -975,29 +981,15 @@ export class MovingService implements MovingUseCases {
     );
   }
   async delete(user: User, id: string) {
-    requireAdministrator(user);
-    const booking = await this.bookings.find(id);
-    if (!booking) throw new AppError(404, messages.reservationIntrouvable);
-    if (!this.bookings.delete)
-      throw new AppError(501, 'La suppression des réservations est indisponible.');
-    await this.bookings.delete(id);
+    return deleteBooking(this.bookings, user, id);
   }
   async trashed(user: User) {
-    requireAdministrator(user);
-    if (!this.bookings.trashed) throw new AppError(501, 'La corbeille est indisponible.');
-    return this.bookings.trashed();
+    return listTrashedBookings(this.bookings, user);
   }
   async restore(user: User, id: string) {
-    requireAdministrator(user);
-    if (!this.bookings.restore) throw new AppError(501, 'La restauration est indisponible.');
-    if (!(await this.bookings.restore(id)))
-      throw new AppError(404, 'Réservation introuvable dans la corbeille.');
+    return restoreTrashedBooking(this.bookings, user, id);
   }
   async purge(user: User, id: string) {
-    requireAdministrator(user);
-    if (!this.bookings.purge)
-      throw new AppError(501, 'La suppression définitive est indisponible.');
-    if (!(await this.bookings.purge(id)))
-      throw new AppError(404, 'Réservation introuvable dans la corbeille.');
+    return purgeTrashedBooking(this.bookings, user, id);
   }
 }

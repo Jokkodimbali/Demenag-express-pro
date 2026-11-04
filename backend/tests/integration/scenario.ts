@@ -26,6 +26,7 @@ import {
   verifyProvisionalAccounting,
   verifyProvisionalQuoteCreation,
 } from './accounting.js';
+import { verifyTeamManagement } from './teams.js';
 
 export async function runIntegrationScenario() {
   const url = process.env.TEST_DATABASE_URL;
@@ -40,6 +41,7 @@ export async function runIntegrationScenario() {
     await configureDeterministicPricing(context);
     const users = await registerScenarioUsers(context);
     assert.equal(users.userIds.length, 4);
+    await verifyTeamManagement(context, users.driverId, users.initialDriverPassword);
 
     const route = await context.clients.first
       .post('/api/maps/route')
@@ -83,12 +85,12 @@ export async function runIntegrationScenario() {
 
   const cleanupErrors: unknown[] = [];
   try {
-    if (original) await restoreConfiguration(context, original);
+    await deleteScenarioData(context, routeIds);
   } catch (error) {
     cleanupErrors.push(error);
   }
   try {
-    await deleteScenarioData(context, routeIds);
+    if (original) await restoreConfiguration(context, original);
   } catch (error) {
     cleanupErrors.push(error);
   }
