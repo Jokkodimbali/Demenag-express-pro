@@ -25,41 +25,44 @@ export async function restoreConfiguration(
       planificationManoeuvre: jsonInput(original.settings.planificationManoeuvre),
     },
   });
-  await db.$transaction(async (transaction) => {
-    for (const driver of original.drivers)
-      await transaction.chauffeur.update({
-        where: { id: driver.id },
-        data: {
-          utilisateurId: driver.utilisateurId,
-          nom: driver.nom,
-          telephone: driver.telephone,
-          photo: driver.photo,
-          actif: driver.actif,
-          fonction: driver.fonction,
-          vehiculeId: driver.vehiculeId,
-          disponibilites: jsonInput(driver.disponibilites),
-          vehiculesAutorises: jsonInput(driver.vehiculesAutorises),
-          adresse: driver.adresse,
-          latitude: driver.latitude,
-          longitude: driver.longitude,
-          adresseGeocodee: driver.adresseGeocodee,
-          competences: jsonInput(driver.competences),
-          notes: driver.notes,
-          refusMissions: jsonInput(driver.refusMissions),
-          refusEffaces: driver.refusEffaces,
-        },
-      });
-    for (const user of original.users)
-      await transaction.utilisateur.update({
-        where: { id: user.id },
-        data: {
-          nom: user.nom,
-          telephone: user.telephone,
-          photo: user.photo,
-          actif: user.actif,
-        },
-      });
-  });
+  await db.$transaction(
+    async (transaction) => {
+      for (const driver of original.drivers)
+        await transaction.chauffeur.update({
+          where: { id: driver.id },
+          data: {
+            utilisateurId: driver.utilisateurId,
+            nom: driver.nom,
+            telephone: driver.telephone,
+            photo: driver.photo,
+            actif: driver.actif,
+            fonction: driver.fonction,
+            vehiculeId: driver.vehiculeId,
+            disponibilites: jsonInput(driver.disponibilites),
+            vehiculesAutorises: jsonInput(driver.vehiculesAutorises),
+            adresse: driver.adresse,
+            latitude: driver.latitude,
+            longitude: driver.longitude,
+            adresseGeocodee: driver.adresseGeocodee,
+            competences: jsonInput(driver.competences),
+            notes: driver.notes,
+            refusMissions: jsonInput(driver.refusMissions),
+            refusEffaces: driver.refusEffaces,
+          },
+        });
+      for (const user of original.users)
+        await transaction.utilisateur.update({
+          where: { id: user.id },
+          data: {
+            nom: user.nom,
+            telephone: user.telephone,
+            photo: user.photo,
+            actif: user.actif,
+          },
+        });
+    },
+    { timeout: 30000 },
+  );
 }
 
 export async function deleteScenarioData(context: IntegrationContext, routeIds: string[]) {

@@ -32,6 +32,7 @@ const phone = '78' + String(Math.floor(Math.random() * 8000000) + 1000000);
 const name = 'Test navigateur ' + randomUUID().slice(0, 8);
 const password = 'Browser-test-2026!';
 let userId;
+let teamUserId;
 const tickets = [];
 page.on('response', async (response) => {
   if (response.url().endsWith('/api/maps/route') && response.ok()) {
@@ -126,6 +127,15 @@ try {
   const adminContext = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
   const admin = await adminContext.newPage();
   admin.on('pageerror', (e) => errors.push(e.message));
+  admin.on('response', async (response) => {
+    if (!/\/work-plan\/[^/]+\/review$/u.test(new URL(response.url()).pathname)) return;
+    const body = await response.json().catch(() => null);
+    console.log(`Planning review: HTTP ${response.status()}`, {
+      version: body?.version,
+      status: body?.workPlan?.find((step) => step.id === response.url().split('/').at(-2))?.review
+        ?.status,
+    });
+  });
   await admin.goto(baseUrl + '/connexion');
   await admin.getByLabel('Téléphone ou email administrateur').fill(env.ADMIN_PHONE);
   await admin
@@ -232,6 +242,549 @@ try {
       (await admin.locator(pageSelector).innerText()).slice(0, 180).replaceAll('\n', ' · '),
     );
     await admin.setViewportSize({ width: 1280, height: 1000 });
+    if (path === '/admin/flotte') {
+      let teamName = 'Test équipe ' + randomUUID().slice(0, 8);
+      let teamPhone = '76' + String(Math.floor(Math.random() * 8_000_000) + 1_000_000);
+      const employeeForm = admin.locator('.teams-new-employee');
+      const employeeCountBefore = await admin.locator('.teams-employee').count();
+      const employeeInputs = employeeForm.locator('.teams-form-grid input');
+      const mapLayerButton = admin
+        .locator('.teams-map-panel .teams-chips')
+        .getByRole('button', { name: /Logements des employés/u });
+      const layerWasActive = await mapLayerButton.evaluate((element) =>
+        element.classList.contains('active'),
+      );
+      await mapLayerButton.click();
+      await expect(mapLayerButton).toHaveClass(
+        layerWasActive ? /team-chip(?!.*active)/u : /active/u,
+      );
+      await mapLayerButton.click();
+      await expect(mapLayerButton).toHaveClass(/active/u);
+      await employeeForm.getByRole('button', { name: "Ajouter l'employé" }).click();
+      await expect(admin.getByRole('alert')).toHaveText('Indiquez le nom.');
+      await employeeInputs.nth(0).fill(teamName);
+      await employeeForm.getByRole('button', { name: "Ajouter l'employé" }).click();
+      await expect(admin.getByRole('alert')).toHaveText('Indiquez le téléphone.');
+      await employeeInputs.nth(1).fill(teamPhone);
+      await employeeForm
+        .locator('.teams-chips')
+        .getByRole('button', { name: 'Chauffeur', exact: true })
+        .click();
+      await employeeForm
+        .locator('.teams-new-driver-vehicles')
+        .getByRole('button', { name: /Sprinter/i })
+        .click();
+      await employeeForm.getByRole('button', { name: "Ajouter l'employé" }).click();
+      const credentials = admin.locator('.teams-generated-credentials');
+      await expect(credentials).toBeVisible({ timeout: 15000 });
+      const initialPassword = await credentials
+        .locator('.teams-generated-fields input')
+        .nth(1)
+        .inputValue();
+      if (!initialPassword)
+        throw new Error('Le mot de passe initial de l’employé n’a pas été généré.');
+      const teamUser = await db.utilisateur.findUnique({
+        where: { telephone: '+221' + teamPhone },
+      });
+      if (!teamUser || teamUser.empreinteMotDePasse === initialPassword)
+        throw new Error('Le compte employé et son hash doivent être enregistrés en base.');
+      teamUserId = teamUser.id;
+      const teamDriver = await db.chauffeur.findUniqueOrThrow({
+        where: { utilisateurId: teamUser.id },
+      });
+      const initialTeamHash = teamUser.empreinteMotDePasse;
+      if (teamDriver.fonction !== 'chauffeur' || !teamDriver.actif)
+        throw new Error('Le profil chauffeur créé depuis la page Équipe est incohérent en base.');
+      const inputIndex = await admin
+        .locator('.teams-name-input')
+        .evaluateAll(
+          (inputs, value) => inputs.findIndex((input) => input.value === value),
+          teamName,
+        );
+      if (inputIndex < 0) throw new Error('Le nouvel employé n’apparaît pas dans la liste.');
+      const employeeCard = admin.locator('.teams-employee').nth(inputIndex);
+      const traffic = admin.locator('.teams-traffic');
+      const trafficBefore = await traffic.innerText();
+      await traffic.click();
+      await expect(traffic).not.toHaveText(trafficBefore);
+      const roleFilters = admin.locator('.teams-filter-chips');
+      const acceptedSort = roleFilters.getByRole('button', {
+        name: 'Trier par missions acceptées',
+      });
+      await acceptedSort.click();
+      await expect(acceptedSort).toHaveClass(/active/u);
+      const roleSort = roleFilters.getByRole('button', { name: 'Trier par rôle' });
+      await roleSort.click();
+      await expect(roleSort).toHaveClass(/active/u);
+      await roleFilters.getByRole('button', { name: /^Manœuvres ·/u }).click();
+      await expect(admin.locator('.teams-employee')).toHaveCount(0);
+      await expect(admin.locator('.teams-empty')).toContainText('Aucun employé dans ce rôle.');
+      await roleFilters.getByRole('button', { name: /^Tous ·/u }).click();
+      await expect(admin.locator('.teams-employee')).toHaveCount(employeeCountBefore + 1);
+
+      await employeeCard.locator('.teams-employee-heading .team-icon-button').first().click();
+      const details = employeeCard.locator('.teams-employee-details');
+      const updatedTeamName = teamName + ' modifié';
+      await employeeCard.locator('.teams-name-input').fill(updatedTeamName);
+      await employeeCard.locator('.teams-name-input').press('Tab');
+      await expect
+        .poll(
+          async () => (await db.chauffeur.findUniqueOrThrow({ where: { id: teamDriver.id } })).nom,
+        )
+        .toBe(updatedTeamName);
+      teamName = updatedTeamName;
+      const updatedTeamPhone = '75' + String(Math.floor(Math.random() * 8_000_000) + 1_000_000);
+      await details.locator('.teams-contact-row input').first().fill(updatedTeamPhone);
+      await details.locator('.teams-contact-row input').first().press('Tab');
+      await expect
+        .poll(
+          async () =>
+            (await db.utilisateur.findUniqueOrThrow({ where: { id: teamUser.id } })).telephone,
+        )
+        .toBe('+221' + updatedTeamPhone);
+      teamPhone = updatedTeamPhone;
+
+      const sprinterChip = details
+        .locator('.teams-vehicle-tags')
+        .getByRole('button', { name: /Sprinter/i });
+      await sprinterChip.click();
+      await expect
+        .poll(
+          async () =>
+            (await db.chauffeur.findUniqueOrThrow({ where: { id: teamDriver.id } }))
+              .vehiculesAutorises,
+        )
+        .toEqual([]);
+      await sprinterChip.click();
+      await expect
+        .poll(
+          async () =>
+            (await db.chauffeur.findUniqueOrThrow({ where: { id: teamDriver.id } }))
+              .vehiculesAutorises,
+        )
+        .toEqual(['sprinter']);
+
+      const disclosures = details.locator('.teams-disclosure');
+      await disclosures.nth(0).click();
+      const reliableTag = details.getByRole('button', { name: 'Fiable', exact: true });
+      await reliableTag.click();
+      await expect
+        .poll(
+          async () =>
+            (await db.chauffeur.findUniqueOrThrow({ where: { id: teamDriver.id } })).competences,
+        )
+        .toEqual(['Fiable']);
+      const teamNotes = 'Contrôle navigateur équipe';
+      const notesInput = details.locator('.teams-note-editor textarea');
+      await notesInput.fill(teamNotes);
+      await notesInput.press('Tab');
+      await expect
+        .poll(
+          async () =>
+            (await db.chauffeur.findUniqueOrThrow({ where: { id: teamDriver.id } })).notes,
+        )
+        .toBe(teamNotes);
+
+      await disclosures.nth(1).click();
+      const monday = details.locator('.teams-hours-day').first();
+      await monday.getByRole('button', { name: 'Travaille', exact: true }).click();
+      await expect
+        .poll(
+          async () =>
+            (await db.chauffeur.findUniqueOrThrow({ where: { id: teamDriver.id } }))
+              .disponibilites[0].available,
+        )
+        .toBe(false);
+      await monday.getByRole('button', { name: 'Repos', exact: true }).click();
+      const hours = monday.locator('input[type="time"]');
+      await hours.nth(0).fill('07:15');
+      await expect
+        .poll(
+          async () =>
+            (await db.chauffeur.findUniqueOrThrow({ where: { id: teamDriver.id } }))
+              .disponibilites[0].startTime,
+        )
+        .toBe('07:15');
+      await hours.nth(1).fill('17:15');
+      await expect
+        .poll(
+          async () =>
+            (await db.chauffeur.findUniqueOrThrow({ where: { id: teamDriver.id } }))
+              .disponibilites[0].endTime,
+        )
+        .toBe('17:15');
+      await details.getByRole('button', { name: /Appliquer l.horaire du lundi/i }).click();
+      await expect
+        .poll(
+          async () =>
+            (await db.chauffeur.findUniqueOrThrow({ where: { id: teamDriver.id } })).disponibilites,
+        )
+        .toEqual(
+          Array.from({ length: 7 }, (_, index) => ({
+            available: index < 6,
+            startTime: index < 6 ? '07:15' : '08:00',
+            endTime: index < 6 ? '17:15' : '18:00',
+          })),
+        );
+
+      const jobCard = admin.locator('.teams-job').filter({ hasText: booking.reference });
+      await expect(jobCard).toHaveCount(1, { timeout: 20000 });
+      await jobCard.locator('.teams-accordion-heading').first().click();
+      const chauffeurRole = jobCard.locator('.teams-role').filter({ hasText: /Chauffeur/u });
+      await chauffeurRole.locator('.team-chip.add').click();
+      const candidate = jobCard.locator('.teams-options button').filter({ hasText: teamName });
+      await expect(candidate).toBeEnabled();
+      await candidate.click();
+      await expect
+        .poll(
+          async () =>
+            (await db.reservation.findUniqueOrThrow({ where: { id: booking.id } })).chauffeurId,
+        )
+        .toBe(teamDriver.id);
+
+      await jobCard
+        .locator('.teams-accordion-heading')
+        .filter({ hasText: /ENVOI DE LA MISSION/iu })
+        .click();
+      await jobCard.locator('.teams-send-controls select').selectOption(teamDriver.id);
+      const customBrief = 'Brief navigateur enregistré et vérifié';
+      const briefInput = jobCard.locator('.teams-message-editor textarea');
+      await briefInput.fill(customBrief);
+      await briefInput.press('Tab');
+      await expect
+        .poll(
+          async () =>
+            (await db.reservation.findUniqueOrThrow({ where: { id: booking.id } })).donnees
+              .crewMessages?.[teamDriver.id],
+        )
+        .toBe(customBrief);
+
+      await jobCard
+        .locator('.teams-accordion-heading')
+        .filter({ hasText: /SUIVI DES RÉPONSES/iu })
+        .click();
+      await jobCard.getByRole('button', { name: 'Marquer envoyé' }).click();
+      await expect
+        .poll(
+          async () =>
+            (await db.reservation.findUniqueOrThrow({ where: { id: booking.id } })).donnees
+              .crewBriefs?.[teamDriver.id],
+        )
+        .toBeTruthy();
+      await jobCard.getByRole('button', { name: 'A accepté', exact: true }).click();
+      await expect
+        .poll(
+          async () =>
+            (await db.reservation.findUniqueOrThrow({ where: { id: booking.id } })).donnees
+              .crewReplies?.[teamDriver.id],
+        )
+        .toBe('ok');
+      const refusalsBefore = (
+        await db.chauffeur.findUniqueOrThrow({ where: { id: teamDriver.id } })
+      ).refusMissions.length;
+      await jobCard.getByRole('button', { name: 'A refusé', exact: true }).click();
+      await expect(admin.locator('.confirmation-dialog')).toBeVisible();
+      await admin
+        .locator('.confirmation-dialog')
+        .getByRole('button', { name: 'Annuler', exact: true })
+        .click();
+      expect(
+        (await db.reservation.findUniqueOrThrow({ where: { id: booking.id } })).donnees
+          .crewReplies?.[teamDriver.id],
+      ).toBe('ok');
+      expect(
+        (await db.chauffeur.findUniqueOrThrow({ where: { id: teamDriver.id } })).refusMissions,
+      ).toHaveLength(refusalsBefore);
+      await jobCard.getByRole('button', { name: 'A refusé', exact: true }).click();
+      await admin
+        .locator('.confirmation-dialog')
+        .getByRole('button', { name: 'Confirmer', exact: true })
+        .click();
+      await expect
+        .poll(
+          async () =>
+            (await db.reservation.findUniqueOrThrow({ where: { id: booking.id } })).donnees
+              .crewReplies?.[teamDriver.id],
+        )
+        .toBe('no');
+      expect(
+        (await db.chauffeur.findUniqueOrThrow({ where: { id: teamDriver.id } })).refusMissions,
+      ).toHaveLength(refusalsBefore + 1);
+      expect(
+        (await db.reservation.findUniqueOrThrow({ where: { id: booking.id } })).donnees.crew
+          .chauffeur,
+      ).not.toContain(teamDriver.id);
+      await expect(jobCard.locator('.teams-refusals')).toContainText(teamName);
+      const reAddRole = jobCard.locator('.teams-role').filter({ hasText: /Chauffeur/u });
+      const reAddOptions = jobCard.locator('.teams-options');
+      const reAddCandidate = reAddOptions.getByRole('button').filter({ hasText: teamName });
+      if (await reAddCandidate.isVisible()) {
+        await reAddRole.locator('.team-chip.add').click();
+        await expect(reAddOptions).toHaveCount(0);
+      }
+      await reAddRole.locator('.team-chip.add').click();
+      await expect(reAddOptions).toContainText(teamName);
+      await reAddCandidate.click();
+      await expect
+        .poll(
+          async () =>
+            (await db.reservation.findUniqueOrThrow({ where: { id: booking.id } })).donnees.crew
+              .chauffeur,
+        )
+        .toContain(teamDriver.id);
+      expect(
+        (await db.reservation.findUniqueOrThrow({ where: { id: booking.id } })).donnees
+          .crewRefusedBy,
+      ).toContain(teamDriver.id);
+
+      await employeeCard
+        .getByRole('button', { name: `Réinitialiser le mot de passe de ${teamName}` })
+        .click();
+      await expect(admin.locator('.confirmation-dialog')).toBeVisible();
+      await admin
+        .locator('.confirmation-dialog')
+        .getByRole('button', { name: 'Annuler', exact: true })
+        .click();
+      await expect(admin.locator('.confirmation-dialog')).toHaveCount(0);
+      expect(
+        (await db.utilisateur.findUniqueOrThrow({ where: { id: teamUser.id } }))
+          .empreinteMotDePasse,
+      ).toBe(initialTeamHash);
+      await employeeCard
+        .getByRole('button', { name: `Réinitialiser le mot de passe de ${teamName}` })
+        .click();
+      await expect(admin.locator('.confirmation-dialog')).toBeVisible();
+      await admin
+        .locator('.confirmation-dialog')
+        .getByRole('button', { name: 'Générer un nouveau mot de passe' })
+        .click();
+      await expect(credentials).toBeVisible({ timeout: 15000 });
+      await expect
+        .poll(() => credentials.locator('.teams-generated-fields input').nth(1).inputValue(), {
+          timeout: 15000,
+        })
+        .not.toBe(initialPassword);
+      const refreshedPassword = await credentials
+        .locator('.teams-generated-fields input')
+        .nth(1)
+        .inputValue();
+      if (!refreshedPassword || refreshedPassword === initialPassword)
+        throw new Error('La réinitialisation n’a pas remplacé le mot de passe initial.');
+      expect(
+        (await db.utilisateur.findUniqueOrThrow({ where: { id: teamUser.id } }))
+          .empreinteMotDePasse,
+      ).not.toBe(initialTeamHash);
+      expect(await db.sessionConnexion.count({ where: { utilisateurId: teamUser.id } })).toBe(0);
+      await employeeCard.locator('.team-status-pill').click();
+      await expect
+        .poll(
+          async () =>
+            (await db.chauffeur.findUniqueOrThrow({ where: { id: teamDriver.id } })).actif,
+        )
+        .toBe(false);
+      await expect
+        .poll(
+          async () =>
+            (await db.utilisateur.findUniqueOrThrow({ where: { id: teamUser.id } })).actif,
+        )
+        .toBe(false);
+      await employeeCard.locator('.team-status-pill').click();
+      await expect
+        .poll(
+          async () =>
+            (await db.chauffeur.findUniqueOrThrow({ where: { id: teamDriver.id } })).actif,
+        )
+        .toBe(true);
+      await expect
+        .poll(
+          async () =>
+            (await db.utilisateur.findUniqueOrThrow({ where: { id: teamUser.id } })).actif,
+        )
+        .toBe(true);
+      await employeeCard.locator('.team-delete').click();
+      await expect(admin.locator('.confirmation-dialog')).toBeVisible();
+      await admin
+        .locator('.confirmation-dialog')
+        .getByRole('button', { name: 'Annuler', exact: true })
+        .click();
+      await expect(admin.locator('.confirmation-dialog')).toHaveCount(0);
+      expect((await db.chauffeur.findUniqueOrThrow({ where: { id: teamDriver.id } })).actif).toBe(
+        true,
+      );
+      await employeeCard.locator('.team-delete').click();
+      await expect(admin.locator('.confirmation-dialog')).toBeVisible();
+      await admin
+        .locator('.confirmation-dialog')
+        .getByRole('button', { name: 'Confirmer', exact: true })
+        .click();
+      await expect
+        .poll(
+          async () =>
+            (await db.chauffeur.findUniqueOrThrow({ where: { id: teamDriver.id } })).actif,
+        )
+        .toBe(false);
+      await expect
+        .poll(
+          async () =>
+            (await db.utilisateur.findUniqueOrThrow({ where: { id: teamUser.id } })).actif,
+        )
+        .toBe(false);
+      const bookingAfterRemoval = await db.reservation.findUniqueOrThrow({
+        where: { id: booking.id },
+      });
+      expect(bookingAfterRemoval.chauffeurId).toBeNull();
+      expect(bookingAfterRemoval.donnees.crew.chauffeur).not.toContain(teamDriver.id);
+      console.log(
+        'Équipe navigateur : création, hash, réinitialisation, désactivation, réactivation et retrait vérifiés.',
+      );
+    }
+    if (path === '/admin/suivi-planning') {
+      const selectedDate = booking.date.toISOString().slice(0, 10);
+      const followUp = admin.locator('.reference-plan-page');
+      const followUpBooking = await db.reservation.findUniqueOrThrow({
+        where: { id: booking.id },
+      });
+      const stepIds = followUpBooking.donnees.workPlan?.length
+        ? followUpBooking.donnees.workPlan.map(({ id }) => id)
+        : ['fallback-1', 'fallback-2', 'fallback-3'];
+      const dateFilter = followUp.getByLabel('Date du suivi');
+      const record = () =>
+        admin.locator('.reference-plan-card').filter({ hasText: booking.reference });
+      const savedStep = async (stepId) => {
+        const current = await db.reservation.findUniqueOrThrow({ where: { id: booking.id } });
+        return current.donnees.workPlan?.find(({ id }) => id === stepId)?.review;
+      };
+      const savedReview = (index) => savedStep(stepIds[index]);
+      const reviewErrors = (index) => rows.nth(index).locator('[role="alert"]');
+
+      await followUp.getByRole('button', { name: 'Jour', exact: true }).click();
+      await dateFilter.fill(selectedDate);
+      await expect(record()).toHaveCount(1, { timeout: 15000 });
+      await followUp.getByRole('button', { name: 'Période précédente' }).click();
+      await expect(record()).toHaveCount(0);
+      await followUp.getByRole('button', { name: 'Période suivante' }).click();
+      await expect(record()).toHaveCount(1);
+      await followUp.getByRole('button', { name: 'Semaine', exact: true }).click();
+      await expect(record()).toHaveCount(1);
+      await followUp.getByRole('button', { name: 'Mois', exact: true }).click();
+      await expect(record()).toHaveCount(1);
+      await followUp.getByRole('button', { name: 'Jour', exact: true }).click();
+      await dateFilter.fill(selectedDate);
+      await expect(record()).toHaveCount(1);
+
+      const card = record();
+      await card.locator('.reference-plan-card-head').click();
+      const rows = card.locator('.reference-plan-row');
+      if (stepIds.length < 3)
+        throw new Error('Le planning de réservation doit contenir au moins trois étapes.');
+      await expect(rows).toHaveCount(stepIds.length);
+      await rows.nth(0).getByRole('button', { name: 'Respecté', exact: true }).click();
+      await expect.poll(async () => (await savedReview(0))?.status).toBe('respected');
+      await rows.nth(0).locator('input[type="time"]').fill('09:32');
+      await expect.poll(async () => (await savedReview(0))?.actualTime).toBe('09:32');
+
+      await rows.nth(1).getByRole('button', { name: 'En retard', exact: true }).click();
+      await expect.poll(async () => (await savedReview(1))?.status).toBe('late');
+      const delayReason = rows.nth(1).locator('.reference-plan-proof textarea');
+      await delayReason.fill('Embouteillage constaté sur le trajet.');
+      await expect
+        .poll(async () => (await savedReview(1))?.reason)
+        .toBe('Embouteillage constaté sur le trajet.');
+      await expect(reviewErrors(1)).toHaveCount(0);
+      await rows.nth(1).getByRole('button', { name: 'Circulation', exact: true }).click();
+      await expect.poll(async () => (await savedReview(1))?.cause).toBe('Circulation');
+      await rows.nth(1).getByRole('button', { name: 'Majeure', exact: true }).click();
+      await expect.poll(async () => (await savedReview(1))?.severity).toBe('maj');
+      const correctiveAction = rows.nth(1).locator('.reference-plan-cause-fields textarea');
+      await correctiveAction.fill('Prévoir un départ avec marge de circulation.');
+      await expect
+        .poll(async () => (await savedReview(1))?.correctiveAction)
+        .toBe('Prévoir un départ avec marge de circulation.');
+      await expect(reviewErrors(1)).toHaveCount(0);
+
+      await rows.nth(2).getByRole('button', { name: 'Non respecté', exact: true }).click();
+      await rows
+        .nth(2)
+        .locator('.reference-plan-proof textarea')
+        .fill('Accès indisponible à l’arrivée.');
+      const png = await admin.evaluate(() => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 4;
+        canvas.height = 4;
+        const drawing = canvas.getContext('2d');
+        if (!drawing) throw new Error('Canvas de preuve indisponible.');
+        drawing.fillStyle = '#e5b700';
+        drawing.fillRect(0, 0, 4, 4);
+        return canvas.toDataURL('image/png').split(',')[1];
+      });
+      await rows
+        .nth(2)
+        .locator('.reference-plan-photo input[type="file"]')
+        .setInputFiles({
+          name: 'preuve-planning.png',
+          mimeType: 'image/png',
+          buffer: Buffer.from(png, 'base64'),
+        });
+      await expect(rows.nth(2).locator('.reference-plan-thumbnail img')).toBeVisible();
+      await rows.nth(2).getByRole('button', { name: 'Client', exact: true }).click();
+      await rows.nth(2).getByRole('button', { name: 'Critique', exact: true }).click();
+      await rows
+        .nth(2)
+        .locator('.reference-plan-cause-fields textarea')
+        .fill('Confirmer les conditions d’accès avant le départ.');
+      await expect
+        .poll(async () => (await savedReview(2))?.photo)
+        .toMatch(/^data:image\/jpeg;base64,/u);
+      await expect.poll(async () => (await savedReview(2))?.severity).toBe('cri');
+      for (const index of stepIds.keys()) {
+        if (index < 3) continue;
+        await rows.nth(index).getByRole('button', { name: 'Respecté', exact: true }).click();
+        await expect.poll(async () => (await savedReview(index))?.status).toBe('respected');
+      }
+      const storedPlan = (await db.reservation.findUniqueOrThrow({ where: { id: booking.id } }))
+        .donnees.workPlan;
+      expect(storedPlan.map(({ review }) => review.status)).toEqual(
+        stepIds.map((_, index) =>
+          index === 0
+            ? 'respected'
+            : index === 1
+              ? 'late'
+              : index === 2
+                ? 'not_respected'
+                : 'respected',
+        ),
+      );
+
+      await rows.nth(2).locator('.reference-plan-thumbnail img').click();
+      const lightbox = followUp.getByRole('dialog', { name: 'Justificatif photographique' });
+      await expect(lightbox).toBeVisible();
+      await lightbox.getByRole('button', { name: '+' }).click();
+      await expect(lightbox).toContainText('150 %');
+      await lightbox.getByRole('button', { name: 'Fermer' }).click();
+      await expect(lightbox).toHaveCount(0);
+
+      const report = followUp.locator('.reference-plan-report');
+      await report.locator('.reference-plan-report-head').click();
+      await expect(report.locator('.reference-plan-report-body')).toBeVisible();
+      await expect(
+        report.locator('.reference-plan-nc').filter({ hasText: booking.reference }),
+      ).toHaveCount(2);
+      await report.getByRole('button', { name: 'Analyser avec l’IA' }).click();
+      await expect(report.locator('.reference-plan-ai p')).toContainText(
+        'Analyse automatique simplifiée',
+        { timeout: 10000 },
+      );
+      const reportDownload = admin.waitForEvent('download');
+      await report.getByRole('button', { name: /Télécharger le rapport QHSE/i }).click();
+      await (await reportDownload).saveAs(output + 'rapport-qhse-planning.pdf');
+      await admin.screenshot({
+        path: output + 'admin-planning-follow-up-reviewed.png',
+        fullPage: true,
+      });
+      console.log(
+        'Suivi planning navigateur : périodes, filtres, trois étapes, sauvegarde PostgreSQL, justification, photo, zoom, rapport QHSE et PDF vérifiés.',
+      );
+    }
   }
   await page.reload();
   await expect(page.getByText('Final', { exact: true })).toBeVisible({ timeout: 15000 });
@@ -285,6 +838,7 @@ try {
     await db.reservation.deleteMany({ where: { utilisateurId: user.id } });
     await db.utilisateur.delete({ where: { id: user.id } });
   }
+  if (teamUserId) await db.utilisateur.deleteMany({ where: { id: teamUserId } });
   await db.itineraire.deleteMany({ where: { id: { in: tickets } } });
   await browser.close();
   await db.$disconnect();

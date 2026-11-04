@@ -27,6 +27,7 @@ import {
   verifyProvisionalQuoteCreation,
 } from './accounting.js';
 import { verifyTeamManagement } from './teams.js';
+import { verifyPlanningFollowUp } from './planning-follow-up.js';
 
 export async function runIntegrationScenario() {
   const url = process.env.TEST_DATABASE_URL;
@@ -60,6 +61,7 @@ export async function runIntegrationScenario() {
       booking.collisionId,
       booking.assigned,
     );
+    await verifyPlanningFollowUp(context, booking.bookingId);
     await verifyCancelledAccounting(context, booking.collisionId);
     await runVehicleInspection(context);
     const driverFinished = await completeRecordedTrips(context, booking.bookingId);

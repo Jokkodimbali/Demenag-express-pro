@@ -8,8 +8,32 @@ export async function verifyTeamManagement(
   initialPassword: string,
 ) {
   const { admin, driver, first } = context.clients;
+  assert.equal((await admin.get('/api/admin/drivers').set(integrationHeader)).status, 200);
+  assert.equal((await first.get('/api/admin/drivers')).status, 403);
   assert.equal((await first.get('/api/admin/drivers').set(integrationHeader)).status, 403);
   assert.equal((await driver.get('/api/admin/drivers').set(integrationHeader)).status, 403);
+  assert.equal(
+    (await first.post('/api/admin/drivers').set(integrationHeader).send({})).status,
+    403,
+  );
+  assert.equal(
+    (
+      await driver
+        .put('/api/admin/drivers/' + driverId)
+        .set(integrationHeader)
+        .send({})
+    ).status,
+    403,
+  );
+  assert.equal(
+    (
+      await first
+        .delete('/api/admin/drivers/' + driverId)
+        .set(integrationHeader)
+        .send({})
+    ).status,
+    403,
+  );
   const initial = await admin.get('/api/admin/drivers');
   assert.equal(initial.status, 200);
   const employee = initial.body.find((item: { id: string }) => item.id === driverId);
@@ -139,6 +163,21 @@ export async function verifyTeamManagement(
     0,
   );
 
+  let roleUpdate = updated.body;
+  for (const role of ['menuisier', 'manoeuvre', 'chauffeur'] as const) {
+    const response = await admin
+      .put('/api/admin/drivers/' + driverId)
+      .set(integrationHeader)
+      .send({ ...roleUpdate, role });
+    assert.equal(response.status, 200, JSON.stringify(response.body));
+    assert.equal(response.body.role, role);
+    assert.equal(
+      (await context.db.chauffeur.findUniqueOrThrow({ where: { id: driverId } })).fonction,
+      role,
+    );
+    roleUpdate = response.body;
+  }
+
   const extraPhone = context.phone(12);
   const extra = await admin
     .post('/api/admin/drivers')
@@ -161,6 +200,15 @@ export async function verifyTeamManagement(
   ]);
   assert.equal(mainAfterCreate.vehiculeId, null);
   assert.equal(secondaryAfterCreate.vehiculeId, 'sprinter');
+  const duplicateUpdate = await admin
+    .put('/api/admin/drivers/' + driverId)
+    .set(integrationHeader)
+    .send({ ...updated.body, phone: extra.body.phone });
+  assert.equal(duplicateUpdate.status, 409);
+  assert.equal(
+    (await context.db.chauffeur.findUniqueOrThrow({ where: { id: driverId } })).telephone,
+    updated.body.phone,
+  );
   const mainReassigned = await admin
     .put('/api/admin/drivers/' + driverId)
     .set(integrationHeader)
@@ -172,6 +220,48 @@ export async function verifyTeamManagement(
   ]);
   assert.equal(mainAfterReassignment.vehiculeId, 'sprinter');
   assert.equal(secondaryAfterReassignment.vehiculeId, null);
+
+  const [mainConcurrent, secondaryConcurrent] = await Promise.all([
+    admin
+      .put('/api/admin/drivers/' + driverId)
+      .set(integrationHeader)
+      .send({ ...mainReassigned.body, vehicleId: 'trafic' }),
+    admin
+      .put('/api/admin/drivers/' + extra.body.id)
+      .set(integrationHeader)
+      .send({ ...extra.body, vehicleId: 'trafic' }),
+  ]);
+  assert.equal(mainConcurrent.status, 200, JSON.stringify(mainConcurrent.body));
+  assert.equal(secondaryConcurrent.status, 200, JSON.stringify(secondaryConcurrent.body));
+  const [mainAfterConcurrent, secondaryAfterConcurrent] = await Promise.all([
+    context.db.chauffeur.findUniqueOrThrow({ where: { id: driverId } }),
+    context.db.chauffeur.findUniqueOrThrow({ where: { id: extra.body.id } }),
+  ]);
+  assert.equal(
+    [mainAfterConcurrent.vehiculeId, secondaryAfterConcurrent.vehiculeId].filter(
+      (vehicleId) => vehicleId === 'trafic',
+    ).length,
+    1,
+    'Deux mises à jour simultanées ne doivent jamais attribuer le même véhicule à deux employés.',
+  );
+  const mainRestoredVehicle = await admin
+    .put('/api/admin/drivers/' + driverId)
+    .set(integrationHeader)
+    .send({ ...mainConcurrent.body, vehicleId: 'sprinter' });
+  assert.equal(mainRestoredVehicle.status, 200, JSON.stringify(mainRestoredVehicle.body));
+  const secondaryReleased = await admin
+    .put('/api/admin/drivers/' + extra.body.id)
+    .set(integrationHeader)
+    .send({ ...secondaryConcurrent.body, vehicleId: null });
+  assert.equal(secondaryReleased.status, 200, JSON.stringify(secondaryReleased.body));
+  assert.equal(
+    (await context.db.chauffeur.findUniqueOrThrow({ where: { id: driverId } })).vehiculeId,
+    'sprinter',
+  );
+  assert.equal(
+    (await context.db.chauffeur.findUniqueOrThrow({ where: { id: extra.body.id } })).vehiculeId,
+    null,
+  );
   const removedSecondary = await admin
     .delete('/api/admin/drivers/' + extra.body.id)
     .set(integrationHeader)

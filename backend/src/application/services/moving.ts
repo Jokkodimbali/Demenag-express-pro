@@ -17,6 +17,7 @@ import {
   canReadBooking,
   requireActiveUser,
   requireAdministrator,
+  requireAdministratorOrDriver,
 } from '../../domain/policies/access.js';
 import { calculatePrice, labourUnitPrice } from '../../domain/pricing.js';
 import { fallbackWorkPlan } from './fallback-work-plan.js';
@@ -719,11 +720,7 @@ export class MovingService implements MovingUseCases {
     photo?: string,
     details?: Pick<WorkPlanReview, 'cause' | 'severity' | 'correctiveAction'>,
   ) {
-    requireActiveUser(user);
-    requireValue(
-      ['admin', 'driver'].includes(user.role),
-      'Action réservée à l’administration et au chauffeur.',
-    );
+    requireAdministratorOrDriver(user);
     const booking = await this.bookings.find(id);
     const driver = user.role === 'driver' ? await this.drivers.findByUserId(user.id) : null;
     if (
