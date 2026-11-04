@@ -174,42 +174,11 @@ export function useBookingCard({
     window.setTimeout(() => URL.revokeObjectURL(link.href), 30000);
     return blob;
   }
-  async function shareQuote(quote: Quote, whatsappUrl: string) {
-    const whatsappTab = window.open('about:blank', '_blank');
+  function shareQuote(quote: Quote, whatsappUrl: string) {
     setError('');
-    const blob = await createPdf(quote);
-    if (!blob) {
-      whatsappTab?.close();
-      return;
-    }
-    const file = new File([blob], `${quote.reference}.pdf`, { type: 'application/pdf' });
-    try {
-      if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: quote.reference,
-          text: decodeURIComponent(new URL(whatsappUrl).searchParams.get('text') || ''),
-        });
-        whatsappTab?.close();
-        return;
-      }
-    } catch (e) {
-      if (e instanceof DOMException && e.name === 'AbortError') {
-        whatsappTab?.close();
-        return;
-      }
-    }
-    if (whatsappTab) whatsappTab.location.href = whatsappUrl;
-    else {
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `${quote.reference}.pdf`;
-      link.click();
-      window.setTimeout(() => URL.revokeObjectURL(link.href), 1000);
-      setError(
-        'Autorisez l’ouverture des fenêtres pour préparer WhatsApp. Le PDF a été téléchargé.',
-      );
-    }
+    const whatsappTab = window.open(whatsappUrl, '_blank');
+    if (whatsappTab) whatsappTab.opener = null;
+    void pdf(quote);
   }
   async function quote(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

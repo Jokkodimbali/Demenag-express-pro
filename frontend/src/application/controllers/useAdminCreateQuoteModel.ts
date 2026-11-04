@@ -109,6 +109,9 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         quote,
         booking.pricingSettings ?? appCatalogue?.settings,
       );
+      if (whatsappWindow.current) whatsappWindow.current.location.replace(href);
+      else window.location.assign(href);
+      whatsappWindow.current = null;
       void (async () => {
         try {
           const settings = booking.pricingSettings ?? appCatalogue?.settings;
@@ -125,10 +128,6 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
           }
         } catch {
           setPdfError('Le devis est enregistré, mais le PDF n’a pas pu être téléchargé.');
-        } finally {
-          if (whatsappWindow.current) whatsappWindow.current.location.href = href;
-          else window.open(href, '_blank', 'noopener,noreferrer');
-          whatsappWindow.current = null;
         }
       })();
     },

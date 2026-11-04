@@ -177,7 +177,7 @@ export function ReferenceCalendar({ bookings, vehicles, onSelect }: CalendarProp
     return days.includes(booking.date);
   });
   const countBookings = bookings.filter((booking) => {
-    if (!booking.date) return false;
+    if (!booking.date || booking.status === 'cancelled') return false;
     if (view === 'month') return booking.date.slice(0, 7) === monthCursor.slice(0, 7);
     return days.includes(booking.date);
   });
@@ -197,7 +197,9 @@ export function ReferenceCalendar({ bookings, vehicles, onSelect }: CalendarProp
     },
     { provisional: 0, final: 0 },
   );
-  const selected = bookings.filter((booking) => booking.date === selectedDay);
+  const selected = bookings.filter(
+    (booking) => booking.date === selectedDay && booking.status !== 'cancelled',
+  );
   const timedBookings = bookings
     .filter(
       (booking) =>
@@ -467,19 +469,19 @@ export function ReferenceCalendar({ bookings, vehicles, onSelect }: CalendarProp
               </strong>
             ))}
             {days.map((day) => {
-              const dayBookings = bookings.filter((booking) => booking.date === day);
+              const dayBookings = bookings.filter(
+                (booking) => booking.date === day && booking.status !== 'cancelled',
+              );
               const sameMonth = day.slice(0, 7) === monthCursor.slice(0, 7);
-              const dayTotals = dayBookings
-                .filter((booking) => booking.status !== 'cancelled')
-                .reduce(
-                  (sum, booking) => {
-                    const value = amount(booking);
-                    sum.provisional += value.provisional ?? 0;
-                    sum.final += value.final ?? 0;
-                    return sum;
-                  },
-                  { provisional: 0, final: 0 },
-                );
+              const dayTotals = dayBookings.reduce(
+                (sum, booking) => {
+                  const value = amount(booking);
+                  sum.provisional += value.provisional ?? 0;
+                  sum.final += value.final ?? 0;
+                  return sum;
+                },
+                { provisional: 0, final: 0 },
+              );
               return (
                 <div
                   key={day}

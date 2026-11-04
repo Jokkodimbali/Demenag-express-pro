@@ -13,14 +13,11 @@ export function whatsappNumber(phone: string, countryCode = '221') {
 export function whatsappUrl(phone: string, message: string, preferences?: WhatsAppPreferences) {
   const number = whatsappNumber(phone, preferences?.whatsappCountryCode || '221');
   const text = encodeURIComponent(message);
-  switch (preferences?.whatsappMode ?? 'api') {
-    case 'wame':
-      return `https://wa.me/${number}?text=${text}`;
-    case 'web':
-      return `https://web.whatsapp.com/send?phone=${number}&text=${text}`;
-    case 'app':
-      return `whatsapp://send?phone=${number}&text=${text}`;
-    default:
-      return `https://api.whatsapp.com/send?phone=${number}&text=${text}`;
-  }
+  if (preferences?.whatsappMode === 'web')
+    return `https://web.whatsapp.com/send?phone=${number}&text=${text}`;
+
+  // wa.me is WhatsApp's universal link: phones can hand it to the installed app,
+  // while desktop browsers still reach WhatsApp Web. It also avoids custom-scheme
+  // and api.whatsapp.com redirects that mobile browsers may keep in a new tab.
+  return `https://wa.me/${number}?text=${text}`;
 }

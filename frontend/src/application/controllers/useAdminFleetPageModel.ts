@@ -5,6 +5,7 @@ import { useApp } from '../../application/context';
 import { messages } from '../../content/fr';
 import { useAdminFleet } from '../../application/controllers/useAdminFleet';
 import { errorMessage } from '../../application/error-message';
+import { whatsappUrl } from '../../application/services/whatsapp';
 import { queueTeamSave } from '../../application/services/team-save-queue';
 import type { Booking, Driver, Point } from '../../domain/model';
 import {
@@ -96,6 +97,9 @@ export function useAdminFleetPageModel() {
     authorizedVehicleIds: [] as string[],
   });
   const [customMessages, setCustomMessages] = useState<Record<string, string>>({});
+  const [whatsappBriefQueue, setWhatsappBriefQueue] = useState<
+    Array<{ booking: Booking; member: Driver; href: string }>
+  >([]);
   const employeeSaveQueuesRef = useRef(new Map<string, Promise<Driver>>());
   const confirmedEmployeesRef = useRef(new Map<string, Driver>());
   const bookingSaveQueuesRef = useRef(new Map<string, Promise<Booking | null>>());
@@ -718,7 +722,13 @@ export function useAdminFleetPageModel() {
   };
 
   const sendBrief = async (booking: Booking, members: Driver[]) => {
-    const urls = members.flatMap((member) => {
+    if (whatsappBriefQueue.length) {
+      setPageError(
+        'Terminez ou annulez la série de messages WhatsApp en cours avant de recommencer.',
+      );
+      return;
+    }
+    const recipients = members.flatMap((member) => {
       const phone = member.phone.replace(/\D/g, '');
       if (!phone) return [];
       const key = `${booking.id}|${member.id}`;
@@ -732,21 +742,48 @@ export function useAdminFleetPageModel() {
           businessWhatsAppPhone,
           businessWhatsAppCountry,
         );
-      const number = phone.length <= 9 ? `221${phone}` : phone;
-      return [`https://wa.me/${number}?text=${encodeURIComponent(message)}`];
+      return [
+        {
+          booking,
+          member,
+          href: whatsappUrl(phone, message, catalogue?.settings),
+        },
+      ];
     });
-    if (!urls.length) return setPageError('Aucun numéro de téléphone dans l’équipe.');
-    urls.forEach((url, index) =>
-      window.setTimeout(() => window.open(url, '_blank', 'noopener,noreferrer'), index * 650),
-    );
-    const crewBriefs = { ...(booking.crewBriefs ?? {}) };
-    members
-      .filter((member) => member.phone.replace(/\D/g, ''))
-      .forEach((member) => {
-        crewBriefs[member.id] = new Date().toISOString();
-      });
+    const [first, ...remaining] = recipients;
+    if (!first) return setPageError('Aucun numéro de téléphone dans l’équipe.');
+    const whatsappWindow = window.open(first.href, '_blank');
+    if (whatsappWindow) whatsappWindow.opener = null;
+    setWhatsappBriefQueue(remaining);
+    const crewBriefs = {
+      ...(booking.crewBriefs ?? {}),
+      [first.member.id]: new Date().toISOString(),
+    };
     await saveTeam(booking, { crewBriefs });
-    setToast(`Brief envoyé à ${urls.length} personne(s) : une conversation WhatsApp par personne.`);
+    setToast(
+      remaining.length
+        ? `Message WhatsApp préparé pour ${first.member.name}. Ouvrez chaque conversation suivante avec le bouton affiché.`
+        : `Message WhatsApp préparé pour ${first.member.name}.`,
+    );
+  };
+
+  const openNextWhatsAppBrief = async () => {
+    const [next, ...remaining] = whatsappBriefQueue;
+    if (!next) return;
+    const whatsappWindow = window.open(next.href, '_blank');
+    if (whatsappWindow) whatsappWindow.opener = null;
+    setWhatsappBriefQueue(remaining);
+    await saveTeam(next.booking, {
+      crewBriefs: {
+        ...(next.booking.crewBriefs ?? {}),
+        [next.member.id]: new Date().toISOString(),
+      },
+    });
+    setToast(
+      remaining.length
+        ? `Message WhatsApp préparé pour ${next.member.name}. Ouvrez la conversation suivante avec le bouton affiché.`
+        : `Message WhatsApp préparé pour ${next.member.name}.`,
+    );
   };
 
   const copyBrief = async (booking: Booking, members: Driver[]) => {
@@ -959,6 +996,9 @@ export function useAdminFleetPageModel() {
     setMemberRole,
     changeReply,
     sendBrief,
+    whatsappBriefQueue,
+    openNextWhatsAppBrief,
+    cancelWhatsAppBriefs: () => setWhatsappBriefQueue([]),
     copyBrief,
     visibleEmployees,
     selected,

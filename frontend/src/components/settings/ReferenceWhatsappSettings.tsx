@@ -11,8 +11,8 @@ import {
 } from '../../application/services/whatsapp-templates';
 import { visibleUiText } from '../../content/visible-ui-text';
 const modes = [
-  ['api', 'api.whatsapp.com (recommandé)'],
-  ['wame', 'wa.me'],
+  ['api', 'WhatsApp (application mobile / Web, recommandé)'],
+  ['wame', 'wa.me (lien universel)'],
   ['web', 'WhatsApp Web (ordinateur)'],
   ['app', 'Application WhatsApp (téléphone)'],
 ] as const;
@@ -69,7 +69,7 @@ export function ReferenceWhatsappSettings({ catalogue }: { catalogue: Catalogue 
     whatsappMode: mode,
   });
   const openedWith =
-    modes.find(([value]) => value === mode)?.[1].replace(/ \(.*$/, '') ?? 'api.whatsapp.com';
+    mode === 'web' ? 'WhatsApp Web' : mode === 'app' ? 'le lien universel WhatsApp' : 'wa.me';
 
   return (
     <section className="reference-settings-wide reference-settings-whatsapp">
