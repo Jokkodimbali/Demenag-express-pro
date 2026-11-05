@@ -31,32 +31,34 @@ export async function runVehicleInspection(context: IntegrationContext) {
 }
 
 export async function completeRecordedTrips(context: IntegrationContext, bookingId: string) {
+  const admin = context.clients.admin;
   const driver = context.clients.driver;
   let current = (await context.clients.admin.get('/api/bookings/' + bookingId)).body as {
     trips: { finishedAt: string | null; loadingPhotos: string[] }[];
   };
   while (current.trips.filter((trip) => trip.finishedAt).length < 2) {
     if (!current.trips.some((trip) => !trip.finishedAt)) {
-      const started = await driver
+      const started = await admin
         .post('/api/bookings/' + bookingId + '/trips/start')
         .set(integrationHeader)
-        .send({ photos: [proof] });
+        .send({ photos: [] });
       assert.equal(started.status, 201, JSON.stringify(started.body));
-    } else if (!current.trips.at(-1)?.loadingPhotos.length) {
-      const proofAdded = await driver
-        .post('/api/bookings/' + bookingId + '/trips/start')
-        .set(integrationHeader)
-        .send({ photos: [proof] });
-      assert.equal(proofAdded.status, 201, JSON.stringify(proofAdded.body));
     }
-    const finished = await driver
+    const finished = await admin
       .post('/api/bookings/' + bookingId + '/trips/finish')
       .set(integrationHeader)
-      .send({ photos: [proof] });
+      .send({ photos: [] });
     assert.equal(finished.status, 200, JSON.stringify(finished.body));
     current = finished.body;
   }
-  const response = await driver
+  for (const kind of ['retrait', 'depot'] as const) {
+    const employeeProof = await driver
+      .post(`/api/driver/bookings/${bookingId}/proofs`)
+      .set(integrationHeader)
+      .send({ kind, photos: [proof] });
+    assert.equal(employeeProof.status, 200, JSON.stringify(employeeProof.body));
+  }
+  const response = await admin
     .post('/api/bookings/' + bookingId + '/driver-finished')
     .set(integrationHeader);
   assert.equal(response.status, 200, JSON.stringify(response.body));

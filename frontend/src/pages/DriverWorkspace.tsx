@@ -29,11 +29,15 @@ export function DriverWorkspace() {
     setUploading(true);
     setUploadError('');
     try {
-      const images = await Promise.all(files.map(employeePhoto));
-      const updated = await addProofs(id, kind, images);
-      setBookings((old) => old.map((b) => (b.id === id ? updated : b)));
+      let saved = 0;
+      for (const file of files) {
+        const image = await employeePhoto(file);
+        const updated = await addProofs(id, kind, [image]);
+        setBookings((old) => old.map((booking) => (booking.id === id ? updated : booking)));
+        saved += 1;
+      }
       showHeaderSuccess(
-        `${images.length} photo${images.length > 1 ? 's' : ''} de ${kind === 'retrait' ? 'retrait' : 'dépôt'} enregistrée${images.length > 1 ? 's' : ''}.`,
+        `${saved} photo${saved > 1 ? 's' : ''} de ${kind === 'retrait' ? 'retrait' : 'dépôt'} enregistrée${saved > 1 ? 's' : ''}.`,
       );
     } catch (e) {
       setUploadError(errorMessage(e));

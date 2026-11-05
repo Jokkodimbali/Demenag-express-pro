@@ -73,7 +73,7 @@ export function AppRoutes() {
           <Route
             path={routes.account.slice(1)}
             element={
-              <Guard>
+              <Guard roles={['client', 'admin']}>
                 <Account />
               </Guard>
             }

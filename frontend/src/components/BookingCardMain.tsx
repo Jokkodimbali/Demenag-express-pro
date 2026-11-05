@@ -8,8 +8,6 @@ import type { Dispatch, SetStateAction } from 'react';
 export function BookingCardMain({
   booking,
   admin,
-  driverMode,
-  clientPhoneLink,
   finalQuote,
   terminal,
   editingSchedule,
@@ -25,8 +23,6 @@ export function BookingCardMain({
 }: {
   booking: Booking;
   admin: boolean;
-  driverMode: boolean;
-  clientPhoneLink: string;
   finalQuote: Quote | null | undefined;
   terminal: boolean;
   editingSchedule: boolean;
@@ -45,16 +41,10 @@ export function BookingCardMain({
     <div className="booking-card-main">
       <img src={b.vehicle.image} alt={messages.text} />
       <div>
-        <h3>{admin || driverMode ? b.customerName : b.vehicle.name}</h3>
+        <h3>{admin ? b.customerName : b.vehicle.name}</h3>
         {admin && (
           <p className="muted">
             {b.phone} · {b.vehicle.name}
-          </p>
-        )}
-        {driverMode && (
-          <p className="muted booking-driver-contact">
-            {uiText['client2']}
-            <a href={`tel:${clientPhoneLink}`}>{b.phone}</a> · {b.vehicle.name}
           </p>
         )}
         <p>

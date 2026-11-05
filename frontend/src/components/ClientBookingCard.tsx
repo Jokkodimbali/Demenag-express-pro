@@ -2,7 +2,6 @@ import { liveBookingPrice } from '../application/services/live-booking-price';
 import { uiText } from '../content/reference-ui-text';
 import { useApp } from '../application/context';
 import { useBookingCard } from '../application/controllers/useBookingCard';
-import { bookingReminder } from '../application/services/booking-reminder';
 import { whatsappPaymentLine } from '../application/services/whatsapp-templates';
 import { money, referenceTierLabels } from '../domain/format';
 import type { Booking } from '../domain/model';
@@ -13,14 +12,12 @@ import { Link } from 'react-router-dom';
 export function ClientBookingCard({
   booking,
   onChange,
-  onReminder,
 }: {
   booking: Booking;
   onChange: (booking: Booking) => void;
-  onReminder?: (message: string) => void;
 }) {
   const { catalogue } = useApp();
-  const { pdf, busy, error, recordReminder } = useBookingCard({ booking, onChange });
+  const { pdf, busy, error } = useBookingCard({ booking, onChange });
   const provisionalQuote = booking.quotes.filter((quote) => quote.kind === 'provisional').at(-1);
   const finalQuote = booking.quotes.filter((quote) => quote.kind === 'final').at(-1);
   const displayedEstimate = liveBookingPrice(booking, catalogue).total;
@@ -38,24 +35,6 @@ export function ClientBookingCard({
   const distanceTier = referenceTierLabels(distanceBounds)[tierIndex];
   const isFinal = booking.status === 'completed';
   const canEdit = ['pending', 'confirmed', 'cancelled'].includes(booking.status) && !finalQuote;
-  const reminder = bookingReminder(
-    booking,
-    catalogue?.settings,
-    ['completed', 'cancelled'].includes(booking.status),
-  );
-  const canRemind = reminder.canSendReminder;
-  const reminderWhen = reminder.reminderWhen;
-  const reminderLabel =
-    reminder.daysUntilMove === 0
-      ? 'aujourd’hui'
-      : reminder.daysUntilMove === 1
-        ? 'demain'
-        : `J-${reminder.daysUntilMove}`;
-  const reminderUrl = reminder.reminderHref;
-  const lastReminderDate = reminder.lastReminderLabel.replace(
-    /^(?:Dernier rappel|Rappel envoyé le) :?\s*/u,
-    '',
-  );
   const paymentText = whatsappPaymentLine(catalogue?.settings).split(' Le QR code')[0];
   const tolls = finalQuote?.tolls ?? [];
   const tollTotal = tolls.reduce((total, toll) => total + toll.unitPrice * toll.quantity, 0);
@@ -64,13 +43,6 @@ export function ClientBookingCard({
   mapsUrl.searchParams.set('origin', booking.from.join(','));
   mapsUrl.searchParams.set('destination', booking.to.join(','));
   mapsUrl.searchParams.set('travelmode', 'driving');
-
-  async function sendReminder() {
-    if (await recordReminder())
-      onReminder?.(
-        `Rappel WhatsApp envoyé à ${booking.customerName || 'client'} (${reminderWhen}).`,
-      );
-  }
 
   return (
     <article className="reference-client-card">
@@ -96,36 +68,6 @@ export function ClientBookingCard({
             <span className={`reference-client-status ${isFinal ? 'completed' : 'pending'}`}>
               {isFinal ? 'Final' : 'Provisoire'}
             </span>
-            {canRemind && (
-              <a
-                className="reference-client-reminder"
-                href={reminderUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                title={`Message : rendez-vous ${reminderWhen}`}
-                onClick={() => void sendReminder()}
-              >
-                <svg
-                  aria-hidden="true"
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
-                </svg>
-                {`Rappel · ${reminderLabel}`}
-              </a>
-            )}
-            {lastReminderDate && (
-              <small>
-                {canRemind ? 'Dernier rappel :' : 'Rappel envoyé le'} {lastReminderDate}
-              </small>
-            )}
           </div>
         </div>
       </div>

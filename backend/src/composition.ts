@@ -47,7 +47,6 @@ export function compose(db: PrismaClient, routing: RoutingProvider) {
     drivers,
     clock,
     ids,
-    vehicleReports,
     notifications,
     accountingRepository,
   );

@@ -69,7 +69,7 @@ export interface MovingUseCases {
   ): Promise<Booking>;
   list(user: User): Promise<Booking[]>;
   get(user: User, id: string): Promise<Booking>;
-  recordClientReminder(user: User, id: string): Promise<Booking>;
+  recordBookingReminder(user: User, id: string): Promise<Booking>;
   status(user: User, id: string, next: BookingStatus, version: number): Promise<Booking>;
   startTrip(user: User, id: string, photos: string[]): Promise<Booking>;
   finishTrip(user: User, id: string, photos: string[]): Promise<Booking>;

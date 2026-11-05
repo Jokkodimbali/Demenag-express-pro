@@ -325,8 +325,8 @@ test('La date passée et la date invalide sont refusées, l’heure reste libre'
 });
 test('Les statuts respectent le rôle et la clôture', () => {
   assert.doesNotThrow(() => transition('pending', 'confirmed', 'admin'));
-  assert.doesNotThrow(() => transition('confirmed', 'in_progress', 'driver'));
-  assert.doesNotThrow(() => transition('in_progress', 'completed', 'driver'));
+  assert.throws(() => transition('confirmed', 'in_progress', 'driver'));
+  assert.throws(() => transition('in_progress', 'completed', 'driver'));
   assert.throws(() => transition('pending', 'confirmed', 'driver'));
   assert.throws(() => transition('completed', 'confirmed', 'admin'));
   assert.throws(() => transition('in_progress', 'cancelled', 'driver'));

@@ -411,8 +411,13 @@ test('Un employé voit ses missions affectées, indépendamment du véhicule', a
     service.addProofs(actor, sameVehicleBooking.id, 'retrait', ['photo']),
     /Mission introuvable/,
   );
-  const updated = await service.addProofs(actor, otherVehicleBooking.id, 'retrait', ['photo']);
-  assert.equal(updated.employeeProofs?.[0].image, 'photo');
+  const updated = await service.addProofs(actor, otherVehicleBooking.id, 'retrait', [
+    'photo-retrait-1',
+    'photo-retrait-2',
+  ]);
+  assert.equal(updated.employeeProofs?.length, 2);
+  assert.equal(updated.employeeProofs?.[0].image, 'photo-retrait-1');
+  assert.equal(updated.employeeProofs?.[1].image, 'photo-retrait-2');
   driver.role = 'menuisier';
   otherVehicleBooking.driverId = null;
   otherVehicleBooking.crew = { chauffeur: [], menuisier: [driver.id], manoeuvre: [], chef: '' };

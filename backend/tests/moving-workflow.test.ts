@@ -82,6 +82,7 @@ function harness() {
     version: 1,
   };
   const bookings = {
+    list: async () => [booking],
     find: async (id: string) => (id === booking.id ? booking : null),
     update: async (next: Booking, expectedVersion: number) => {
       assert.equal(booking.version, expectedVersion);
@@ -140,7 +141,7 @@ function harness() {
   } as unknown as CatalogueRepository;
   const drivers = {
     findByUserId: async (userId: string) =>
-      userId === driverUser.id ? driver : { ...driver, userId, vehicleId: 'other-vehicle' },
+      userId === driverUser.id ? driver : { ...driver, id: 'driver-other', userId },
     find: async () => driver,
   } as unknown as DriverRepository;
   const service = new MovingService(
@@ -204,6 +205,21 @@ function harness() {
     },
   };
 }
+
+test('seule l’administration peut enregistrer un rappel de réservation', async () => {
+  const { service, getBooking } = harness();
+  await assert.rejects(service.recordBookingReminder(client, 'booking-1'), (error: unknown) => {
+    return error instanceof Error && 'status' in error && error.status === 403;
+  });
+  await assert.rejects(service.recordBookingReminder(driverUser, 'booking-1'), (error: unknown) => {
+    return error instanceof Error && 'status' in error && error.status === 403;
+  });
+
+  const updated = await service.recordBookingReminder(admin, 'booking-1');
+  assert.equal(updated.reminders?.length, 1);
+  assert.equal(updated.reminders?.[0]?.daysBefore, 0);
+  assert.equal(getBooking().reminders?.length, 1);
+});
 
 test('admin edit clears an emptied inventory snapshot and its work plan', async () => {
   const { service, getBooking, setInventorySnapshot } = harness();
@@ -367,12 +383,13 @@ test('admin can start and finish courses without photos, then close with a final
   assert.equal(getBooking().status, 'in_progress');
   assert.deepEqual(getBooking().trips?.[0]?.loadingPhotos, []);
 
-  const driverAddedProof = await service.startTrip(driverUser, 'booking-1', ['/loading.jpg']);
-  assert.equal(driverAddedProof.trips?.length, 1);
-  assert.deepEqual(driverAddedProof.trips?.[0]?.loadingPhotos, ['/loading.jpg']);
+  await assert.rejects(service.startTrip(driverUser, 'booking-1', ['/loading.jpg']));
+  await service.startTrip(admin, 'booking-1', ['/admin-loading.jpg']);
   await assert.rejects(service.startTrip(admin, 'booking-1', []), /Une course est déjà en cours/u);
 
+  await assert.rejects(service.finishTrip(driverUser, 'booking-1', ['/unloading.jpg']));
   await service.finishTrip(admin, 'booking-1', []);
+  await assert.rejects(service.finishDriverWork(driverUser, 'booking-1'));
   await service.finishDriverWork(admin, 'booking-1');
   assert.ok(getBooking().driverFinishedAt);
   assert.deepEqual(getBooking().trips?.[0]?.unloadingPhotos, []);
@@ -383,17 +400,33 @@ test('admin can start and finish courses without photos, then close with a final
   assert.equal(completed.status, 'completed');
 });
 
-test('driver still needs loading and unloading photos; client cannot manage courses', async () => {
+test('driver cannot change reservation status or course history; admin controls course progression', async () => {
   const { service } = harness();
-  await assert.rejects(service.startTrip(driverUser, 'booking-1', []), /photo du chargement/u);
-  await assert.rejects(service.finishTrip(driverUser, 'booking-1', []), /photo du déchargement/u);
+  await assert.rejects(
+    service.status(driverUser, 'booking-1', 'cancelled', 1),
+    /Le chauffeur ne peut pas modifier la réservation/u,
+  );
+  await assert.rejects(service.startTrip(driverUser, 'booking-1', ['/loading.jpg']));
+  await assert.rejects(service.finishTrip(driverUser, 'booking-1', ['/unloading.jpg']));
+  await assert.rejects(service.finishDriverWork(driverUser, 'booking-1'));
   await assert.rejects(service.startTrip(client, 'booking-1', []), /réservée à l’administration/u);
 });
 
-test('driver can refresh only bookings assigned to their vehicle', async () => {
+test('driver can access and manage only bookings assigned to their employee profile', async () => {
   const { service } = harness();
+  assert.deepEqual(await service.list(driverUser), [await service.get(driverUser, 'booking-1')]);
   assert.equal((await service.get(driverUser, 'booking-1')).id, 'booking-1');
-  await assert.rejects(service.get({ ...driverUser, id: 'other-driver' }, 'booking-1'));
+  await assert.rejects(
+    service.create(driverUser, {} as BookingInput),
+    /création d’une réservation est réservée/u,
+  );
+  const otherDriver = { ...driverUser, id: 'other-driver' };
+  assert.deepEqual(await service.list(otherDriver), []);
+  await assert.rejects(service.get(otherDriver, 'booking-1'));
+  await assert.rejects(service.startTrip(otherDriver, 'booking-1', ['/loading.jpg']));
+  await assert.rejects(
+    service.reviewWorkPlan(otherDriver, 'booking-1', 'plan-1', 'respected', '', 1),
+  );
 });
 
 test('client can change only the schedule of their own open reservation', async () => {
@@ -438,19 +471,12 @@ test('client can update their own open reservation notes only', async () => {
   await assert.rejects(service.updateNotes(client, 'booking-1', 'Refusé', getBooking().version));
 });
 
-test('driver and admin share schedule checks, including late status, time and proof', async () => {
+test('seule l’administration peut modifier le suivi du planning', async () => {
   const { service, getBooking } = harness();
-  const driverChecked = await service.reviewWorkPlan(
-    driverUser,
-    'booking-1',
-    'plan-1',
-    'not_respected',
-    'Le camion est arrivé en retard.',
-    1,
+  await assert.rejects(
+    service.reviewWorkPlan(driverUser, 'booking-1', 'plan-1', 'not_respected', 'Retard.', 1),
+    /Action réservée à l’administration/u,
   );
-  assert.equal(driverChecked.workPlan?.[0]?.review.status, 'not_respected');
-  assert.equal(driverChecked.workPlan?.[0]?.review.reason, 'Le camion est arrivé en retard.');
-  assert.equal(driverChecked.workPlan?.[0]?.review.checkedBy, driverUser.name);
 
   const adminChecked = await service.reviewWorkPlan(
     admin,

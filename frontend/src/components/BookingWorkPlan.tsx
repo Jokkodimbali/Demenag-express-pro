@@ -50,17 +50,15 @@ function PlanStep({
   step,
   booking,
   admin,
-  driverMode,
   onChange,
 }: {
   step: WorkPlanStep;
   booking: Booking;
   admin: boolean;
-  driverMode: boolean;
   onChange: (booking: Booking) => void;
 }) {
   const commands = useBookingCommands();
-  const editable = admin || driverMode;
+  const editable = admin;
   const [draft, setDraft] = useState<ReviewDraft>({
     status: step.review.status,
     reason: step.review.reason,
@@ -178,12 +176,10 @@ function PlanStep({
 export function BookingWorkPlan({
   booking,
   admin,
-  driverMode,
   onChange,
 }: {
   booking: Booking;
   admin: boolean;
-  driverMode: boolean;
   onChange: (booking: Booking) => void;
 }) {
   const plan = booking.workPlan ?? [];
@@ -206,7 +202,6 @@ export function BookingWorkPlan({
               step={step}
               booking={booking}
               admin={admin}
-              driverMode={driverMode}
               onChange={onChange}
             />
           ))}

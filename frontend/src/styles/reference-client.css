@@ -7,14 +7,6 @@
   gap: clamp(14px, 4vw, 24px);
   color: #fff;
 }
-.reference-client-toast {
-  padding: 12px 16px;
-  border-radius: 12px;
-  background: #0e9f4a;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 700;
-}
 .reference-client-heading {
   display: flex;
   justify-content: space-between;
@@ -152,7 +144,7 @@
 .reference-client-map-overlay {
   position: absolute;
   left: 10px;
-  bottom: 10px;
+  bottom: 36px;
   right: 10px;
   z-index: 500;
   display: flex;

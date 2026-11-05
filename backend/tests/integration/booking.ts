@@ -272,5 +272,26 @@ export async function advanceBookingToInProgress(
     .set(integrationHeader)
     .send({ photos: [] });
   assert.equal(started.status, 201, JSON.stringify(started.body));
+  const version = started.body.version as number;
+  const deniedMutations = [
+    driver.patch('/api/bookings/' + bookingId + '/status').send({ status: 'cancelled', version }),
+    driver
+      .patch('/api/bookings/' + bookingId + '/schedule')
+      .send({ date: null, timeSlot: '', version }),
+    driver.patch('/api/bookings/' + bookingId + '/notes').send({ notes: 'Interdit', version }),
+    driver
+      .patch(`/api/bookings/${bookingId}/work-plan/plan-1/review`)
+      .send({ status: 'respected', reason: '', version }),
+    driver
+      .post('/api/bookings/' + bookingId + '/trips/start')
+      .send({ photos: ['/assets/test-proof.jpg'] }),
+    driver
+      .post('/api/bookings/' + bookingId + '/trips/finish')
+      .send({ photos: ['/assets/test-proof.jpg'] }),
+    driver.post('/api/bookings/' + bookingId + '/driver-finished'),
+  ];
+  for (const denied of deniedMutations) {
+    assert.equal((await denied.set(integrationHeader)).status, 403);
+  }
   return { driver };
 }

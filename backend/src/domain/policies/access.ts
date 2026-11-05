@@ -8,11 +8,6 @@ export function requireAdministrator(user: User | null | undefined): asserts use
   requireActiveUser(user);
   if (user.role !== 'admin') throw new AppError(403, messages.actionReserveeALAdministration);
 }
-export function requireAdministratorOrDriver(user: User | null | undefined): asserts user is User {
-  requireActiveUser(user);
-  if (user.role !== 'admin' && user.role !== 'driver')
-    throw new AppError(403, 'Action réservée à l’administration et au chauffeur.');
-}
 export function canReadBooking(user: User, ownerId: string): boolean {
   return user.active !== false && (user.role === 'admin' || user.id === ownerId);
 }

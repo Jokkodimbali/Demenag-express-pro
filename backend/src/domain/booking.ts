@@ -24,11 +24,8 @@ export function transition(current: BookingStatus, next: BookingStatus, role: Ro
     completed: [],
     cancelled: [],
   };
-  const driverTransition =
-    (current === 'confirmed' && next === 'in_progress') ||
-    (current === 'in_progress' && next === 'completed');
-  if (role === 'driver' && !driverTransition)
-    throw new AppError(403, messages.actionReserveeALAdministration);
+  if (role === 'driver')
+    throw new AppError(403, 'Le chauffeur ne peut pas modifier la réservation.');
   if (role === 'client' && next !== 'cancelled')
     throw new AppError(403, messages.actionReserveeALAdministration);
   if (!allowed[current].includes(next))

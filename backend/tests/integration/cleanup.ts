@@ -88,10 +88,8 @@ export async function deleteScenarioData(context: IntegrationContext, routeIds: 
   const userIds = [...new Set([...context.testUserIds, ...scenarioUsers.map(({ id }) => id)])];
 
   if (userIds.length) {
-    await db.$transaction([
-      db.reservation.deleteMany({ where: { utilisateurId: { in: userIds } } }),
-      db.utilisateur.deleteMany({ where: { id: { in: userIds } } }),
-    ]);
+    await db.reservation.deleteMany({ where: { utilisateurId: { in: userIds } } });
+    await db.utilisateur.deleteMany({ where: { id: { in: userIds } } });
   }
   if (routeIds.length) await db.itineraire.deleteMany({ where: { id: { in: routeIds } } });
 

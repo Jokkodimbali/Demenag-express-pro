@@ -112,7 +112,7 @@ export function registerBookingRoutes(
     res.json(await deps.moving.get(getActor(res), z.uuid().parse(req.params.id))),
   );
   app.post(`${apiRoutes.bookings}/:id/reminders`, authenticate, async (req, res) =>
-    res.json(await deps.moving.recordClientReminder(getActor(res), z.uuid().parse(req.params.id))),
+    res.json(await deps.moving.recordBookingReminder(getActor(res), z.uuid().parse(req.params.id))),
   );
   app.delete(`${apiRoutes.bookings}/:id`, authenticate, admin, async (req, res) => {
     await deps.moving.delete(getActor(res), z.uuid().parse(req.params.id));

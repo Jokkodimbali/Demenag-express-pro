@@ -5,7 +5,7 @@ import { conflict } from './helpers.js';
 import { fromDriver, toDriver } from './mapping.js';
 
 export class PrismaDrivers implements DriverRepository {
-  constructor(private readonly db: PrismaClient) { }
+  constructor(private readonly db: PrismaClient) {}
   async list() {
     return (await this.db.chauffeur.findMany({ orderBy: { nom: 'asc' } })).map(fromDriver);
   }
