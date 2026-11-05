@@ -26,6 +26,7 @@ import { defaultClientQuestions } from '../../domain/questionnaire';
 import { quoteNotificationUrl } from '../../application/services/quote-notification';
 import { whatsappNumber, whatsappUrl } from '../../application/services/whatsapp';
 import { whatsappPaymentLine } from '../../application/services/whatsapp-templates';
+import { defaultRentalKit } from '../../domain/rental-kit';
 
 const trafficDuration = (minutes: number) => {
   const rounded = Math.max(5, Math.round(minutes / 5) * 5);
@@ -44,6 +45,9 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       initialClient?: { name: string; phone: string; address: string };
     } | null
   )?.initialClient;
+  const calendarAppointment = (
+    location.state as { calendarAppointment?: { date: string; time: string } } | null
+  )?.calendarAppointment;
   const editingReservation = new URLSearchParams(location.search).has('modifier');
   const startNewRequest = Boolean(
     publicRequest &&
@@ -65,6 +69,9 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     discountReason: '',
     customPrice: null,
     labourUnitPriceOverride: null,
+    billingMode: 'complete',
+    overtimeMinutes: 0,
+    rentalKit: null,
   });
   const [questionnaireOpen, setQuestionnaireOpen] = useState(false);
   const [quoteKind, setQuoteKind] = useState<Quote['kind']>('provisional');
@@ -183,6 +190,9 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       discountReason: '',
       customPrice: null,
       labourUnitPriceOverride: null,
+      billingMode: 'complete',
+      overtimeMinutes: 0,
+      rentalKit: null,
     });
     navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
   }, [location.pathname, location.search, navigate, setDraft, startNewRequest, user]);
@@ -234,6 +244,18 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
   }, [initialClient, location.pathname, location.search, navigate, setDraft]);
   useEffect(() => {
+    if (!calendarAppointment) return;
+    setDraft((current) => ({
+      ...current,
+      date: calendarAppointment.date,
+      month: calendarAppointment.date.slice(0, 7),
+      timeSlot: calendarAppointment.time,
+      noDate: false,
+    }));
+    setOpenQuoteSections((current) => ({ ...current, client: true }));
+    navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
+  }, [calendarAppointment, location.pathname, location.search, navigate, setDraft]);
+  useEffect(() => {
     if (!restoredDraft.current) return;
     if (skipInitialSave.current) {
       skipInitialSave.current = false;
@@ -276,6 +298,9 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
             )?.unitPrice ?? null)
           : null,
       labourUnitPriceOverride: labourOverride,
+      billingMode: quote?.billingMode ?? 'complete',
+      overtimeMinutes: quote?.overtimeMinutes ?? 0,
+      rentalKit: quote?.rentalKit ?? null,
     });
     setTollLines(
       (quote?.tolls ?? []).map((line) => ({
@@ -488,6 +513,23 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         total: previewTransportUnit * quoteConfig.trips,
       }
     : null;
+  const rentalKit =
+    quoteConfig.rentalKit ??
+    (selected
+      ? defaultRentalKit(
+          selected,
+          movingEstimate?.crew ?? draft.options.labour,
+          catalogue?.settings.rentalKitConfiguration,
+        )
+      : []);
+  const rentalOvertimeAmount =
+    quoteConfig.billingMode === 'driver-rental'
+      ? Math.round(
+          ((quoteConfig.overtimeMinutes ?? 0) *
+            (catalogue?.settings.rentalOvertimeHourlyRate ?? 10000)) /
+            60,
+        )
+      : 0;
   const fallbackServiceLines = extras
     .filter(([key]) => draft.options[key] > 0)
     .map(([key, label]) => ({
@@ -516,7 +558,11 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const rawPreviewLines = [
     ...(transportPreviewLine ? [transportPreviewLine] : []),
     ...(price?.lines ?? fallbackServiceLines)
-      .filter((line) => !line.label.startsWith('Transport '))
+      .filter(
+        (line) =>
+          !line.label.startsWith('Transport ') &&
+          !(quoteConfig.billingMode === 'driver-rental' && /^Man[œo]uvre/iu.test(line.label)),
+      )
       .map((line) =>
         line.label.startsWith('Manœuvre') && quoteConfig.labourUnitPriceOverride
           ? {
@@ -531,7 +577,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     ? inventoryAssemblyLines(draft.inventory, catalogue.settings)
     : [];
   const inventoryMenuOptions = inventoryAssemblyOptions(draft.inventory);
-  const previewLines = inventoryMenuLines.length
+  const standardPreviewLines = inventoryMenuLines.length
     ? [
         ...rawPreviewLines.filter((line) => !line.label.startsWith('Menuisier ·')),
         ...extras
@@ -554,6 +600,19 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         })),
       ]
     : rawPreviewLines;
+  const previewLines = [
+    ...standardPreviewLines,
+    ...(rentalOvertimeAmount > 0
+      ? [
+          {
+            label: `Dépassement du planning prévisionnel (${quoteConfig.overtimeMinutes} min)`,
+            quantity: 1,
+            unitPrice: rentalOvertimeAmount,
+            total: rentalOvertimeAmount,
+          },
+        ]
+      : []),
+  ];
   const previewSubtotal = previewLines.reduce((sum, line) => sum + line.total, 0);
   const previewDiscount =
     quoteConfig.discountType === 'pct'
@@ -665,6 +724,11 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
           .filter(Boolean)
           .join('\n'),
         options: draft.options,
+        billingMode: quoteConfig.billingMode,
+        rentalKit: quoteConfig.billingMode === 'driver-rental' ? rentalKit : [],
+        overtimeMinutes:
+          quoteConfig.billingMode === 'driver-rental' ? quoteConfig.overtimeMinutes : 0,
+        providedCrew: movingEstimate?.crew ?? draft.options.labour,
         tolls: tollLines.map((line) => ({
           tollPointId: line.id,
           label: line.label,
@@ -861,6 +925,8 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     inventoryMenuLines,
     inventoryMenuOptions,
     previewLines,
+    rentalKit,
+    rentalOvertimeAmount,
     previewSubtotal,
     previewDiscount,
     previewDiscountLabel,

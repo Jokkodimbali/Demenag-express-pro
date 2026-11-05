@@ -13,6 +13,7 @@ import { BookingConfirmation } from '../components/booking/BookingConfirmation';
 import { routes } from '../routing/routes';
 import { useAdminCreateQuoteModel } from '../application/controllers/useAdminCreateQuoteModel';
 import { AdminCreateQuoteAside } from '../components/AdminCreateQuoteAside';
+import { AdminQuoteSettings } from '../components/AdminQuoteSettings';
 import { LoadingSimulation } from '../components/booking/LoadingSimulation';
 
 const RouteMap = lazy(() => import('../components/RouteMap'));
@@ -179,6 +180,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
         }}
         className="admin-quote-layout"
       >
+        {!publicRequest && <AdminQuoteSettings model={model} catalogue={catalogue} />}
         <div className="admin-quote-fields">
           {publicRequest && (
             <section className="reference-request-vehicle">
@@ -520,23 +522,6 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                     >
                       {uiText['actualiser']}
                     </button>
-                    {!publicRequest && (
-                      <button
-                        type="button"
-                        aria-pressed={!quoteConfig.trafficOff}
-                        className={quoteConfig.trafficOff ? '' : 'selected'}
-                        onClick={() =>
-                          setQuoteConfig((current) => ({
-                            ...current,
-                            trafficOff: !current.trafficOff,
-                          }))
-                        }
-                      >
-                        {quoteConfig.trafficOff
-                          ? 'Embouteillages : ignorés'
-                          : 'Embouteillages : pris en compte'}
-                      </button>
-                    )}
                   </div>
                 )}
                 {draft.route && previewTier === 3 && (
@@ -805,7 +790,11 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             }
             heatOff={quoteConfig.heatOff}
             heatRest={quoteConfig.heatRest}
-            onHeatChange={(value) => setQuoteConfig((current) => ({ ...current, ...value }))}
+            onHeatChange={
+              publicRequest
+                ? undefined
+                : (value) => setQuoteConfig((current) => ({ ...current, ...value }))
+            }
             audience={publicRequest ? 'client' : 'admin'}
             referenceMode={publicRequest}
             labourPriceEditor={
@@ -848,6 +837,25 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
               answers={draft.questionnaireAnswers}
               open={questionnaireOpen}
               onToggle={() => setQuestionnaireOpen((value) => !value)}
+              onNavigate={(step) => {
+                if (step === 1 || step === 4)
+                  setOpenQuoteSections((current) => ({ ...current, client: true }));
+                if (step === 2 || step === 5)
+                  setOpenQuoteSections((current) => ({ ...current, route: true }));
+                const target = [
+                  '#admin-quote-client-fields',
+                  '#admin-quote-route-fields',
+                  '.call-inventory',
+                  '.admin-quote-vehicles',
+                  '#admin-quote-option-fields',
+                  '.admin-quote-aside',
+                ][step - 1];
+                window.requestAnimationFrame(() => {
+                  document
+                    .querySelector(target)
+                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+              }}
               onChange={(id, value) =>
                 setDraft((current) => ({
                   ...current,

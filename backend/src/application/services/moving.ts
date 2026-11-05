@@ -8,6 +8,7 @@ import type {
   Options,
   Point,
   QuoteInput,
+  QuotePricingInput,
   User,
   WorkAccess,
   WorkPlanReview,
@@ -795,7 +796,22 @@ export class MovingService implements MovingUseCases {
           })),
         } as const;
       };
-      const pricingInput = latestQuote.pricingInput ?? legacyPricingInput();
+      const pricingInput: QuotePricingInput = latestQuote.pricingInput ?? legacyPricingInput();
+      const rentalOvertimeHourlyRate =
+        pricingInput.rentalOvertimeHourlyRate ??
+        catalogue.settings.rentalOvertimeHourlyRate ??
+        10000;
+      const extraLines = pricingInput.extraLines.filter(
+        (line) => !line.label.startsWith('Dépassement du planning prévisionnel'),
+      );
+      if (pricingInput.billingMode === 'driver-rental' && (pricingInput.overtimeMinutes ?? 0) > 0) {
+        const minutes = pricingInput.overtimeMinutes ?? 0;
+        extraLines.push({
+          label: `Dépassement du planning prévisionnel (${minutes} min, ${rentalOvertimeHourlyRate} FCFA par heure)`,
+          quantity: 1,
+          unitPrice: Math.round((minutes * rentalOvertimeHourlyRate) / 60),
+        });
+      }
       const settings = {
         ...pricingInput.settings,
         maxTrips: Math.max(pricingInput.settings.maxTrips, pricingInput.trips),
@@ -808,14 +824,20 @@ export class MovingService implements MovingUseCases {
         pricingInput.trips,
         pricingInput.customPrice,
         pricingInput.discount,
-        pricingInput.extraLines,
+        extraLines,
         booking.workAccess,
         pricingInput.labourUnitPriceOverride,
         pricingInput.discountType,
         pricingInput.discountReason,
       );
       quotes = quotes.map((quote) =>
-        quote.id === latestQuote.id ? { ...quote, price, pricingInput } : quote,
+        quote.id === latestQuote.id
+          ? {
+              ...quote,
+              price,
+              pricingInput: { ...pricingInput, extraLines, rentalOvertimeHourlyRate },
+            }
+          : quote,
       );
     }
     return this.bookings.update(

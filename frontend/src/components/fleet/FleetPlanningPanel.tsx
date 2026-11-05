@@ -209,7 +209,7 @@ export function FleetPlanningPanel({ model }: { model: Model }) {
           selectedIds: crew[role.id],
         }));
         return (
-          <article className="teams-job" key={booking.id}>
+          <article className="teams-job" key={booking.id} data-booking-id={booking.id}>
             <div className="teams-job-heading">
               <div>
                 <div>

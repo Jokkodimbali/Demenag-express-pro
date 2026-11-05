@@ -64,6 +64,8 @@ export async function createQuote(
     requestedOptions,
     booking.inventorySnapshot?.sourceInventory,
   );
+  const billingMode = input.billingMode ?? 'complete';
+  const pricingOptions = billingMode === 'driver-rental' ? { ...options, labour: 0 } : options;
   const quoteSettings =
     input.kind === 'final'
       ? { ...catalogue.settings, maxTrips: Math.max(catalogue.settings.maxTrips, input.trips) }
@@ -87,15 +89,34 @@ export async function createQuote(
     };
   });
   // Les prix du transport sont ceux du véhicule au moment de la réservation.
+  const overtimeMinutes =
+    billingMode === 'driver-rental' ? Math.max(0, Math.round(input.overtimeMinutes ?? 0)) : 0;
+  const overtimeCharge = Math.round(
+    (overtimeMinutes * (catalogue.settings.rentalOvertimeHourlyRate ?? 10000)) / 60,
+  );
+  const rentalOvertimeHourlyRate = catalogue.settings.rentalOvertimeHourlyRate ?? 10000;
+  const additionalLines = [
+    ...inventoryLines,
+    ...input.extraLines,
+    ...(overtimeCharge > 0
+      ? [
+          {
+            label: `Dépassement du planning prévisionnel (${overtimeMinutes} min, ${rentalOvertimeHourlyRate} FCFA par heure)`,
+            quantity: 1,
+            unitPrice: overtimeCharge,
+          },
+        ]
+      : []),
+  ];
   const price = calculatePrice(
     vehicle,
     quoteSettings,
     booking.distanceKm,
-    options,
+    pricingOptions,
     input.trips,
     input.customPrice,
     input.discount,
-    [...inventoryLines, ...input.extraLines],
+    additionalLines,
     booking.workAccess,
     input.labourUnitPriceOverride,
     input.discountType,
@@ -115,8 +136,12 @@ export async function createQuote(
     createdAt: clock.now().toISOString(),
     price,
     notes: input.notes,
-    options,
+    options: pricingOptions,
     tolls,
+    billingMode,
+    rentalKit: input.rentalKit ?? [],
+    overtimeMinutes,
+    providedCrew: Math.max(0, Math.round(input.providedCrew ?? options.labour)),
     pricingInput: {
       settings: {
         distanceBounds: quoteSettings.distanceBounds,
@@ -133,9 +158,12 @@ export async function createQuote(
       discount: input.discount,
       discountType: input.discountType ?? 'fcfa',
       discountReason: input.discountReason ?? '',
-      options,
+      options: pricingOptions,
       labourUnitPriceOverride: input.labourUnitPriceOverride ?? null,
-      extraLines: [...inventoryLines, ...input.extraLines],
+      extraLines: additionalLines,
+      billingMode,
+      overtimeMinutes,
+      rentalOvertimeHourlyRate,
     },
     ...(input.kind === 'final'
       ? { accountingCosts: captureAccountingCosts(booking, price, accountingConfiguration) }

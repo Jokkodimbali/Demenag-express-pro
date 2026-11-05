@@ -282,6 +282,173 @@
   background: var(--yellow);
   color: #1e2023;
 }
+.admin-reference-navigation {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 100%;
+}
+.admin-tab-groups {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 14px;
+}
+.admin-tab-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.admin-tab-group > span {
+  padding-left: 4px;
+  color: #aeb4bb;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+.admin-tab-group .admin-tabs {
+  flex-wrap: wrap;
+  width: fit-content;
+  padding: 4px;
+  overflow: visible;
+}
+.admin-tab-group .admin-tabs a {
+  min-height: 44px;
+}
+.admin-global-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.admin-global-search {
+  position: relative;
+  flex: 1 1 260px;
+  min-width: 0;
+}
+.admin-global-search input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #3b4046;
+  border-radius: 10px;
+  background: #1e2023;
+  color: #fff;
+  font-size: 15px;
+}
+.admin-global-results {
+  position: absolute;
+  z-index: 1600;
+  top: calc(100% + 6px);
+  right: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 360px;
+  overflow-y: auto;
+  gap: 2px;
+  padding: 6px;
+  border: 1px solid #3b4046;
+  border-radius: 12px;
+  background: #272a2e;
+  box-shadow: 0 10px 30px #0008;
+}
+.admin-global-results button {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+.admin-global-results button:hover {
+  background: #30343a;
+}
+.admin-global-results small,
+.admin-global-results > span {
+  color: #aeb4bb;
+}
+.admin-new-quote {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 10px;
+  background: #f6d73c;
+  color: #1e2023;
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.admin-todo {
+  position: relative;
+}
+.admin-todo-toggle {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1.5px solid #4a5057;
+  border-radius: 10px;
+  background: transparent;
+  color: #d5d9de;
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.admin-todo-panel {
+  position: absolute;
+  z-index: 1600;
+  top: calc(100% + 6px);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  width: min(360px, 88vw);
+  max-height: 420px;
+  overflow-y: auto;
+  gap: 2px;
+  padding: 8px;
+  border: 1px solid #3b4046;
+  border-radius: 12px;
+  background: #272a2e;
+  box-shadow: 0 10px 30px #0008;
+}
+.admin-todo-panel > button:not(.admin-todo-mark) {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+.admin-todo-panel > button:not(.admin-todo-mark):hover {
+  background: #30343a;
+}
+.admin-todo-panel small,
+.admin-todo-panel > span {
+  color: #aeb4bb;
+}
+.admin-todo-mark {
+  min-height: 40px;
+  border: 0;
+  border-top: 1px solid #3b4046;
+  background: transparent;
+  color: #aeb4bb;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
 .admin-reference-reservation-toolbar {
   display: flex;
   align-items: center;
@@ -760,6 +927,18 @@
   text-decoration: underline;
   cursor: pointer;
 }
+.admin-reservation-team {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1.5px solid #4a5057;
+  border-radius: 9px;
+  background: transparent;
+  color: #f6d73c;
+  font-size: 12.5px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
 .admin-reservation-delete:hover {
   color: #ff9a9d;
 }
@@ -881,4 +1060,90 @@
   border-color: var(--yellow);
   color: var(--yellow);
   background: #f6d73c0b;
+}
+.reference-invoice-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.reference-invoice-fields > label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: #aeb4bb;
+  font-size: 12px;
+  font-weight: 700;
+}
+.reference-invoice-fields input,
+.reference-invoice-fields textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #3b4046;
+  border-radius: 10px;
+  background: #1e2023;
+  padding: 11px 12px;
+  color: #fff;
+  font: inherit;
+}
+.reference-rental-kit-settings {
+  display: grid;
+  gap: 10px;
+}
+.reference-rental-kit-settings > div {
+  display: grid;
+  grid-template-columns: minmax(160px, 1.5fr) minmax(170px, 1fr) minmax(90px, 0.55fr) minmax(150px, 1fr) minmax(150px, 1fr);
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #3b4046;
+  border-radius: 10px;
+  background: #1e2023;
+}
+.reference-rental-kit-settings label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  color: #aeb4bb;
+  font-size: 11px;
+  font-weight: 700;
+}
+.reference-rental-kit-settings input,
+.reference-rental-kit-settings select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 9px;
+  border: 1px solid #3b4046;
+  border-radius: 8px;
+  background: #272a2e;
+  color: #fff;
+}
+.reference-rental-kit-settings p {
+  margin: 0;
+  color: #aeb4bb;
+  font-size: 12px;
+}
+.reference-invoice-terms {
+  grid-column: 1 / -1;
+}
+.reference-invoice-fields textarea {
+  min-height: 150px;
+  resize: vertical;
+}
+@media (max-width: 640px) {
+  .reference-invoice-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .reference-invoice-terms {
+    grid-column: auto;
+  }
+  .reference-rental-kit-settings > div {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (min-width: 641px) and (max-width: 1080px) {
+  .reference-rental-kit-settings > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }

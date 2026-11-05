@@ -749,7 +749,7 @@
     if (x1 < 0) return cv.toDataURL('image/jpeg', q || 0.88);
     var pad = Math.round(Math.max(x1 - x0, y1 - y0) * 0.03); x0 = Math.max(0, x0 - pad); y0 = Math.max(0, y0 - pad); x1 = Math.min(w, x1 + pad); y1 = Math.min(hgt, y1 + pad);
     var bw = x1 - x0, bh = y1 - y0, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2; if (bw / bh > aspect) bh = bw / aspect; else bw = bh * aspect;
-    var out = document.createElement('canvas'), OW = 1100; out.width = OW; out.height = Math.round(OW / aspect); var o = out.getContext('2d'); o.fillStyle = '#' + ('00000' + bg.toString(16)).slice(-6); o.fillRect(0, 0, out.width, out.height);
+    var out = document.createElement('canvas'), OW = 820; out.width = OW; out.height = Math.round(OW / aspect); var o = out.getContext('2d'); o.fillStyle = '#' + ('00000' + bg.toString(16)).slice(-6); o.fillRect(0, 0, out.width, out.height);
     o.drawImage(c2, cx - bw / 2, cy - bh / 2, bw, bh, 0, 0, out.width, out.height); return out.toDataURL('image/jpeg', q || 0.88);
   }
   function stepShots(P, ti, opt, key) {
@@ -757,7 +757,7 @@
     if (!window.THREE || !P || !P.trips[ti]) return null; opt = opt || {};
     var el = document.createElement('div'); el.style.cssText = 'position:fixed;left:-12000px;top:0;width:1400px;height:1100px'; document.body.appendChild(el);
     var v = new View(el, {}), out = [];
-    if (v.ok) { v.ghost = false; v.hlLast = true; v.r.setClearColor(opt.bg != null ? opt.bg : 0x1E2023, 1); v.size(); v.load(P.trips[ti], P, opt); v.setView('iso'); var n = P.trips[ti].boxes.length; for (var i = 1; i <= n; i++) { v._step = i; var bi = P.trips[ti].boxes[i - 1]; if (bi) v.focus(bi); v.paint(); v.r.render(v.scene, v.cam); out.push(opt.aspect ? cropShot(v.r.domElement, opt.aspect, opt.bg != null ? opt.bg : 0x1E2023, 0.88) : v.snap(0.85)); } v.dispose(); }
+    if (v.ok) { v.ghost = false; v.hlLast = true; v.r.setClearColor(opt.bg != null ? opt.bg : 0x1E2023, 1); v.size(); v.load(P.trips[ti], P, opt); v.setView('iso'); var n = P.trips[ti].boxes.length; for (var i = 1; i <= n; i++) { v._step = i; var bi = P.trips[ti].boxes[i - 1]; if (bi) v.focus(bi); v.paint(); v.r.render(v.scene, v.cam); out.push(opt.aspect ? cropShot(v.r.domElement, opt.aspect, opt.bg != null ? opt.bg : 0x1E2023, 0.8) : v.snap(0.85)); } v.dispose(); }
     el.remove(); if (key) { var ks = Object.keys(SHOTS); if (ks.length > 12) delete SHOTS[ks[0]]; SHOTS[key] = out; } return out;
   }
   function view(el, opts) {

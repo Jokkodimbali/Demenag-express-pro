@@ -5,13 +5,16 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { money } from '../domain/format';
 import type { Booking } from '../domain/model';
-import type { Vehicle } from '../../../shared/contracts.js';
+import { downloadPlanningWeekPdf } from '../adapters/pdf';
+import type { Driver, Vehicle } from '../../../shared/contracts.js';
 
 type View = 'day' | 'week' | 'month';
 type CalendarProps = {
   bookings: Booking[];
   vehicles: Vehicle[];
+  employees: Driver[];
   onSelect: (booking: Booking) => void;
+  onCreateAtDay: (date: string, time: string) => void;
 };
 type CalendarEvent = {
   booking: Booking;
@@ -136,7 +139,13 @@ function periodTitle(view: View, day: string, month: Date) {
     .replace(/^./u, (character) => character.toUpperCase());
 }
 
-export function ReferenceCalendar({ bookings, vehicles, onSelect }: CalendarProps) {
+export function ReferenceCalendar({
+  bookings,
+  vehicles,
+  employees,
+  onSelect,
+  onCreateAtDay,
+}: CalendarProps) {
   const { catalogue } = useApp();
   const amount = (booking: Booking) => {
     const total = liveBookingPrice(booking, catalogue).total;
@@ -150,8 +159,26 @@ export function ReferenceCalendar({ bookings, vehicles, onSelect }: CalendarProp
   const [verticalZoom, setVerticalZoom] = useState(2);
   const [horizontalZoom, setHorizontalZoom] = useState(2);
   const [selectedDay, setSelectedDay] = useState(dakarToday);
+  const [vehicleFilter, setVehicleFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [employeeFilter, setEmployeeFilter] = useState('');
+  const [exportError, setExportError] = useState('');
   const today = dakarToday();
   const timelineAnchor = gridAnchor ?? selectedDay ?? today;
+  const filteredBookings = bookings.filter((booking) => {
+    if (vehicleFilter && booking.vehicle.id !== vehicleFilter) return false;
+    if (statusFilter === 'final' && booking.status !== 'completed') return false;
+    if (statusFilter === 'provisional' && booking.status === 'completed') return false;
+    if (employeeFilter) {
+      const crew = [
+        ...(booking.crew?.chauffeur ?? (booking.driverId ? [booking.driverId] : [])),
+        ...(booking.crew?.menuisier ?? []),
+        ...(booking.crew?.manoeuvre ?? []),
+      ];
+      if (!crew.includes(employeeFilter)) return false;
+    }
+    return true;
+  });
   const monthDate = atNoon(monthCursor);
   const month = new Date(monthDate.getUTCFullYear(), monthDate.getUTCMonth(), 1);
   const days = useMemo(() => {
@@ -171,18 +198,18 @@ export function ReferenceCalendar({ bookings, vehicles, onSelect }: CalendarProp
       return iso(day);
     });
   }, [monthDate, timelineAnchor, view]);
-  const periodBookings = bookings.filter((booking) => {
+  const periodBookings = filteredBookings.filter((booking) => {
     if (!booking.date || booking.status === 'cancelled') return false;
     if (view === 'month') return booking.date.slice(0, 7) === monthCursor.slice(0, 7);
     return days.includes(booking.date);
   });
-  const countBookings = bookings.filter((booking) => {
+  const countBookings = filteredBookings.filter((booking) => {
     if (!booking.date || booking.status === 'cancelled') return false;
     if (view === 'month') return booking.date.slice(0, 7) === monthCursor.slice(0, 7);
     return days.includes(booking.date);
   });
   const visibleBookings = periodBookings;
-  const undated = bookings.filter(
+  const undated = filteredBookings.filter(
     (booking) =>
       !booking.date &&
       booking.status !== 'cancelled' &&
@@ -197,10 +224,10 @@ export function ReferenceCalendar({ bookings, vehicles, onSelect }: CalendarProp
     },
     { provisional: 0, final: 0 },
   );
-  const selected = bookings.filter(
+  const selected = filteredBookings.filter(
     (booking) => booking.date === selectedDay && booking.status !== 'cancelled',
   );
-  const timedBookings = bookings
+  const timedBookings = filteredBookings
     .filter(
       (booking) =>
         booking.status !== 'cancelled' &&
@@ -268,7 +295,7 @@ export function ReferenceCalendar({ bookings, vehicles, onSelect }: CalendarProp
   }
 
   function getDayEvents(day: string) {
-    const events: CalendarEvent[] = bookings
+    const events: CalendarEvent[] = filteredBookings
       .filter(
         (booking) =>
           booking.status !== 'cancelled' &&
@@ -350,6 +377,94 @@ export function ReferenceCalendar({ bookings, vehicles, onSelect }: CalendarProp
             {uiText['aujourdHui']}
           </button>
         </header>
+        <div className="reference-calendar-toolbar">
+          <label className="reference-calendar-date">
+            <span className="visually-hidden">Aller à une date</span>
+            <input
+              type="date"
+              value={timelineAnchor}
+              title="Aller à une date"
+              onChange={(event) => {
+                const next = event.currentTarget.value;
+                if (next) setCurrentDay(next);
+              }}
+            />
+          </label>
+          <button
+            type="button"
+            className="reference-calendar-export"
+            onClick={() => {
+              setExportError('');
+              void downloadPlanningWeekPdf(
+                filteredBookings,
+                employees,
+                timelineAnchor,
+                Boolean(vehicleFilter || statusFilter || employeeFilter),
+              ).catch(() => setExportError('Le PDF de la semaine n’a pas pu être généré.'));
+            }}
+          >
+            PDF de la semaine
+          </button>
+        </div>
+        <div className="reference-calendar-filters">
+          <label>
+            <span className="visually-hidden">Filtrer par véhicule</span>
+            <select
+              value={vehicleFilter}
+              onChange={(event) => setVehicleFilter(event.currentTarget.value)}
+            >
+              <option value="">Tous les véhicules</option>
+              {vehicles.map((vehicle) => (
+                <option key={vehicle.id} value={vehicle.id}>
+                  {vehicle.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span className="visually-hidden">Filtrer par statut</span>
+            <select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.currentTarget.value)}
+            >
+              <option value="">Provisoire et final</option>
+              <option value="provisional">Provisoire</option>
+              <option value="final">Final</option>
+            </select>
+          </label>
+          <label>
+            <span className="visually-hidden">Filtrer par employé</span>
+            <select
+              value={employeeFilter}
+              onChange={(event) => setEmployeeFilter(event.currentTarget.value)}
+            >
+              <option value="">Tous les employés</option>
+              {employees.map((employee) => (
+                <option key={employee.id} value={employee.id}>
+                  {employee.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          {(vehicleFilter || statusFilter || employeeFilter) && (
+            <button
+              type="button"
+              className="reference-calendar-clear-filters"
+              onClick={() => {
+                setVehicleFilter('');
+                setStatusFilter('');
+                setEmployeeFilter('');
+              }}
+            >
+              Effacer les filtres
+            </button>
+          )}
+        </div>
+        {exportError && (
+          <p className="reference-calendar-export-error" role="alert">
+            {exportError}
+          </p>
+        )}
         <div className="reference-calendar-toolbar">
           <div className="reference-calendar-views">
             {(['day', 'week', 'month'] as const).map((value) => (
@@ -469,7 +584,7 @@ export function ReferenceCalendar({ bookings, vehicles, onSelect }: CalendarProp
               </strong>
             ))}
             {days.map((day) => {
-              const dayBookings = bookings.filter(
+              const dayBookings = filteredBookings.filter(
                 (booking) => booking.date === day && booking.status !== 'cancelled',
               );
               const sameMonth = day.slice(0, 7) === monthCursor.slice(0, 7);
@@ -559,7 +674,7 @@ export function ReferenceCalendar({ bookings, vehicles, onSelect }: CalendarProp
             >
               <div className="reference-time-grid-corner" />
               {days.map((day) => {
-                const dayBookings = bookings.filter(
+                const dayBookings = filteredBookings.filter(
                   (booking) => booking.date === day && booking.status !== 'cancelled',
                 );
                 const dayTotals = dayBookings.reduce(
@@ -624,7 +739,21 @@ export function ReferenceCalendar({ bookings, vehicles, onSelect }: CalendarProp
                   className={`reference-time-grid-column ${day === today ? 'today' : ''}`}
                   key={day}
                   style={{ height: `${dayHeight * rowHeight}px` }}
-                  onClick={() => setSelectedDay(day)}
+                  onClick={(event) => {
+                    setSelectedDay(day);
+                    if ((event.target as HTMLElement).closest('[data-calendar-event]')) return;
+                    const bounds = event.currentTarget.getBoundingClientRect();
+                    const minuteOfDay =
+                      Math.round(
+                        (gridStart * 60 + ((event.clientY - bounds.top) / rowHeight) * 60) / 15,
+                      ) * 15;
+                    const hour = Math.floor(minuteOfDay / 60) % 24;
+                    const minute = minuteOfDay % 60;
+                    onCreateAtDay(
+                      day,
+                      `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
+                    );
+                  }}
                 >
                   {Array.from({ length: dayHeight + 1 }, (_, index) => gridStart + index).map(
                     (hour) => (
@@ -655,6 +784,7 @@ export function ReferenceCalendar({ bookings, vehicles, onSelect }: CalendarProp
                       return (
                         <button
                           type="button"
+                          data-calendar-event
                           key={`${booking.id}-${vehicleLane}-${lane}`}
                           className={`reference-time-event ${quote} ${range.estimated ? 'estimated' : ''}`}
                           style={{
@@ -712,6 +842,13 @@ export function ReferenceCalendar({ bookings, vehicles, onSelect }: CalendarProp
             year: 'numeric',
           }).replace(/^./u, (c) => c.toUpperCase())}
         </strong>
+        <button
+          type="button"
+          className="reference-calendar-create"
+          onClick={() => onCreateAtDay(selectedDay, '08:00')}
+        >
+          + Nouveau RDV ce jour
+        </button>
         {selected.length === 0 ? (
           <span>{uiText['aucunRendezVousCeJour']}</span>
         ) : (

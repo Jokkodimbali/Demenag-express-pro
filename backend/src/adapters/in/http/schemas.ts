@@ -336,6 +336,20 @@ export const quoteSchema = z.object({
     .default([]),
   options: optionsSchema.optional(),
   version: z.number().int().positive(),
+  billingMode: z.enum(['complete', 'driver-rental']).default('complete'),
+  rentalKit: z
+    .array(
+      z.object({
+        id: z.string().trim().min(1).max(80),
+        label: z.string().trim().min(1).max(200),
+        quantity: z.number().int().min(0).max(10000),
+        image: z.string().max(2000).optional(),
+      }),
+    )
+    .max(100)
+    .default([]),
+  overtimeMinutes: z.number().int().min(0).max(100000).default(0),
+  providedCrew: z.number().int().min(0).max(100).default(0),
 });
 export const driverAvailabilitySchema = z
   .array(
@@ -578,6 +592,33 @@ export const catalogueSchema = z.object({
       ),
     businessName: z.string().trim().min(2).max(100),
     businessAddress: z.string().trim().min(2).max(300),
+    businessEmail: z.string().trim().max(200).default(''),
+    businessNinea: z.string().trim().max(100).default(''),
+    businessRccm: z.string().trim().max(100).default(''),
+    quoteValidityDays: z.number().int().min(0).max(365).default(15),
+    bookingDepositPercent: z.number().int().min(0).max(100).default(0),
+    quoteTerms: z.string().max(10000).default(''),
+    rentalOvertimeHourlyRate: z.number().int().min(0).max(10000000).default(10000),
+    rentalKitConfiguration: z
+      .array(
+        z.object({
+          id: z.string().trim().min(1).max(80),
+          label: z.string().trim().min(1).max(200),
+          rule: z.enum([
+            'vehicle',
+            'one',
+            'blankets',
+            'liftingStraps',
+            'gloves',
+            'tieDownStraps',
+            'fixed',
+          ]),
+          quantity: z.number().int().min(0).max(10000).optional(),
+          image: z.string().max(3000000).optional(),
+        }),
+      )
+      .max(100)
+      .default([]),
     invoiceFooter: z.string().trim().min(2).max(500),
     tiktokUrl: socialUrlSchema,
     facebookUrl: socialUrlSchema,

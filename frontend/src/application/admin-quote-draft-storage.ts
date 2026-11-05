@@ -1,4 +1,5 @@
 import type { Draft } from './booking-draft';
+import type { RentalKitItem } from '../domain/model';
 
 export type AdminQuoteConfig = {
   trips: number;
@@ -12,6 +13,9 @@ export type AdminQuoteConfig = {
   discountReason: string;
   customPrice: number | null;
   labourUnitPriceOverride: number | null;
+  billingMode: 'complete' | 'driver-rental';
+  overtimeMinutes: number;
+  rentalKit: RentalKitItem[] | null;
 };
 
 export type AdminQuoteDraft = {
@@ -43,6 +47,13 @@ export function readAdminQuoteDraft(): AdminQuoteDraft | null {
         labourUnitPriceOverride: parsed.quoteConfig.labourUnitPriceOverride ?? null,
         discountType: parsed.quoteConfig.discountType ?? 'fcfa',
         discountReason: parsed.quoteConfig.discountReason ?? '',
+        billingMode:
+          parsed.quoteConfig.billingMode === 'driver-rental' ? 'driver-rental' : 'complete',
+        overtimeMinutes: Math.max(0, Number(parsed.quoteConfig.overtimeMinutes) || 0),
+        rentalKit:
+          parsed.quoteConfig.rentalKit === null || Array.isArray(parsed.quoteConfig.rentalKit)
+            ? parsed.quoteConfig.rentalKit
+            : null,
       },
       draft: {
         ...parsed.draft,
@@ -141,6 +152,20 @@ function isAdminQuoteDraft(value: unknown): value is AdminQuoteDraft {
     (config.labourUnitPriceOverride === undefined ||
       config.labourUnitPriceOverride === null ||
       (Number.isInteger(config.labourUnitPriceOverride) && config.labourUnitPriceOverride > 0)) &&
+    (config.billingMode === undefined ||
+      ['complete', 'driver-rental'].includes(config.billingMode)) &&
+    (config.overtimeMinutes === undefined ||
+      (Number.isInteger(config.overtimeMinutes) && config.overtimeMinutes >= 0)) &&
+    (config.rentalKit === undefined ||
+      config.rentalKit === null ||
+      (Array.isArray(config.rentalKit) &&
+        config.rentalKit.every(
+          (item) =>
+            typeof item.id === 'string' &&
+            typeof item.label === 'string' &&
+            Number.isInteger(item.quantity) &&
+            item.quantity >= 0,
+        ))) &&
     Array.isArray(saved.tollLines) &&
     saved.tollLines.every(
       (line) =>

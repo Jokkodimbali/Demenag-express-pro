@@ -66,6 +66,64 @@
   gap: 8px;
   flex-wrap: wrap;
 }
+.reference-calendar-date input,
+.reference-calendar-filters select {
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid #3b4046;
+  border-radius: 10px;
+  outline: none;
+  background: #1e2023;
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color-scheme: dark;
+}
+.reference-calendar-toolbar:first-of-type {
+  justify-content: space-between;
+}
+.reference-calendar-export {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1.5px solid #4a5057;
+  border-radius: 10px;
+  background: transparent;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.reference-calendar-filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.reference-calendar-filters label {
+  flex: 1 1 170px;
+  min-width: 0;
+}
+.reference-calendar-filters select {
+  width: 100%;
+}
+.reference-calendar-clear-filters {
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: #f6d73c;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.reference-calendar-export-error {
+  margin: 0;
+  color: #ff8f8f;
+  font-size: 13px;
+}
 .reference-calendar-views {
   gap: 4px;
   padding: 3px;
@@ -441,7 +499,23 @@
   font-weight: 700;
 }
 .reference-time-grid-column {
+  overflow: hidden;
   border-left: 1px solid #30343a;
+}
+.reference-time-create {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  z-index: 3;
+  min-height: 30px;
+  padding: 0 9px;
+  border: 1px solid #4a5057;
+  border-radius: 8px;
+  background: #272a2e;
+  color: #ffd23f;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
 }
 .reference-time-grid-column.today {
   background: #212428;
@@ -504,6 +578,17 @@
 }
 .reference-calendar-selected > strong {
   font-size: 15px;
+}
+.reference-calendar-create {
+  align-self: flex-start;
+  min-height: 40px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 9px;
+  background: #f6d73c;
+  color: #1e2023;
+  font-weight: 800;
+  cursor: pointer;
 }
 .reference-calendar-selected > span {
   color: #aeb4bb;

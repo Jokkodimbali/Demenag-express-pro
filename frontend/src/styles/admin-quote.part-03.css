@@ -590,6 +590,21 @@
   align-items: center;
   pointer-events: none;
 }
+.questionnaire-backdrop {
+  display: none;
+}
+@media (max-width: 1099px) {
+  .questionnaire-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1199;
+    width: 100%;
+    border: 0;
+    background: #0008;
+    cursor: pointer;
+  }
+}
 .questionnaire-tab {
   pointer-events: auto;
   writing-mode: vertical-rl;
@@ -723,6 +738,27 @@
   border: 0;
   background: transparent;
   color: #fff;
+  cursor: pointer;
+}
+.questionnaire-group-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.questionnaire-group-heading .questionnaire-group-toggle {
+  flex: 1;
+  min-width: 0;
+}
+.questionnaire-step-link {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 0 9px;
+  border: 1px solid #4a5057;
+  border-radius: 8px;
+  background: transparent;
+  color: #f6d73c;
+  font-size: 11.5px;
+  font-weight: 800;
   cursor: pointer;
 }
 .questionnaire-group-toggle > span {
@@ -906,4 +942,121 @@
     right: 14px;
     bottom: max(14px, env(safe-area-inset-bottom));
   }
+}
+.admin-quote-rental {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #3b4046;
+  border-radius: 12px;
+  background: #1e2023;
+}
+.admin-quote-rental-heading,
+.admin-quote-rental-overtime {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.admin-quote-rental-heading strong {
+  flex: 1;
+  color: #fff;
+  font-size: 15px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.admin-quote-rental-heading button {
+  border: 0;
+  background: transparent;
+  color: #f6d73c;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.admin-quote-rental-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  border-bottom: 1px solid #30343a;
+  color: #fff;
+  font-size: 13px;
+}
+.admin-quote-rental-item img {
+  width: 40px;
+  height: 34px;
+  flex: 0 0 auto;
+  border-radius: 6px;
+  background: #fff;
+  object-fit: contain;
+}
+.admin-quote-rental-item > span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.admin-quote-rental-item button,
+.admin-quote-rental-overtime button {
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid #3b4046;
+  border-radius: 8px;
+  background: #272a2e;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+.admin-quote-rental-item button:disabled,
+.admin-quote-rental-overtime button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.admin-quote-rental-item > strong {
+  min-width: 22px;
+  color: #f6d73c;
+  text-align: center;
+}
+.admin-quote-rental-add {
+  display: flex;
+  gap: 8px;
+}
+.admin-quote-rental-add input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 11px;
+  border: 1px solid #3b4046;
+  border-radius: 9px;
+  background: #272a2e;
+  color: #fff;
+}
+.admin-quote-rental-add button {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 9px;
+  background: #f6d73c;
+  color: #1e2023;
+  font-weight: 800;
+  cursor: pointer;
+}
+.admin-quote-rental-overtime > span {
+  flex: 1 0 100%;
+  color: #aeb4bb;
+  font-size: 12px;
+}
+.admin-quote-rental-overtime > strong {
+  color: #f6d73c;
+  white-space: nowrap;
+}
+.admin-quote-rental-overtime > strong:first-child {
+  flex: 1 0 100%;
+  padding: 9px 11px;
+  border-radius: 10px;
+  background: #f6d73c;
+  color: #1e2023;
+  font-size: 12.5px;
+  line-height: 1.45;
+  white-space: normal;
 }

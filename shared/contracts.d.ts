@@ -157,6 +157,14 @@ export type Settings = BookingRules & {
   whatsappProvisionalTemplate?: string;
   businessName: string;
   businessAddress: string;
+  businessEmail?: string;
+  businessNinea?: string;
+  businessRccm?: string;
+  quoteValidityDays?: number;
+  bookingDepositPercent?: number;
+  quoteTerms?: string;
+  rentalOvertimeHourlyRate?: number;
+  rentalKitConfiguration?: RentalKitConfigurationItem[];
   invoiceFooter: string;
   tiktokUrl: string | null;
   facebookUrl: string | null;
@@ -360,6 +368,20 @@ export type Quote = {
     carpenters: number;
     carpenterAmount: number;
   };
+  billingMode?: 'complete' | 'driver-rental';
+  rentalKit?: RentalKitItem[];
+  overtimeMinutes?: number;
+  providedCrew?: number;
+};
+export type RentalKitItem = { id: string; label: string; quantity: number; image?: string };
+export type RentalKitRule =
+  'vehicle' | 'one' | 'blankets' | 'liftingStraps' | 'gloves' | 'tieDownStraps' | 'fixed';
+export type RentalKitConfigurationItem = {
+  id: string;
+  label: string;
+  rule: RentalKitRule;
+  quantity?: number;
+  image?: string;
 };
 export type QuotePricingSettings = Pick<
   Settings,
@@ -382,6 +404,9 @@ export type QuotePricingInput = {
   options: Options;
   labourUnitPriceOverride: number | null;
   extraLines: Array<{ label: string; quantity: number; unitPrice: number }>;
+  billingMode?: 'complete' | 'driver-rental';
+  overtimeMinutes?: number;
+  rentalOvertimeHourlyRate?: number;
 };
 export type QuoteTollLine = {
   tollPointId: string;
@@ -474,4 +499,8 @@ export type QuoteInput = {
   }>;
   options?: Options;
   version: number;
+  billingMode?: 'complete' | 'driver-rental';
+  rentalKit?: RentalKitItem[];
+  overtimeMinutes?: number;
+  providedCrew?: number;
 };

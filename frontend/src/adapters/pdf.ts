@@ -1,7 +1,168 @@
 import { messages } from '../content/fr';
 import { dateLabel, money, referenceTierLabels } from '../domain/format';
 import { referenceInventoryNote } from '../domain/reference-inventory-note';
-import type { Booking, Quote, Settings } from '../domain/model';
+import type { Booking, Driver, Quote, Settings } from '../domain/model';
+
+export async function downloadPlanningWeekPdf(
+  bookings: Booking[],
+  drivers: Driver[],
+  anchor: string,
+  filtersApplied = false,
+): Promise<void> {
+  const { jsPDF } = await import('jspdf');
+  const date = new Date(`${anchor}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7));
+  const start = date.toISOString().slice(0, 10);
+  const days = Array.from({ length: 7 }, (_, index) => {
+    const day = new Date(`${start}T12:00:00Z`);
+    day.setUTCDate(day.getUTCDate() + index);
+    return day.toISOString().slice(0, 10);
+  });
+  const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
+  const margin = 14;
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageBottom = pdf.internal.pageSize.getHeight() - 12;
+  const clean = (value: string) =>
+    value
+      .normalize('NFC')
+      .replace(/[\u2009\u202f\u00a0\u2007]/gu, ' ')
+      .replace(/[’‘]/gu, "'")
+      .replace(/→/gu, '>')
+      .replace(/[–—]/gu, '-')
+      .replace(/œ/gu, 'oe')
+      .replace(/Œ/gu, 'OE');
+  const dayLabel = (value: string) =>
+    new Date(`${value}T12:00:00Z`).toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      timeZone: 'Africa/Dakar',
+    });
+  const timeRangeFor = (booking: Booking) => {
+    const first =
+      booking.inventorySnapshot?.startTime ||
+      booking.workPlan?.[0]?.time ||
+      booking.timeSlot.match(/\b\d{1,2}:\d{2}\b/u)?.[0] ||
+      '08:00';
+    const [hours, minutes] = first.split(':').map(Number);
+    const from = (hours ?? 8) * 60 + (minutes ?? 0);
+    const end = booking.inventorySnapshot?.endTime;
+    const [endHours, endMinutes] = end?.split(':').map(Number) ?? [];
+    const explicitEnd = end ? (endHours ?? 0) * 60 + (endMinutes ?? 0) : 0;
+    const plannedDuration =
+      booking.inventorySnapshot?.totalMinutes ??
+      booking.workPlan?.reduce((total, step) => total + step.minutes, 0) ??
+      0;
+    const toMinutes = (value: number) =>
+      `${String(Math.floor((value % 1440) / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`;
+    const to =
+      explicitEnd > from
+        ? explicitEnd
+        : explicitEnd && explicitEnd <= from
+          ? explicitEnd + 1440
+          : plannedDuration
+            ? from + plannedDuration
+            : from + 240;
+    return `${toMinutes(from)} - ${toMinutes(to)}${to > 1440 ? ' (lendemain)' : ''}`;
+  };
+  const employees = new Map(drivers.map((driver) => [driver.id, driver.name]));
+  const cellX = [margin, margin + 28, margin + 52, margin + 112, margin + 138, margin + 200];
+  const cellWidths = [27, 23, 58, 25, 60, pageWidth - margin - (margin + 200)];
+  let y = 16;
+  const logo = await assetDataUrl('/assets/logo.png').catch(() => '');
+  if (logo) {
+    pdf.addImage(logo, logo.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG', margin, y - 5, 13, 13);
+  }
+  const titleX = logo ? margin + 17 : margin;
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(15);
+  pdf.setTextColor(30, 32, 35);
+  pdf.text(clean('Planning de la semaine'), titleX, y);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(9.5);
+  pdf.setTextColor(90, 97, 104);
+  pdf.text(
+    clean(
+      `Du ${dayLabel(days[0] ?? start)} au ${dayLabel(days[6] ?? start)}${filtersApplied ? ' - filtres appliqués' : ''}`,
+    ),
+    titleX,
+    y + 6,
+  );
+  y += 15;
+  pdf.setFillColor(30, 32, 35);
+  pdf.rect(margin, y, pageWidth - margin * 2, 0.7, 'F');
+  y += 8;
+
+  for (const day of days) {
+    const rows = bookings
+      .filter((booking) => booking.date === day && booking.status !== 'cancelled')
+      .sort((left, right) => timeRangeFor(left).localeCompare(timeRangeFor(right)));
+    if (y > pageBottom - 10) {
+      pdf.addPage();
+      y = 16;
+    }
+    pdf.setFillColor(30, 32, 35);
+    pdf.rect(margin, y - 4.6, pageWidth - margin * 2, 7, 'F');
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(10);
+    pdf.setTextColor(255, 255, 255);
+    pdf.text(
+      clean(dayLabel(day).replace(/^./u, (character) => character.toUpperCase())),
+      margin + 3,
+      y,
+    );
+    pdf.setTextColor(246, 215, 60);
+    pdf.text(clean(`${rows.length} rendez-vous`), pageWidth - margin - 3, y, { align: 'right' });
+    y += 7;
+    if (rows.length === 0) {
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(9);
+      pdf.setTextColor(120, 126, 134);
+      pdf.text(clean('Aucun rendez-vous.'), margin + 3, y);
+      y += 7;
+      continue;
+    }
+    for (let index = 0; index < rows.length; index += 1) {
+      const booking = rows[index];
+      if (!booking) continue;
+      const crewIds = [
+        ...(booking.crew?.chauffeur ?? (booking.driverId ? [booking.driverId] : [])),
+        ...(booking.crew?.menuisier ?? []),
+        ...(booking.crew?.manoeuvre ?? []),
+      ];
+      const cells = [
+        timeRangeFor(booking),
+        booking.reference,
+        `${booking.customerName}${booking.phone ? ` - ${booking.phone}` : ''}`,
+        booking.vehicle.name.match(/sprinter|trafic|master/iu)?.[0] ?? booking.vehicle.name,
+        crewIds.map((id) => employees.get(id) ?? '?').join(', ') || 'Sans équipe',
+        `${booking.fromAddress || '-'} > ${booking.toAddress || '-'}`,
+      ];
+      pdf.setFontSize(9);
+      const lines = cells.map(
+        (text, cellIndex) =>
+          pdf.splitTextToSize(clean(text), cellWidths[cellIndex] ?? 20) as string[],
+      );
+      const rowHeight = Math.max(...lines.map((line) => line.length)) * 4 + 2.6;
+      if (y + rowHeight > pageBottom) {
+        pdf.addPage();
+        y = 16;
+      }
+      if (index % 2) {
+        pdf.setFillColor(246, 247, 248);
+        pdf.rect(margin, y - 3.6, pageWidth - margin * 2, rowHeight, 'F');
+      }
+      lines.forEach((line, cellIndex) => {
+        pdf.setFont('helvetica', cellIndex < 2 ? 'bold' : 'normal');
+        pdf.setTextColor(30, 32, 35);
+        pdf.text(line, (cellX[cellIndex] ?? margin) + 2, y);
+      });
+      y += rowHeight;
+    }
+    y += 4;
+  }
+  pdf.save(clean(`Planning-semaine-${start}.pdf`));
+}
 
 function notesForPdf(value: string): string {
   const lines = value.trim().split(/\r?\n/);
@@ -184,6 +345,13 @@ export async function downloadQuote(
     100,
     8,
   );
+  const legalDetails = [
+    settings.businessEmail,
+    settings.businessNinea ? `NINEA ${settings.businessNinea}` : '',
+    settings.businessRccm ? `RCCM ${settings.businessRccm}` : '',
+  ].filter(Boolean);
+  if (legalDetails.length)
+    paragraph(legalDetails.join('  ·  '), margin + 22, y + 18, 100, 7.5, false, [92, 99, 106]);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(18);
   doc.setTextColor(35, 37, 40);
@@ -363,10 +531,68 @@ export async function downloadQuote(
     y += 3;
   }
   const explanation =
-    documentQuote?.kind === 'final'
-      ? messages.montantEtabliSurLaBaseDuNombreReel
-      : `Devis temporaire, calculé sur ${price.trips} aller(s)-retour(s) estimé(s). Le transport est facturé par aller-retour effectué ; le devis final, basé sur le nombre réel d'allers-retours, sera envoyé par Demenag Express à la fin du déménagement.`;
+    documentQuote?.billingMode === 'driver-rental'
+      ? `Location avec chauffeur : les manœuvres sont fournies et encadrées par le client. Le montant comprend le transport et les prestations de montage sélectionnées${documentQuote.providedCrew ? ` ; ${documentQuote.providedCrew} manœuvre(s) sont à prévoir côté client` : ''}.`
+      : documentQuote?.kind === 'final'
+        ? messages.montantEtabliSurLaBaseDuNombreReel
+        : `Devis temporaire, calculé sur ${price.trips} aller(s)-retour(s) estimé(s). Le transport est facturé par aller-retour effectué ; le devis final, basé sur le nombre réel d'allers-retours, sera envoyé par Demenag Express à la fin du déménagement.`;
   y = paragraph(explanation, margin, y, contentWidth, 8.5, false, [92, 99, 106]);
+  if (documentQuote?.billingMode === 'driver-rental') {
+    const hourlyRate =
+      documentQuote.pricingInput?.rentalOvertimeHourlyRate ??
+      settings.rentalOvertimeHourlyRate ??
+      10000;
+    const plannedEnd = booking.inventorySnapshot?.endTime;
+    y = paragraph(
+      `${plannedEnd ? `Fin prévue à ${plannedEnd}. ` : ''}Chaque minute de dépassement jusqu’à la fin du déchargement est facturée ${pdfMoney(Math.round(hourlyRate / 60))} par minute (${pdfMoney(hourlyRate)} par heure).`,
+      margin,
+      y,
+      contentWidth,
+      8,
+      false,
+      [92, 99, 106],
+    );
+  }
+  const validityDays = settings.quoteValidityDays ?? 15;
+  if (documentQuote?.kind !== 'final' && validityDays > 0) {
+    const expiry = new Date(
+      `${booking.date || dateLabel(new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Dakar' }).format(new Date()))}T12:00:00Z`,
+    );
+    expiry.setUTCDate(expiry.getUTCDate() + validityDays);
+    y = paragraph(
+      `Devis valable ${validityDays} jours${Number.isNaN(expiry.getTime()) ? '' : ` · jusqu’au ${expiry.toLocaleDateString('fr-FR', { timeZone: 'Africa/Dakar' })}`}.`,
+      margin,
+      y,
+      contentWidth,
+      8,
+      false,
+      [92, 99, 106],
+    );
+  }
+  const depositPercent = settings.bookingDepositPercent ?? 0;
+  if (depositPercent > 0)
+    y = paragraph(
+      `Acompte à la réservation (${depositPercent} %) : ${money(Math.round(((price.total ?? 0) * depositPercent) / 100))}.`,
+      margin,
+      y,
+      contentWidth,
+      8,
+      false,
+      [92, 99, 106],
+    );
+  const terms = settings.quoteTerms?.trim();
+  if (terms) {
+    ensureSpace(12);
+    y = paragraph('Conditions générales', margin, y + 2, contentWidth, 9, true);
+    for (const line of terms.split(/\r?\n/u)) {
+      if (!line.trim()) {
+        y += 2;
+        continue;
+      }
+      ensureSpace(8);
+      y = paragraph(line, margin, y, contentWidth, 7.5, false, [92, 99, 106]);
+    }
+  }
   ensureSpace(12);
   if (settings.invoiceFooter)
     y = paragraph(settings.invoiceFooter, margin, y + 2, contentWidth, 8, false, [92, 99, 106]);
@@ -542,6 +768,102 @@ export async function downloadQuote(
       9,
       false,
       [90, 97, 104],
+    );
+  }
+
+  if (documentQuote?.billingMode === 'driver-rental') {
+    doc.addPage();
+    y = 18;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(30, 32, 35);
+    doc.text('LOCATION AVEC CHAUFFEUR · MATÉRIEL FOURNI', margin, y);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(90, 97, 104);
+    doc.text(
+      clean(
+        `${documentQuote.reference} · ${booking.customerName} · ${booking.vehicle.shortName || booking.vehicle.name}`,
+      ),
+      right,
+      y,
+      { align: 'right' },
+    );
+    y += 5;
+    doc.setDrawColor(35, 38, 41);
+    doc.setLineWidth(0.4);
+    doc.line(margin, y, right, y);
+    y += 10;
+    y = paragraph(
+      `Vous fournissez ${documentQuote.providedCrew ?? 0} manœuvre(s). Le chauffeur et le matériel indiqué ci-dessous sont fournis par Demenag Express.`,
+      margin,
+      y,
+      contentWidth,
+      9,
+      false,
+      [90, 97, 104],
+    );
+    const kit = documentQuote.rentalKit ?? [];
+    const columns = 3;
+    const gap = 5;
+    const tileWidth = (contentWidth - gap * (columns - 1)) / columns;
+    const tileHeight = 48;
+    for (let row = 0; row < Math.ceil(kit.length / columns); row++) {
+      ensureSpace(tileHeight + 6);
+      const top = y;
+      for (let column = 0; column < columns; column++) {
+        const item = kit[row * columns + column];
+        if (!item) continue;
+        const x = margin + column * (tileWidth + gap);
+        doc.setDrawColor(201, 206, 211);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(x, top, tileWidth, tileHeight, 2, 2, 'S');
+        if (item.image) {
+          try {
+            const image = item.image.startsWith('data:image/')
+              ? item.image
+              : await assetDataUrl(item.image);
+            const format = image.startsWith('data:image/jpeg')
+              ? 'JPEG'
+              : image.startsWith('data:image/webp')
+                ? 'WEBP'
+                : 'PNG';
+            const dimensions = doc.getImageProperties(image);
+            const maxWidth = tileWidth - 8;
+            const maxHeight = 27;
+            const scale = Math.min(maxWidth / dimensions.width, maxHeight / dimensions.height);
+            const drawnWidth = dimensions.width * scale;
+            const drawnHeight = dimensions.height * scale;
+            doc.addImage(
+              image,
+              format,
+              x + (tileWidth - drawnWidth) / 2,
+              top + 3,
+              drawnWidth,
+              drawnHeight,
+            );
+          } catch {
+            // Une image manquante ne doit pas bloquer l’export du devis.
+          }
+        }
+        paragraph(`${item.label} · ${item.quantity}`, x + 4, top + 34, tileWidth - 8, 7.5, true);
+      }
+      y += tileHeight + gap;
+    }
+    y += 4;
+    const overtime = documentQuote.overtimeMinutes ?? 0;
+    const overtimeAmount = price.lines
+      .filter((line) => line.label.startsWith('Dépassement du planning'))
+      .reduce((total, line) => total + line.total, 0);
+    doc.setFillColor(247, 248, 249);
+    doc.roundedRect(margin, y, contentWidth, 36, 2, 2, 'F');
+    y = paragraph(
+      `Dépassement déclaré : ${overtime} min · montant calculé : ${pdfMoney(overtimeAmount)}. Tarif : ${pdfMoney(documentQuote.pricingInput?.rentalOvertimeHourlyRate ?? settings.rentalOvertimeHourlyRate ?? 10000)} par heure, proratisé à la minute.`,
+      margin + 5,
+      y + 8,
+      contentWidth - 10,
+      8.5,
+      true,
     );
   }
 

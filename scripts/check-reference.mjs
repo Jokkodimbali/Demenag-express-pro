@@ -3,12 +3,12 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
-const expectedDocument = 'c18cbd892c8a2476e0180d624b3f78b35f10a9db596d2486cb2661903fe4655c';
+const expectedDocument = '327a265997294834c0131b99fd0d0046367a900d1d4a705df68b1639d338c2b9';
 const expectedReferenceScripts = {
   'support.js': '8fe7df74405f3c55f49b7249c74ea1397e65d07dea2b1bd3b4a489bec2e28cbe',
   'image-slot.js': '7fca2b8ffd71fa00e78c1f8ed0ba79bf888293397f9fc51c65a0f07ad6014890',
   'gmaps-plus.js': 'e7c6271beb26d8b6f4f9703be0610177ed65bc4dc390acaec72e8e9006e101c7',
-  'loading-sim.js': 'cbfa72216f2c5d213eb5a44a7d26db27b119d87b2c6a4877b24c01a25be9b3a5',
+  'loading-sim.js': '579e8b57d8019824f42ba31d80b767884fa1999c1fe54e60632ca8550271e48c',
   'equip-art.js': 'ccee26898c273dfdfc36b28f6ba2446a76989763084f463c14610c593412b0d8',
 };
 const expectedAssets = {
@@ -23,6 +23,12 @@ const expectedAssets = {
   'signature.png': '2a26b47766d94bc3ad93205c86e6c5ce6297b7f37e6ebd546a90d288aa643c14',
   'wave-qr.pdf': 'ae72be150b9aa468d65cbedeb3d23e3a035a13f3db1e268030dedd5fd122e913',
   'wave-qr.png': '35b3f6bc0a69e7c415474e84bea5517eb9c5fb62a0ac42c76aa8d6805450b949',
+  'kit-gants.jpg': 'd870679e4bdbb92db1b8c3026e3fb84a5f77d622e7db55daac69ea80410887a5',
+  'kit-sangles-attache.jpg': '2fb02089427bcc60a03b8d8f318d95e98e3d68ff772ea2619aa75cf1daec7906',
+  'kit-sangles-levage.webp': 'b6a6eb1d783041db6ba314ba57cfe62a67c3e8fe9505057b645779592d83ebaf',
+  'kit-serviettes.webp': 'fd954b99097e95920c2385261732a1054a3e566fc12dc8856629513426da4785',
+  'fonts/Inter-Bold.ttf': 'fbe825cbfc749317f57a1433d3905aa9d3f388732fd29b8e8a36f34845e3bc3e',
+  'fonts/Inter-Regular.ttf': 'a414b48aa577ef2c62ebb135341ddeef33ee26a4f5dc9f787f93c1aab08ebb50',
 };
 const digest = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const document = readFileSync(resolve(root, 'reference/Demenag Express.dc.html'));
@@ -30,7 +36,7 @@ if (digest(document) !== expectedDocument)
   throw new Error('Le fichier de référence a été modifié.');
 const references = [
   ...new Set([
-    ...[...document.toString('utf8').matchAll(/assets\/([\w.-]+)/g)].map((match) => match[1]),
+    ...[...document.toString('utf8').matchAll(/assets\/([\w./-]+)/g)].map((match) => match[1]),
     'wave-qr.png',
   ]),
 ];

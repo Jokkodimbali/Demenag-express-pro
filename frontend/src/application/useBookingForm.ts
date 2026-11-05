@@ -11,6 +11,8 @@ import { blankDraft, useApp } from './context';
 import { errorMessage } from './error-message';
 import { routes } from '../routing/routes';
 import { clearAdminQuoteDraft } from './admin-quote-draft-storage';
+import type { RentalKitItem } from '../domain/model';
+import { defaultRentalKit } from '../domain/rental-kit';
 export type AdminQuoteConfig = {
   trips: number;
   discount: number;
@@ -18,6 +20,9 @@ export type AdminQuoteConfig = {
   discountReason: string;
   customPrice: number | null;
   labourUnitPriceOverride?: number | null;
+  billingMode?: 'complete' | 'driver-rental';
+  overtimeMinutes?: number;
+  rentalKit?: RentalKitItem[] | null;
 };
 export function useBookingForm({
   mode = 'booking',
@@ -444,6 +449,19 @@ export function useBookingForm({
             tolls: quoteTollsFromLines(tollLines),
             options: administrativeQuote && quoteOptions ? quoteOptions : draft.options,
             version: booking.version,
+            billingMode: quoteConfig?.billingMode ?? 'complete',
+            rentalKit:
+              quoteConfig?.billingMode === 'driver-rental'
+                ? (quoteConfig.rentalKit ??
+                  defaultRentalKit(
+                    catalogue?.vehicles.find((vehicle) => vehicle.id === draft.vehicleId) ??
+                      booking.vehicle,
+                    draft.options.labour,
+                    catalogue?.settings.rentalKitConfiguration,
+                  ))
+                : [],
+            overtimeMinutes: quoteConfig?.overtimeMinutes ?? 0,
+            providedCrew: draft.options.labour,
           });
           onQuoteSaved?.(savedQuoteBooking);
           navigate(`${routes.administrationBookings}?q=${booking.reference}&detail=${booking.id}`);

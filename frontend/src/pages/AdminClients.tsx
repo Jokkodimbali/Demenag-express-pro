@@ -2,7 +2,7 @@ import { liveBookingPrice } from '../application/services/live-booking-price';
 import { uiText } from '../content/reference-ui-text';
 import { messages } from '../content/fr';
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAdministration } from '../application/controllers/useAdministration';
 import { useAdminClients } from '../application/controllers/useAdminClients';
 import { useApp } from '../application/context';
@@ -163,7 +163,12 @@ export function AdminClients() {
   const { loadDirectory, updateClient, hideClientProfile, resetClientPassword } = useAdminClients();
   const { bookings, loading, error, setRetry } = useAdministration();
   const navigate = useNavigate();
-  const [query, setQuery] = useState('');
+  const [searchParams] = useSearchParams();
+  const [query, setQuery] = useState(() => searchParams.get('q') ?? '');
+  useEffect(() => {
+    const next = searchParams.get('q');
+    if (next) setQuery(next);
+  }, [searchParams]);
   const [profiles, setProfiles] = useState<DirectoryEntry[]>([]);
   const [hidden, setHidden] = useState<{ phone: string; hiddenAt: string }[]>([]);
   const [users, setUsers] = useState<User[]>([]);

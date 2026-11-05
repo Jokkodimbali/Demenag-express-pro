@@ -718,6 +718,9 @@
     min-width: 0;
     max-width: 100%;
   }
+  .workspace-page.admin-workspace .admin-reference-heading .admin-tab-group .admin-tabs {
+    width: fit-content;
+  }
   .admin-reservations-mobile {
     display: flex;
     flex-direction: column;

@@ -194,6 +194,33 @@ export async function catalogueFromForm(data: FormData, catalogue: Catalogue): P
     blanketWidthCm: integer(data.get('movingLaborPlanning.blanketWidthCm')),
     blanketStock: integer(data.get('movingLaborPlanning.blanketStock')),
   };
+  const kitCount = Number(data.get('rentalKitConfiguration.count'));
+  const rentalKitConfiguration =
+    Number.isInteger(kitCount) && kitCount >= 0 && kitCount <= 100
+      ? await Promise.all(
+          Array.from({ length: kitCount }, async (_, index) => {
+          const field = (name: string) =>
+            String(data.get(`rentalKitConfiguration.${index}.${name}`) ?? '');
+          const current = catalogue.settings.rentalKitConfiguration?.find(
+            (item) => item.id === field('id'),
+          );
+        const image =
+          data.get(`rentalKitConfiguration.${index}.removeImage`) === 'on'
+            ? ''
+            : await dataUrl(
+                data.get(`rentalKitConfiguration.${index}.imageFile`),
+                field('image') || current?.image || '',
+              );
+          return {
+            id: field('id'),
+            label: field('label').trim(),
+            rule: field('rule') as NonNullable<Settings['rentalKitConfiguration']>[number]['rule'],
+            quantity: Math.max(0, integer(data.get(`rentalKitConfiguration.${index}.quantity`))),
+          image,
+          };
+          }),
+        ).then((items) => items.filter((item) => item.label))
+      : (catalogue.settings.rentalKitConfiguration ?? []);
   const labourMatrix = createLabourPriceMatrix({
     ...catalogue.settings,
     labourPrice,
@@ -228,6 +255,34 @@ export async function catalogueFromForm(data: FormData, catalogue: Catalogue): P
       whatsappProvisionalTemplate: String(
         data.get('w.tplP') ?? catalogue.settings.whatsappProvisionalTemplate ?? '',
       ),
+      businessEmail: String(data.get('businessEmail') ?? catalogue.settings.businessEmail ?? ''),
+      businessNinea: String(data.get('businessNinea') ?? catalogue.settings.businessNinea ?? ''),
+      businessRccm: String(data.get('businessRccm') ?? catalogue.settings.businessRccm ?? ''),
+      quoteValidityDays: Math.max(
+        0,
+        integer(
+          data.get('quoteValidityDays') ?? String(catalogue.settings.quoteValidityDays ?? 15),
+        ),
+      ),
+      bookingDepositPercent: Math.max(
+        0,
+        Math.min(
+          100,
+          integer(
+            data.get('bookingDepositPercent') ??
+              String(catalogue.settings.bookingDepositPercent ?? 0),
+          ),
+        ),
+      ),
+      quoteTerms: String(data.get('quoteTerms') ?? catalogue.settings.quoteTerms ?? ''),
+      rentalOvertimeHourlyRate: Math.max(
+        0,
+        integer(
+          data.get('rentalOvertimeHourlyRate') ??
+            String(catalogue.settings.rentalOvertimeHourlyRate ?? 10000),
+        ),
+      ),
+      rentalKitConfiguration,
       paymentWave: data.get('paymentWave') === 'on',
       paymentCash: data.get('paymentCash') === 'on',
       paymentQr: await (async () => {

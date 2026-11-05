@@ -1,5 +1,6 @@
 import L from 'leaflet';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAdministration } from '../../application/controllers/useAdministration';
 import { useApp } from '../../application/context';
 import { messages } from '../../content/fr';
@@ -41,6 +42,9 @@ import {
 } from '../../application/services/team-planning';
 
 export function useAdminFleetPageModel() {
+  const [searchParams] = useSearchParams();
+  const targetDay = searchParams.get('date') ?? '';
+  const targetBooking = searchParams.get('booking') ?? '';
   const { catalogue, requestConfirmation } = useApp();
   const fleetCommands = useAdminFleet();
   const businessWhatsAppPhone =
@@ -49,8 +53,10 @@ export function useAdminFleetPageModel() {
   const { bookings, setBookings, loading, error: bookingsError } = useAdministration();
   const [employees, setEmployees] = useState<Driver[]>([]);
   const [employeesLoading, setEmployeesLoading] = useState(true);
-  const [selectedDay, setSelectedDay] = useState(() => iso(new Date()));
-  const selectedDayManuallyRef = useRef(false);
+  const [selectedDay, setSelectedDay] = useState(() =>
+    /^\d{4}-\d{2}-\d{2}$/.test(targetDay) ? targetDay : iso(new Date()),
+  );
+  const selectedDayManuallyRef = useRef(/^\d{4}-\d{2}-\d{2}$/.test(targetDay));
   const [mapTraffic, setMapTraffic] = useState(true);
   const [mapLayers, setMapLayers] = useState({ employees: true, bookings: true });
   const [placingId, setPlacingId] = useState('');
@@ -148,6 +154,19 @@ export function useAdminFleetPageModel() {
         }),
     [currentBookings, selectedDay],
   );
+  useEffect(() => {
+    if (!targetBooking || loading || !dayBookings.some((booking) => booking.id === targetBooking))
+      return;
+    const timer = window.setTimeout(() => {
+      const card = [...document.querySelectorAll<HTMLElement>('.teams-job')].find(
+        (element) => element.dataset.bookingId === targetBooking,
+      );
+      card?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      card?.classList.add('teams-job-highlight');
+      window.setTimeout(() => card?.classList.remove('teams-job-highlight'), 2500);
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [targetBooking, loading, dayBookings]);
   const employeeById = useMemo(
     () => new Map(employees.map((employee) => [employee.id, employee])),
     [employees],

@@ -38,7 +38,7 @@ export function quoteNotificationUrl(booking: Booking, quote: Quote, settings?: 
       ? `à fixer (${new Date(`${booking.month}-01T12:00:00Z`).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'Africa/Dakar' })})`
       : 'à fixer';
   const tripCount = Math.max(1, quote.price.trips);
-  const message = renderQuoteTemplate(
+  let message = renderQuoteTemplate(
     template,
     {
       nom: booking.customerName,
@@ -59,5 +59,17 @@ export function quoteNotificationUrl(booking: Booking, quote: Quote, settings?: 
     },
     { tollText, paymentLine },
   );
+  if (quote.billingMode === 'driver-rental') {
+    const kit = quote.rentalKit ?? [];
+    const hourlyRate =
+      quote.pricingInput?.rentalOvertimeHourlyRate ?? settings?.rentalOvertimeHourlyRate ?? 10000;
+    const plannedEnd = booking.inventorySnapshot?.endTime;
+    message += `\n\nLocation avec chauffeur. Matériel fourni :\n${kit
+      .filter((item) => item.quantity > 0)
+      .map((item) => `- ${item.label} : ${item.quantity}`)
+      .join(
+        '\n',
+      )}\nVous fournissez ${quote.providedCrew ?? 0} manœuvre(s).\n\nIMPORTANT : ${plannedEnd ? `fin prévue à ${plannedEnd}. ` : ''}Chaque minute au-delà est facturée ${money(Math.round(hourlyRate / 60))} (${money(hourlyRate)} par heure). Ayez vos manœuvres sur place et vos affaires prêtes à charger dès l’arrivée du véhicule.`;
+  }
   return whatsappUrl(booking.phone, message, settings);
 }
