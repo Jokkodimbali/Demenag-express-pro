@@ -7,10 +7,12 @@ import type {
   NotificationUseCases,
   MovingUseCases,
   AccountingUseCases,
+  ClaudeUseCases,
 } from '../../../application/ports/use-cases.js';
 import type { NotificationPublisher } from '../../../application/ports/index.js';
 export type Dependencies = {
   accounting: AccountingUseCases;
+  claude: ClaudeUseCases;
   administration: AdministrationUseCases;
   auth: AuthUseCases;
   moving: MovingUseCases;

@@ -14,6 +14,10 @@ import { ReferenceWhatsappSettings } from './ReferenceWhatsappSettings';
 import { ReferenceGoogleMapsSettings } from './ReferenceGoogleMapsSettings';
 import { QuestionnaireSettings } from './QuestionnaireSettings';
 import { visibleUiText } from '../../content/visible-ui-text';
+import { CompanyQuoteSettings } from './CompanyQuoteSettings';
+import { RentalKitSettings } from './RentalKitSettings';
+import { QuoteTermsSettings } from './QuoteTermsSettings';
+import { ClaudeSettings } from './ClaudeSettings';
 
 const tiers = ['Moins de 15 km', '15 – 25 km', '25 – 35 km'];
 const scenarios: { id: LabourMatrixScenario; label: string; from: boolean; to: boolean }[] = [
@@ -209,9 +213,24 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
           </section>
         ))}
 
+        <CompanyQuoteSettings catalogue={catalogue} />
+        <RentalKitSettings catalogue={catalogue} />
+        <ClaudeSettings />
+        <QuoteTermsSettings catalogue={catalogue} />
+
         <section className="reference-settings-wide" style={sectionStyle}>
           <span className="reference-settings-card-title">{uiText['supplementsFixes']}</span>
           <div className="reference-settings-fixed-fields">
+            <label>
+              <span>Location avec chauffeur · dépassement du planning (par heure)</span>
+              <input
+                style={inputStyle}
+                type="number"
+                min="0"
+                name="rentalOvertimeHourlyRate"
+                defaultValue={catalogue.settings.rentalOvertimeHourlyRate ?? 10000}
+              />
+            </label>
             <label>
               <span>{uiText['manœuvreParPersonne']}</span>
               <input
@@ -550,6 +569,9 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
           </button>
         </section>
 
+        <ReferenceVehicleSettings catalogue={catalogue} />
+        <QuestionnaireSettings questions={catalogue.settings.questionnaire ?? []} />
+
         <section style={sectionStyle}>
           <span className="reference-settings-card-title">{visibleUiText.text67}</span>
           <div className="reference-settings-blanket-fields">
@@ -619,8 +641,6 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
           </button>
         </section>
 
-        <QuestionnaireSettings questions={catalogue.settings.questionnaire ?? []} />
-        <ReferenceVehicleSettings catalogue={catalogue} />
         <PaymentSettings catalogue={catalogue} />
         <ReferenceGoogleMapsSettings />
         <ReferenceWhatsappSettings catalogue={catalogue} />

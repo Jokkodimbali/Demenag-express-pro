@@ -51,6 +51,26 @@ export interface CatalogueRepository {
   updateCatalogue(value: Catalogue): Promise<Catalogue>;
   deleteVehicle(id: string): Promise<void>;
 }
+export interface GoogleMapsSettingsRepository {
+  googleMapsApiKey(): Promise<string>;
+  updateGoogleMapsApiKey(value: string): Promise<void>;
+}
+export type ClaudeModel = { id: string; name: string };
+export type ClaudeSettingsStatus = { connected: boolean; model: string; models: ClaudeModel[] };
+export type ClaudeCompletionInput = {
+  system?: string;
+  prompt?: string;
+  messages?: { role: 'user' | 'assistant'; content: string }[];
+  maxTokens?: number;
+};
+export interface ClaudeRepository {
+  claudeStatus(): Promise<ClaudeSettingsStatus>;
+  connectClaudeKey(key: string): Promise<ClaudeSettingsStatus>;
+  selectClaudeModel(model: string): Promise<{ model: string; models: ClaudeModel[] }>;
+  testClaude(): Promise<{ response: string }>;
+  disconnectClaude(): Promise<void>;
+  completeClaude(input: ClaudeCompletionInput): Promise<string>;
+}
 export interface TollPointRepository {
   tollPoints(): Promise<TollPoint[]>;
   createTollPoint(input: TollPointInput): Promise<TollPoint>;
@@ -223,6 +243,7 @@ export interface ApplicationApi
     AdminProfileRepository,
     ClientDirectoryRepository,
     CatalogueRepository,
+    GoogleMapsSettingsRepository,
     TollPointRepository,
     AuthRepository,
     BookingRepository,
@@ -230,7 +251,8 @@ export interface ApplicationApi
     MapsRepository,
     PricingRepository,
     NotificationRepository,
-    AccountingRepository {}
+    AccountingRepository,
+    ClaudeRepository {}
 export type QuoteExporter = (
   booking: Booking,
   quote: Quote | undefined,

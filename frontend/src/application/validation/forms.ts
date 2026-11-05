@@ -17,6 +17,12 @@ const role = (value: FormDataEntryValue | null): User['role'] =>
   value === 'admin' ? 'admin' : 'client';
 const integer = (value: FormDataEntryValue | null) => Number(value);
 const tuple = (values: number[]): [number, number, number] => [values[0], values[1], values[2]];
+const normalizeBusinessPhone = (value: string) => {
+  let digits = value.replace(/\D/gu, '');
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  if (digits.startsWith('221') && digits.length === 12) return `+${digits}`;
+  return digits.length === 9 ? `+221${digits}` : value.trim();
+};
 
 export function questionnaireFromForm(data: FormData, existing: ClientQuestion[]) {
   const rawCount = data.get('questionnaire.count');
@@ -199,25 +205,27 @@ export async function catalogueFromForm(data: FormData, catalogue: Catalogue): P
     Number.isInteger(kitCount) && kitCount >= 0 && kitCount <= 100
       ? await Promise.all(
           Array.from({ length: kitCount }, async (_, index) => {
-          const field = (name: string) =>
-            String(data.get(`rentalKitConfiguration.${index}.${name}`) ?? '');
-          const current = catalogue.settings.rentalKitConfiguration?.find(
-            (item) => item.id === field('id'),
-          );
-        const image =
-          data.get(`rentalKitConfiguration.${index}.removeImage`) === 'on'
-            ? ''
-            : await dataUrl(
-                data.get(`rentalKitConfiguration.${index}.imageFile`),
-                field('image') || current?.image || '',
-              );
-          return {
-            id: field('id'),
-            label: field('label').trim(),
-            rule: field('rule') as NonNullable<Settings['rentalKitConfiguration']>[number]['rule'],
-            quantity: Math.max(0, integer(data.get(`rentalKitConfiguration.${index}.quantity`))),
-          image,
-          };
+            const field = (name: string) =>
+              String(data.get(`rentalKitConfiguration.${index}.${name}`) ?? '');
+            const current = catalogue.settings.rentalKitConfiguration?.find(
+              (item) => item.id === field('id'),
+            );
+            const image =
+              data.get(`rentalKitConfiguration.${index}.removeImage`) === 'on'
+                ? ''
+                : await dataUrl(
+                    data.get(`rentalKitConfiguration.${index}.imageFile`),
+                    field('image') || current?.image || '',
+                  );
+            return {
+              id: field('id'),
+              label: field('label').trim(),
+              rule: field('rule') as NonNullable<
+                Settings['rentalKitConfiguration']
+              >[number]['rule'],
+              quantity: Math.max(0, integer(data.get(`rentalKitConfiguration.${index}.quantity`))),
+              image,
+            };
           }),
         ).then((items) => items.filter((item) => item.label))
       : (catalogue.settings.rentalKitConfiguration ?? []);
@@ -256,6 +264,12 @@ export async function catalogueFromForm(data: FormData, catalogue: Catalogue): P
         data.get('w.tplP') ?? catalogue.settings.whatsappProvisionalTemplate ?? '',
       ),
       businessEmail: String(data.get('businessEmail') ?? catalogue.settings.businessEmail ?? ''),
+      businessAddress: String(
+        data.get('businessAddress') ?? catalogue.settings.businessAddress ?? '',
+      ).trim(),
+      businessPhone: normalizeBusinessPhone(
+        String(data.get('businessPhone') ?? catalogue.settings.businessPhone ?? ''),
+      ),
       businessNinea: String(data.get('businessNinea') ?? catalogue.settings.businessNinea ?? ''),
       businessRccm: String(data.get('businessRccm') ?? catalogue.settings.businessRccm ?? ''),
       quoteValidityDays: Math.max(
@@ -275,6 +289,10 @@ export async function catalogueFromForm(data: FormData, catalogue: Catalogue): P
         ),
       ),
       quoteTerms: String(data.get('quoteTerms') ?? catalogue.settings.quoteTerms ?? ''),
+      quoteTermsEnabled:
+        data.getAll('quoteTermsEnabled').length === 0
+          ? (catalogue.settings.quoteTermsEnabled ?? true)
+          : data.getAll('quoteTermsEnabled').includes('on'),
       rentalOvertimeHourlyRate: Math.max(
         0,
         integer(

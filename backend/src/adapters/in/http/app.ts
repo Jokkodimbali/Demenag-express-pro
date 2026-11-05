@@ -10,6 +10,7 @@ import { registerVehicleReportRoutes } from './vehicle-report-routes.js';
 import type { Dependencies } from './dependencies.js';
 import { registerErrorHandler } from './error-handler.js';
 import { registerMapRoutes } from './map-routes.js';
+import { registerClaudeRoutes } from './claude-routes.js';
 import { registerSecurityMiddleware } from './security-middleware.js';
 import { apiRoutes } from './routes.js';
 export function createApp(deps: Dependencies) {
@@ -31,6 +32,7 @@ export function createApp(deps: Dependencies) {
   );
   registerAuthRoutes(app, deps, access);
   registerMapRoutes(app, deps);
+  registerClaudeRoutes(app, deps, access);
   app.get('/api/notifications/stream', access.authenticate, (req, res) => {
     const actor = getActor(res);
     res.writeHead(200, {

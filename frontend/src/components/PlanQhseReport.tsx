@@ -2,6 +2,7 @@ import { uiText } from '../content/reference-ui-text';
 import { useState } from 'react';
 import { ChevronDown, Download, Sparkles } from 'lucide-react';
 import type { Booking, WorkPlanStep } from '../domain/model';
+import type { ClaudeCompletionInput } from '../application/ports';
 
 type Kpi = { label: string; value: string; color: string; sub: string };
 type NonConformity = {
@@ -178,14 +179,13 @@ function localAnalysis(report: PlanReport) {
   return `${lines.join('\n')}\n\n(Analyse automatique simplifiée : l’IA n’est pas disponible.)`;
 }
 
-async function analyzeReport(report: PlanReport) {
-  const provider = (
-    window as Window & { claude?: { complete?: (input: unknown) => Promise<string> } }
-  ).claude;
-  if (!provider?.complete) return localAnalysis(report);
+async function analyzeReport(
+  report: PlanReport,
+  complete: (input: ClaudeCompletionInput) => Promise<string>,
+) {
   try {
-    const text = await provider.complete({
-      max_tokens: 900,
+    const text = await complete({
+      maxTokens: 900,
       system:
         'Tu es un responsable QHSE dans une entreprise de déménagement au Sénégal (Dakar). Tu analyses le suivi du planning des déménagements. Réponds en français, de façon factuelle et concrète, sans emoji ni markdown (pas de #, pas de **). Utilise exactement ces 3 titres en majuscules, chacun sur sa ligne : SYNTHÈSE, POINTS À AMÉLIORER, ACTIONS PRIORITAIRES. Sous les deux derniers, des lignes commençant par "- ". Maximum 5 points par section. Appuie-toi uniquement sur les données fournies ; si elles sont insuffisantes, dis-le et indique quoi renseigner.',
       messages: [
@@ -283,7 +283,13 @@ async function downloadReport(report: PlanReport, analysis: string) {
   doc.save('Rapport-QHSE-planning.pdf');
 }
 
-export function PlanQhseReport({ report }: { report: PlanReport }) {
+export function PlanQhseReport({
+  report,
+  complete,
+}: {
+  report: PlanReport;
+  complete: (input: ClaudeCompletionInput) => Promise<string>;
+}) {
   const [open, setOpen] = useState(false);
   const [analysis, setAnalysis] = useState<{ period: string; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -292,7 +298,7 @@ export function PlanQhseReport({ report }: { report: PlanReport }) {
   const runAnalysis = async () => {
     if (busy) return;
     setBusy(true);
-    const result = await analyzeReport(report);
+    const result = await analyzeReport(report, complete);
     setAnalysis({ period: report.period, text: result });
     setBusy(false);
   };

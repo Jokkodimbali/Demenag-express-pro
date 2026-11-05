@@ -7,6 +7,14 @@ export class CatalogueService implements CatalogueUseCases {
   get() {
     return this.repository.get();
   }
+  googleMapsApiKey(actor: User) {
+    requireAdministrator(actor);
+    return this.repository.googleMapsApiKey();
+  }
+  updateGoogleMapsApiKey(actor: User, value: string) {
+    requireAdministrator(actor);
+    return this.repository.updateGoogleMapsApiKey(value);
+  }
   async update(actor: User, vehicles: Vehicle[], settings: Settings) {
     requireAdministrator(actor);
     await this.repository.update(vehicles, settings);

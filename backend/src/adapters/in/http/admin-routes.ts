@@ -304,6 +304,14 @@ export function registerAdminRoutes(
     await deps.catalogue.update(getActor(res), p.vehicles, p.settings);
     res.json(await deps.catalogue.get());
   });
+  app.get(apiRoutes.googleMapsKey, authenticate, admin, async (_req, res) =>
+    res.json({ key: await deps.catalogue.googleMapsApiKey(getActor(res)) }),
+  );
+  app.put(apiRoutes.googleMapsKey, authenticate, admin, async (req, res) => {
+    const { key } = z.object({ key: z.string().trim().max(512) }).parse(req.body);
+    await deps.catalogue.updateGoogleMapsApiKey(getActor(res), key);
+    res.status(204).end();
+  });
   app.delete(`${apiRoutes.catalogue}/vehicles/:id`, authenticate, admin, async (req, res) => {
     const id = z
       .string()

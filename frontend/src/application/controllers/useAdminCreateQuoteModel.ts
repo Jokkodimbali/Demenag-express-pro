@@ -19,7 +19,7 @@ import {
   labourUnitPriceOverrideFromQuote,
 } from '../../domain/labour-price';
 import { inventoryAssemblyLines, inventoryAssemblyOptions } from '../../domain/inventory-assembly';
-import { googleTrafficDuration, readGoogleMapsKey } from '../../application/google-maps-traffic';
+import { googleTrafficDuration } from '../../application/google-maps-traffic';
 import type { Booking, Options, Price, Quote } from '../../domain/model';
 import { bookingInventorySnapshot, estimateMovingWork } from '../../domain/moving-estimate';
 import { defaultClientQuestions } from '../../domain/questionnaire';
@@ -86,7 +86,6 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     tolls: false,
     options: false,
   });
-  const [googleMapsKey] = useState(readGoogleMapsKey);
   const [traffic, setTraffic] = useState<{
     minutes: number;
     freeMinutes: number;
@@ -96,7 +95,26 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const [trafficBusy, setTrafficBusy] = useState(false);
   const [trafficError, setTrafficError] = useState(false);
   const trafficRequest = useRef(0);
-  const { exportQuote, catalogue: appCatalogue, user } = useApp();
+  const { exportQuote, catalogue: appCatalogue, user, api } = useApp();
+  const [googleMapsKey, setGoogleMapsKey] = useState('');
+  useEffect(() => {
+    if (user?.role !== 'admin' || publicRequest) {
+      setGoogleMapsKey('');
+      return;
+    }
+    let active = true;
+    void api
+      .googleMapsApiKey()
+      .then((value) => {
+        if (active) setGoogleMapsKey(value);
+      })
+      .catch(() => {
+        if (active) setGoogleMapsKey('');
+      });
+    return () => {
+      active = false;
+    };
+  }, [api, publicRequest, user?.role]);
   const bookingCommands = useBookingCommands();
   const state = useBookingForm({
     mode: publicRequest && user?.role !== 'admin' ? 'booking' : 'admin-quote',

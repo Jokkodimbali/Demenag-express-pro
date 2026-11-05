@@ -1,6 +1,7 @@
 import { messages } from '../content/fr';
 import { dateLabel, money, referenceTierLabels } from '../domain/format';
 import { referenceInventoryNote } from '../domain/reference-inventory-note';
+import { defaultQuoteTerms } from '../domain/quote-terms';
 import type { Booking, Driver, Quote, Settings } from '../domain/model';
 
 export async function downloadPlanningWeekPdf(
@@ -580,8 +581,8 @@ export async function downloadQuote(
       false,
       [92, 99, 106],
     );
-  const terms = settings.quoteTerms?.trim();
-  if (terms) {
+  const terms = (settings.quoteTerms || defaultQuoteTerms).trim();
+  if (terms && settings.quoteTermsEnabled !== false) {
     ensureSpace(12);
     y = paragraph('Conditions générales', margin, y + 2, contentWidth, 9, true);
     for (const line of terms.split(/\r?\n/u)) {

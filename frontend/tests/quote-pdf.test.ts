@@ -115,3 +115,45 @@ for (const kind of ['provisional', 'final'] as const) {
     assert.match(text, /NON INCLUS DANS LE TOTAL/);
   });
 }
+
+test('le PDF reprend les coordonnées et applique l’activation des conditions générales', async () => {
+  const quote: Quote = {
+    id: 'quote-settings-test',
+    reference: 'DV-2026-SETTINGS',
+    kind: 'provisional',
+    createdAt: '2026-11-03T00:00:00.000Z',
+    price: {
+      lines: [{ label: 'Transport Sprinter', quantity: 1, unitPrice: 50_000, total: 50_000 }],
+      total: 50_000,
+      discount: 0,
+      tier: 1,
+      trips: 1,
+      currency: 'XOF',
+    },
+    tolls: [],
+  };
+  const clause = `Clause de contrôle PDF ${quote.reference}`;
+  const pdfSettings = {
+    ...settings,
+    businessEmail: 'contact@example.test',
+    businessNinea: 'NINEA-TEST-2026',
+    businessRccm: 'RCCM-TEST-2026',
+    quoteValidityDays: 21,
+    bookingDepositPercent: 20,
+    quoteTerms: clause,
+  } as Settings;
+  const enabledText = await extractPdfText(
+    await downloadQuote(booking, quote, { ...pdfSettings, quoteTermsEnabled: true }),
+  );
+  assert.match(enabledText, /contact@example\.test/);
+  assert.match(enabledText, /NINEA-TEST-2026/);
+  assert.match(enabledText, /RCCM-TEST-2026/);
+  assert.match(enabledText, /21 jours/);
+  assert.match(enabledText, /Acompte à la réservation \(20 %\)/);
+  assert.match(enabledText, new RegExp(clause));
+
+  const disabledText = await extractPdfText(
+    await downloadQuote(booking, quote, { ...pdfSettings, quoteTermsEnabled: false }),
+  );
+  assert.doesNotMatch(disabledText, new RegExp(clause));
+});

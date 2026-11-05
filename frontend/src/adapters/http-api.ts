@@ -142,11 +142,20 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
     markAllNotificationsRead: () => request(`${httpRoutes.notifications}/read-all`, 'PATCH'),
     announceDrivers: (title, message) => request(httpRoutes.announce, 'POST', { title, message }),
     catalogue: () => sharePendingRead(httpRoutes.catalogue, () => request(httpRoutes.catalogue)),
+    googleMapsApiKey: async () => (await request<{ key: string }>(httpRoutes.googleMapsKey)).key,
+    updateGoogleMapsApiKey: (key) => request(httpRoutes.googleMapsKey, 'PUT', { key }),
     tollPoints: () => sharePendingRead(httpRoutes.tollPoints, () => request(httpRoutes.tollPoints)),
     createTollPoint: (input) => request(httpRoutes.tollPoints, 'POST', input),
     updateTollPoint: (id, input) => request(`${httpRoutes.tollPoints}/${id}`, 'PUT', input),
     deleteTollPoint: (id) => request(`${httpRoutes.tollPoints}/${id}`, 'DELETE'),
     updateCatalogue: (value) => request(httpRoutes.catalogue, 'PUT', value),
+    claudeStatus: () => request(httpRoutes.claude.base),
+    connectClaudeKey: (key) => request(httpRoutes.claude.key, 'PUT', { key }),
+    selectClaudeModel: (model) => request(httpRoutes.claude.model, 'PUT', { model }),
+    testClaude: () => request(httpRoutes.claude.test, 'POST'),
+    disconnectClaude: () => request(httpRoutes.claude.base, 'DELETE'),
+    completeClaude: async (input) =>
+      (await request<{ text: string }>(httpRoutes.claude.completion, 'POST', input)).text,
     deleteVehicle: (id) =>
       request(`${httpRoutes.catalogue}/vehicles/${encodeURIComponent(id)}`, 'DELETE'),
     me: () =>

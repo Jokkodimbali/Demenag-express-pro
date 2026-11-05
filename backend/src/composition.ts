@@ -11,6 +11,7 @@ import {
   PrismaUsers,
   PrismaVehicleReports,
   PrismaNotifications,
+  PrismaClaudeConfiguration,
 } from './adapters/out/prisma/repositories.js';
 import { ScryptPasswords, clock, ids, tokens } from './adapters/out/security/crypto.js';
 import type { RoutingProvider } from './application/ports/index.js';
@@ -22,6 +23,7 @@ import { DriverService } from './application/services/drivers.js';
 import { MovingService } from './application/services/moving.js';
 import { VehicleReportService } from './application/services/vehicle-reports.js';
 import { NotificationService } from './application/services/notifications.js';
+import { ClaudeService } from './application/services/claude.js';
 import type { PrismaClient } from './generated/prisma/client.js';
 export function compose(db: PrismaClient, routing: RoutingProvider) {
   const notificationRepository = new PrismaNotifications(db);
@@ -73,6 +75,12 @@ export function compose(db: PrismaClient, routing: RoutingProvider) {
     vehicleReports: new VehicleReportService(vehicleReports, drivers, notifications),
     notifications,
     notificationService: new NotificationService(notificationRepository, notifications),
+    claude: new ClaudeService(
+      new PrismaClaudeConfiguration(
+        db,
+        process.env.AI_ENCRYPTION_KEY ?? process.env.DATABASE_URL ?? '',
+      ),
+    ),
     ready: () => new PrismaReadiness(db).check(),
   };
 }

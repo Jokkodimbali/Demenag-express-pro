@@ -2,6 +2,7 @@ import { uiText } from '../content/reference-ui-text';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Camera, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAdministration } from '../application/controllers/useAdministration';
+import { useApp } from '../application/context';
 import { useBookingCommands } from '../application/controllers/useBookingCommands';
 import { errorMessage } from '../application/error-message';
 import { buildPlanReport, PlanQhseReport } from '../components/PlanQhseReport';
@@ -356,6 +357,7 @@ function PlanRow({
 }
 
 export function AdminPlanFollowUp() {
+  const { api } = useApp();
   const commands = useBookingCommands();
   const { bookings, setBookings, loading, error } = useAdministration();
   const [period, setPeriod] = useState<Period>('week');
@@ -490,7 +492,7 @@ export function AdminPlanFollowUp() {
           ))}
         </div>
       </section>
-      <PlanQhseReport report={report} />
+      <PlanQhseReport report={report} complete={api.completeClaude} />
       {error && (
         <p className="alert error" role="alert">
           {error}

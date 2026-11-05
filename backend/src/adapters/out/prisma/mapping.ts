@@ -203,6 +203,7 @@ export const fromSettings = (row: ParametreApplication): Settings => ({
   quoteValidityDays: row.validiteDevisJours,
   bookingDepositPercent: row.acompteReservationPct,
   quoteTerms: row.conditionsDevis,
+  quoteTermsEnabled: row.conditionsDevisActives,
   rentalOvertimeHourlyRate: row.tarifHeureLocation,
   rentalKitConfiguration: Array.isArray(row.materielLocation)
     ? (row.materielLocation as Settings['rentalKitConfiguration'])
@@ -269,6 +270,7 @@ export const toSettings = (value: Settings) => ({
   validiteDevisJours: value.quoteValidityDays ?? 15,
   acompteReservationPct: value.bookingDepositPercent ?? 0,
   conditionsDevis: value.quoteTerms ?? '',
+  conditionsDevisActives: value.quoteTermsEnabled ?? true,
   tarifHeureLocation: value.rentalOvertimeHourlyRate ?? 10000,
   materielLocation: (value.rentalKitConfiguration ?? []) as Prisma.InputJsonValue,
   piedFacture: value.invoiceFooter,

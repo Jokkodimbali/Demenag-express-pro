@@ -26,6 +26,18 @@ import type {
   VehicleInspectionInput,
   VehicleReportRecord,
 } from './index.js';
+import type { ClaudeCompletionInput, ClaudeModel } from './index.js';
+export interface ClaudeUseCases {
+  status(actor: User): Promise<{ connected: boolean; model: string; models: ClaudeModel[] }>;
+  connect(
+    actor: User,
+    key: string,
+  ): Promise<{ connected: boolean; model: string; models: ClaudeModel[] }>;
+  selectModel(actor: User, model: string): Promise<{ model: string; models: ClaudeModel[] }>;
+  test(actor: User): Promise<{ response: string }>;
+  disconnect(actor: User): Promise<void>;
+  complete(actor: User, input: ClaudeCompletionInput): Promise<string>;
+}
 export interface AccountingUseCases {
   list(actor: User, month?: string): Promise<AccountingEntry[]>;
   create(actor: User, input: ManualAccountingInput): Promise<AccountingEntry>;
@@ -136,6 +148,8 @@ export interface AdministrationUseCases {
 export interface CatalogueUseCases {
   get(): Promise<Catalogue>;
   update(actor: User, vehicles: Vehicle[], settings: Settings): Promise<void>;
+  googleMapsApiKey(actor: User): Promise<string>;
+  updateGoogleMapsApiKey(actor: User, value: string): Promise<void>;
   removeVehicle(actor: User, id: string): Promise<void>;
   listTollPoints(): Promise<TollPoint[]>;
   createTollPoint(actor: User, input: TollPointInput): Promise<TollPoint>;

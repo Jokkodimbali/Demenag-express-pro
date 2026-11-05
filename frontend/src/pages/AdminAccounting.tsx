@@ -12,7 +12,7 @@ import { routes } from '../routing/routes';
 
 export function AdminAccounting() {
   const [downloadError, setDownloadError] = useState('');
-  const { exportAccounting, catalogue } = useApp();
+  const { api, exportAccounting, catalogue } = useApp();
   const {
     month,
     setMonth,
@@ -119,6 +119,7 @@ export function AdminAccounting() {
               revenueCount: entries.filter((entry) => entry.type === 'revenu').length,
               chargeCount: entries.filter((entry) => entry.type === 'charge').length,
             }}
+            api={api}
           />
           <AccountingFinanceSections
             config={financeConfiguration}

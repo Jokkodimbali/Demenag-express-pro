@@ -163,6 +163,7 @@ export type Settings = BookingRules & {
   quoteValidityDays?: number;
   bookingDepositPercent?: number;
   quoteTerms?: string;
+  quoteTermsEnabled?: boolean;
   rentalOvertimeHourlyRate?: number;
   rentalKitConfiguration?: RentalKitConfigurationItem[];
   invoiceFooter: string;

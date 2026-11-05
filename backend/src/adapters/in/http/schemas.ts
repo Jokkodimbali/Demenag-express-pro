@@ -567,7 +567,7 @@ export const catalogueSchema = z.object({
         ]),
       )
       .default({}),
-    businessPhone: z.string().regex(/^\+221[0-9]{9}$/),
+    businessPhone: z.string().trim().max(30).default(''),
     whatsappPhone: z.string().regex(/^\+[1-9][0-9]{7,14}$/),
     whatsappCountryCode: z
       .string()
@@ -591,13 +591,14 @@ export const catalogueSchema = z.object({
         'Bonjour {nom},\n\nMerci pour votre demande. Voici votre devis provisoire Demenag Express n° {num} :\n- Date : {date}{heure}\n- Trajet : {trajet}\n- Véhicule : {vehicule}, {voyages}\n- Montant estimé : {total}\n\nCe montant est une estimation établie d’après votre inventaire. Il sera confirmé par le devis final.\nJe vous envoie le PDF du devis juste après ce message.\n\nPour confirmer ou modifier votre demande, répondez simplement ici.',
       ),
     businessName: z.string().trim().min(2).max(100),
-    businessAddress: z.string().trim().min(2).max(300),
+    businessAddress: z.string().trim().max(300).default(''),
     businessEmail: z.string().trim().max(200).default(''),
     businessNinea: z.string().trim().max(100).default(''),
     businessRccm: z.string().trim().max(100).default(''),
     quoteValidityDays: z.number().int().min(0).max(365).default(15),
     bookingDepositPercent: z.number().int().min(0).max(100).default(0),
     quoteTerms: z.string().max(10000).default(''),
+    quoteTermsEnabled: z.boolean().default(true),
     rentalOvertimeHourlyRate: z.number().int().min(0).max(10000000).default(10000),
     rentalKitConfiguration: z
       .array(

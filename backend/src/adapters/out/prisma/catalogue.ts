@@ -38,6 +38,20 @@ export class PrismaCatalogue implements CatalogueRepository {
       { timeout: 30000 },
     );
   }
+  async googleMapsApiKey(): Promise<string> {
+    const settings = await this.db.parametreApplication.findUnique({
+      where: { id: 'main' },
+      select: { cleApiGoogleMaps: true },
+    });
+    if (!settings) throw new AppError(503, messages.leCatalogueDoitEtreInitialise);
+    return settings.cleApiGoogleMaps;
+  }
+  async updateGoogleMapsApiKey(value: string): Promise<void> {
+    await this.db.parametreApplication.update({
+      where: { id: 'main' },
+      data: { cleApiGoogleMaps: value },
+    });
+  }
   async removeVehicle(id: string) {
     await this.db.$transaction(async (tx) => {
       const [bookingCount, driverCount] = await Promise.all([

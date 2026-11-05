@@ -1,6 +1,5 @@
 import type { Point } from '../domain/model';
 
-const storageKey = 'demenag-express-google-maps-key';
 type GoogleTrafficResponse = {
   rows?: {
     elements?: {
@@ -32,23 +31,6 @@ declare global {
 
 let sdkPromise: Promise<boolean> | null = null;
 let sdkKey = '';
-
-export function readGoogleMapsKey() {
-  try {
-    return window.localStorage.getItem(storageKey) ?? '';
-  } catch {
-    return '';
-  }
-}
-
-export function saveGoogleMapsKey(value: string) {
-  try {
-    if (value.trim()) window.localStorage.setItem(storageKey, value.trim());
-    else window.localStorage.removeItem(storageKey);
-  } catch {
-    // Local storage may be disabled; live traffic remains optional.
-  }
-}
 
 async function ensureGoogleMaps(key: string): Promise<boolean> {
   if (window.google?.maps?.DistanceMatrixService) return true;
