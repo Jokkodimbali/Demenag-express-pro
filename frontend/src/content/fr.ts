@@ -51,6 +51,7 @@ export const messages = {
     'Estimation provisoire. La disponibilité et les conditions sont confirmées par notre équipe. Le montant final dépend des trajets réellement effectués.',
   matin8h12h: 'Matin (8h – 12h)',
   calculezLeTrajetPourObtenirUneEstimation: 'Calculez le trajet pour obtenir une estimation.',
+  recalculAutomatiqueTrajetExpire: 'Recalculez le trajet : son estimation a expiré.',
   manUvres: 'Manœuvres',
   chargementEtDechargement: 'Chargement et déchargement',
   montageDemontageDeBureau: 'Montage / démontage de bureau',

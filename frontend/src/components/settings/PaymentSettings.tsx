@@ -6,16 +6,27 @@ export function PaymentSettings({ catalogue }: { catalogue: Catalogue }) {
   const [waveEnabled, setWaveEnabled] = useState(catalogue.settings.paymentWave !== false);
   const [cashEnabled, setCashEnabled] = useState(catalogue.settings.paymentCash !== false);
   const [qrRemoved, setQrRemoved] = useState(false);
+  const paymentOptionsChanged = useRef(false);
   const removeQrInput = useRef<HTMLInputElement>(null);
+  const qrFileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setWaveEnabled(catalogue.settings.paymentWave !== false);
-    setCashEnabled(catalogue.settings.paymentCash !== false);
+    const savedWave = catalogue.settings.paymentWave !== false;
+    const savedCash = catalogue.settings.paymentCash !== false;
+    if (paymentOptionsChanged.current) {
+      if (savedWave === waveEnabled && savedCash === cashEnabled)
+        paymentOptionsChanged.current = false;
+    } else {
+      setWaveEnabled(savedWave);
+      setCashEnabled(savedCash);
+    }
     if (!catalogue.settings.paymentQr) setQrRemoved(false);
   }, [
     catalogue.settings.paymentCash,
     catalogue.settings.paymentQr,
     catalogue.settings.paymentWave,
+    cashEnabled,
+    waveEnabled,
   ]);
 
   const paymentLabel =
@@ -41,7 +52,10 @@ export function PaymentSettings({ catalogue }: { catalogue: Catalogue }) {
             type="checkbox"
             name="paymentWave"
             checked={waveEnabled}
-            onChange={(event) => setWaveEnabled(event.currentTarget.checked)}
+            onChange={(event) => {
+              paymentOptionsChanged.current = true;
+              setWaveEnabled(event.currentTarget.checked);
+            }}
           />
           {uiText['wave']}
         </label>
@@ -50,7 +64,10 @@ export function PaymentSettings({ catalogue }: { catalogue: Catalogue }) {
             type="checkbox"
             name="paymentCash"
             checked={cashEnabled}
-            onChange={(event) => setCashEnabled(event.currentTarget.checked)}
+            onChange={(event) => {
+              paymentOptionsChanged.current = true;
+              setCashEnabled(event.currentTarget.checked);
+            }}
           />
           {uiText['especes']}
         </label>
@@ -79,6 +96,7 @@ export function PaymentSettings({ catalogue }: { catalogue: Catalogue }) {
                 : 'Importer le QR (PDF ou image)'}
             </label>
             <input
+              ref={qrFileInput}
               id="payment-qr"
               className="payment-qr-file"
               name="paymentQr"
@@ -98,7 +116,11 @@ export function PaymentSettings({ catalogue }: { catalogue: Catalogue }) {
               type="checkbox"
               name="removePaymentQr"
               checked={qrRemoved}
-              onChange={(event) => setQrRemoved(event.currentTarget.checked)}
+              onChange={(event) => {
+                const shouldRemove = event.currentTarget.checked;
+                setQrRemoved(shouldRemove);
+                if (shouldRemove && qrFileInput.current) qrFileInput.current.value = '';
+              }}
             />
             {catalogue.settings.paymentQr && !qrRemoved && (
               <label className="payment-qr-remove" htmlFor="remove-payment-qr">

@@ -203,7 +203,27 @@ export function useBookingForm({
       )
       .then(setPrice)
       .catch((e: unknown) => {
-        if (!controller.signal.aborted) setEstimateError(errorMessage(e));
+        if (controller.signal.aborted) return;
+        if (
+          e instanceof Error &&
+          e.message === messages.recalculAutomatiqueTrajetExpire &&
+          draft.route
+        ) {
+          const expiredRouteId = draft.route.id;
+          void api
+            .route(draft.route.from, draft.route.to)
+            .then((freshRoute) => {
+              if (controller.signal.aborted) return;
+              setDraft((current) =>
+                current.route?.id === expiredRouteId ? { ...current, route: freshRoute } : current,
+              );
+            })
+            .catch((routeError: unknown) => {
+              if (!controller.signal.aborted) setEstimateError(errorMessage(routeError));
+            });
+          return;
+        }
+        setEstimateError(errorMessage(e));
       })
       .finally(() => {
         if (!controller.signal.aborted) setEstimating(false);
@@ -222,6 +242,7 @@ export function useBookingForm({
     draft.options,
     quoteConfig?.trips,
     draft.estimatedTrips,
+    setDraft,
   ]);
   useEffect(() => {
     if (!catalogue) return;

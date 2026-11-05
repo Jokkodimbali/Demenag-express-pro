@@ -68,3 +68,11 @@ test('les deux modèles WhatsApp restent distincts lors de la lecture et de la s
   assert.equal(saved.modeleDevisWhatsapp, 'Modèle final {num}');
   assert.equal(saved.modeleDevisProvisoireWhatsapp, 'Modèle provisoire {num}');
 });
+
+test('la suppression du QR de paiement reste persistée au lieu de restaurer le QR par défaut', () => {
+  const row = { ...settingsRow({}), qrPaiement: null } as ParametreApplication;
+  const settings = fromSettings(row);
+
+  assert.equal(settings.paymentQr, null);
+  assert.equal(toSettings(settings).qrPaiement, null);
+});

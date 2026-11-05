@@ -262,7 +262,7 @@ export const toSettings = (value: Settings) => ({
   signatureFacture: value.invoiceSignature,
   paiementWave: value.paymentWave ?? true,
   paiementEspeces: value.paymentCash ?? true,
-  qrPaiement: value.paymentQr ?? '/assets/wave-qr.png',
+  qrPaiement: value.paymentQr === undefined ? '/assets/wave-qr.png' : value.paymentQr,
   reservationsOuvertes: value.bookingsEnabled,
   delaiMaximumJours: value.maxAdvanceDays,
   preavisReservationHeures: value.minNoticeHours,

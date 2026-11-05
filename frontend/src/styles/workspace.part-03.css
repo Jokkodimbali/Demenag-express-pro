@@ -224,6 +224,11 @@
     padding: 4px;
     font-size: 10px;
   }
+  .reference-settings-size-card > span {
+    overflow: visible;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
 }
 .reference-settings-section-heading {
   display: flex;

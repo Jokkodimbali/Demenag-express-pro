@@ -1,11 +1,15 @@
 import { chromium, expect } from '@playwright/test';
 import dotenv from 'dotenv';
 import { randomUUID } from 'node:crypto';
-import { readFileSync, mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createPrisma } from '../../backend/src/adapters/out/prisma/client.ts';
-const env = dotenv.parse(readFileSync(new URL('../../backend/.env', import.meta.url)));
-const db = createPrisma(process.env.TEST_DATABASE_URL || env.DATABASE_URL);
+if (process.env.BROWSER_TEST_BRANCH_ID !== 'br-small-hall-b4i75gr6')
+  throw new Error('Ce test navigateur doit viser uniquement la branche Neon isolée.');
+if (!process.env.TEST_DATABASE_URL)
+  throw new Error('TEST_DATABASE_URL doit viser la branche Neon isolée.');
+const db = createPrisma(process.env.TEST_DATABASE_URL);
+const localEnv = dotenv.parse(readFileSync(new URL('../../backend/.env', import.meta.url)));
 const baseUrl = process.env.BROWSER_BASE_URL || 'http://localhost:5173';
 const apiUrl = process.env.BROWSER_API_URL || process.env.VITE_API_URL || `${baseUrl}/api`;
 const output = fileURLToPath(new URL('../../.verification/', import.meta.url));
@@ -33,6 +37,8 @@ const name = 'Test navigateur ' + randomUUID().slice(0, 8);
 const password = 'Browser-test-2026!';
 let userId;
 let teamUserId;
+let scenarioError;
+let cleanupError;
 const tickets = [];
 page.on('response', async (response) => {
   if (response.url().endsWith('/api/maps/route') && response.ok()) {
@@ -137,11 +143,13 @@ try {
     });
   });
   await admin.goto(baseUrl + '/connexion');
-  await admin.getByLabel('Téléphone ou email administrateur').fill(env.ADMIN_PHONE);
+  await admin
+    .getByLabel('Téléphone ou email administrateur')
+    .fill(process.env.ADMIN_PHONE || localEnv.ADMIN_PHONE);
   await admin
     .getByLabel(/mot de passe/i)
     .first()
-    .fill(env.ADMIN_PASSWORD);
+    .fill(process.env.ADMIN_PASSWORD || localEnv.ADMIN_PASSWORD);
   await admin.getByRole('button', { name: 'Se connecter', exact: true }).click();
   await expect(admin.getByRole('table', { name: /réservations/i })).toBeVisible({
     timeout: 15000,
@@ -829,17 +837,46 @@ try {
 } catch (error) {
   console.error('Messages visibles :', await page.locator('[role="alert"]').allTextContents());
   await page.screenshot({ path: output + 'browser-failure.png', fullPage: true });
-  throw error;
+  scenarioError = error;
 } finally {
-  const user = userId
-    ? await db.utilisateur.findUnique({ where: { id: userId } })
-    : await db.utilisateur.findUnique({ where: { telephone: '+221' + phone } });
-  if (user) {
-    await db.reservation.deleteMany({ where: { utilisateurId: user.id } });
-    await db.utilisateur.delete({ where: { id: user.id } });
+  try {
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        const user = userId
+          ? await db.utilisateur.findUnique({ where: { id: userId } })
+          : await db.utilisateur.findUnique({ where: { telephone: '+221' + phone } });
+        if (user) {
+          const bookings = await db.reservation.findMany({
+            where: { utilisateurId: user.id },
+            select: { devis: { select: { id: true } } },
+          });
+          const quoteIds = bookings.flatMap((booking) => booking.devis.map(({ id }) => id));
+          if (quoteIds.length)
+            await db.ecritureComptable.deleteMany({
+              where: { sourceDevisId: { in: quoteIds } },
+            });
+          await db.reservation.deleteMany({ where: { utilisateurId: user.id } });
+          await db.utilisateur.deleteMany({ where: { id: user.id } });
+        }
+        if (teamUserId) await db.utilisateur.deleteMany({ where: { id: teamUserId } });
+        if (tickets.length) await db.itineraire.deleteMany({ where: { id: { in: tickets } } });
+        cleanupError = undefined;
+        break;
+      } catch (error) {
+        cleanupError = error;
+        await db.$disconnect().catch(() => undefined);
+        if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, 1500));
+      }
+    }
+  } finally {
+    await browser.close();
+    await db.$disconnect();
   }
-  if (teamUserId) await db.utilisateur.deleteMany({ where: { id: teamUserId } });
-  await db.itineraire.deleteMany({ where: { id: { in: tickets } } });
-  await browser.close();
-  await db.$disconnect();
 }
+if (scenarioError && cleanupError)
+  throw new AggregateError(
+    [scenarioError, cleanupError],
+    'Le scénario et son nettoyage ont échoué.',
+  );
+if (scenarioError) throw scenarioError;
+if (cleanupError) throw cleanupError;

@@ -24,16 +24,19 @@ export class PrismaCatalogue implements CatalogueRepository {
     };
   }
   async update(vehicles: Vehicle[], settings: Settings) {
-    await this.db.$transaction([
-      ...vehicles.map((v) =>
-        this.db.vehicule.upsert({
-          where: { id: v.id },
-          update: toVehicle(v),
-          create: toVehicle(v),
-        }),
-      ),
-      this.db.parametreApplication.update({ where: { id: 'main' }, data: toSettings(settings) }),
-    ]);
+    await this.db.$transaction(
+      [
+        ...vehicles.map((v) =>
+          this.db.vehicule.upsert({
+            where: { id: v.id },
+            update: toVehicle(v),
+            create: toVehicle(v),
+          }),
+        ),
+        this.db.parametreApplication.update({ where: { id: 'main' }, data: toSettings(settings) }),
+      ],
+      { timeout: 30000 },
+    );
   }
   async removeVehicle(id: string) {
     await this.db.$transaction(async (tx) => {

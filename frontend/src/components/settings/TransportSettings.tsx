@@ -521,12 +521,11 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
                   }
                   required
                   step={
-                    key === 'cubicMetersPerHourPerMover' ||
-                    key === 'wbgtAdj' ||
-                    key === 'maxHandlingHours' ||
-                    key === 'maxDayHours'
-                      ? '0.5'
-                      : 1
+                    key === 'cubicMetersPerHourPerMover'
+                      ? '0.1'
+                      : key === 'wbgtAdj' || key === 'maxHandlingHours' || key === 'maxDayHours'
+                        ? '0.5'
+                        : 1
                   }
                   name={`movingLaborPlanning.${key}`}
                   defaultValue={planning[key]}

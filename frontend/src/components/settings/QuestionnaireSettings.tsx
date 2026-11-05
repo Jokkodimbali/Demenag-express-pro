@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import type { ClientQuestion } from '../../domain/model';
 import { defaultClientQuestions } from '../../domain/questionnaire';
@@ -8,24 +8,28 @@ export function QuestionnaireSettings({ questions }: { questions: ClientQuestion
   const defaults = () => defaultClientQuestions.map((question) => ({ ...question }));
   const [items, setItems] = useState(() => (questions.length ? questions : defaults()));
   const [expanded, setExpanded] = useState(false);
+  const pendingForm = useRef<HTMLFormElement | null>(null);
 
-  function saveAfterRender(form: HTMLFormElement | null) {
-    requestAnimationFrame(() => form?.requestSubmit());
-  }
+  useEffect(() => {
+    const form = pendingForm.current;
+    pendingForm.current = null;
+    form?.requestSubmit();
+  }, [items]);
 
   function move(index: number, offset: -1 | 1, form: HTMLFormElement | null) {
     const target = index + offset;
     if (target < 0 || target >= items.length) return;
+    pendingForm.current = form;
     setItems((current) => {
       const next = [...current];
       [next[index], next[target]] = [next[target], next[index]];
       return next;
     });
-    saveAfterRender(form);
   }
 
   function addQuestion(form: HTMLFormElement | null) {
     if (items.length >= 100) return;
+    pendingForm.current = form;
     setItems((current) => [
       ...current,
       {
@@ -38,20 +42,19 @@ export function QuestionnaireSettings({ questions }: { questions: ClientQuestion
         active: true,
       },
     ]);
-    saveAfterRender(form);
   }
 
   function resetQuestions(form: HTMLFormElement | null) {
+    pendingForm.current = form;
     setItems(defaults());
-    saveAfterRender(form);
   }
 
   function removeQuestion(index: number, form: HTMLFormElement | null) {
+    pendingForm.current = form;
     setItems((current) => {
       const remaining = current.filter((_, itemIndex) => itemIndex !== index);
       return remaining.length ? remaining : defaults();
     });
-    saveAfterRender(form);
   }
 
   return (
