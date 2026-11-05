@@ -97,11 +97,22 @@ export function registerBookingRoutes(
       ),
     );
   });
+  app.get(`${apiRoutes.bookings}/trash`, authenticate, admin, async (_req, res) =>
+    res.json(await deps.moving.trashed(getActor(res))),
+  );
+  app.post(`${apiRoutes.bookings}/:id/restore`, authenticate, admin, async (req, res) => {
+    await deps.moving.restore(getActor(res), z.uuid().parse(req.params.id));
+    res.status(204).end();
+  });
+  app.delete(`${apiRoutes.bookings}/:id/purge`, authenticate, admin, async (req, res) => {
+    await deps.moving.purge(getActor(res), z.uuid().parse(req.params.id));
+    res.status(204).end();
+  });
   app.get(`${apiRoutes.bookings}/:id`, authenticate, async (req, res) =>
     res.json(await deps.moving.get(getActor(res), z.uuid().parse(req.params.id))),
   );
   app.post(`${apiRoutes.bookings}/:id/reminders`, authenticate, async (req, res) =>
-    res.json(await deps.moving.recordClientReminder(getActor(res), z.uuid().parse(req.params.id))),
+    res.json(await deps.moving.recordBookingReminder(getActor(res), z.uuid().parse(req.params.id))),
   );
   app.delete(`${apiRoutes.bookings}/:id`, authenticate, admin, async (req, res) => {
     await deps.moving.delete(getActor(res), z.uuid().parse(req.params.id));

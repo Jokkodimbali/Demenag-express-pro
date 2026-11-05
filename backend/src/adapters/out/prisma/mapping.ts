@@ -9,7 +9,7 @@ import type {
   UserCredentials,
   Vehicle,
 } from '../../../domain/model.js';
-import { defaultClientQuestions } from '../../../domain/questionnaire.js';
+import { defaultClientQuestions, isLegacyDefaultQuestions } from '../../../domain/questionnaire.js';
 import { vehicleCapacity } from '../../../domain/vehicle-capacity.js';
 import type {
   ParametreApplication,
@@ -176,8 +176,13 @@ export const fromSettings = (row: ParametreApplication): Settings => ({
     maxDayHours: 8,
     defaultStartHour: 8,
     maxMoversPerVehicle: 6,
-    cubicMetersPerHourPerMover: 2.5,
+    cubicMetersPerHourPerMover: 2.7,
     pauseMinutes: 30,
+    heat: 1,
+    wbgtAdj: 0,
+    blanketLengthCm: 204,
+    blanketWidthCm: 184,
+    blanketStock: 20,
     ...(row.planificationManoeuvre as Partial<MovingLaborPlanningSettings>),
   },
   assemblyPrice: row.tarifMontage,
@@ -189,6 +194,7 @@ export const fromSettings = (row: ParametreApplication): Settings => ({
     ? (String(row.modeWhatsapp) as Settings['whatsappMode'])
     : 'api',
   whatsappQuoteTemplate: String(row.modeleDevisWhatsapp ?? ''),
+  whatsappProvisionalTemplate: String(row.modeleDevisProvisoireWhatsapp ?? ''),
   businessName: row.nomEntreprise,
   businessAddress: row.adresseEntreprise,
   invoiceFooter: row.piedFacture,
@@ -209,9 +215,10 @@ export const fromSettings = (row: ParametreApplication): Settings => ({
   clientCancellation: row.annulationClientAutorisee,
   cancellationNoticeHours: row.preavisAnnulationHeures,
   enabledSlots: row.creneauxOuverts as BookingSlot[],
-  questionnaire: Array.isArray(row.questionnaire)
-    ? (row.questionnaire as ClientQuestion[])
-    : defaultClientQuestions,
+  questionnaire:
+    Array.isArray(row.questionnaire) && !isLegacyDefaultQuestions(row.questionnaire)
+      ? (row.questionnaire as ClientQuestion[])
+      : defaultClientQuestions,
 });
 export const toSettings = (value: Settings) => ({
   bornesDistance: value.distanceBounds,
@@ -224,8 +231,13 @@ export const toSettings = (value: Settings) => ({
     maxDayHours: 8,
     defaultStartHour: 8,
     maxMoversPerVehicle: 6,
-    cubicMetersPerHourPerMover: 2.5,
+    cubicMetersPerHourPerMover: 2.7,
     pauseMinutes: 30,
+    heat: 1,
+    wbgtAdj: 0,
+    blanketLengthCm: 204,
+    blanketWidthCm: 184,
+    blanketStock: 20,
   },
   tarifMontage: value.assemblyPrice,
   grillePrixMontage: (value.montageP ?? {}) as Prisma.InputJsonValue,
@@ -235,7 +247,10 @@ export const toSettings = (value: Settings) => ({
   modeWhatsapp: value.whatsappMode ?? 'api',
   modeleDevisWhatsapp:
     value.whatsappQuoteTemplate ??
-    'Bonjour {nom}, votre déménagement est terminé. Voici votre devis final Demenag Express {num} : {total} ({allers} aller(s)-retour(s), {vehicule}). Le PDF est disponible dans votre espace client. Merci !',
+    'Bonjour {nom},\n\nVoici votre devis final Demenag Express n° {num} :\n- Date : {date}{heure}\n- Trajet : {trajet}\n- Véhicule : {vehicule}, {voyages}\n- Montant total : {total}\n\nCe montant est définitif.\nJe vous envoie le PDF du devis final juste après ce message.\n\nMerci pour votre confiance.',
+  modeleDevisProvisoireWhatsapp:
+    value.whatsappProvisionalTemplate ??
+    'Bonjour {nom},\n\nMerci pour votre demande. Voici votre devis provisoire Demenag Express n° {num} :\n- Date : {date}{heure}\n- Trajet : {trajet}\n- Véhicule : {vehicule}, {voyages}\n- Montant estimé : {total}\n\nCe montant est une estimation établie d’après votre inventaire. Il sera confirmé par le devis final.\nJe vous envoie le PDF du devis juste après ce message.\n\nPour confirmer ou modifier votre demande, répondez simplement ici.',
   nomEntreprise: value.businessName,
   adresseEntreprise: value.businessAddress,
   piedFacture: value.invoiceFooter,
@@ -247,7 +262,7 @@ export const toSettings = (value: Settings) => ({
   signatureFacture: value.invoiceSignature,
   paiementWave: value.paymentWave ?? true,
   paiementEspeces: value.paymentCash ?? true,
-  qrPaiement: value.paymentQr ?? '/assets/wave-qr.png',
+  qrPaiement: value.paymentQr === undefined ? '/assets/wave-qr.png' : value.paymentQr,
   reservationsOuvertes: value.bookingsEnabled,
   delaiMaximumJours: value.maxAdvanceDays,
   preavisReservationHeures: value.minNoticeHours,

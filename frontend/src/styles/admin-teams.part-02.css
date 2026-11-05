@@ -174,6 +174,35 @@
   cursor: pointer;
   box-shadow: 0 6px 20px #0005;
 }
+.teams-whatsapp-queue {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--team-border);
+  border-radius: 12px;
+  background: var(--team-panel);
+  color: #fff;
+}
+.teams-whatsapp-queue span {
+  flex: 1 1 240px;
+  color: var(--team-muted);
+}
+.teams-whatsapp-queue button {
+  min-height: 40px;
+  border: 1px solid var(--team-yellow);
+  border-radius: 9px;
+  padding: 8px 12px;
+  background: var(--team-yellow);
+  color: #1e2023;
+  font-weight: 800;
+  cursor: pointer;
+}
+.teams-whatsapp-queue button:last-child {
+  background: transparent;
+  color: #fff;
+}
 @media (max-width: 600px) {
   .teams-job-heading > div:first-child {
     width: 100%;

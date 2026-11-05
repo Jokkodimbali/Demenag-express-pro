@@ -7,10 +7,11 @@ import type {
   ManualAccountingInput,
 } from '../ports';
 import { useAdministration } from './useAdministration';
+import { completedBookingRevenueAmount } from '../services/revenue';
 import {
   advertisingChannels,
   defaultAccountingFinanceConfiguration,
-  jobLabourEntries,
+  referenceFixedChargeEntries,
   simulateAccounting,
 } from '../../domain/accounting-forecast';
 
@@ -125,6 +126,8 @@ export function useAccounting() {
             salaries: config.salaries ?? defaults.salaries,
             annexes: config.annexes ?? defaults.annexes,
             vehiclePurchases: config.vehiclePurchases ?? defaults.vehiclePurchases,
+            monthlyFixedChargePostings: config.monthlyFixedChargePostings ?? [],
+            financeChat: config.financeChat ?? [],
           };
           financeRef.current = normalized;
           setFinanceConfiguration(normalized);
@@ -132,10 +135,6 @@ export function useAccounting() {
           const defaults = defaultAccountingFinanceConfiguration();
           financeRef.current = defaults;
           setFinanceConfiguration(defaults);
-          saveChain.current = saveChain.current
-            .catch(() => undefined)
-            .then(() => api.saveAccountingConfiguration(defaults));
-          await saveChain.current;
         }
       }
     } catch (cause) {
@@ -156,7 +155,9 @@ export function useAccounting() {
         | ((value: AccountingFinanceConfiguration) => AccountingFinanceConfiguration),
     ) => {
       const current = financeRef.current;
-      const next = typeof change === 'function' ? change(current) : { ...current, ...change };
+      const next = {
+        ...(typeof change === 'function' ? change(current) : { ...current, ...change }),
+      };
       financeRef.current = next;
       setFinanceConfiguration(next);
       setFinanceSaving(true);
@@ -195,7 +196,6 @@ export function useAccounting() {
   );
 
   const generatedEntries = useMemo(() => {
-    const labour = jobLabourEntries(bookings, financeConfiguration);
     const advertising: AccountingEntry[] = Object.entries(financeConfiguration.advertising).flatMap(
       ([period, channels]) =>
         Object.entries(channels).flatMap(([channel, amount]) => {
@@ -216,8 +216,8 @@ export function useAccounting() {
           ];
         }),
     );
-    return [...labour, ...advertising];
-  }, [bookings, financeConfiguration]);
+    return [...advertising, ...referenceFixedChargeEntries(financeConfiguration)];
+  }, [financeConfiguration]);
   const historicalFinalQuotesWithoutSnapshot = useMemo(
     () =>
       bookings.filter((booking) => {
@@ -230,9 +230,17 @@ export function useAccounting() {
     () => [...storedEntries, ...generatedEntries],
     [storedEntries, generatedEntries],
   );
+  const currentMonth = currentDate().slice(0, 7);
   const entries = useMemo(
-    () => allEntries.filter((entry) => all || entry.date.slice(0, 7) === month),
-    [all, allEntries, month],
+    () =>
+      all
+        ? allEntries.filter(
+            (entry) =>
+              entry.date.slice(0, 7) >= financeConfiguration.start &&
+              entry.date.slice(0, 7) <= currentMonth,
+          )
+        : allEntries.filter((entry) => entry.date.slice(0, 7) === month),
+    [all, allEntries, currentMonth, financeConfiguration.start, month],
   );
   const totals = useMemo(() => {
     const revenue = entries
@@ -253,7 +261,6 @@ export function useAccounting() {
     };
   }, [entries]);
 
-  const currentMonth = currentDate().slice(0, 7);
   const forecast = useMemo(
     () =>
       simulateAccounting(financeConfiguration, allEntries, bookings, all ? currentMonth : month),
@@ -277,12 +284,10 @@ export function useAccounting() {
           booking.status !== 'cancelled'
         );
       });
-      const turnover = clients
-        .filter((booking) => booking.quotes.some((quote) => quote.kind === 'final'))
-        .reduce((sum, booking) => {
-          const final = [...booking.quotes].reverse().find((quote) => quote.kind === 'final');
-          return sum + (final?.price.total ?? 0);
-        }, 0);
+      const turnover = clients.reduce(
+        (sum, booking) => sum + completedBookingRevenueAmount(booking),
+        0,
+      );
       return {
         channel,
         spend,

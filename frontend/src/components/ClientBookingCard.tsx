@@ -2,7 +2,7 @@ import { liveBookingPrice } from '../application/services/live-booking-price';
 import { uiText } from '../content/reference-ui-text';
 import { useApp } from '../application/context';
 import { useBookingCard } from '../application/controllers/useBookingCard';
-import { whatsappNumber, whatsappUrl } from '../application/services/whatsapp';
+import { whatsappPaymentLine } from '../application/services/whatsapp-templates';
 import { money, referenceTierLabels } from '../domain/format';
 import type { Booking } from '../domain/model';
 import { routes } from '../routing/routes';
@@ -12,14 +12,12 @@ import { Link } from 'react-router-dom';
 export function ClientBookingCard({
   booking,
   onChange,
-  onReminder,
 }: {
   booking: Booking;
   onChange: (booking: Booking) => void;
-  onReminder?: (message: string) => void;
 }) {
   const { catalogue } = useApp();
-  const { pdf, busy, error, recordReminder } = useBookingCard({ booking, onChange });
+  const { pdf, busy, error } = useBookingCard({ booking, onChange });
   const provisionalQuote = booking.quotes.filter((quote) => quote.kind === 'provisional').at(-1);
   const finalQuote = booking.quotes.filter((quote) => quote.kind === 'final').at(-1);
   const displayedEstimate = liveBookingPrice(booking, catalogue).total;
@@ -37,69 +35,7 @@ export function ClientBookingCard({
   const distanceTier = referenceTierLabels(distanceBounds)[tierIndex];
   const isFinal = booking.status === 'completed';
   const canEdit = ['pending', 'confirmed', 'cancelled'].includes(booking.status) && !finalQuote;
-  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Dakar' }).format(new Date());
-  const daysBefore = booking.date
-    ? Math.round(
-        (+new Date(`${booking.date}T12:00:00Z`) - +new Date(`${today}T12:00:00Z`)) / 86400000,
-      )
-    : -1;
-  const reminderPhone = whatsappNumber(
-    booking.phone,
-    catalogue?.settings.whatsappCountryCode ?? '221',
-  );
-  const canRemind =
-    daysBefore >= 0 &&
-    !['completed', 'cancelled'].includes(booking.status) &&
-    reminderPhone.length >= 10;
-  const reminderWhen =
-    daysBefore === 0
-      ? 'aujourd’hui'
-      : daysBefore === 1
-        ? 'demain'
-        : daysBefore % 7 === 0
-          ? `dans ${daysBefore / 7} semaine${daysBefore > 7 ? 's' : ''}`
-          : `dans ${daysBefore} jours`;
-  const reminderLabel =
-    daysBefore === 0 ? 'aujourd’hui' : daysBefore === 1 ? 'demain' : `J-${daysBefore}`;
-  const paymentModes = [
-    catalogue?.settings.paymentWave !== false ? 'Wave' : '',
-    catalogue?.settings.paymentCash !== false ? 'espèces' : '',
-  ].filter(Boolean);
-  const paymentText = paymentModes.length
-    ? `Mode de paiement : ${paymentModes.join(' ou ')}${paymentModes.length > 1 ? ' (au choix)' : ''}.`
-    : '';
-  const reminderDate = booking.date
-    ? new Date(`${booking.date}T12:00:00Z`).toLocaleDateString('fr-FR', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-        timeZone: 'Africa/Dakar',
-      })
-    : '';
-  const reminderMessage =
-    `Bonjour ${booking.customerName}, petit rappel de Demenag Express : votre déménagement (${booking.reference}) est prévu ${reminderWhen}, le ${reminderDate}` +
-    (booking.timeSlot && booking.timeSlot !== 'À définir' ? ` à ${booking.timeSlot}` : '') +
-    `.\n` +
-    (booking.fromAddress ? `Départ : ${booking.fromAddress}\n` : '') +
-    (booking.toAddress ? `Arrivée : ${booking.toAddress}\n` : '') +
-    `Merci de préparer vos affaires pour le chargement.${paymentText ? `\n${paymentText}` : ''} Pour toute question, contactez-nous au ${catalogue?.settings.businessPhone ?? ''}. À bientôt !`;
-  const reminderUrl = whatsappUrl(booking.phone, reminderMessage, catalogue?.settings);
-  const lastReminder = booking.reminders?.at(-1);
-  const lastReminderDate = lastReminder
-    ? (() => {
-        const parts = new Intl.DateTimeFormat('en-GB', {
-          day: '2-digit',
-          month: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          hourCycle: 'h23',
-          timeZone: 'Africa/Dakar',
-        }).formatToParts(new Date(lastReminder.at));
-        const part = (type: Intl.DateTimeFormatPartTypes) =>
-          parts.find((entry) => entry.type === type)?.value ?? '';
-        return `${part('day')}/${part('month')} à ${part('hour')}:${part('minute')}`;
-      })()
-    : '';
+  const paymentText = whatsappPaymentLine(catalogue?.settings).split(' Le QR code')[0];
   const tolls = finalQuote?.tolls ?? [];
   const tollTotal = tolls.reduce((total, toll) => total + toll.unitPrice * toll.quantity, 0);
   const mapsUrl = new URL('https://www.google.com/maps/dir/');
@@ -107,13 +43,6 @@ export function ClientBookingCard({
   mapsUrl.searchParams.set('origin', booking.from.join(','));
   mapsUrl.searchParams.set('destination', booking.to.join(','));
   mapsUrl.searchParams.set('travelmode', 'driving');
-
-  async function sendReminder() {
-    if (await recordReminder())
-      onReminder?.(
-        `Rappel WhatsApp envoyé à ${booking.customerName || 'client'} (${reminderWhen}).`,
-      );
-  }
 
   return (
     <article className="reference-client-card">
@@ -139,36 +68,6 @@ export function ClientBookingCard({
             <span className={`reference-client-status ${isFinal ? 'completed' : 'pending'}`}>
               {isFinal ? 'Final' : 'Provisoire'}
             </span>
-            {canRemind && (
-              <a
-                className="reference-client-reminder"
-                href={reminderUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                title={`Message : rendez-vous ${reminderWhen}`}
-                onClick={() => void sendReminder()}
-              >
-                <svg
-                  aria-hidden="true"
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
-                </svg>
-                {`Rappel · ${reminderLabel}`}
-              </a>
-            )}
-            {lastReminderDate && (
-              <small>
-                {canRemind ? 'Dernier rappel :' : 'Rappel envoyé le'} {lastReminderDate}
-              </small>
-            )}
           </div>
         </div>
       </div>

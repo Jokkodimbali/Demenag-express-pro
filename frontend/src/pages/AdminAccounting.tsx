@@ -5,12 +5,14 @@ import { useAccounting } from '../application/controllers/useAccounting';
 import { useApp } from '../application/context';
 import { accountingText } from '../content/accounting';
 import { AccountingFinanceSections } from '../components/AccountingFinanceSections';
+import { ReferenceAccountingOverview } from '../components/ReferenceAccountingOverview';
+import { ReferenceMonthlyCharges } from '../components/ReferenceMonthlyCharges';
 import { money } from '../domain/format';
 import { routes } from '../routing/routes';
 
 export function AdminAccounting() {
   const [downloadError, setDownloadError] = useState('');
-  const { exportAccounting } = useApp();
+  const { exportAccounting, catalogue } = useApp();
   const {
     month,
     setMonth,
@@ -20,7 +22,6 @@ export function AdminAccounting() {
     allEntries,
     financeConfiguration,
     updateFinanceConfiguration,
-    financeSaving,
     forecast,
     currentForecast,
     advertisingSummary,
@@ -84,31 +85,7 @@ export function AdminAccounting() {
           {accountingText.all}
         </button>
       </div>
-      <div className="accounting-stats">
-        <article>
-          <span>{accountingText.revenues}</span>
-          <strong className="accounting-positive">{money(totals.revenue)}</strong>
-          <small>
-            {entries.filter((entry) => entry.type === 'revenu').length}
-            {accountingText.entryCount}
-          </small>
-        </article>
-        <article>
-          <span>{accountingText.charges}</span>
-          <strong className="accounting-negative">{money(totals.charges)}</strong>
-          <small>
-            {entries.filter((entry) => entry.type === 'charge').length}
-            {accountingText.entryCount}
-          </small>
-        </article>
-        <article>
-          <span>{accountingText.balance}</span>
-          <strong className={totals.balance < 0 ? 'accounting-negative' : 'accounting-positive'}>
-            {money(totals.balance)}
-          </strong>
-          <small>{accountingText.balanceHint}</small>
-        </article>
-      </div>
+      <p className="accounting-history-warning">{accountingText.invoicedNote}</p>
       {(error || downloadError) && (
         <p className="alert error" role="alert">
           {error || downloadError}
@@ -124,26 +101,52 @@ export function AdminAccounting() {
           {accountingText.loading}
         </p>
       ) : (
-        <AccountingFinanceSections
-          config={financeConfiguration}
-          update={updateFinanceConfiguration}
-          forecast={forecast}
-          current={currentForecast}
-          period={all ? accountingMonth : month}
-          advertising={advertisingSummary}
-          bookings={bookings}
-          saving={financeSaving}
-          onDownload={(document) => {
-            setDownloadError('');
-            void exportAccounting(
-              document,
-              financeConfiguration,
-              forecast.months,
-              allEntries,
-              all ? accountingMonth : month,
-            ).catch(() => setDownloadError('Téléchargement impossible.'));
-          }}
-        />
+        <>
+          <ReferenceAccountingOverview
+            config={financeConfiguration}
+            update={updateFinanceConfiguration}
+            bookings={bookings}
+            entries={allEntries}
+            current={currentForecast}
+            endMonth={all ? accountingMonth : month}
+            catalogue={catalogue}
+            forecastHistory={forecast.months}
+            allPeriods={all}
+            summary={{
+              revenue: totals.revenue,
+              charges: totals.charges,
+              balance: totals.balance,
+              revenueCount: entries.filter((entry) => entry.type === 'revenu').length,
+              chargeCount: entries.filter((entry) => entry.type === 'charge').length,
+            }}
+          />
+          <AccountingFinanceSections
+            config={financeConfiguration}
+            update={updateFinanceConfiguration}
+            forecast={forecast}
+            current={currentForecast}
+            period={all ? accountingMonth : month}
+            advertising={advertisingSummary}
+            bookings={bookings}
+            onDownload={(document) => {
+              setDownloadError('');
+              void exportAccounting(
+                document,
+                financeConfiguration,
+                forecast.months,
+                allEntries,
+                all ? accountingMonth : month,
+              ).catch(() => setDownloadError('Téléchargement impossible.'));
+            }}
+          />
+          <ReferenceMonthlyCharges
+            config={financeConfiguration}
+            update={updateFinanceConfiguration}
+            entries={allEntries}
+            current={currentForecast}
+            month={all ? accountingMonth : month}
+          />
+        </>
       )}
       <div className="accounting-columns">
         <form className="accounting-panel accounting-form" onSubmit={addEntry}>

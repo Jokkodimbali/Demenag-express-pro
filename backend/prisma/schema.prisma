@@ -151,31 +151,32 @@ model SignalementPanne {
 }
 
 model ParametreApplication {
-  id                      String  @id @default("main")
-  tarifManoeuvre          Int     @map("labour_price")
-  tarifEtageManoeuvre     Int     @default(500) @map("labour_floor_price")
-  tarifAscenseurManoeuvre Int     @default(500) @map("labour_lift_price")
-  grillePrixManoeuvre     Json    @default("{}") @map("labour_price_matrix")
-  planificationManoeuvre  Json    @default("{}") @map("moving_labor_planning")
-  tarifMontage            Int     @map("assembly_price")
-  grillePrixMontage       Json    @default("{}") @map("assembly_price_matrix")
-  telephoneEntreprise     String  @map("business_phone")
-  numeroWhatsapp          String  @default("+221775105104") @map("whatsapp_phone")
-  indicatifWhatsapp       String  @default("221") @map("whatsapp_country_code")
-  modeWhatsapp            String  @default("api") @map("whatsapp_mode")
-  modeleDevisWhatsapp     String  @default("Bonjour {nom}, votre déménagement est terminé. Voici votre devis final Demenag Express {num} : {total} ({allers} aller(s)-retour(s), {vehicule}). Le PDF est disponible dans votre espace client. Merci !") @map("whatsapp_quote_template")
-  nomEntreprise           String  @default("Demenag Express") @map("business_name")
-  adresseEntreprise       String  @default("Dakar, Sénégal") @map("business_address")
-  piedFacture             String  @default("Merci pour votre confiance.") @map("invoice_footer")
-  tiktokUrl               String? @map("tiktok_url")
-  facebookUrl             String? @map("facebook_url")
-  instagramUrl            String? @map("instagram_url")
-  logoFacture             String? @map("invoice_logo")
-  tamponFacture           String? @map("invoice_stamp")
-  signatureFacture        String? @map("invoice_signature")
-  paiementWave            Boolean @default(true) @map("payment_wave")
-  paiementEspeces         Boolean @default(true) @map("payment_cash")
-  qrPaiement              String? @default("/assets/wave-qr.png") @map("payment_qr")
+  id                            String  @id @default("main")
+  tarifManoeuvre                Int     @map("labour_price")
+  tarifEtageManoeuvre           Int     @default(500) @map("labour_floor_price")
+  tarifAscenseurManoeuvre       Int     @default(500) @map("labour_lift_price")
+  grillePrixManoeuvre           Json    @default("{}") @map("labour_price_matrix")
+  planificationManoeuvre        Json    @default("{}") @map("moving_labor_planning")
+  tarifMontage                  Int     @map("assembly_price")
+  grillePrixMontage             Json    @default("{}") @map("assembly_price_matrix")
+  telephoneEntreprise           String  @map("business_phone")
+  numeroWhatsapp                String  @default("+221775105104") @map("whatsapp_phone")
+  indicatifWhatsapp             String  @default("221") @map("whatsapp_country_code")
+  modeWhatsapp                  String  @default("api") @map("whatsapp_mode")
+  modeleDevisWhatsapp           String  @default("Bonjour {nom},\n\nVoici votre devis final Demenag Express n° {num} :\n- Date : {date}{heure}\n- Trajet : {trajet}\n- Véhicule : {vehicule}, {voyages}\n- Montant total : {total}\n\nCe montant est définitif.\nJe vous envoie le PDF du devis final juste après ce message.\n\nMerci pour votre confiance.") @map("whatsapp_quote_template")
+  modeleDevisProvisoireWhatsapp String  @default("Bonjour {nom},\n\nMerci pour votre demande. Voici votre devis provisoire Demenag Express n° {num} :\n- Date : {date}{heure}\n- Trajet : {trajet}\n- Véhicule : {vehicule}, {voyages}\n- Montant estimé : {total}\n\nCe montant est une estimation établie d’après votre inventaire. Il sera confirmé par le devis final.\nJe vous envoie le PDF du devis juste après ce message.\n\nPour confirmer ou modifier votre demande, répondez simplement ici.") @map("whatsapp_provisional_template")
+  nomEntreprise                 String  @default("Demenag Express") @map("business_name")
+  adresseEntreprise             String  @default("Dakar, Sénégal") @map("business_address")
+  piedFacture                   String  @default("Merci pour votre confiance.") @map("invoice_footer")
+  tiktokUrl                     String? @map("tiktok_url")
+  facebookUrl                   String? @map("facebook_url")
+  instagramUrl                  String? @map("instagram_url")
+  logoFacture                   String? @map("invoice_logo")
+  tamponFacture                 String? @map("invoice_stamp")
+  signatureFacture              String? @map("invoice_signature")
+  paiementWave                  Boolean @default(true) @map("payment_wave")
+  paiementEspeces               Boolean @default(true) @map("payment_cash")
+  qrPaiement                    String? @default("/assets/wave-qr.png") @map("payment_qr")
 
   reservationsOuvertes      Boolean @default(true) @map("bookings_enabled")
   delaiMaximumJours         Int     @default(366) @map("max_advance_days")
@@ -221,11 +222,13 @@ model Reservation {
   courses            Course[]
   version            Int               @default(1)
   creeLe             DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  supprimeLe         DateTime?         @map("deleted_at") @db.Timestamptz
 
   @@unique([utilisateurId, identifiantDemande])
   @@index([utilisateurId, creeLe])
   @@index([statut, date])
   @@index([chauffeurId, date])
+  @@index([supprimeLe, creeLe])
   @@map("bookings")
   @@schema("demenag")
 }
@@ -283,15 +286,19 @@ model LigneDevis {
 }
 
 model EcritureComptable {
-  id        String    @id @default(uuid()) @db.Uuid
-  type      String
-  categorie String    @map("category")
-  libelle   String    @map("label")
-  montant   Int       @map("amount")
-  date      DateTime  @db.Date
-  creeLe    DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  annuleLe  DateTime? @map("voided_at") @db.Timestamptz
+  id                  String    @id @default(uuid()) @db.Uuid
+  type                String
+  categorie           String    @map("category")
+  libelle             String    @map("label")
+  montant             Int       @map("amount")
+  date                DateTime  @db.Date
+  creeLe              DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  annuleLe            DateTime? @map("voided_at") @db.Timestamptz
+  sourceDevisId       String?   @map("source_quote_id") @db.Uuid
+  sourceQuoteKind     String?   @map("source_quote_kind")
+  sourceQuoteQuantity Int?      @map("source_quote_quantity")
 
+  @@unique([sourceDevisId, sourceQuoteKind])
   @@index([date, annuleLe])
   @@map("accounting_entries")
   @@schema("demenag")

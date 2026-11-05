@@ -31,32 +31,34 @@ export async function runVehicleInspection(context: IntegrationContext) {
 }
 
 export async function completeRecordedTrips(context: IntegrationContext, bookingId: string) {
+  const admin = context.clients.admin;
   const driver = context.clients.driver;
   let current = (await context.clients.admin.get('/api/bookings/' + bookingId)).body as {
     trips: { finishedAt: string | null; loadingPhotos: string[] }[];
   };
   while (current.trips.filter((trip) => trip.finishedAt).length < 2) {
     if (!current.trips.some((trip) => !trip.finishedAt)) {
-      const started = await driver
+      const started = await admin
         .post('/api/bookings/' + bookingId + '/trips/start')
         .set(integrationHeader)
-        .send({ photos: [proof] });
+        .send({ photos: [] });
       assert.equal(started.status, 201, JSON.stringify(started.body));
-    } else if (!current.trips.at(-1)?.loadingPhotos.length) {
-      const proofAdded = await driver
-        .post('/api/bookings/' + bookingId + '/trips/start')
-        .set(integrationHeader)
-        .send({ photos: [proof] });
-      assert.equal(proofAdded.status, 201, JSON.stringify(proofAdded.body));
     }
-    const finished = await driver
+    const finished = await admin
       .post('/api/bookings/' + bookingId + '/trips/finish')
       .set(integrationHeader)
-      .send({ photos: [proof] });
+      .send({ photos: [] });
     assert.equal(finished.status, 200, JSON.stringify(finished.body));
     current = finished.body;
   }
-  const response = await driver
+  for (const kind of ['retrait', 'depot'] as const) {
+    const employeeProof = await driver
+      .post(`/api/driver/bookings/${bookingId}/proofs`)
+      .set(integrationHeader)
+      .send({ kind, photos: [proof] });
+    assert.equal(employeeProof.status, 200, JSON.stringify(employeeProof.body));
+  }
+  const response = await admin
     .post('/api/bookings/' + bookingId + '/driver-finished')
     .set(integrationHeader);
   assert.equal(response.status, 200, JSON.stringify(response.body));
@@ -69,6 +71,7 @@ export async function createFinalQuoteAndClose(
   version: number,
 ) {
   const admin = context.clients.admin;
+  const tollPoint = await context.db.pointPeage.findFirstOrThrow();
   const finalQuote = await admin
     .post('/api/bookings/' + bookingId + '/quotes')
     .set(integrationHeader)
@@ -78,22 +81,35 @@ export async function createFinalQuoteAndClose(
       discount: 1_000,
       customPrice: null,
       notes: 'Terminé',
+      tolls: [{ tollPointId: tollPoint.id, direction: 'one-way', quantity: 2 }],
       version,
     });
   assert.equal(finalQuote.status, 201, JSON.stringify(finalQuote.body));
-  assert.equal(finalQuote.body.status, 'in_progress');
-  assert.equal(finalQuote.body.quotes[0].price.total, 94_000);
-
-  const closed = await admin
-    .patch('/api/bookings/' + bookingId + '/status')
-    .set(integrationHeader)
-    .send({ status: 'completed', version: finalQuote.body.version });
-  assert.equal(closed.status, 200, JSON.stringify(closed.body));
-  assert.equal(closed.body.status, 'completed');
+  assert.equal(finalQuote.body.status, 'completed');
+  const createdQuote = (
+    finalQuote.body.quotes as {
+      id: string;
+      kind: string;
+      price: { total: number };
+      tolls?: { tollPointId: string; quantity: number; unitPrice: number }[];
+    }[]
+  ).find((quote) => quote.kind === 'final');
+  assert.ok(createdQuote, 'Le devis final doit apparaître dans la réservation.');
+  assert.equal(createdQuote.price.total, 94_000);
+  assert.equal(createdQuote.tolls?.length, 1);
+  assert.equal(createdQuote.tolls?.[0]?.tollPointId, tollPoint.id);
+  assert.equal(createdQuote.tolls?.[0]?.quantity, 2);
+  const tollPrices = tollPoint.tarifsVehicules as Record<string, number>;
+  assert.equal(
+    createdQuote.tolls?.[0]?.unitPrice,
+    tollPrices.sprinter ?? tollPoint.tarifLourd,
+    'Le tarif du péage final doit être figé avec le tarif du véhicule choisi.',
+  );
   return {
-    ...finalQuote.body,
-    version: closed.body.version,
-  } as { version: number; quotes: { id: string }[] };
+    version: finalQuote.body.version as number,
+    quoteId: createdQuote.id,
+    amount: createdQuote.price.total,
+  };
 }
 
 export async function verifyQuoteSnapshots(
@@ -116,8 +132,47 @@ export async function verifyQuoteSnapshots(
   assert.equal(quote.lignes.length, 3);
   const persisted = (await context.clients.first.get('/api/bookings/' + bookingId)).body;
   assert.equal(persisted.status, 'completed');
-  assert.equal(persisted.quotes[0].price.total, 94_000);
+  const finalQuote = (persisted.quotes as { kind: string; price: { total: number } }[]).find(
+    (item) => item.kind === 'final',
+  );
+  assert.equal(finalQuote?.price.total, 94_000);
+  const savedQuote = await db.devis.findUniqueOrThrow({
+    where: { id: quoteId },
+    include: { lignes: { orderBy: { position: 'asc' } } },
+  });
+  assert.ok(savedQuote.montantTotal !== null);
+  const quoteSnapshot = (
+    persisted.quotes as {
+      id: string;
+      tolls?: { label: string; quantity: number; unitPrice: number }[];
+    }[]
+  ).find((item) => item.id === quoteId);
+  assert.equal(quoteSnapshot?.tolls?.length, 1);
+  assert.equal(
+    savedQuote.lignes.reduce((sum, line) => sum + line.montant, 0),
+    savedQuote.montantTotal + savedQuote.remise,
+    'Les lignes de la facture finale doivent conserver le sous-total avant remise.',
+  );
+  assert.equal(
+    savedQuote.lignes.some((line) => line.libelle.includes('Péage')),
+    false,
+    'Les péages à la charge du client ne doivent pas être intégrés aux lignes de déménagement.',
+  );
   assert.equal(persisted.estimate.total, 58_000);
+  const accounting = await context.clients.admin
+    .get('/api/admin/accounting')
+    .set(integrationHeader);
+  assert.equal(accounting.status, 200, JSON.stringify(accounting.body));
+  const finalRevenue = accounting.body.filter(
+    (entry: { id: string; type: string; amount: number }) =>
+      entry.id === quoteId && entry.type === 'revenu',
+  );
+  assert.equal(finalRevenue.length, 1);
+  assert.equal(
+    finalRevenue[0]?.amount,
+    94_000,
+    'Le revenu comptable final doit rester identique après modification des tarifs courants.',
+  );
 
   const duplicateFinal = await context.clients.admin
     .post('/api/bookings/' + bookingId + '/quotes')

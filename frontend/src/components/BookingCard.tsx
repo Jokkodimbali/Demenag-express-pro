@@ -1,12 +1,10 @@
 import { uiText } from '../content/reference-ui-text';
 import {
-  ArrowUpRight,
   Bell,
   CalendarClock,
   Check,
   Download,
   Eye,
-  MapPin,
   MessageCircle,
   Save,
   Trash2,
@@ -31,11 +29,11 @@ import { bookingReminder } from '../application/services/booking-reminder';
 import { BookingCardMain } from './BookingCardMain';
 import { bookingClosure } from '../domain/booking-closure';
 import { BookingPdfPreview } from './BookingPdfPreview';
+import { visibleUiText } from '../content/visible-ui-text';
 export function BookingCard({
   booking: b,
   onChange,
   admin = false,
-  driverMode = false,
   editInitially = false,
   initialTollLines,
   onDeleted,
@@ -43,7 +41,6 @@ export function BookingCard({
   booking: Booking;
   onChange: (b: Booking) => void;
   admin?: boolean;
-  driverMode?: boolean;
   editInitially?: boolean;
   initialTollLines?: { id: string; label: string; quantity: number; unitPrice: number }[];
   onDeleted?: () => void;
@@ -94,7 +91,6 @@ export function BookingCard({
     ? inventoryAssemblyLines(b.inventorySnapshot?.sourceInventory, quoteSettings)
     : [];
   const {
-    clientPhoneLink,
     canSendReminder,
     daysUntilMove,
     reminderWhen,
@@ -155,8 +151,6 @@ export function BookingCard({
       <BookingCardMain
         booking={b}
         admin={admin}
-        driverMode={driverMode}
-        clientPhoneLink={clientPhoneLink}
         finalQuote={finalQuote}
         terminal={terminal}
         editingSchedule={editingSchedule}
@@ -170,7 +164,7 @@ export function BookingCard({
         displayedQuote={displayedQuote}
         displayedPrice={displayedPrice}
       />
-      {(admin || driverMode) && (
+      {admin && (
         <BookingRouteMap
           booking={b}
           admin={admin && !finalQuote}
@@ -193,37 +187,7 @@ export function BookingCard({
           ) : null}
         </button>
       </div>
-      {planningOpen && (
-        <BookingWorkPlan booking={b} admin={admin} driverMode={driverMode} onChange={onChange} />
-      )}
-      {driverMode && (
-        <div className="booking-route-actions">
-          <a
-            className="button secondary small booking-google-route"
-            href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(`${b.from[0]},${b.from[1]}`)}&destination=${encodeURIComponent(`${b.to[0]},${b.to[1]}`)}&travelmode=driving`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            <MapPin size={16} /> {messages.ouvrirLeTrajetDansGoogleMaps} <ArrowUpRight size={15} />
-          </a>
-          <a
-            className="button secondary small booking-google-route"
-            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${b.from[0]},${b.from[1]}`)}&travelmode=driving`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            <MapPin size={16} /> {messages.versLeDepart} <ArrowUpRight size={15} />
-          </a>
-          <a
-            className="button secondary small booking-google-route"
-            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${b.to[0]},${b.to[1]}`)}&travelmode=driving`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            <MapPin size={16} /> {messages.versLArrivee} <ArrowUpRight size={15} />
-          </a>
-        </div>
-      )}
+      {planningOpen && <BookingWorkPlan booking={b} admin={admin} onChange={onChange} />}
       <div className="booking-detail">
         <dl>
           <div>
@@ -397,7 +361,7 @@ export function BookingCard({
           <Download size={16} />
           {messages.telechargerLePdf}
         </button>
-        {!admin && !driverMode && ['pending', 'confirmed'].includes(b.status) && (
+        {!admin && ['pending', 'confirmed'].includes(b.status) && (
           <button
             className="button text danger small"
             disabled={busy}
@@ -498,7 +462,7 @@ export function BookingCard({
             {messages.envoyerLeDevisDefinitif}
           </button>
         )}
-        {admin && !finalQuote && (
+        {admin && (
           <button
             className="button text danger small"
             disabled={busy || deleteBusy}
@@ -507,7 +471,7 @@ export function BookingCard({
             }}
           >
             <Trash2 size={16} />
-            {uiText['supprimerDefinitivement']}
+            {visibleUiText.text12}
           </button>
         )}
       </div>
@@ -529,7 +493,6 @@ export function BookingCard({
         busy={busy}
         onClose={() => setPdfPreviewUrl('')}
       />
-      {driverMode && <DriverCourseActions booking={b} onChange={onChange} />}
       {admin &&
         ['confirmed', 'in_progress'].includes(b.status) &&
         !finalQuote &&
@@ -558,7 +521,7 @@ export function BookingCard({
           )}
         </div>
       )}
-      {!driverMode && !!b.trips?.length && (
+      {!!b.trips?.length && (
         <section className="booking-trip-history">
           <h4>
             {uiText['coursesEtPreuves']}
@@ -965,10 +928,10 @@ export function BookingCard({
       {deleting && (
         <ConfirmationDialog
           titleId={'delete-booking-' + b.id}
-          eyebrow={messages.suppressionDefinitive}
-          title={messages.supprimerReservationDefinitivement}
-          description={messages.confirmationSuppressionReservation(b.reference)}
-          confirmLabel={messages.supprimerDefinitivement}
+          eyebrow="SUPPRESSION D’UN RENDEZ-VOUS"
+          title={visibleUiText.text13}
+          description={`La réservation ${b.reference}, son devis et ses photos iront dans la corbeille (Admin → Données). Vous pourrez la restaurer.`}
+          confirmLabel="Supprimer"
           busy={deleteBusy}
           error={deleteError}
           onConfirm={() => void confirmDelete()}

@@ -120,6 +120,7 @@ const clientQuestionSchema = z.object({
   id: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
   group: z.string().trim().min(1).max(100),
   label: z.string().trim().min(3).max(500),
+  hint: z.string().trim().max(1000).optional(),
   answerType: z.enum(['text', 'yes_no']),
   required: z.boolean(),
   active: z.boolean(),
@@ -211,7 +212,7 @@ export const bookingSchema = estimateSchema
       )
       .max(50)
       .optional(),
-    inventorySnapshot: inventorySnapshotSchema.optional(),
+    inventorySnapshot: inventorySnapshotSchema.nullable().optional(),
     requestId: z.uuid(),
   })
   .refine((booking) => !booking.date || Boolean(booking.timeSlot), {
@@ -512,14 +513,21 @@ export const catalogueSchema = z.object({
         maxMoversPerVehicle: z.number().int().min(2).max(20),
         cubicMetersPerHourPerMover: z.number().min(0.1).max(50),
         pauseMinutes: z.number().int().min(0).max(180),
+        heat: z.number().int().min(0).max(1).optional(),
+        wbgtAdj: z.number().min(-10).max(10).optional(),
+        blanketLengthCm: z.number().int().min(50).max(400).optional(),
+        blanketWidthCm: z.number().int().min(50).max(400).optional(),
+        blanketStock: z.number().int().min(0).optional(),
       })
       .default({
         maxHandlingHours: 3,
         maxDayHours: 8,
         defaultStartHour: 8,
         maxMoversPerVehicle: 6,
-        cubicMetersPerHourPerMover: 2.5,
+        cubicMetersPerHourPerMover: 2.7,
         pauseMinutes: 30,
+        heat: 1,
+        wbgtAdj: 0,
       }),
     assemblyPrice: z.number().int().min(0).max(1000000),
     montageP: z
@@ -558,7 +566,15 @@ export const catalogueSchema = z.object({
       .min(1)
       .max(1000)
       .default(
-        'Bonjour {nom}, votre déménagement est terminé. Voici votre devis final Demenag Express {num} : {total} ({allers} aller(s)-retour(s), {vehicule}). Le PDF est disponible dans votre espace client. Merci !',
+        'Bonjour {nom},\n\nVoici votre devis final Demenag Express n° {num} :\n- Date : {date}{heure}\n- Trajet : {trajet}\n- Véhicule : {vehicule}, {voyages}\n- Montant total : {total}\n\nCe montant est définitif.\nJe vous envoie le PDF du devis final juste après ce message.\n\nMerci pour votre confiance.',
+      ),
+    whatsappProvisionalTemplate: z
+      .string()
+      .trim()
+      .min(1)
+      .max(1000)
+      .default(
+        'Bonjour {nom},\n\nMerci pour votre demande. Voici votre devis provisoire Demenag Express n° {num} :\n- Date : {date}{heure}\n- Trajet : {trajet}\n- Véhicule : {vehicule}, {voyages}\n- Montant estimé : {total}\n\nCe montant est une estimation établie d’après votre inventaire. Il sera confirmé par le devis final.\nJe vous envoie le PDF du devis juste après ce message.\n\nPour confirmer ou modifier votre demande, répondez simplement ici.',
       ),
     businessName: z.string().trim().min(2).max(100),
     businessAddress: z.string().trim().min(2).max(300),

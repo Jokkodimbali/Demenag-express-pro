@@ -713,17 +713,25 @@
   .admin-reservations-desktop {
     display: none;
   }
+  .workspace-page.admin-workspace .admin-reference-heading .admin-tabs {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
   .admin-reservations-mobile {
     display: flex;
     flex-direction: column;
     gap: 10px;
   }
   .reference-calendar-heading {
+    display: flex;
     flex-wrap: wrap;
   }
-  .reference-calendar-heading > strong {
+  .reference-calendar-page .reference-calendar-heading > strong {
     order: -1;
+    flex: 0 0 100%;
     width: 100%;
+    white-space: nowrap;
   }
   .reference-calendar-heading > .reference-calendar-today {
     margin-left: auto;

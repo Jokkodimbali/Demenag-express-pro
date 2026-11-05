@@ -1,17 +1,26 @@
-import { messages } from '../../content/fr';
 import { money } from '../../domain/format';
 import type { Booking, Quote } from '../../domain/model';
 import type { Settings } from '../../domain/model';
 import { whatsappUrl } from './whatsapp';
+import {
+  defaultFinalQuoteTemplate,
+  defaultLegacyFinalQuoteTemplate,
+  defaultProvisionalQuoteTemplate,
+  renderQuoteTemplate,
+  whatsappPaymentLine,
+} from './whatsapp-templates';
 
 export function quoteNotificationUrl(booking: Booking, quote: Quote, settings?: Settings) {
-  const defaultMessage = messages.quoteNotification(
-    booking.customerName,
-    quote.reference,
-    booking.reference,
-    money(quote.price.total),
-  );
-  const template = settings?.whatsappQuoteTemplate;
+  const configuredTemplate =
+    quote.kind === 'final'
+      ? settings?.whatsappQuoteTemplate
+      : settings?.whatsappProvisionalTemplate;
+  const template =
+    quote.kind === 'final'
+      ? !configuredTemplate || configuredTemplate === defaultLegacyFinalQuoteTemplate
+        ? defaultFinalQuoteTemplate
+        : configuredTemplate
+      : configuredTemplate || defaultProvisionalQuoteTemplate;
   const tolls = quote.tolls ?? [];
   const tollTotal = tolls.reduce((total, toll) => total + toll.quantity * toll.unitPrice, 0);
   const tollText = tolls.length
@@ -22,39 +31,33 @@ export function quoteNotificationUrl(booking: Booking, quote: Quote, settings?: 
         )
         .join('\n') + `\nTotal péages : ${money(tollTotal)}`
     : '';
-  const paymentModes = [
-    settings?.paymentWave !== false ? 'Wave' : '',
-    settings?.paymentCash !== false ? 'espèces' : '',
-  ].filter(Boolean);
-  const paymentLine = paymentModes.length
-    ? `Mode de paiement : ${paymentModes.join(' ou ')}${paymentModes.length > 1 ? ' (au choix)' : ''}.${settings?.paymentWave !== false && settings?.paymentQr ? ' Le QR code marchand Wave figure sur le devis PDF.' : ''}`
-    : '';
-  const message =
-    (template
-      ? (() => {
-          let rendered = template.replace(
-            /\{(nom|ref|num|total|peages|paiement|allers|vehicule|date|trajet)\}/g,
-            (token) => {
-              const values: Record<string, string> = {
-                '{nom}': booking.customerName,
-                '{ref}': booking.reference,
-                '{num}': quote.reference,
-                '{total}': `${money(quote.price.total)}${tolls.length ? ` (+ péages à votre charge : ${money(tollTotal)})` : ''}`,
-                '{peages}': tollText,
-                '{paiement}': paymentLine,
-                '{allers}': String(quote.price.trips),
-                '{vehicule}': booking.vehicle.shortName || booking.vehicle.name,
-                '{date}': booking.date ? booking.date.split('-').reverse().join('/') : '',
-                '{trajet}': `${booking.fromAddress} → ${booking.toAddress}`,
-              };
-              return values[token] ?? token;
-            },
-          );
-          if (tollText && !template.includes('{peages}'))
-            rendered += `\n\nPéages à votre charge (non inclus) :\n${tollText}`;
-          return rendered;
-        })()
-      : defaultMessage) +
-    (paymentLine && !template?.includes('{paiement}') ? `\n\n${paymentLine}` : '');
+  const paymentLine = whatsappPaymentLine(settings);
+  const date = booking.date
+    ? booking.date.split('-').reverse().join('/')
+    : booking.month
+      ? `à fixer (${new Date(`${booking.month}-01T12:00:00Z`).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'Africa/Dakar' })})`
+      : 'à fixer';
+  const tripCount = Math.max(1, quote.price.trips);
+  const message = renderQuoteTemplate(
+    template,
+    {
+      nom: booking.customerName,
+      ref: booking.reference,
+      num: quote.reference || booking.reference,
+      total: `${money(quote.price.total)}${tolls.length ? ` (+ péages à votre charge : ${money(tollTotal)})` : ''}`,
+      peages: tollText,
+      paiement: paymentLine,
+      allers: String(tripCount),
+      voyages: `${tripCount}${tripCount > 1 ? ' allers-retours' : ' aller-retour'}`,
+      vehicule: booking.vehicle.shortName || booking.vehicle.name,
+      date,
+      heure:
+        booking.date && booking.timeSlot && booking.timeSlot !== 'À définir'
+          ? ` à ${booking.timeSlot.replace(':', 'h')}`
+          : '',
+      trajet: `${booking.fromAddress || '—'} → ${booking.toAddress || '—'}`,
+    },
+    { tollText, paymentLine },
+  );
   return whatsappUrl(booking.phone, message, settings);
 }

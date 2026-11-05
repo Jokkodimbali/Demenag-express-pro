@@ -12,10 +12,11 @@ import { useApp } from '../application/context';
 import { messages } from '../content/fr';
 import { money } from '../domain/format';
 import type { Booking } from '../domain/model';
-import { whatsappNumber, whatsappUrl } from '../application/services/whatsapp';
+import { bookingReminder } from '../application/services/booking-reminder';
 import { usePagination } from '../application/usePagination';
 import { Pagination } from '../components/Pagination';
 import { pageSizes } from '../config/pagination';
+import { visibleUiText } from '../content/visible-ui-text';
 
 type ReservationFilter = 'all' | 'provisional' | 'final' | 'undated';
 type ReservationPeriod = 'all' | 'day' | 'week';
@@ -145,77 +146,18 @@ export function Admin() {
     `${searchQuery}|${reservationFilter}|${period}|${selectedDay}`,
   );
   function reminderInfo(booking: Booking) {
-    const daysBefore = booking.date
-      ? Math.round(
-          (+new Date(`${booking.date}T12:00:00Z`) - +new Date(`${dakarToday()}T12:00:00Z`)) /
-            86400000,
-        )
-      : -1;
-    const phone = whatsappNumber(booking.phone, catalogue?.settings.whatsappCountryCode ?? '221');
-    const canSend =
-      daysBefore >= 0 && !['completed', 'cancelled'].includes(booking.status) && phone.length >= 10;
-    const why = !booking.date
-      ? 'Ajoutez une date au rendez-vous.'
-      : daysBefore < 0
-        ? 'La date du rendez-vous est passée.'
-        : ['completed', 'cancelled'].includes(booking.status)
-          ? 'La réservation est clôturée.'
-          : phone.length < 10
-            ? 'Le numéro WhatsApp du client est manquant ou invalide.'
-            : '';
-    const when =
-      daysBefore === 0
-        ? 'aujourd’hui'
-        : daysBefore === 1
-          ? 'demain'
-          : daysBefore % 7 === 0
-            ? `dans ${daysBefore / 7} semaine${daysBefore > 7 ? 's' : ''}`
-            : `dans ${daysBefore} jours`;
-    const date = booking.date
-      ? new Date(`${booking.date}T12:00:00Z`).toLocaleDateString('fr-FR', {
-          weekday: 'long',
-          day: 'numeric',
-          month: 'long',
-          timeZone: 'Africa/Dakar',
-        })
-      : '';
-    const message =
-      `Bonjour ${booking.customerName}, petit rappel de Demenag Express : votre déménagement (${booking.reference}) est prévu ${when}, le ${date}` +
-      (booking.timeSlot && booking.timeSlot !== 'À définir' ? ` à ${booking.timeSlot}` : '') +
-      `.\n` +
-      (booking.fromAddress ? `Départ : ${booking.fromAddress}\n` : '') +
-      (booking.toAddress ? `Arrivée : ${booking.toAddress}\n` : '') +
-      (catalogue?.settings.paymentWave !== false || catalogue?.settings.paymentCash !== false
-        ? `Mode de paiement : ${[
-            catalogue?.settings.paymentWave !== false ? 'Wave' : '',
-            catalogue?.settings.paymentCash !== false ? 'espèces' : '',
-          ]
-            .filter(Boolean)
-            .join(
-              ' ou ',
-            )}${catalogue?.settings.paymentWave !== false && catalogue?.settings.paymentCash !== false ? ' (au choix)' : ''}.\n`
-        : '') +
-      `Merci de préparer vos affaires pour le chargement. Pour toute question, contactez-nous au ${catalogue?.settings.businessPhone ?? ''}. À bientôt !`;
-    const last = booking.reminders?.at(-1);
-    const sentAt = last
-      ? new Date(last.at)
-          .toLocaleString('fr-FR', {
-            day: '2-digit',
-            month: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            timeZone: 'Africa/Dakar',
-          })
-          .replace(/\s+(?=\d{2}:\d{2}$)/, ' à ')
-      : '';
-    const lastSent = sentAt ? `${canSend ? 'Dernier rappel :' : 'Rappel envoyé le'} ${sentAt}` : '';
+    const reminder = bookingReminder(
+      booking,
+      catalogue?.settings,
+      ['completed', 'cancelled'].includes(booking.status),
+    );
     return {
-      canSend,
-      why,
-      daysBefore,
-      when,
-      lastSent,
-      url: whatsappUrl(booking.phone, message, catalogue?.settings),
+      canSend: reminder.canSendReminder,
+      why: reminder.reminderReason,
+      daysBefore: reminder.daysUntilMove,
+      when: reminder.reminderWhen,
+      lastSent: reminder.lastReminderLabel,
+      url: reminder.reminderHref,
     };
   }
   async function sendReminder(booking: Booking) {
@@ -238,7 +180,7 @@ export function Admin() {
     setDeleteError('');
     try {
       await removeBooking(deleteTarget.id);
-      setSuccessToast(`Réservation ${deleteTarget.reference} supprimée définitivement.`);
+      setSuccessToast(`Réservation ${deleteTarget.reference} placée dans la corbeille.`);
       setDeleteTarget(null);
     } catch (reason) {
       setDeleteError(
@@ -297,8 +239,8 @@ export function Admin() {
         <ConfirmationDialog
           titleId="delete-reservation-title"
           eyebrow="SUPPRESSION D’UN RENDEZ-VOUS"
-          title={uiText['voulezVousSupprimerDefinitivementCeRendezVous']}
-          description={`La réservation, son devis et ses photos seront effacés. Cette action est irréversible. ${deleteTarget.reference} · ${deleteTarget.customerName} · ${referenceDate(deleteTarget)} · ${deleteTarget.fromAddress || '—'} → ${deleteTarget.toAddress || '—'}`}
+          title={visibleUiText.text13}
+          description={`La réservation, son devis et ses photos iront dans la corbeille (Admin → Données). Vous pourrez la restaurer. ${deleteTarget.reference} · ${deleteTarget.customerName} · ${referenceDate(deleteTarget)} · ${deleteTarget.fromAddress || '—'} → ${deleteTarget.toAddress || '—'}`}
           confirmLabel="Supprimer"
           busy={deleteBusy}
           error={deleteError}

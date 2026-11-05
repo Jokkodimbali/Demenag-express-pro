@@ -6,6 +6,7 @@ import { errorMessage } from '../application/error-message';
 import { dataUrl } from '../application/validation/forms';
 import { messages } from '../content/fr';
 import { PasswordForm } from './PasswordForm';
+import { visibleUiText } from '../content/visible-ui-text';
 
 export function AdminProfileForm() {
   const { user } = useApp();
@@ -84,7 +85,7 @@ export function AdminProfileForm() {
             />
           </div>
           <div>
-            <label htmlFor="admin-profile-email">Email administrateur</label>
+            <label htmlFor="admin-profile-email">{visibleUiText.text10}</label>
             <input
               id="admin-profile-email"
               name="email"
@@ -92,7 +93,7 @@ export function AdminProfileForm() {
               autoComplete="email"
               defaultValue={admin.email ?? ''}
               maxLength={254}
-              placeholder="admin@exemple.com"
+              placeholder={visibleUiText.text11}
             />
           </div>
         </div>

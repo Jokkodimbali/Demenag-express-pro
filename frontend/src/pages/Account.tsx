@@ -1,15 +1,14 @@
 import { uiText } from '../content/reference-ui-text';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useState } from 'react';
 import { useAccount } from '../application/controllers/useAccount';
 import { AdminProfileForm } from '../components/AdminProfileForm';
 import { ClientBookingCard } from '../components/ClientBookingCard';
 import { messages } from '../content/fr';
 import { routes } from '../routing/routes';
+import { visibleUiText } from '../content/visible-ui-text';
 export function Account() {
   const { user, bookings, setBookings, loading, error, setRetry } = useAccount();
-  const [notice, setNotice] = useState('');
   if (user?.role === 'admin')
     return (
       <section className="container workspace-page">
@@ -20,7 +19,7 @@ export function Account() {
             <p>{messages.informationsDuCompteAdministrateur}</p>
           </div>
           <Link className="button secondary small" to={routes.administration}>
-            <ArrowLeft size={16} /> Retour à l’administration
+            <ArrowLeft size={16} /> {visibleUiText.text74}
           </Link>
         </div>
         <AdminProfileForm />
@@ -28,11 +27,6 @@ export function Account() {
     );
   return (
     <section className="reference-client" data-screen-label="Espace client">
-      {notice && (
-        <div className="reference-client-toast" role="status">
-          {notice}
-        </div>
-      )}
       <div className="reference-client-heading">
         <div>
           <span>{uiText['espaceCLIENT']}</span>
@@ -43,8 +37,8 @@ export function Account() {
         </Link>
       </div>
       {user && (
-        <section className="reference-client-profile" aria-label="Profil du compte client">
-          <span>MON PROFIL</span>
+        <section className="reference-client-profile" aria-label={visibleUiText.text75}>
+          <span>{visibleUiText.text76}</span>
           <strong>{user.name}</strong>
           <span>{user.phone}</span>
         </section>
@@ -69,7 +63,6 @@ export function Account() {
             onChange={(next) =>
               setBookings((rows) => rows.map((row) => (row.id === next.id ? next : row)))
             }
-            onReminder={setNotice}
           />
         ))}
     </section>

@@ -60,7 +60,7 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
-  min-width: 1080px;
+  min-width: min(100%, 900px);
   table-layout: auto;
 }
 .reference-clients-card th:nth-child(1),

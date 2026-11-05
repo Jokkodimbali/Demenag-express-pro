@@ -2,14 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { messages } from '../content/fr';
 import { referenceTierLabels, tierLabels } from '../domain/format';
-import type {
-  Booking,
-  BookingInput,
-  BookingInventorySnapshot,
-  Options,
-  Price,
-  Quote,
-} from '../domain/model';
+import type { Booking, BookingInput, Options, Price, Quote } from '../domain/model';
 import { inventoryNote } from '../domain/inventory';
 import { tollPrice } from '../domain/toll-prices';
 import { quoteTollsFromLines, type TollExtraLine } from '../domain/toll-selection';
@@ -210,7 +203,27 @@ export function useBookingForm({
       )
       .then(setPrice)
       .catch((e: unknown) => {
-        if (!controller.signal.aborted) setEstimateError(errorMessage(e));
+        if (controller.signal.aborted) return;
+        if (
+          e instanceof Error &&
+          e.message === messages.recalculAutomatiqueTrajetExpire &&
+          draft.route
+        ) {
+          const expiredRouteId = draft.route.id;
+          void api
+            .route(draft.route.from, draft.route.to)
+            .then((freshRoute) => {
+              if (controller.signal.aborted) return;
+              setDraft((current) =>
+                current.route?.id === expiredRouteId ? { ...current, route: freshRoute } : current,
+              );
+            })
+            .catch((routeError: unknown) => {
+              if (!controller.signal.aborted) setEstimateError(errorMessage(routeError));
+            });
+          return;
+        }
+        setEstimateError(errorMessage(e));
       })
       .finally(() => {
         if (!controller.signal.aborted) setEstimating(false);
@@ -229,6 +242,7 @@ export function useBookingForm({
     draft.options,
     quoteConfig?.trips,
     draft.estimatedTrips,
+    setDraft,
   ]);
   useEffect(() => {
     if (!catalogue) return;
@@ -306,7 +320,7 @@ export function useBookingForm({
     e: React.FormEvent,
     quoteWorkSummary = '',
     workPlan: NonNullable<BookingInput['workPlan']> = [],
-    inventorySnapshot?: BookingInventorySnapshot,
+    inventorySnapshot?: BookingInput['inventorySnapshot'],
     quoteOptions?: Options,
   ) {
     e.preventDefault();
@@ -399,8 +413,7 @@ export function useBookingForm({
                 })),
             ]
           : [],
-        workPlan:
-          administrativeQuote && (!editingBooking || inventorySnapshot) ? workPlan : undefined,
+        workPlan: administrativeQuote ? workPlan : undefined,
         inventorySnapshot,
         requestId: draft.requestId,
       };

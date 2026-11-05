@@ -30,11 +30,17 @@ import type {
   NotificationPublisher,
   RouteRepository,
   RoutingProvider,
-  VehicleReportRepository,
 } from '../ports/index.js';
 import type { MovingUseCases } from '../ports/use-cases.js';
 import { createQuote } from './moving-quote.js';
 import { addressChangeForUpdate } from './moving-address-change.js';
+import { createRouteTicket } from './moving-routing.js';
+import {
+  deleteBooking,
+  listTrashedBookings,
+  purgeTrashedBooking,
+  restoreTrashedBooking,
+} from './moving-trash.js';
 
 export class MovingService implements MovingUseCases {
   constructor(
@@ -45,19 +51,11 @@ export class MovingService implements MovingUseCases {
     private drivers: DriverRepository,
     private clock: Clock,
     private ids: IdGenerator,
-    private vehicleReports?: VehicleReportRepository,
     private notifications?: NotificationPublisher,
     private accounting?: AccountingRepository,
   ) {}
   async route(from: Point, to: Point) {
-    const route = await this.routing.route(from, to);
-    const ticket = {
-      ...route,
-      id: this.ids.next(),
-      expiresAt: new Date(+this.clock.now() + 30 * 60000).toISOString(),
-    };
-    await this.routes.save(ticket);
-    return ticket;
+    return createRouteTicket(this.routing, this.routes, this.clock, this.ids, from, to);
   }
   search(query: string) {
     return this.routing.search(query);
@@ -119,6 +117,10 @@ export class MovingService implements MovingUseCases {
   async create(user: User, input: BookingInput) {
     requireActiveUser(user);
     requireValue(
+      user.role === 'client' || user.role === 'admin',
+      'La création d’une réservation est réservée au client et à l’administration.',
+    );
+    requireValue(
       user.role === 'admin' || input.distanceKmOverride == null,
       'La distance personnalisée est réservée à l’administration.',
     );
@@ -176,7 +178,7 @@ export class MovingService implements MovingUseCases {
         workAccess: input.workAccess,
         notes: input.notes,
         questionnaireAnswers: user.role === 'admin' ? (input.questionnaireAnswers ?? []) : [],
-        inventorySnapshot: input.inventorySnapshot,
+        inventorySnapshot: input.inventorySnapshot ?? undefined,
         workPlan:
           user.role === 'admin'
             ? (input.workPlan ?? []).map((step) => {
@@ -336,36 +338,40 @@ export class MovingService implements MovingUseCases {
                 })(),
               }))
             : booking.workPlan,
-        inventorySnapshot: input.inventorySnapshot ?? booking.inventorySnapshot,
+        inventorySnapshot:
+          input.inventorySnapshot === null
+            ? undefined
+            : (input.inventorySnapshot ?? booking.inventorySnapshot),
         estimate,
         crewAddressChange,
       },
       version,
     );
   }
-  list(user: User) {
+  async list(user: User) {
     requireActiveUser(user);
-    return this.bookings.list(
-      user.role === 'admin' ? undefined : user.id,
-      undefined,
-      user.role !== 'admin',
-    );
+    if (user.role === 'admin') return this.bookings.list();
+    if (user.role === 'client') return this.bookings.list(user.id, undefined, false);
+    const driver = await this.drivers.findByUserId(user.id);
+    if (!driver?.active) throw new AppError(404, messages.profilChauffeurIntrouvable);
+    const bookings = await this.bookings.list(undefined, undefined, false);
+    return bookings.filter((booking) => this.isAssignedToDriver(booking, driver.id));
   }
   async get(user: User, id: string) {
+    requireActiveUser(user);
     const booking = await this.bookings.find(id);
     if (!booking) throw new AppError(404, messages.reservationIntrouvable);
     if (user.role === 'driver') {
-      const driver = await this.drivers.findByUserId(user.id);
-      if (!driver || booking.vehicle.id !== driver.vehicleId)
+      if (!(await this.assignedDriver(user, booking)))
         throw new AppError(404, messages.reservationIntrouvable);
     } else if (!canReadBooking(user, booking.userId)) {
       throw new AppError(404, messages.reservationIntrouvable);
     }
     return booking;
   }
-  async recordClientReminder(user: User, id: string) {
+  async recordBookingReminder(user: User, id: string) {
     requireActiveUser(user);
-    requireValue(user.role === 'client', 'Cette action est réservée au client.');
+    requireAdministrator(user);
     const booking = await this.get(user, id);
     requireValue(
       Boolean(booking.date) && !['completed', 'cancelled'].includes(booking.status),
@@ -394,19 +400,10 @@ export class MovingService implements MovingUseCases {
   }
   async status(user: User, id: string, next: BookingStatus, version: number) {
     requireActiveUser(user);
+    requireValue(user.role !== 'driver', 'Le chauffeur ne peut pas modifier la réservation.');
     const booking = await this.bookings.find(id);
     if (!booking) throw new AppError(404, messages.reservationIntrouvable);
-    if (user.role === 'driver') {
-      const driver = await this.drivers.findByUserId(user.id);
-      if (!driver || booking.vehicle.id !== driver.vehicleId)
-        throw new AppError(404, messages.reservationIntrouvable);
-      if (next === 'in_progress') {
-        throw new AppError(400, 'Prenez une photo du chargement pour démarrer une course.');
-      }
-      if (next === 'completed') {
-        throw new AppError(403, 'Seule l’administration peut clôturer la réservation.');
-      }
-    } else if (!canReadBooking(user, booking.userId))
+    if (!canReadBooking(user, booking.userId))
       throw new AppError(404, messages.reservationIntrouvable);
     if (booking.version !== version)
       throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
@@ -477,17 +474,9 @@ export class MovingService implements MovingUseCases {
     return updated;
   }
   async startTrip(user: User, id: string, photos: string[]) {
-    requireActiveUser(user);
-    requireValue(['driver', 'admin'].includes(user.role), 'Action réservée à l’administration.');
-    if (user.role === 'driver')
-      requireValue(photos.length > 0, 'Ajoutez au moins une photo du chargement.');
+    requireAdministrator(user);
     const booking = await this.bookings.find(id);
-    const driver = user.role === 'driver' ? await this.drivers.findByUserId(user.id) : null;
-    if (
-      !booking ||
-      (user.role === 'driver' && (!driver || booking.vehicle.id !== driver.vehicleId))
-    )
-      throw new AppError(404, messages.reservationIntrouvable);
+    if (!booking) throw new AppError(404, messages.reservationIntrouvable);
     requireValue(
       !booking.driverFinishedAt,
       'Vous avez déjà signalé la fin de vos courses à l’administration.',
@@ -512,26 +501,6 @@ export class MovingService implements MovingUseCases {
       if (!updated) throw new AppError(404, messages.reservationIntrouvable);
       return updated;
     }
-    if (driver) {
-      const date = new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'Africa/Dakar',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      }).format(this.clock.now());
-      const inspection = await this.vehicleReports?.findInspection(driver.id, date);
-      requireValue(inspection, 'Effectuez le contrôle du véhicule avant de démarrer une course.');
-      requireValue(
-        Array.isArray(inspection.photos) &&
-          inspection.photos.length >= 6 &&
-          inspection.photos.length <= 10,
-        'Le contrôle du jour doit inclure une photo de preuve pour chaque vérification.',
-      );
-      requireValue(
-        inspection.condition !== 'unsafe',
-        'Le véhicule a été déclaré dangereux. Contactez l’administration avant de démarrer une mission.',
-      );
-    }
     if (booking.status === 'confirmed') {
       await this.bookings.update({ ...booking, status: 'in_progress' }, booking.version);
     }
@@ -547,17 +516,9 @@ export class MovingService implements MovingUseCases {
     return updated;
   }
   async finishTrip(user: User, id: string, photos: string[]) {
-    requireActiveUser(user);
-    requireValue(['driver', 'admin'].includes(user.role), 'Action réservée à l’administration.');
-    if (user.role === 'driver')
-      requireValue(photos.length > 0, 'Ajoutez au moins une photo du déchargement.');
+    requireAdministrator(user);
     const booking = await this.bookings.find(id);
-    const driver = user.role === 'driver' ? await this.drivers.findByUserId(user.id) : null;
-    if (
-      !booking ||
-      (user.role === 'driver' && (!driver || booking.vehicle.id !== driver.vehicleId))
-    )
-      throw new AppError(404, messages.reservationIntrouvable);
+    if (!booking) throw new AppError(404, messages.reservationIntrouvable);
     requireValue(
       !booking.driverFinishedAt,
       'Vous avez déjà signalé la fin de vos courses à l’administration.',
@@ -578,26 +539,15 @@ export class MovingService implements MovingUseCases {
     return updated;
   }
   async finishDriverWork(user: User, id: string) {
-    requireActiveUser(user);
-    requireValue(['driver', 'admin'].includes(user.role), 'Action réservée à l’administration.');
+    requireAdministrator(user);
     const booking = await this.bookings.find(id);
-    const driver = user.role === 'driver' ? await this.drivers.findByUserId(user.id) : null;
-    if (
-      !booking ||
-      (user.role === 'driver' && (!driver || booking.vehicle.id !== driver.vehicleId))
-    )
-      throw new AppError(404, messages.reservationIntrouvable);
+    if (!booking) throw new AppError(404, messages.reservationIntrouvable);
     requireValue(booking.status === 'in_progress', 'La mission doit être en cours.');
     requireValue(!booking.driverFinishedAt, 'La fin des courses a déjà été signalée.');
     requireValue(
       (booking.trips?.length ?? 0) > 0 && booking.trips?.every((trip) => trip.finishedAt),
       'Terminez chaque course avant de signaler la fin.',
     );
-    if (user.role === 'driver')
-      requireValue(
-        booking.trips?.every((trip) => trip.unloadingPhotos?.length),
-        'Le chauffeur doit joindre les preuves de déchargement de chaque course.',
-      );
     const updated = await this.bookings.update(
       { ...booking, driverFinishedAt: this.clock.now().toISOString() },
       booking.version,
@@ -641,6 +591,20 @@ export class MovingService implements MovingUseCases {
     } catch (error) {
       console.error('Notification chauffeur non envoyée après une action de réservation :', error);
     }
+  }
+  private async assignedDriver(user: User, booking: Booking) {
+    const driver = await this.drivers.findByUserId(user.id);
+    if (!driver?.active) return null;
+    return this.isAssignedToDriver(booking, driver.id) ? driver : null;
+  }
+  private isAssignedToDriver(booking: Booking, driverId: string) {
+    const crew = booking.crew;
+    return (
+      booking.driverId === driverId ||
+      Boolean(crew?.chauffeur.includes(driverId)) ||
+      Boolean(crew?.menuisier.includes(driverId)) ||
+      Boolean(crew?.manoeuvre.includes(driverId))
+    );
   }
   async schedule(user: User, id: string, date: string | null, timeSlot: string, version: number) {
     requireActiveUser(user);
@@ -716,18 +680,9 @@ export class MovingService implements MovingUseCases {
     photo?: string,
     details?: Pick<WorkPlanReview, 'cause' | 'severity' | 'correctiveAction'>,
   ) {
-    requireActiveUser(user);
-    requireValue(
-      ['admin', 'driver'].includes(user.role),
-      'Action réservée à l’administration et au chauffeur.',
-    );
+    requireAdministrator(user);
     const booking = await this.bookings.find(id);
-    const driver = user.role === 'driver' ? await this.drivers.findByUserId(user.id) : null;
-    if (
-      !booking ||
-      (user.role === 'driver' && (!driver || booking.vehicle.id !== driver.vehicleId))
-    )
-      throw new AppError(404, messages.reservationIntrouvable);
+    if (!booking) throw new AppError(404, messages.reservationIntrouvable);
     if (booking.version !== version)
       throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
     const plan = booking.workPlan?.length ? booking.workPlan : fallbackWorkPlan(booking);
@@ -978,16 +933,15 @@ export class MovingService implements MovingUseCases {
     );
   }
   async delete(user: User, id: string) {
-    requireAdministrator(user);
-    const booking = await this.bookings.find(id);
-    if (!booking) throw new AppError(404, messages.reservationIntrouvable);
-    if (booking.quotes.some((quote) => quote.kind === 'final'))
-      throw new AppError(
-        409,
-        'Cette réservation possède un devis final et une écriture comptable : suppression impossible.',
-      );
-    if (!this.bookings.delete)
-      throw new AppError(501, 'La suppression des réservations est indisponible.');
-    await this.bookings.delete(id);
+    return deleteBooking(this.bookings, user, id);
+  }
+  async trashed(user: User) {
+    return listTrashedBookings(this.bookings, user);
+  }
+  async restore(user: User, id: string) {
+    return restoreTrashedBooking(this.bookings, user, id);
+  }
+  async purge(user: User, id: string) {
+    return purgeTrashedBooking(this.bookings, user, id);
   }
 }

@@ -2,6 +2,7 @@ import { uiText } from '../../content/reference-ui-text';
 import { ChevronDown, X } from 'lucide-react';
 import { useState } from 'react';
 import type { ClientQuestion } from '../../domain/model';
+import { visibleUiText } from '../../content/visible-ui-text';
 
 export function ClientQuestionnaire({
   questions,
@@ -9,23 +10,18 @@ export function ClientQuestionnaire({
   onChange,
   open,
   onToggle,
-  autoAnswers,
-  autoQuestionIds,
 }: {
   questions: ClientQuestion[];
   answers: Record<string, string>;
   onChange: (id: string, value: string) => void;
   open: boolean;
   onToggle: () => void;
-  autoAnswers: Record<string, boolean>;
-  autoQuestionIds: string[];
 }) {
   const activeQuestions = questions.filter((question) => question.active);
   const keyAnswers = ['key-ready', 'key-stairs'];
   const isAnswered = (id: string) => {
     const answer = answers[id]?.trim();
-    if (answer === 'À poser') return false;
-    return answer === 'Question posée' || Boolean(answer || autoAnswers[id]);
+    return answer === 'Question posée';
   };
   const answered =
     activeQuestions.filter((question) => isAnswered(question.id)).length +
@@ -33,6 +29,10 @@ export function ClientQuestionnaire({
   const totalQuestions = activeQuestions.length + keyAnswers.length;
   const groups = [...new Set(activeQuestions.map((question) => question.group))];
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const [skipped, setSkipped] = useState<Record<string, boolean>>({});
+  const nextQuestion =
+    activeQuestions.find((question) => !isAnswered(question.id) && !skipped[question.id]) ??
+    activeQuestions.find((question) => !isAnswered(question.id));
   const progress = totalQuestions ? (answered / totalQuestions) * 100 : 0;
   const toggleQuestion = (id: string, checked: boolean) => {
     onChange(id, checked ? 'Question posée' : 'À poser');
@@ -49,18 +49,17 @@ export function ClientQuestionnaire({
       {open && (
         <section className="questionnaire-panel" aria-label={uiText['questionnaireClient']}>
           <header>
-            <div className="questionnaire-panel-title">
+            <div className="questionnaire-panel-heading">
               <strong>{uiText['questionnaireClient']}</strong>
-              <span>{uiText['lesCasesSeCochentAvecLesInformationsDuDevisVousPouvezL']}</span>
+              <button
+                type="button"
+                className="questionnaire-close"
+                onClick={onToggle}
+                aria-label={uiText['fermerLeQuestionnaire']}
+              >
+                <X size={18} />
+              </button>
             </div>
-            <button
-              type="button"
-              className="questionnaire-close"
-              onClick={onToggle}
-              aria-label={uiText['fermerLeQuestionnaire']}
-            >
-              <X size={18} />
-            </button>
             <div
               className="questionnaire-progress"
               aria-label={`${answered} informations réunies sur ${totalQuestions}`}
@@ -72,6 +71,40 @@ export function ClientQuestionnaire({
             </strong>
           </header>
           <div className="questionnaire-groups">
+            {nextQuestion && (
+              <div className="questionnaire-guided">
+                <span>
+                  {visibleUiText.text14}
+                  {activeQuestions.indexOf(nextQuestion) + 1} {visibleUiText.text15}
+                  {activeQuestions.length} · {nextQuestion.group}
+                </span>
+                <strong>{nextQuestion.label}</strong>
+                {nextQuestion.hint && <small>{nextQuestion.hint}</small>}
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange(nextQuestion.id, 'Question posée');
+                      setSkipped((current) => {
+                        const next = { ...current };
+                        delete next[nextQuestion.id];
+                        return next;
+                      });
+                    }}
+                  >
+                    {visibleUiText.text16}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSkipped((current) => ({ ...current, [nextQuestion.id]: true }))
+                    }
+                  >
+                    {visibleUiText.text17}
+                  </button>
+                </div>
+              </div>
+            )}
             {!activeQuestions.length && <p>{uiText['aucuneQuestionActive']}</p>}
             <section className="questionnaire-key-questions">
               <strong>{uiText['questionsCLES']}</strong>
@@ -148,32 +181,31 @@ export function ClientQuestionnaire({
                       {group}
                     </span>
                     <small>
-                      {groupAnswered}/{groupQuestions.length}
+                      <span
+                        style={{
+                          color: groupAnswered === groupQuestions.length ? '#3ddc84' : '#aeb4bb',
+                        }}
+                      >
+                        {groupAnswered}/{groupQuestions.length}
+                      </span>
                     </small>
                   </button>
                   {expanded && (
                     <div className="questionnaire-group-questions">
                       {groupQuestions.map((question) => {
-                        const answer = answers[question.id] ?? '';
                         const checked = isAnswered(question.id);
-                        const autoTracked = autoQuestionIds.includes(question.id);
-                        const manuallyUnchecked = answer.trim() === 'À poser';
-                        const status = checked
-                          ? answer.trim() === 'Question posée'
-                            ? 'Question posée'
-                            : 'Réponse saisie dans le devis'
-                          : autoTracked && !manuallyUnchecked
-                            ? 'Réponse à saisir dans le devis'
-                            : 'Cochez une fois la question posée';
+                        const status =
+                          question.hint ||
+                          (checked ? visibleUiText.text112 : visibleUiText.text113);
                         return (
-                          <div
-                            className={`questionnaire-question ${answer.trim() ? 'is-answered' : ''}`}
+                          <label
+                            className={`questionnaire-question ${checked ? 'is-answered' : ''}`}
                             key={question.id}
                           >
                             <input
                               className="questionnaire-check"
                               type="checkbox"
-                              aria-label={`Marquer comme posé : ${question.label}`}
+                              aria-label={visibleUiText.text111 + question.label}
                               checked={checked}
                               onChange={(event) =>
                                 toggleQuestion(question.id, event.target.checked)
@@ -181,18 +213,9 @@ export function ClientQuestionnaire({
                             />
                             <div>
                               <span className="questionnaire-question-label">{question.label}</span>
-                              <span
-                                className={
-                                  autoAnswers[question.id] &&
-                                  !['À poser', 'Question posée'].includes(answer.trim())
-                                    ? 'questionnaire-auto-status'
-                                    : 'questionnaire-question-status'
-                                }
-                              >
-                                {status}
-                              </span>
+                              <span className="questionnaire-question-status">{status}</span>
                             </div>
-                          </div>
+                          </label>
                         );
                       })}
                     </div>

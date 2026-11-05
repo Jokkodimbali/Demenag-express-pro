@@ -25,10 +25,52 @@ export async function restoreConfiguration(
       planificationManoeuvre: jsonInput(original.settings.planificationManoeuvre),
     },
   });
+  await db.$transaction(
+    async (transaction) => {
+      for (const driver of original.drivers)
+        await transaction.chauffeur.update({
+          where: { id: driver.id },
+          data: {
+            utilisateurId: driver.utilisateurId,
+            nom: driver.nom,
+            telephone: driver.telephone,
+            photo: driver.photo,
+            actif: driver.actif,
+            fonction: driver.fonction,
+            vehiculeId: driver.vehiculeId,
+            disponibilites: jsonInput(driver.disponibilites),
+            vehiculesAutorises: jsonInput(driver.vehiculesAutorises),
+            adresse: driver.adresse,
+            latitude: driver.latitude,
+            longitude: driver.longitude,
+            adresseGeocodee: driver.adresseGeocodee,
+            competences: jsonInput(driver.competences),
+            notes: driver.notes,
+            refusMissions: jsonInput(driver.refusMissions),
+            refusEffaces: driver.refusEffaces,
+          },
+        });
+      for (const user of original.users)
+        await transaction.utilisateur.update({
+          where: { id: user.id },
+          data: {
+            nom: user.nom,
+            telephone: user.telephone,
+            photo: user.photo,
+            actif: user.actif,
+          },
+        });
+    },
+    { timeout: 30000 },
+  );
 }
 
 export async function deleteScenarioData(context: IntegrationContext, routeIds: string[]) {
   const { db } = context;
+  if (context.testAccountingEntryIds.length)
+    await db.ecritureComptable.deleteMany({
+      where: { id: { in: context.testAccountingEntryIds } },
+    });
   const scenarioUsers =
     context.testUserIds.length || context.testPhones.length
       ? await db.utilisateur.findMany({
@@ -46,20 +88,22 @@ export async function deleteScenarioData(context: IntegrationContext, routeIds: 
   const userIds = [...new Set([...context.testUserIds, ...scenarioUsers.map(({ id }) => id)])];
 
   if (userIds.length) {
-    await db.$transaction([
-      db.reservation.deleteMany({ where: { utilisateurId: { in: userIds } } }),
-      db.utilisateur.deleteMany({ where: { id: { in: userIds } } }),
-    ]);
+    await db.reservation.deleteMany({ where: { utilisateurId: { in: userIds } } });
+    await db.utilisateur.deleteMany({ where: { id: { in: userIds } } });
   }
   if (routeIds.length) await db.itineraire.deleteMany({ where: { id: { in: routeIds } } });
 
-  const [remainingUsers, remainingBookings, remainingRoutes] = await Promise.all([
-    userIds.length ? db.utilisateur.count({ where: { id: { in: userIds } } }) : 0,
-    userIds.length ? db.reservation.count({ where: { utilisateurId: { in: userIds } } }) : 0,
-    routeIds.length ? db.itineraire.count({ where: { id: { in: routeIds } } }) : 0,
-  ]);
-  if (remainingUsers || remainingBookings || remainingRoutes)
+  const [remainingUsers, remainingBookings, remainingRoutes, remainingAccountingEntries] =
+    await Promise.all([
+      userIds.length ? db.utilisateur.count({ where: { id: { in: userIds } } }) : 0,
+      userIds.length ? db.reservation.count({ where: { utilisateurId: { in: userIds } } }) : 0,
+      routeIds.length ? db.itineraire.count({ where: { id: { in: routeIds } } }) : 0,
+      context.testAccountingEntryIds.length
+        ? db.ecritureComptable.count({ where: { id: { in: context.testAccountingEntryIds } } })
+        : 0,
+    ]);
+  if (remainingUsers || remainingBookings || remainingRoutes || remainingAccountingEntries)
     throw new Error(
-      `Nettoyage incomplet du scénario : ${remainingUsers} compte(s), ${remainingBookings} réservation(s), ${remainingRoutes} itinéraire(s) restant(s).`,
+      `Nettoyage incomplet du scénario : ${remainingUsers} compte(s), ${remainingBookings} réservation(s), ${remainingRoutes} itinéraire(s), ${remainingAccountingEntries} écriture(s) comptable(s) restant(s).`,
     );
 }

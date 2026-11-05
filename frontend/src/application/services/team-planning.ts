@@ -129,6 +129,61 @@ export const teamIds = (booking: Booking) => {
   const crew = teamOf(booking);
   return [...crew.chauffeur, ...crew.menuisier, ...crew.manoeuvre];
 };
+function mergeRecordChanges<T extends string>(
+  current: Record<string, T>,
+  base: Record<string, T>,
+  requested: Record<string, T>,
+) {
+  const merged = { ...current };
+  for (const key of new Set([...Object.keys(base), ...Object.keys(requested)])) {
+    if (base[key] === requested[key]) continue;
+    if (requested[key] === undefined) delete merged[key];
+    else merged[key] = requested[key];
+  }
+  return merged;
+}
+function mergeListChanges(current: string[], base: string[], requested: string[]) {
+  const removed = new Set(base.filter((id) => !requested.includes(id)));
+  const added = requested.filter((id) => !base.includes(id));
+  return [
+    ...current.filter((id) => !removed.has(id)),
+    ...added.filter((id) => !current.includes(id)),
+  ];
+}
+/** Apply fields changed since `base` onto the latest server value after a queued save. */
+export function mergeTeamChanges(current: Booking, base: Booking, patch: Partial<Booking>) {
+  const currentCrew = teamOf(current);
+  const baseCrew = teamOf(base);
+  const requestedCrew = patch.crew ?? baseCrew;
+  const crew = {
+    chauffeur: mergeListChanges(currentCrew.chauffeur, baseCrew.chauffeur, requestedCrew.chauffeur),
+    menuisier: mergeListChanges(currentCrew.menuisier, baseCrew.menuisier, requestedCrew.menuisier),
+    manoeuvre: mergeListChanges(currentCrew.manoeuvre, baseCrew.manoeuvre, requestedCrew.manoeuvre),
+    chef: requestedCrew.chef === baseCrew.chef ? currentCrew.chef : requestedCrew.chef,
+  };
+  const crewBriefs = mergeRecordChanges(
+    current.crewBriefs ?? {},
+    base.crewBriefs ?? {},
+    patch.crewBriefs ?? base.crewBriefs ?? {},
+  );
+  const crewReplies = mergeRecordChanges(
+    current.crewReplies ?? {},
+    base.crewReplies ?? {},
+    patch.crewReplies ?? base.crewReplies ?? {},
+  );
+  const crewMessages = mergeRecordChanges(
+    current.crewMessages ?? {},
+    base.crewMessages ?? {},
+    patch.crewMessages ?? base.crewMessages ?? {},
+  );
+  const baseRefusals = base.crewRefusedBy ?? [];
+  const crewRefusedBy = mergeListChanges(
+    current.crewRefusedBy ?? [],
+    baseRefusals,
+    patch.crewRefusedBy ?? baseRefusals,
+  );
+  return { crew, crewBriefs, crewReplies, crewMessages, crewRefusedBy };
+}
 export const needsOf = (booking: Booking) => ({
   chauffeur: 1,
   menuisier: Number(booking.options.bed + booking.options.wardrobe + booking.options.desk > 0),

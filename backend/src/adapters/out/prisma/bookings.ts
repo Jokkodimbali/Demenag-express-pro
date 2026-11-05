@@ -3,6 +3,8 @@ import { AppError } from '../../../domain/errors.js';
 import { messages } from '../../../domain/messages/fr.js';
 import type { Booking, Quote, WorkPlanReview } from '../../../domain/model.js';
 import { type PrismaClient } from '../../../generated/prisma/client.js';
+import type { AccountingFinanceConfiguration } from '../../../domain/model.js';
+import { captureAccountingCosts } from '../../../domain/accounting-costs.js';
 import { conflict, json } from './helpers.js';
 import { toStatus } from './mapping.js';
 const quoteData = (quote: Quote) => ({
@@ -110,6 +112,7 @@ export class PrismaBookings implements BookingRepository {
         };
     const rows = await this.db.reservation.findMany({
       where: {
+        supprimeLe: null,
         ...(userId ? { utilisateurId: userId } : {}),
         ...(vehicleId ? { vehiculeId: vehicleId } : {}),
       },
@@ -120,8 +123,8 @@ export class PrismaBookings implements BookingRepository {
     return rows.map((r) => this.withTrips(r));
   }
   async find(id: string) {
-    const row = await this.db.reservation.findUnique({
-      where: { id },
+    const row = await this.db.reservation.findFirst({
+      where: { id, supprimeLe: null },
       include: { courses: { orderBy: { sequence: 'asc' } } },
     });
     return row ? this.withTrips(row) : null;
@@ -177,18 +180,103 @@ export class PrismaBookings implements BookingRepository {
     });
   }
   async delete(id: string) {
-    await this.db.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT "id" FROM "demenag"."bookings" WHERE "id" = ${id}::uuid FOR UPDATE`;
-      const finalQuotes = await tx.devis.count({
-        where: { reservationId: id, nature: 'definitif' },
+    const result = await this.db.reservation.updateMany({
+      where: { id, supprimeLe: null },
+      data: { supprimeLe: new Date() },
+    });
+    if (!result.count) throw new AppError(404, messages.reservationIntrouvable);
+  }
+  async trashed() {
+    const rows = await this.db.reservation.findMany({
+      where: { supprimeLe: { not: null } },
+      orderBy: { supprimeLe: 'desc' },
+      take: 200,
+    });
+    return rows.map((row) => ({
+      booking: row.donnees as Booking,
+      deletedAt: row.supprimeLe!.toISOString(),
+    }));
+  }
+  async restore(id: string) {
+    const result = await this.db.reservation.updateMany({
+      where: { id, supprimeLe: { not: null } },
+      data: { supprimeLe: null },
+    });
+    return result.count > 0;
+  }
+  async purge(id: string) {
+    return this.db.$transaction(async (tx) => {
+      const row = await tx.reservation.findFirst({
+        where: { id, supprimeLe: { not: null } },
       });
-      if (finalQuotes)
-        throw new AppError(
-          409,
-          'Cette réservation possède un devis final et une écriture comptable : suppression impossible.',
-        );
+      if (!row) return false;
+      const booking = row.donnees as Booking;
+      const finalQuotes = await tx.devis.findMany({
+        where: { reservationId: id, nature: 'definitif', montantTotal: { not: null } },
+        select: { id: true, reference: true, montantTotal: true, creeLe: true },
+      });
+      if (finalQuotes.length && booking.status !== 'cancelled') {
+        const configurationRow = await tx.configurationComptable.findUnique({
+          where: { identifiant: 'main' },
+        });
+        const configuration = configurationRow
+          ? (configurationRow.donnees as AccountingFinanceConfiguration)
+          : null;
+        await tx.ecritureComptable.createMany({
+          data: finalQuotes.flatMap((quote) => {
+            if (quote.montantTotal === null) return [];
+            const quoteSnapshot = booking.quotes?.find((item) => item.id === quote.id);
+            const costs = quoteSnapshot
+              ? (quoteSnapshot.accountingCosts ??
+                captureAccountingCosts(booking, quoteSnapshot.price, configuration))
+              : null;
+            const date = new Date(`${quote.creeLe.toISOString().slice(0, 10)}T00:00:00Z`);
+            return [
+              {
+                type: 'revenu',
+                categorie: 'Déménagement',
+                libelle: `Devis final ${quote.reference} · ${booking.reference} · ${booking.customerName || 'Client'}`,
+                montant: quote.montantTotal,
+                date,
+                sourceDevisId: quote.id,
+                sourceQuoteKind: 'revenue',
+              },
+              ...(costs && costs.moverAmount > 0
+                ? [
+                    {
+                      type: 'charge',
+                      categorie: 'Manœuvres',
+                      libelle: `Manœuvres ${costs.movers} · ${booking.reference}`,
+                      montant: costs.moverAmount,
+                      date,
+                      sourceDevisId: quote.id,
+                      sourceQuoteKind: 'movers',
+                      sourceQuoteQuantity: costs.movers,
+                    },
+                  ]
+                : []),
+              ...(costs && costs.carpenterAmount > 0
+                ? [
+                    {
+                      type: 'charge',
+                      categorie: 'Menuisier',
+                      libelle: `Menuisier ${costs.carpenters} meuble(s) · ${booking.reference}`,
+                      montant: costs.carpenterAmount,
+                      date,
+                      sourceDevisId: quote.id,
+                      sourceQuoteKind: 'assembly',
+                      sourceQuoteQuantity: costs.carpenters,
+                    },
+                  ]
+                : []),
+            ];
+          }),
+          skipDuplicates: true,
+        });
+      }
       await tx.notification.deleteMany({ where: { reservationId: id } });
       await tx.reservation.delete({ where: { id } });
+      return true;
     });
   }
   async create(booking: Booking, requestId: string) {
@@ -223,8 +311,13 @@ export class PrismaBookings implements BookingRepository {
     const next = { ...booking, version: expectedVersion + 1 };
     try {
       return await this.db.$transaction(async (tx) => {
+        const current = await tx.reservation.findUnique({
+          where: { id: booking.id },
+          select: { donnees: true },
+        });
+        const previousBooking = current?.donnees as Booking | undefined;
         const result = await tx.reservation.updateMany({
-          where: { id: booking.id, version: expectedVersion },
+          where: { id: booking.id, version: expectedVersion, supprimeLe: null },
           data: {
             donnees: json(next),
             statut: toStatus[next.status],
@@ -235,7 +328,7 @@ export class PrismaBookings implements BookingRepository {
         if (!result.count)
           throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
         for (const quote of next.quotes) {
-          const previous = booking.quotes.find((item) => item.id === quote.id);
+          const previous = previousBooking?.quotes.find((item) => item.id === quote.id);
           if (previous && JSON.stringify(previous) === JSON.stringify(quote)) continue;
           const data = quoteData(quote);
           await tx.devis.upsert({

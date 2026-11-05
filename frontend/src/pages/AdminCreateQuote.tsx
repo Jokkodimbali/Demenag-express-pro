@@ -13,6 +13,7 @@ import { BookingConfirmation } from '../components/booking/BookingConfirmation';
 import { routes } from '../routing/routes';
 import { useAdminCreateQuoteModel } from '../application/controllers/useAdminCreateQuoteModel';
 import { AdminCreateQuoteAside } from '../components/AdminCreateQuoteAside';
+import { LoadingSimulation } from '../components/booking/LoadingSimulation';
 
 const RouteMap = lazy(() => import('../components/RouteMap'));
 
@@ -59,7 +60,6 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
     movingEstimate,
     questionnaire,
     visibleInventoryText,
-    questionnaireAutoAnswers,
     estimateText,
     questionnaireText,
     totalTolls,
@@ -76,6 +76,12 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
     return (
       <div className="panel loading" role="status">
         {uiText['chargementDuCatalogue']}
+      </div>
+    );
+  if (publicRequest && done && catalogue)
+    return (
+      <div className="reference-request-page">
+        <BookingConfirmation booking={done} settings={catalogue.settings} isClient />
       </div>
     );
   if (error || !catalogue || !selected)
@@ -99,13 +105,6 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
         </div>
       </section>
     );
-  if (publicRequest && done)
-    return (
-      <div className="reference-request-page">
-        <BookingConfirmation booking={done} settings={catalogue.settings} isClient />
-      </div>
-    );
-
   return (
     <div className={`admin-quote-page${publicRequest ? ' reference-request-page' : ''}`}>
       {publicRequest && (
@@ -170,11 +169,9 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
               detail: step.detail,
               minutes: step.minutes,
             })),
-            movingEstimate &&
-              (movingEstimate.volume > 0 ||
-                state.editingBooking?.inventorySnapshot?.sourceInventory)
+            visibleInventoryText && movingEstimate
               ? bookingInventorySnapshot(estimateInventory, movingEstimate)
-              : undefined,
+              : null,
             movingEstimate?.volume
               ? { ...draft.options, labour: movingEstimate.crew }
               : draft.options,
@@ -523,6 +520,23 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                     >
                       {uiText['actualiser']}
                     </button>
+                    {!publicRequest && (
+                      <button
+                        type="button"
+                        aria-pressed={!quoteConfig.trafficOff}
+                        className={quoteConfig.trafficOff ? '' : 'selected'}
+                        onClick={() =>
+                          setQuoteConfig((current) => ({
+                            ...current,
+                            trafficOff: !current.trafficOff,
+                          }))
+                        }
+                      >
+                        {quoteConfig.trafficOff
+                          ? 'Embouteillages : ignorés'
+                          : 'Embouteillages : pris en compte'}
+                      </button>
+                    )}
                   </div>
                 )}
                 {draft.route && previewTier === 3 && (
@@ -600,7 +614,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                       disabled={quoteConfig.trips <= 1}
                       onClick={() => {
                         const trips = Math.max(1, quoteConfig.trips - 1);
-                        setQuoteConfig((current) => ({ ...current, trips }));
+                        setQuoteConfig((current) => ({ ...current, trips, calcMode: 'manual' }));
                         if (publicRequest)
                           setDraft((current) => ({ ...current, estimatedTrips: trips }));
                       }}
@@ -614,7 +628,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                       disabled={quoteConfig.trips >= catalogue.settings.maxTrips}
                       onClick={() => {
                         const trips = Math.min(catalogue.settings.maxTrips, quoteConfig.trips + 1);
-                        setQuoteConfig((current) => ({ ...current, trips }));
+                        setQuoteConfig((current) => ({ ...current, trips, calcMode: 'manual' }));
                         if (publicRequest)
                           setDraft((current) => ({ ...current, estimatedTrips: trips }));
                       }}
@@ -783,7 +797,15 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             quoteTrips={quoteConfig.trips}
             maxTrips={catalogue.settings.maxTrips}
             laborPlanning={catalogue.settings.movingLaborPlanning}
-            trafficDurationMinutes={traffic?.minutes}
+            ignoreTraffic={quoteConfig.trafficOff}
+            manualLegMinutes={quoteConfig.calcMode === 'manual' ? quoteConfig.legMinutes : 0}
+            hasToll={tollLines.some((line) => line.quantity * line.unitPrice > 0)}
+            onManualCalculation={() =>
+              setQuoteConfig((current) => ({ ...current, calcMode: 'manual' }))
+            }
+            heatOff={quoteConfig.heatOff}
+            heatRest={quoteConfig.heatRest}
+            onHeatChange={(value) => setQuoteConfig((current) => ({ ...current, ...value }))}
             audience={publicRequest ? 'client' : 'admin'}
             referenceMode={publicRequest}
             labourPriceEditor={
@@ -815,25 +837,15 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             estimateInventory={estimateInventory}
             onApplyEstimate={(vehicleId, trips) => {
               setDraft((current) => ({ ...current, vehicleId, estimatedTrips: trips }));
-              setQuoteConfig((current) => ({ ...current, trips }));
+              setQuoteConfig((current) =>
+                current.calcMode === 'manual' ? current : { ...current, trips },
+              );
             }}
           />
           {!publicRequest && (
             <ClientQuestionnaire
               questions={questionnaire}
               answers={draft.questionnaireAnswers}
-              autoAnswers={questionnaireAutoAnswers}
-              autoQuestionIds={[
-                'name',
-                'phone',
-                'date',
-                'time',
-                'from',
-                'to',
-                'rep',
-                'dwelling',
-                'items',
-              ]}
               open={questionnaireOpen}
               onToggle={() => setQuestionnaireOpen((value) => !value)}
               onChange={(id, value) =>
@@ -851,6 +863,19 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
           publicRequest={publicRequest}
           catalogue={catalogue}
           selected={selected}
+          simulation={
+            !publicRequest ? (
+              <LoadingSimulation
+                draft={draft}
+                vehicles={catalogue.vehicles}
+                quoteConfig={quoteConfig}
+                crew={movingEstimate?.crew ?? 2}
+                estimate={movingEstimate}
+                setDraft={setDraft}
+                setQuoteConfig={setQuoteConfig}
+              />
+            ) : null
+          }
         />
       </form>
     </div>

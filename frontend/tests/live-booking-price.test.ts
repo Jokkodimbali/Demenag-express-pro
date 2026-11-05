@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { liveBookingPrice } from '../src/application/services/live-booking-price.ts';
-import { revenueFor } from '../src/application/services/revenue.ts';
+import { completedBookingRevenueAmount, revenueFor } from '../src/application/services/revenue.ts';
 import type { Booking, Catalogue, Settings, Price } from '../src/domain/model.ts';
 
 const settings = {
@@ -55,6 +55,19 @@ test('les revenus prévisionnels suivent le catalogue, les terminés restent fig
     },
   );
 });
+
+test('le chiffre d’affaires publicitaire final exige un déménagement terminé', () => {
+  const completed = {
+    ...booking,
+    status: 'completed',
+    quotes: [{ kind: 'final', price: { total: 112000 } }],
+  } as unknown as Booking;
+
+  assert.equal(completedBookingRevenueAmount(completed), 112000);
+  assert.equal(completedBookingRevenueAmount({ ...completed, quotes: [] }), 102000);
+  assert.equal(completedBookingRevenueAmount({ ...completed, status: 'confirmed' }), 0);
+});
+
 test('les tarifs manœuvre, montage et remise en pourcentage sont recalculés ensemble', () => {
   const result = liveBookingPrice(
     { ...booking, estimate: { ...price, discountType: 'pct', discountValue: 10 } },

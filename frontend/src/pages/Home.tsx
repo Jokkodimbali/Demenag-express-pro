@@ -9,6 +9,16 @@ export function Home() {
   const navigate = useNavigate();
   const vehicle = catalogue?.vehicles.find((item) => item.id === draft.vehicleId);
   const tiers = tierLabels(catalogue?.settings.distanceBounds);
+  const vehicleOrder = (name: string) => {
+    const normalized = name
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+    if (normalized.includes('sprinter')) return 0;
+    if (normalized.includes('trafic')) return 1;
+    if (normalized.includes('master')) return 2;
+    return 3;
+  };
 
   return (
     <>
@@ -50,6 +60,14 @@ export function Home() {
               <div className="reference-vehicle-list">
                 {catalogue.vehicles
                   .filter((item) => item.active !== false)
+                  .map((item, index) => ({ item, index }))
+                  .sort(
+                    (left, right) =>
+                      vehicleOrder(left.item.shortName || left.item.name) -
+                        vehicleOrder(right.item.shortName || right.item.name) ||
+                      left.index - right.index,
+                  )
+                  .map(({ item }) => item)
                   .map((item) => (
                     <button
                       type="button"

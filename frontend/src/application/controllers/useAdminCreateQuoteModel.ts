@@ -25,6 +25,7 @@ import { bookingInventorySnapshot, estimateMovingWork } from '../../domain/movin
 import { defaultClientQuestions } from '../../domain/questionnaire';
 import { quoteNotificationUrl } from '../../application/services/quote-notification';
 import { whatsappNumber, whatsappUrl } from '../../application/services/whatsapp';
+import { whatsappPaymentLine } from '../../application/services/whatsapp-templates';
 
 const trafficDuration = (minutes: number) => {
   const rounded = Math.max(5, Math.round(minutes / 5) * 5);
@@ -54,6 +55,11 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const skipInitialSave = useRef(false);
   const [quoteConfig, setQuoteConfig] = useState<AdminQuoteConfig>({
     trips: 1,
+    calcMode: 'auto',
+    legMinutes: 0,
+    trafficOff: false,
+    heatOff: false,
+    heatRest: 0,
     discount: 0,
     discountType: 'fcfa',
     discountReason: '',
@@ -103,6 +109,9 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         quote,
         booking.pricingSettings ?? appCatalogue?.settings,
       );
+      if (whatsappWindow.current) whatsappWindow.current.location.replace(href);
+      else window.location.assign(href);
+      whatsappWindow.current = null;
       void (async () => {
         try {
           const settings = booking.pricingSettings ?? appCatalogue?.settings;
@@ -119,10 +128,6 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
           }
         } catch {
           setPdfError('Le devis est enregistré, mais le PDF n’a pas pu être téléchargé.');
-        } finally {
-          if (whatsappWindow.current) whatsappWindow.current.location.href = href;
-          else window.open(href, '_blank', 'noopener,noreferrer');
-          whatsappWindow.current = null;
         }
       })();
     },
@@ -168,6 +173,11 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     }));
     setQuoteConfig({
       trips: 1,
+      calcMode: 'auto',
+      legMinutes: 0,
+      trafficOff: false,
+      heatOff: false,
+      heatRest: 0,
       discount: 0,
       discountType: 'fcfa',
       discountReason: '',
@@ -251,6 +261,11 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     );
     setQuoteConfig({
       trips: quote?.price.trips ?? booking.estimate.trips,
+      calcMode: 'auto',
+      legMinutes: 0,
+      trafficOff: false,
+      heatOff: false,
+      heatRest: 0,
       discount: quote?.price.discountValue ?? quote?.price.discount ?? booking.estimate.discount,
       discountType: quote?.price.discountType ?? 'fcfa',
       discountReason: quote?.price.discountReason ?? '',
@@ -355,7 +370,15 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         crew: draft.inventory.crew,
         startTime: draft.timeSlot,
         laborPlanning: catalogue?.settings.movingLaborPlanning,
-        trafficDurationMinutes: traffic?.minutes,
+        ignoreTraffic: quoteConfig.trafficOff,
+        manualLegMinutes: quoteConfig.calcMode === 'manual' ? quoteConfig.legMinutes : 0,
+        date: draft.date,
+        month: draft.month,
+        fromAddress: draft.fromAddress,
+        toAddress: draft.toAddress,
+        hasToll: tollLines.some((line) => line.quantity * line.unitPrice > 0),
+        heatOff: quoteConfig.heatOff,
+        heatRest: quoteConfig.heatRest,
       })
     : null;
   const selectedVehicleId = selected?.id ?? '';
@@ -371,6 +394,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     stairs: estimateInventory.stairs,
   });
   useEffect(() => {
+    if (quoteConfig.calcMode === 'manual') return;
     if (!selectedVehicleId || movingEstimateVolume <= 0) return;
     setDraft((current) => {
       if (current.options.labour === movingEstimateCrew) return current;
@@ -388,28 +412,17 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     movingEstimateCrew,
     movingEstimateVolume,
     setDraft,
+    quoteConfig.calcMode,
   ]);
   useEffect(() => {
+    if (quoteConfig.calcMode === 'manual') return;
     if (!selectedVehicleId || movingEstimateTrips <= 0) return;
     setQuoteConfig((current) =>
       current.trips === movingEstimateTrips ? current : { ...current, trips: movingEstimateTrips },
     );
-  }, [inventoryEstimateKey, selectedVehicleId, movingEstimateTrips]);
-  const questionnaire = (catalogue?.settings.questionnaire ?? defaultClientQuestions).map(
-    (question) => {
-      const legacyLabels: Record<string, string> = {
-        floor: 'À quel étage, et y a-t-il un ascenseur, au départ et à l’arrivée ?',
-        lift: 'L’ascenseur est-il assez grand pour un canapé ?',
-      };
-      const previousLabels: Record<string, string> = {
-        floor: 'À quel étage, au départ et à l’arrivée ?',
-        lift: 'Y a-t-il un ascenseur assez grand pour les meubles ?',
-      };
-      return question.label === previousLabels[question.id]
-        ? { ...question, label: legacyLabels[question.id] }
-        : question;
-    },
-  );
+  }, [inventoryEstimateKey, selectedVehicleId, movingEstimateTrips, quoteConfig.calcMode]);
+  const configuredQuestions = catalogue?.settings.questionnaire;
+  const questionnaire = configuredQuestions?.length ? configuredQuestions : defaultClientQuestions;
   const inventoryCount =
     Object.values(draft.inventory.entries).reduce((sum, entry) => sum + entry.quantity, 0) +
     draft.inventory.variants.reduce((sum, entry) => sum + entry.quantity, 0) +
@@ -423,17 +436,6 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     draft.inventory.toLift
       ? inventoryText
       : '';
-  const questionnaireAutoAnswers = {
-    name: Boolean(draft.customerName.trim()),
-    phone: Boolean(draft.customerPhone.trim()),
-    date: Boolean(draft.date),
-    time: Boolean(draft.timeSlot),
-    from: Boolean(draft.fromAddress.trim()),
-    to: Boolean(draft.toAddress.trim()),
-    rep: Boolean(draft.fromNote.trim() && draft.toNote.trim()),
-    dwelling: Boolean(draft.inventory.dwellingType),
-    items: inventoryCount > 0,
-  };
   const estimateText = movingEstimate?.volume
     ? referenceMovingEstimateNote(
         movingEstimate,
@@ -598,14 +600,11 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         timeZone: 'Africa/Dakar',
       })
     : '';
-  const reminderPayment = [
-    catalogue?.settings.paymentWave !== false ? 'Wave' : '',
-    catalogue?.settings.paymentCash !== false ? 'espèces' : '',
-  ].filter(Boolean);
+  const reminderPayment = whatsappPaymentLine(catalogue?.settings);
   const reminderHref = editingBooking
     ? whatsappUrl(
         draft.customerPhone,
-        `Bonjour ${draft.customerName}, petit rappel de Demenag Express : votre déménagement (${editingBooking.reference}) est prévu ${reminderWhen}, le ${reminderDateLabel}${draft.timeSlot ? ` à ${draft.timeSlot}` : ''}.\n${draft.fromAddress ? `Départ : ${draft.fromAddress}\n` : ''}${draft.toAddress ? `Arrivée : ${draft.toAddress}\n` : ''}Merci de préparer vos affaires pour le chargement.${reminderPayment.length ? `\nMode de paiement : ${reminderPayment.join(' ou ')}${reminderPayment.length > 1 ? ' (au choix)' : ''}.` : ''} Pour toute question, contactez-nous au ${catalogue?.settings.businessPhone ?? ''}. À bientôt !`,
+        `Bonjour ${draft.customerName}, petit rappel de Demenag Express : votre déménagement (${editingBooking.reference}) est prévu ${reminderWhen}, le ${reminderDateLabel}${draft.timeSlot && draft.timeSlot !== 'À définir' ? ` à ${draft.timeSlot}` : ''}.\n${draft.fromAddress ? `Départ : ${draft.fromAddress}\n` : ''}${draft.toAddress ? `Arrivée : ${draft.toAddress}\n` : ''}Merci de préparer vos affaires pour le chargement.${reminderPayment ? `\n${reminderPayment}` : ''}\nPour toute question, contactez-nous au ${catalogue?.settings.whatsappPhone || catalogue?.settings.businessPhone || ''}. À bientôt !`,
         catalogue?.settings,
       )
     : '';
@@ -711,9 +710,10 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         notes: quote.notes,
         status: quoteKind === 'final' ? 'completed' : (editingBooking?.status ?? 'pending'),
         pricingSettings: pdfSettings,
-        inventorySnapshot: movingEstimate?.volume
-          ? bookingInventorySnapshot(estimateInventory, movingEstimate)
-          : editingBooking?.inventorySnapshot,
+        inventorySnapshot:
+          visibleInventoryText && movingEstimate
+            ? bookingInventorySnapshot(estimateInventory, movingEstimate)
+            : undefined,
         estimate: currentPrice,
         quotes: editingBooking?.quotes ?? [],
       };
@@ -754,6 +754,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         inventory: { ...current.inventory, crew: labour },
       };
     });
+    setQuoteConfig((current) => ({ ...current, calcMode: 'manual' }));
   };
 
   function toggleQuoteSection(section: keyof typeof openQuoteSections) {
@@ -842,7 +843,6 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     questionnaire,
     inventoryCount,
     visibleInventoryText,
-    questionnaireAutoAnswers,
     estimateText,
     questionnaireText,
     totalTolls,

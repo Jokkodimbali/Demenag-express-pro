@@ -5,6 +5,9 @@ import { conflict, safeUser } from './helpers.js';
 import { fromUser, toUser } from './mapping.js';
 export class PrismaUsers implements UserRepository {
   constructor(private db: PrismaClient) {}
+  async delete(userId: string) {
+    await this.db.utilisateur.delete({ where: { id: userId } });
+  }
   async updatePassword(userId: string, passwordHash: string) {
     await this.db.utilisateur.update({
       where: { id: userId },

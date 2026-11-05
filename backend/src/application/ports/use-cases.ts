@@ -69,7 +69,7 @@ export interface MovingUseCases {
   ): Promise<Booking>;
   list(user: User): Promise<Booking[]>;
   get(user: User, id: string): Promise<Booking>;
-  recordClientReminder(user: User, id: string): Promise<Booking>;
+  recordBookingReminder(user: User, id: string): Promise<Booking>;
   status(user: User, id: string, next: BookingStatus, version: number): Promise<Booking>;
   startTrip(user: User, id: string, photos: string[]): Promise<Booking>;
   finishTrip(user: User, id: string, photos: string[]): Promise<Booking>;
@@ -109,6 +109,9 @@ export interface MovingUseCases {
   ): Promise<Booking>;
   quote(user: User, id: string, input: QuoteInput): Promise<Booking>;
   delete(user: User, id: string): Promise<void>;
+  trashed(user: User): Promise<{ booking: Booking; deletedAt: string }[]>;
+  restore(user: User, id: string): Promise<void>;
+  purge(user: User, id: string): Promise<void>;
 }
 export interface AdministrationUseCases {
   listUsers(actor: User): Promise<User[]>;

@@ -4,6 +4,8 @@ import { whatsappNumber } from '../application/services/whatsapp';
 import { uiText } from '../content/reference-ui-text';
 import type { useAdminCreateQuoteModel } from '../application/controllers/useAdminCreateQuoteModel';
 import type { Catalogue, Vehicle } from '../domain/model';
+import type { ReactNode } from 'react';
+import { visibleUiText } from '../content/visible-ui-text';
 
 type Model = ReturnType<typeof useAdminCreateQuoteModel>;
 
@@ -12,11 +14,13 @@ export function AdminCreateQuoteAside({
   publicRequest,
   catalogue,
   selected,
+  simulation,
 }: {
   model: Model;
   publicRequest: boolean;
   catalogue: Catalogue;
   selected: Vehicle;
+  simulation?: ReactNode;
 }) {
   const {
     displayBusinessPhone,
@@ -26,6 +30,9 @@ export function AdminCreateQuoteAside({
     effectiveDistance,
     previewLines,
     quoteConfig,
+    setQuoteConfig,
+    setDraft,
+    movingEstimate,
     previewDiscountLabel,
     previewDiscount,
     previewTotal,
@@ -205,6 +212,141 @@ export function AdminCreateQuoteAside({
         </p>
       </div>
       {!publicRequest && (
+        <section className="admin-quote-calculation" aria-label={visibleUiText.text1}>
+          <span className="admin-quote-stage-label">{visibleUiText.text2}</span>
+          <div className="admin-quote-stage-switch" role="group" aria-label={visibleUiText.text3}>
+            <button
+              type="button"
+              aria-pressed={quoteConfig.calcMode === 'auto'}
+              className={quoteConfig.calcMode === 'auto' ? 'active provisional' : ''}
+              onClick={() => {
+                setQuoteConfig((current) => ({ ...current, calcMode: 'auto', legMinutes: 0 }));
+                setDraft((current) => ({
+                  ...current,
+                  inventory: { ...current.inventory, crew: 0 },
+                }));
+              }}
+            >
+              {visibleUiText.text4}
+            </button>
+            <button
+              type="button"
+              aria-pressed={quoteConfig.calcMode === 'manual'}
+              className={quoteConfig.calcMode === 'manual' ? 'active provisional' : ''}
+              onClick={() => {
+                const crew = movingEstimate?.crew || draft.options.labour || 2;
+                setQuoteConfig((current) => ({
+                  ...current,
+                  calcMode: 'manual',
+                  legMinutes: Math.max(0, Math.round((movingEstimate?.travelLegMinutes ?? 0) - 10)),
+                }));
+                setDraft((current) => ({
+                  ...current,
+                  options: { ...current.options, labour: crew },
+                  inventory: { ...current.inventory, crew },
+                }));
+              }}
+            >
+              {visibleUiText.text5}
+            </button>
+          </div>
+          <span className="admin-quote-calculation-description">
+            {quoteConfig.calcMode === 'manual'
+              ? 'Vous fixez manœuvres, allers-retours et durée de trajet. L’inventaire ne les modifie plus. Le véhicule reste libre.'
+              : 'L’inventaire calcule les allers-retours et conseille le nombre de manœuvres. Le véhicule reste libre.'}
+          </span>
+          {quoteConfig.calcMode === 'manual' && (
+            <div className="admin-quote-calculation-values">
+              {[
+                {
+                  label: 'Manœuvres',
+                  value: draft.options.labour,
+                  min: 1,
+                  max: catalogue.settings.maxOptions,
+                  change: (delta: number) =>
+                    setDraft((current) => {
+                      const crew = Math.max(
+                        1,
+                        Math.min(catalogue.settings.maxOptions, current.options.labour + delta),
+                      );
+                      return {
+                        ...current,
+                        options: { ...current.options, labour: crew },
+                        inventory: { ...current.inventory, crew },
+                      };
+                    }),
+                },
+                {
+                  label: 'Allers-retours',
+                  value: quoteConfig.trips,
+                  min: 1,
+                  max: Math.min(30, catalogue.settings.maxTrips),
+                  change: (delta: number) =>
+                    setQuoteConfig((current) => ({
+                      ...current,
+                      trips: Math.max(
+                        1,
+                        Math.min(30, catalogue.settings.maxTrips, current.trips + delta),
+                      ),
+                    })),
+                },
+                ...(draft.route
+                  ? [
+                      {
+                        label: 'Trajet (aller)',
+                        value: quoteConfig.legMinutes,
+                        min: 5,
+                        max: 600,
+                        change: (delta: number) =>
+                          setQuoteConfig((current) => ({
+                            ...current,
+                            legMinutes: Math.max(
+                              5,
+                              Math.min(600, (current.legMinutes || 10) + delta * 5),
+                            ),
+                          })),
+                      },
+                    ]
+                  : []),
+              ].map((field) => (
+                <div className="admin-quote-calculation-value" key={field.label}>
+                  <span>{field.label}</span>
+                  <div>
+                    <button
+                      type="button"
+                      aria-label={`Réduire ${field.label}`}
+                      disabled={field.value <= field.min}
+                      onClick={() => field.change(-1)}
+                    >
+                      −
+                    </button>
+                    <strong>
+                      {field.value}
+                      {field.label === 'Trajet (aller)' ? ' min' : ''}
+                    </strong>
+                    <button
+                      type="button"
+                      aria-label={`Augmenter ${field.label}`}
+                      disabled={field.value >= field.max}
+                      onClick={() => field.change(1)}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {quoteConfig.calcMode === 'manual' && movingEstimate && (
+            <span className="admin-quote-calculation-advice">
+              {visibleUiText.text6}
+              {movingEstimate.recommendedCrew} {visibleUiText.text7} {movingEstimate.trips}{' '}
+              {visibleUiText.text8}
+            </span>
+          )}
+        </section>
+      )}
+      {!publicRequest && (
         <section className="admin-quote-stage" aria-label={uiText['etapeActuelleDuDevis']}>
           <span className="admin-quote-stage-label">{uiText['etapeACTUELLE']}</span>
           <div className="admin-quote-stage-switch" role="group" aria-label={uiText['typeDeDevis']}>
@@ -262,7 +404,7 @@ export function AdminCreateQuoteAside({
               {uiText['envoyerLeDevis']}
               {quoteKind === 'final' ? 'final' : 'provisoire'} {uiText['surWhatsApp']}
             </button>
-            {reminderCanSend && editingBooking && (
+            {reminderCanSend && editingBooking ? (
               <a
                 className="admin-quote-reminder"
                 href={reminderHref}
@@ -287,6 +429,20 @@ export function AdminCreateQuoteAside({
                     );
                 }}
               >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+                  <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+                </svg>
                 {uiText['rappel']}{' '}
                 {reminderDays === 0
                   ? 'aujourd’hui'
@@ -294,12 +450,34 @@ export function AdminCreateQuoteAside({
                     ? 'demain'
                     : `J-${reminderDays}`}
               </a>
+            ) : (
+              <span
+                className="admin-quote-reminder admin-quote-reminder--disabled"
+                title={reminderDisabledReason}
+                aria-disabled="true"
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+                  <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+                </svg>
+                {visibleUiText.text9}
+              </span>
             )}
           </div>
           {!reminderCanSend && (
-            <span className="admin-quote-reminder-disabled">
+            <span className="admin-quote-reminder-help">
               {uiText['rappelIndisponible']}
-              {reminderDisabledReason}
+              {reminderDisabledReason}.
             </span>
           )}
           {reminderNotice && (
@@ -360,6 +538,7 @@ export function AdminCreateQuoteAside({
               ? 'Enregistrer les modifications'
               : 'Enregistrer'}
       </button>
+      {simulation}
       {!publicRequest && (
         <button
           type="button"

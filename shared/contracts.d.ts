@@ -1,4 +1,6 @@
 export type Role = 'client' | 'admin' | 'driver';
+export type AccountingFixedChargeKey =
+  'sal' | 'vid' | 'ass' | 'amo' | 'anx' | 'res' | 'det' | 'leg';
 export type AccountingFinanceConfiguration = {
   regime: 'auto' | 'informel' | 'suarl';
   suarlFrom: string;
@@ -11,6 +13,16 @@ export type AccountingFinanceConfiguration = {
   newVehicleTarget: number;
   profitCapPercent: number;
   moverCostPerMove: number;
+  monthlyProfitTarget: number;
+  averageMovingPrice: number;
+  vehicleCount: number;
+  oilChangeCost: number;
+  oilChangeIntervalMonths: number;
+  vehicleInsuranceAnnual: number;
+  legalReservePercent: number;
+  legalReserveCapitalPercent: number;
+  monthlyFixedChargePostings: { month: string; key: AccountingFixedChargeKey; amount: number }[];
+  financeChat: { speaker: 'user' | 'assistant'; message: string }[];
   menuPrices: Record<
     string,
     {
@@ -32,9 +44,11 @@ export type AccountingEntry = {
   amount: number;
   date: string;
   automatic: boolean;
+  quantity?: number;
   bookingId?: string;
   reference?: string;
   bookingReference?: string;
+  referenceFixedKey?: AccountingFixedChargeKey;
 };
 export type ManualAccountingInput = Pick<
   AccountingEntry,
@@ -106,6 +120,7 @@ export type ClientQuestion = {
   id: string;
   group: string;
   label: string;
+  hint?: string;
   answerType: 'text' | 'yes_no';
   required: boolean;
   active: boolean;
@@ -139,6 +154,7 @@ export type Settings = BookingRules & {
   whatsappCountryCode?: string;
   whatsappMode?: 'api' | 'wame' | 'web' | 'app';
   whatsappQuoteTemplate?: string;
+  whatsappProvisionalTemplate?: string;
   businessName: string;
   businessAddress: string;
   invoiceFooter: string;
@@ -161,6 +177,11 @@ export type MovingLaborPlanningSettings = {
   maxMoversPerVehicle: number;
   cubicMetersPerHourPerMover: number;
   pauseMinutes: number;
+  heat?: number;
+  wbgtAdj?: number;
+  blanketLengthCm?: number;
+  blanketWidthCm?: number;
+  blanketStock?: number;
 };
 export type LabourMatrixScenario = 'none' | 'from' | 'to' | 'both';
 export type LabourPriceMatrix = Record<LabourMatrixScenario, number[][]>;
@@ -433,7 +454,7 @@ export type BookingInput = {
   notes: string;
   questionnaireAnswers?: ClientQuestionAnswer[];
   workPlan?: WorkPlanStepInput[];
-  inventorySnapshot?: BookingInventorySnapshot;
+  inventorySnapshot?: BookingInventorySnapshot | null;
   requestId: string;
 };
 export type QuoteInput = {

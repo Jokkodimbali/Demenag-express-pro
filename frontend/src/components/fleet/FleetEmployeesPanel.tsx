@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { messages } from '../../content/fr';
 import { whatsappUrl } from '../../application/services/whatsapp';
 import type { useAdminFleetPageModel } from '../../application/controllers/useAdminFleetPageModel';
+import { visibleUiText } from '../../content/visible-ui-text';
 type Model = ReturnType<typeof useAdminFleetPageModel>;
 export function FleetEmployeesPanel({ model }: { model: Model }) {
   const {
@@ -147,7 +148,7 @@ export function FleetEmployeesPanel({ model }: { model: Model }) {
             <button
               type="button"
               className="team-icon-button"
-              aria-label="Masquer les identifiants"
+              aria-label={visibleUiText.text61}
               onClick={() => setCreatedEmployeeAccess(null)}
             >
               <X size={16} />
@@ -155,11 +156,11 @@ export function FleetEmployeesPanel({ model }: { model: Model }) {
           </div>
           <div className="teams-generated-fields">
             <label>
-              Téléphone
+              {visibleUiText.text62}
               <input readOnly value={createdEmployeeAccess.phone} />
             </label>
             <label>
-              Mot de passe{' '}
+              {visibleUiText.text63}{' '}
               {createdEmployeeAccess.purpose === 'creation' ? 'initial' : 'à transmettre'}
               <input readOnly value={createdEmployeeAccess.password} />
             </label>
@@ -194,7 +195,7 @@ export function FleetEmployeesPanel({ model }: { model: Model }) {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <MessageCircle size={15} /> Envoyer par WhatsApp
+              <MessageCircle size={15} /> {visibleUiText.text64}
             </a>
           </div>
         </section>
@@ -339,7 +340,7 @@ export function FleetEmployeesPanel({ model }: { model: Model }) {
               <button
                 type="button"
                 className="team-icon-button"
-                title="Réinitialiser et copier le mot de passe"
+                title={visibleUiText.text65}
                 aria-label={`Réinitialiser le mot de passe de ${employee.name}`}
                 disabled={savingEmployee === employee.id}
                 onClick={() => void resetEmployeePassword(employee)}

@@ -83,7 +83,7 @@ export function useSettings() {
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!catalogue || busy) return;
+    if (!catalogue) return;
     setSaved(false);
     setError('');
     await flushPending(e.currentTarget);

@@ -1,0 +1,80 @@
+.admin-data-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  color: #fff;
+}
+.admin-data-intro,
+.admin-data-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: clamp(14px, 4vw, 22px);
+  border: 1px solid #3b4046;
+  border-radius: 16px;
+  background: #272a2e;
+}
+.admin-data-intro h2,
+.admin-data-card h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.admin-data-intro p,
+.admin-data-card p {
+  margin: 0;
+  color: #aeb4bb;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.admin-data-trash-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #3b4046;
+  border-radius: 12px;
+  background: #1e2023;
+}
+.admin-data-trash-item > div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.admin-data-trash-item strong {
+  font-size: 13.5px;
+}
+.admin-data-trash-item span,
+.admin-data-trash-item small {
+  color: #aeb4bb;
+  font-size: 12.5px;
+}
+.admin-data-trash-item > div:last-child {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.admin-data-trash-item button {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 9px;
+  background: #3ddc84;
+  color: #1e2023;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.admin-data-trash-item button:last-child {
+  border: 1.5px solid #ff5a5f;
+  background: transparent;
+  color: #ff5a5f;
+}
+.admin-data-trash-item button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

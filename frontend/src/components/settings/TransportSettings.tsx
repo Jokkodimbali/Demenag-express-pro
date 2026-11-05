@@ -1,5 +1,5 @@
 import { uiText } from '../../content/reference-ui-text';
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { FleetVehicleDimensions } from '../FleetVehicleDimensions';
 import { useApp } from '../../application/context';
 import { errorMessage } from '../../application/error-message';
@@ -12,6 +12,8 @@ import { ReferenceVehicleSettings } from './ReferenceVehicleSettings';
 import { PaymentSettings } from './PaymentSettings';
 import { ReferenceWhatsappSettings } from './ReferenceWhatsappSettings';
 import { ReferenceGoogleMapsSettings } from './ReferenceGoogleMapsSettings';
+import { QuestionnaireSettings } from './QuestionnaireSettings';
+import { visibleUiText } from '../../content/visible-ui-text';
 
 const tiers = ['Moins de 15 km', '15 – 25 km', '25 – 35 km'];
 const scenarios: { id: LabourMatrixScenario; label: string; from: boolean; to: boolean }[] = [
@@ -26,10 +28,25 @@ const planningDefaults = {
   maxDayHours: 8,
   defaultStartHour: 8,
   maxMoversPerVehicle: 6,
-  cubicMetersPerHourPerMover: 2.5,
+  cubicMetersPerHourPerMover: 2.7,
   pauseMinutes: 30,
+  heat: 1,
+  wbgtAdj: 0,
+  blanketLengthCm: 204,
+  blanketWidthCm: 184,
+  blanketStock: 20,
 };
 const planningFields = [
+  [
+    'heat',
+    'Pauses chaleur ISO 7243 (1 = oui, 0 = non)',
+    'Pauses de récupération selon la chaleur (WBGT) du mois à Dakar.',
+  ],
+  [
+    'wbgtAdj',
+    'Correction WBGT (°C)',
+    'Ajoutée aux valeurs mensuelles de Dakar (ex. +1 en plein soleil, −1 à l’ombre).',
+  ],
   [
     'maxHandlingHours',
     'Plafond chargement + déchargement (h)',
@@ -147,6 +164,14 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
     );
   });
   const planning = { ...planningDefaults, ...catalogue.settings.movingLaborPlanning };
+  const [blanketLengthCm, setBlanketLengthCm] = useState(planning.blanketLengthCm);
+  const [blanketWidthCm, setBlanketWidthCm] = useState(planning.blanketWidthCm);
+  const [blanketStock, setBlanketStock] = useState(planning.blanketStock);
+  useEffect(() => {
+    setBlanketLengthCm(planning.blanketLengthCm);
+    setBlanketWidthCm(planning.blanketWidthCm);
+    setBlanketStock(planning.blanketStock);
+  }, [planning.blanketLengthCm, planning.blanketWidthCm, planning.blanketStock]);
 
   async function saveVehicleDimensions(vehicle: Catalogue['vehicles'][number]) {
     setDimensionBusy(true);
@@ -461,38 +486,46 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
                   style={inputStyle}
                   type="number"
                   min={
-                    key === 'maxDayHours'
-                      ? 1
-                      : key === 'maxMoversPerVehicle'
-                        ? 2
-                        : key === 'cubicMetersPerHourPerMover'
-                          ? 0.1
-                          : key === 'pauseMinutes'
-                            ? 0
-                            : key === 'defaultStartHour'
-                              ? 0
-                              : 0.5
+                    key === 'wbgtAdj'
+                      ? -10
+                      : key === 'heat'
+                        ? 0
+                        : key === 'maxDayHours'
+                          ? 1
+                          : key === 'maxMoversPerVehicle'
+                            ? 2
+                            : key === 'cubicMetersPerHourPerMover'
+                              ? 0.1
+                              : key === 'pauseMinutes'
+                                ? 0
+                                : key === 'defaultStartHour'
+                                  ? 0
+                                  : 0.5
                   }
                   max={
-                    key === 'maxHandlingHours'
-                      ? 12
-                      : key === 'maxDayHours'
-                        ? 16
-                        : key === 'defaultStartHour'
-                          ? 23
-                          : key === 'maxMoversPerVehicle'
-                            ? 20
-                            : key === 'cubicMetersPerHourPerMover'
-                              ? 50
-                              : 180
+                    key === 'wbgtAdj'
+                      ? 10
+                      : key === 'heat'
+                        ? 1
+                        : key === 'maxHandlingHours'
+                          ? 12
+                          : key === 'maxDayHours'
+                            ? 16
+                            : key === 'defaultStartHour'
+                              ? 23
+                              : key === 'maxMoversPerVehicle'
+                                ? 20
+                                : key === 'cubicMetersPerHourPerMover'
+                                  ? 50
+                                  : 180
                   }
                   required
                   step={
-                    key === 'cubicMetersPerHourPerMover' ||
-                    key === 'maxHandlingHours' ||
-                    key === 'maxDayHours'
-                      ? '0.5'
-                      : 1
+                    key === 'cubicMetersPerHourPerMover'
+                      ? '0.1'
+                      : key === 'wbgtAdj' || key === 'maxHandlingHours' || key === 'maxDayHours'
+                        ? '0.5'
+                        : 1
                   }
                   name={`movingLaborPlanning.${key}`}
                   defaultValue={planning[key]}
@@ -517,6 +550,76 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
           </button>
         </section>
 
+        <section style={sectionStyle}>
+          <span className="reference-settings-card-title">{visibleUiText.text67}</span>
+          <div className="reference-settings-blanket-fields">
+            <label>
+              <span>{visibleUiText.text68}</span>
+              <input
+                style={inputStyle}
+                type="number"
+                min={50}
+                max={400}
+                step={1}
+                required
+                name="movingLaborPlanning.blanketLengthCm"
+                value={blanketLengthCm}
+                onChange={(event) => setBlanketLengthCm(Number(event.target.value) || 0)}
+              />
+            </label>
+            <label>
+              <span>{visibleUiText.text69}</span>
+              <input
+                style={inputStyle}
+                type="number"
+                min={50}
+                max={400}
+                step={1}
+                required
+                name="movingLaborPlanning.blanketWidthCm"
+                value={blanketWidthCm}
+                onChange={(event) => setBlanketWidthCm(Number(event.target.value) || 0)}
+              />
+            </label>
+            <label>
+              <span>{visibleUiText.text70}</span>
+              <input
+                style={inputStyle}
+                type="number"
+                min={0}
+                step={1}
+                required
+                name="movingLaborPlanning.blanketStock"
+                value={blanketStock}
+                onChange={(event) => setBlanketStock(Number(event.target.value) || 0)}
+              />
+            </label>
+          </div>
+          <small>
+            {visibleUiText.text71}
+            {((blanketLengthCm * blanketWidthCm) / 10000).toFixed(2).replace('.', ',')}{' '}
+            {visibleUiText.text72}
+          </small>
+          <button
+            className="reference-settings-reset"
+            type="button"
+            onClick={(event) => {
+              const form = event.currentTarget.form;
+              for (const key of ['blanketLengthCm', 'blanketWidthCm', 'blanketStock'] as const) {
+                const input = form?.elements.namedItem(`movingLaborPlanning.${key}`);
+                if (input instanceof HTMLInputElement) input.value = String(planningDefaults[key]);
+              }
+              setBlanketLengthCm(planningDefaults.blanketLengthCm);
+              setBlanketWidthCm(planningDefaults.blanketWidthCm);
+              setBlanketStock(planningDefaults.blanketStock);
+              form?.requestSubmit();
+            }}
+          >
+            {visibleUiText.text73}
+          </button>
+        </section>
+
+        <QuestionnaireSettings questions={catalogue.settings.questionnaire ?? []} />
         <ReferenceVehicleSettings catalogue={catalogue} />
         <PaymentSettings catalogue={catalogue} />
         <ReferenceGoogleMapsSettings />

@@ -15,6 +15,7 @@ const sections = [
   { to: routes.administrationVehicleReports, label: 'Contrôles' },
   { to: routes.administrationTollPoints, label: 'Péages' },
   { to: routes.administrationSettings, label: 'Paramètres' },
+  { to: routes.administrationData, label: 'Données' },
 ];
 export function AdminLayout() {
   const location = useLocation();

@@ -6,6 +6,7 @@ import { PhotoPicker } from '../components/PhotoPicker';
 import { useDriverWorkspace } from '../application/controllers/useDriverWorkspace';
 import { messages } from '../content/fr';
 import { routes } from '../routing/routes';
+import { visibleUiText } from '../content/visible-ui-text';
 
 export function DriverProfile() {
   const { profile, loading, error, photoSaving, setRetry, savePhoto } = useDriverWorkspace(false);
@@ -18,7 +19,7 @@ export function DriverProfile() {
         <div>
           <p className="eyebrow">{messages.espaceChauffeur}</p>
           <h1>{messages.monProfil}</h1>
-          <p>Consultez vos informations et changez votre mot de passe ci-dessous.</p>
+          <p>{visibleUiText.text90}</p>
         </div>
         <Link className="button secondary small" to={routes.driverWorkspace}>
           <ArrowLeft size={16} />
@@ -38,7 +39,7 @@ export function DriverProfile() {
         </p>
       ) : profile ? (
         <div className="panel profile-settings-panel" key={profile.id}>
-          <section className="profile-fields-form" aria-label="Informations du profil employé">
+          <section className="profile-fields-form" aria-label={visibleUiText.text91}>
             <div className="driver-profile-heading">
               {profile.photo ? (
                 <img className="driver-profile-photo" src={profile.photo} alt={profile.name} />
@@ -46,12 +47,9 @@ export function DriverProfile() {
                 <CircleUserRound className="driver-profile-photo-placeholder" aria-hidden="true" />
               )}
               <div>
-                <p className="eyebrow">Profil employé</p>
+                <p className="eyebrow">{visibleUiText.text92}</p>
                 <h2>{profile.name}</h2>
-                <p>
-                  Votre nom et votre numéro sont gérés par l’administration. Vous pouvez modifier
-                  votre photo ci-dessous.
-                </p>
+                <p>{visibleUiText.text93}</p>
               </div>
             </div>
             <div className="field-pair">
@@ -77,7 +75,7 @@ export function DriverProfile() {
             />
             {photoSaved ? (
               <p className="alert success" role="status">
-                Photo de profil mise à jour.
+                {visibleUiText.text94}
               </p>
             ) : null}
             <div className="driver-profile-actions">

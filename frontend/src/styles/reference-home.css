@@ -103,11 +103,13 @@
 }
 .reference-vehicle-list button {
   display: flex;
-  align-items: center;
+  align-items: stretch;
+  flex-direction: column;
   gap: 10px;
   min-width: 0;
   padding: 10px;
   text-align: left;
+  cursor: pointer;
   background: #1e2023;
   color: #fff;
   border: 2px solid #3b4046;
@@ -118,11 +120,12 @@
   background: #363629;
 }
 .reference-vehicle-list img {
-  width: 90px;
-  height: 66px;
+  display: block;
+  width: 100%;
+  aspect-ratio: 960 / 355;
   object-fit: contain;
   border-radius: 8px;
-  flex: none;
+  background: #222428;
 }
 .reference-vehicle-list button span {
   display: grid;
@@ -135,6 +138,19 @@
 .reference-vehicle-list small {
   color: #aeb4bb;
   font-size: 13px;
+}
+@media (max-width: 760px) {
+  .reference-vehicle-list button {
+    align-items: center;
+    flex-direction: row;
+    padding: 8px;
+  }
+  .reference-vehicle-list img {
+    width: 108px;
+    height: auto;
+    aspect-ratio: 960 / 355;
+    flex: none;
+  }
 }
 .reference-vehicle-detail {
   display: grid;

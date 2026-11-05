@@ -2,9 +2,6 @@
   .moving-estimate-details {
     grid-template-columns: 1fr;
   }
-  .questionnaire-setting-row {
-    grid-template-columns: 1fr;
-  }
   .admin-quote-identity {
     grid-template-columns: 1fr;
   }
@@ -84,6 +81,81 @@
 .admin-quote-labour-override small {
   color: #aeb4bb;
   font-size: 11.5px;
+}
+.admin-quote-calculation {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid #3b4046;
+  border-radius: 16px;
+  background: #272a2e;
+  color: #fff;
+}
+.admin-quote-calculation-description {
+  color: #d5d9de;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.admin-quote-calculation-values {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
+  gap: 8px;
+}
+.admin-quote-calculation-value {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 12px;
+  background: #1e2023;
+}
+.admin-quote-calculation-value > span {
+  color: #aeb4bb;
+  font-size: 12px;
+  font-weight: 700;
+}
+.admin-quote-calculation-value > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.admin-quote-calculation-value button {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  border: 1px solid #3b4046;
+  border-radius: 9px;
+  background: #1e2023;
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+}
+.admin-quote-calculation-value button:last-child {
+  border-color: #f6d73c;
+  background: #f6d73c;
+  color: #1e2023;
+}
+.admin-quote-calculation-value button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.admin-quote-calculation-value strong {
+  flex: 1;
+  text-align: center;
+  color: #f6d73c;
+  font-size: 18px;
+  white-space: nowrap;
+}
+.admin-quote-calculation-advice {
+  color: #f6d73c;
+  font-size: 12px;
+}
+.admin-quote-traffic button.selected {
+  border-color: #f6d73c;
+  background: #f6d73c;
+  color: #1e2023;
 }
 .admin-quote-paper-tolls {
   overflow: hidden;

@@ -168,6 +168,9 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
     bookings: () => sharePendingRead(httpRoutes.bookings, () => request(httpRoutes.bookings)),
     booking: (id) => request(`${httpRoutes.bookings}/${id}`),
     deleteBooking: (id) => request(`${httpRoutes.bookings}/${id}`, 'DELETE'),
+    trashedBookings: () => request(`${httpRoutes.bookings}/trash`),
+    restoreBooking: (id) => request(`${httpRoutes.bookings}/${id}/restore`, 'POST'),
+    purgeBooking: (id) => request(`${httpRoutes.bookings}/${id}/purge`, 'DELETE'),
     createBooking: (input) => request(httpRoutes.bookings, 'POST', input),
     updateClientBooking: (id, input, version) =>
       request(httpRoutes.bookingClientRequest(id), 'PATCH', { ...input, version }),

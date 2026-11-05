@@ -26,6 +26,7 @@ test('Le contrôle employé conserve les cinq photos et le carburant, et autoris
   };
   const drivers: DriverRepository = {
     list: async () => [driver],
+    vehicleExists: async () => true,
     find: async () => driver,
     findByUserId: async () => driver,
     create: async (d) => d,

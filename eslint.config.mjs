@@ -10,6 +10,8 @@ export default ts.config(
       '**/dist/**',
       'backend/src/generated/**',
       'support.js',
+      'reference/**',
+      'frontend/public/reference/**',
       '.verification/**',
     ],
   },

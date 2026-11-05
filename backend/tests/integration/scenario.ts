@@ -19,6 +19,15 @@ import {
   verifyQuoteSnapshots,
 } from './fulfillment.js';
 import { verifySettingsRules } from './settings.js';
+import {
+  verifyAccountingJournal,
+  verifyArchivedFinalRevenue,
+  verifyCancelledAccounting,
+  verifyProvisionalAccounting,
+  verifyProvisionalQuoteCreation,
+} from './accounting.js';
+import { verifyTeamManagement } from './teams.js';
+import { verifyPlanningFollowUp } from './planning-follow-up.js';
 
 export async function runIntegrationScenario() {
   const url = process.env.TEST_DATABASE_URL;
@@ -33,6 +42,7 @@ export async function runIntegrationScenario() {
     await configureDeterministicPricing(context);
     const users = await registerScenarioUsers(context);
     assert.equal(users.userIds.length, 4);
+    await verifyTeamManagement(context, users.driverId, users.initialDriverPassword);
 
     const route = await context.clients.first
       .post('/api/maps/route')
@@ -43,12 +53,16 @@ export async function runIntegrationScenario() {
 
     const booking = await createAndAuthorizeBooking(context, route.body.id);
     const input = booking.input as Record<string, unknown>;
+    await verifyProvisionalAccounting(context, booking.bookingId);
+    await verifyProvisionalQuoteCreation(context, booking.collisionId);
     await advanceBookingToInProgress(
       context,
       booking.bookingId,
       booking.collisionId,
       booking.assigned,
     );
+    await verifyPlanningFollowUp(context, booking.bookingId);
+    await verifyCancelledAccounting(context, booking.collisionId);
     await runVehicleInspection(context);
     const driverFinished = await completeRecordedTrips(context, booking.bookingId);
     const finalQuote = await createFinalQuoteAndClose(
@@ -56,27 +70,29 @@ export async function runIntegrationScenario() {
       booking.bookingId,
       driverFinished.version,
     );
-    await verifyQuoteSnapshots(
-      context,
-      booking.bookingId,
-      finalQuote.quotes[0].id,
-      finalQuote.version,
-    );
+    await verifyAccountingJournal(context, finalQuote.quoteId, finalQuote.amount);
+    await verifyQuoteSnapshots(context, booking.bookingId, finalQuote.quoteId, finalQuote.version);
     await verifyAccountAdministration(context, users.userIds);
     await verifySettingsRules(context, input);
     await verifySessionLifecycle(context);
+    await verifyArchivedFinalRevenue(
+      context,
+      booking.bookingId,
+      finalQuote.quoteId,
+      finalQuote.amount,
+    );
   } catch (error) {
     scenarioError = error;
   }
 
   const cleanupErrors: unknown[] = [];
   try {
-    if (original) await restoreConfiguration(context, original);
+    await deleteScenarioData(context, routeIds);
   } catch (error) {
     cleanupErrors.push(error);
   }
   try {
-    await deleteScenarioData(context, routeIds);
+    if (original) await restoreConfiguration(context, original);
   } catch (error) {
     cleanupErrors.push(error);
   }
