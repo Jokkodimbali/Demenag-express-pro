@@ -4,6 +4,7 @@ import { uiText } from '../content/reference-ui-text';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { money } from '../domain/format';
+import { isUndatedBookingForMonth } from '../domain/calendar';
 import type { Booking } from '../domain/model';
 import { downloadPlanningWeekPdf } from '../adapters/pdf';
 import type { Driver, Vehicle } from '../../../shared/contracts.js';
@@ -15,6 +16,7 @@ type CalendarProps = {
   employees: Driver[];
   onSelect: (booking: Booking) => void;
   onCreateAtDay: (date: string, time: string) => void;
+  onOpenTeam: (booking: Booking) => void;
 };
 type CalendarEvent = {
   booking: Booking;
@@ -125,6 +127,16 @@ function vehicleTag(name: string) {
   return name.match(/sprinter|trafic|master/i)?.[0] ?? name;
 }
 
+function vehicleColor(name: string) {
+  const normalized = name.toLocaleLowerCase('fr-FR');
+  if (normalized.includes('sprinter')) return '#3B82F6';
+  if (normalized.includes('master')) return '#F59E0B';
+  if (normalized.includes('trafic')) return '#A855F7';
+  let hash = 0;
+  for (const character of name) hash = (hash * 31 + character.charCodeAt(0)) % 360;
+  return `hsl(${hash},70%,60%)`;
+}
+
 function periodTitle(view: View, day: string, month: Date) {
   if (view === 'day')
     return dateLabel(day, { weekday: 'long', day: 'numeric', month: 'long' }).replace(/^./u, (c) =>
@@ -145,6 +157,7 @@ export function ReferenceCalendar({
   employees,
   onSelect,
   onCreateAtDay,
+  onOpenTeam,
 }: CalendarProps) {
   const { catalogue } = useApp();
   const amount = (booking: Booking) => {
@@ -209,11 +222,8 @@ export function ReferenceCalendar({
     return days.includes(booking.date);
   });
   const visibleBookings = periodBookings;
-  const undated = filteredBookings.filter(
-    (booking) =>
-      !booking.date &&
-      booking.status !== 'cancelled' &&
-      booking.createdAt.slice(0, 7) === monthCursor.slice(0, 7),
+  const undated = filteredBookings.filter((booking) =>
+    isUndatedBookingForMonth(booking, monthCursor.slice(0, 7)),
   );
   const totals = visibleBookings.reduce(
     (result, booking) => {
@@ -522,6 +532,12 @@ export function ReferenceCalendar({
           <span>
             <i className="final" /> {uiText['final2']}
           </span>
+          {vehicles.map((vehicle) => (
+            <span key={vehicle.id}>
+              <i style={{ backgroundColor: vehicleColor(vehicle.id) }} />
+              {vehicleTag(vehicle.shortName || vehicle.name)}
+            </span>
+          ))}
           <strong>
             {countBookings.length} {uiText['rdv']}{' '}
             {view === 'month' ? 'ce mois' : view === 'week' ? 'cette semaine' : 'ce jour'}
@@ -677,6 +693,32 @@ export function ReferenceCalendar({
                 const dayBookings = filteredBookings.filter(
                   (booking) => booking.date === day && booking.status !== 'cancelled',
                 );
+                const dayEvents = getDayEvents(day);
+                const hoursByVehicle = new Map<string, number>();
+                dayEvents.forEach(({ booking, range }) => {
+                  hoursByVehicle.set(
+                    booking.vehicle.id,
+                    (hoursByVehicle.get(booking.vehicle.id) ?? 0) + range.duration / 60,
+                  );
+                });
+                const moverCount = dayEvents
+                  .filter((event) => !event.continuation)
+                  .reduce(
+                    (sum, { booking }) =>
+                      sum + (booking.quotes.at(-1)?.options?.labour ?? booking.options.labour),
+                    0,
+                  );
+                const occupancy = [
+                  ...[...hoursByVehicle].map(([vehicleId, hours]) => {
+                    const vehicle = vehicles.find((item) => item.id === vehicleId);
+                    return `${vehicleTag(vehicle?.shortName || vehicle?.name || vehicleId)} ${(
+                      Math.round(hours * 10) / 10
+                    )
+                      .toString()
+                      .replace('.', ',')} h`;
+                  }),
+                  ...(moverCount ? [`${moverCount} manœuvres`] : []),
+                ].join(' · ');
                 const dayTotals = dayBookings.reduce(
                   (sum, booking) => {
                     const value = amount(booking);
@@ -698,6 +740,7 @@ export function ReferenceCalendar({
                   >
                     <span>{weekLabels[(atNoon(day).getUTCDay() + 6) % 7]}</span>
                     <strong>{Number(day.slice(-2))}</strong>
+                    {occupancy && <small className="reference-time-grid-occupancy">{occupancy}</small>}
                     {dayBookings.length > 0 && (
                       <>
                         <i>
@@ -782,48 +825,68 @@ export function ReferenceCalendar({
                         (vehicleLane / vehicleCount + lane / vehicleCount / laneCount) * 100;
                       const quote = quoteKind(booking);
                       return (
-                        <button
-                          type="button"
+                        <div
                           data-calendar-event
                           key={`${booking.id}-${vehicleLane}-${lane}`}
-                          className={`reference-time-event ${quote} ${range.estimated ? 'estimated' : ''}`}
+                          className="reference-time-event-shell"
                           style={{
                             top: `${top}px`,
                             height: `${height}px`,
                             left: `calc(${left}% + 2px)`,
                             width: `calc(${laneWidth}% - 4px)`,
-                            backgroundColor: quote === 'final' ? '#0e3a22' : '#3a3420',
-                            borderLeftColor: range.estimated ? 'rgba(255,255,255,.35)' : '#fff',
-                          }}
-                          title={`${booking.reference} · ${booking.customerName} · ${range.label}${range.estimated ? ' (créneau, durée estimée)' : ' (durée calculée)'}`}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onSelect(booking);
                           }}
                         >
-                          {booking.vehicle.image && <img src={booking.vehicle.image} alt="" />}
-                          <span>{range.label}</span>
-                          <strong>
-                            {booking.reference.replace(/^DEM-/u, '')} ·{' '}
-                            {booking.customerName.split(' ')[0]}
-                          </strong>
-                          <span>
-                            {quote === 'final' ? 'Final · ' : 'Provisoire · '}
-                            {money(totalsForBooking.final ?? totalsForBooking.provisional ?? 0)}
-                          </span>
-                          {height >= 64 && (
-                            <>
-                              <small>
-                                {vehicleTag(booking.vehicle.name)} ·{' '}
-                                {formatDuration(range.duration)}
-                                {range.estimated ? ' (estimé)' : ''}
-                              </small>
-                              <small>
-                                {booking.fromAddress} → {booking.toAddress}
-                              </small>
-                            </>
+                          <button
+                            type="button"
+                            className={`reference-time-event ${quote} ${range.estimated ? 'estimated' : ''}`}
+                            style={{
+                              backgroundColor: quote === 'final' ? '#0e3a22' : '#3a3420',
+                              borderLeftColor: range.estimated
+                                ? 'rgba(255,255,255,.35)'
+                                : vehicleColor(booking.vehicle.id),
+                            }}
+                            title={`${booking.reference} · ${booking.customerName} · ${range.label}${range.estimated ? ' (créneau, durée estimée)' : ' (durée calculée)'}`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              onSelect(booking);
+                            }}
+                          >
+                            {booking.vehicle.image && <img src={booking.vehicle.image} alt="" />}
+                            <span>{range.label}</span>
+                            <strong>
+                              {booking.reference.replace(/^DEM-/u, '')} ·{' '}
+                              {booking.customerName.split(' ')[0]}
+                            </strong>
+                            <span>
+                              {quote === 'final' ? 'Final · ' : 'Provisoire · '}
+                              {money(totalsForBooking.final ?? totalsForBooking.provisional ?? 0)}
+                            </span>
+                            {height >= 64 && (
+                              <>
+                                <small>
+                                  {vehicleTag(booking.vehicle.name)} ·{' '}
+                                  {formatDuration(range.duration)}
+                                  {range.estimated ? ' (estimé)' : ''}
+                                </small>
+                                <small>
+                                  {booking.fromAddress} → {booking.toAddress}
+                                </small>
+                              </>
+                            )}
+                          </button>
+                          {height >= 100 && (
+                            <button
+                              type="button"
+                              className="reference-time-event-team"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                onOpenTeam(booking);
+                              }}
+                            >
+                              Équipe →
+                            </button>
                           )}
-                        </button>
+                        </div>
                       );
                     },
                   )}

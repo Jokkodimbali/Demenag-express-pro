@@ -398,12 +398,20 @@
   padding: 0 14px;
   border: 1.5px solid #4a5057;
   border-radius: 10px;
-  background: transparent;
+  background: var(--admin-todo-bg, transparent);
   color: #d5d9de;
   font-size: 14px;
   font-weight: 800;
   white-space: nowrap;
   cursor: pointer;
+}
+.admin-todo-toggle.has-items {
+  color: #1e2023;
+}
+.admin-todo-toggle:focus-visible,
+.admin-todo-panel button:focus-visible {
+  outline: 2px solid #f6d73c;
+  outline-offset: 2px;
 }
 .admin-todo-panel {
   position: absolute;
@@ -413,6 +421,7 @@
   display: flex;
   flex-direction: column;
   width: min(360px, 88vw);
+  box-sizing: border-box;
   max-height: 420px;
   overflow-y: auto;
   gap: 2px;
@@ -422,9 +431,25 @@
   background: #272a2e;
   box-shadow: 0 10px 30px #0008;
 }
+.admin-todo-error {
+  margin: 4px 8px;
+  color: #ff8f8f;
+  font-size: 12px;
+}
+@media (max-width: 600px) {
+  .admin-todo {
+    margin-left: auto;
+  }
+  .admin-todo-panel {
+    max-width: calc(100vw - 24px);
+  }
+}
 .admin-todo-panel > button:not(.admin-todo-mark) {
   display: flex;
   flex-direction: column;
+  flex: 0 0 auto;
+  width: 100%;
+  box-sizing: border-box;
   gap: 2px;
   min-height: 44px;
   padding: 8px 10px;
@@ -433,16 +458,40 @@
   background: transparent;
   color: #fff;
   text-align: left;
+  line-height: 1.35;
   cursor: pointer;
+}
+.admin-todo-panel > button:not(.admin-todo-mark) .admin-todo-kind {
+  color: #f6d73c;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+.admin-todo-panel > button:not(.admin-todo-mark) strong {
+  display: block;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.admin-todo-panel > button:not(.admin-todo-mark) > span {
+  display: block;
+  color: #aeb4bb;
+  font-size: 12px;
+  line-height: 1.35;
 }
 .admin-todo-panel > button:not(.admin-todo-mark):hover {
   background: #30343a;
 }
-.admin-todo-panel small,
 .admin-todo-panel > span {
   color: #aeb4bb;
+  padding: 8px 10px;
+  font-size: 13px;
 }
 .admin-todo-mark {
+  flex: 0 0 auto;
+  width: 100%;
   min-height: 40px;
   border: 0;
   border-top: 1px solid #3b4046;
@@ -450,7 +499,11 @@
   color: #aeb4bb;
   font-size: 12.5px;
   font-weight: 700;
+  line-height: 1.35;
   cursor: pointer;
+}
+.admin-todo-mark:hover {
+  color: #fff;
 }
 .admin-reference-reservation-toolbar {
   display: flex;

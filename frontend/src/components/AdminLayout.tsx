@@ -51,22 +51,37 @@ export function AdminLayout() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [todoOpen, setTodoOpen] = useState(false);
+  const [todoError, setTodoError] = useState('');
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [notificationCount, setNotificationCount] = useState(0);
+  const [notificationBookings, setNotificationBookings] = useState<Booking[] | null>(null);
   const requestId = useRef(0);
+  const todoRef = useRef<HTMLDivElement>(null);
+  const knownNotificationIds = useRef(new Set<string>());
   const normalizedQuery = query.trim().toLocaleLowerCase('fr');
   useEffect(() => {
     let active = true;
     void api
       .notifications()
       .then((inbox) => {
-        if (active) setNotifications(inbox.items);
+        if (active) {
+          setNotifications(inbox.items);
+          setNotificationCount(inbox.unreadCount);
+          knownNotificationIds.current = new Set(inbox.items.map((item) => item.id));
+        }
       })
       .catch(() => {});
     const onNotification = (event: Event) => {
       if (!(event instanceof CustomEvent)) return;
       const item = event.detail as AppNotification;
       if (!item?.id) return;
-      setNotifications((current) => [item, ...current.filter((value) => value.id !== item.id)]);
+      if (!knownNotificationIds.current.has(item.id)) {
+        knownNotificationIds.current.add(item.id);
+        if (!item.readAt) setNotificationCount((count) => count + 1);
+      }
+      setNotifications((current) => {
+        return [item, ...current.filter((value) => value.id !== item.id)];
+      });
     };
     window.addEventListener('demenag:notification', onNotification);
     return () => {
@@ -75,6 +90,23 @@ export function AdminLayout() {
     };
   }, [api]);
   const todo = notifications.filter((item) => !item.readAt).slice(0, 12);
+  useEffect(() => {
+    if (!todoOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!todoRef.current?.contains(event.target as Node)) setTodoOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setTodoOpen(false);
+      todoRef.current?.querySelector<HTMLButtonElement>('.admin-todo-toggle')?.focus();
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [todoOpen]);
   useEffect(() => {
     const current = ++requestId.current;
     if (normalizedQuery.length < 2) return;
@@ -202,55 +234,99 @@ export function AdminLayout() {
             >
               + Nouveau devis
             </button>
-            <div className="admin-todo">
+            <div className="admin-todo" ref={todoRef}>
               <button
                 type="button"
-                className="admin-todo-toggle"
+                className={`admin-todo-toggle ${notificationCount > 0 ? 'has-items' : ''}`}
+                id="admin-todo-toggle"
+                style={{
+                  '--admin-todo-bg': notificationCount > 0 ? '#f6d73c' : 'transparent',
+                  color: notificationCount > 0 ? '#1e2023' : '#d5d9de',
+                } as React.CSSProperties}
                 aria-expanded={todoOpen}
-                onClick={() => setTodoOpen((value) => !value)}
+                aria-controls="admin-todo-panel"
+                onClick={() => {
+                  setTodoError('');
+                  setTodoOpen((value) => {
+                    const opening = !value;
+                    if (opening && notificationBookings === null) {
+                      void api.bookings().then(setNotificationBookings).catch(() => {});
+                    }
+                    return opening;
+                  });
+                }}
               >
-                À traiter · {todo.length}
+                À traiter · {notificationCount}
               </button>
               {todoOpen && (
-                <div className="admin-todo-panel">
-                  {todo.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => {
-                        setTodoOpen(false);
-                        if (item.bookingId)
-                          navigate(
-                            `${routes.administrationCreateQuote}?modifier=${encodeURIComponent(item.bookingId)}`,
-                          );
-                        else navigate(routes.administrationVehicleReports);
-                      }}
-                    >
-                      <strong>{item.title}</strong>
-                      <span>{item.message}</span>
-                      <small>{new Date(item.createdAt).toLocaleString('fr-FR')}</small>
-                    </button>
-                  ))}
-                  {!todo.length && <span>Rien de nouveau.</span>}
-                  {todo.length > 0 && (
-                    <button
-                      type="button"
-                      className="admin-todo-mark"
-                      onClick={() => {
-                        void api.markAllNotificationsRead().then(() =>
+                <div
+                  className="admin-todo-panel"
+                  id="admin-todo-panel"
+                  role="region"
+                  aria-labelledby="admin-todo-toggle"
+                >
+                  {todo.map((item) => {
+                    const booking = notificationBookings?.find((value) => value.id === item.bookingId);
+                    const isNewBooking = item.title === 'Nouvelle réservation à confirmer';
+                    const dateLabel = booking?.date
+                      ? new Date(`${booking.date}T12:00:00`).toLocaleDateString('fr-FR')
+                      : isNewBooking
+                        ? 'sans date'
+                        : new Date(item.createdAt).toLocaleString('fr-FR');
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => {
+                          setTodoOpen(false);
+                          if (item.bookingId)
+                            navigate(
+                              `${routes.administrationCreateQuote}?modifier=${encodeURIComponent(item.bookingId)}`,
+                            );
+                          else navigate(routes.administrationVehicleReports);
+                        }}
+                      >
+                        <small className="admin-todo-kind">
+                          {isNewBooking ? 'NOUVELLE RÉSERVATION' : item.title}
+                        </small>
+                        <strong>
+                          {isNewBooking && booking
+                            ? `${booking.reference} · ${booking.customerName}`
+                            : item.message}
+                        </strong>
+                        <span>{isNewBooking ? dateLabel : new Date(item.createdAt).toLocaleString('fr-FR')}</span>
+                      </button>
+                    );
+                  })}
+                  {!todo.length && (
+                    <span>
+                      {notificationCount > 0
+                        ? 'Aucune notification non lue parmi les 50 plus récentes.'
+                        : 'Rien de nouveau.'}
+                    </span>
+                  )}
+                  {todoError && <p className="admin-todo-error" role="alert">{todoError}</p>}
+                  <button
+                    type="button"
+                    className="admin-todo-mark"
+                    onClick={() => {
+                      void api
+                        .markAllNotificationsRead()
+                        .then(() => {
                           setNotifications((current) =>
                             current.map((item) => ({
                               ...item,
                               readAt: item.readAt ?? new Date().toISOString(),
                             })),
-                          ),
-                        );
-                        setTodoOpen(false);
-                      }}
-                    >
-                      Tout marquer comme vu
-                    </button>
-                  )}
+                          );
+                          setNotificationCount(0);
+                          setTodoOpen(false);
+                        })
+                        .catch(() => setTodoError('Les notifications n’ont pas pu être marquées comme vues.'));
+                    }}
+                  >
+                    Tout marquer comme vu
+                  </button>
                 </div>
               )}
             </div>

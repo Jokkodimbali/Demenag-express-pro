@@ -42,3 +42,35 @@ test('les postes et le matériel évoluent avec étages, objets lourds et stock 
     ),
   );
 });
+
+test('la fatigue reprend le poids et les distances ISO calculés avec les réglages du devis', () => {
+  const inventory = blankInventory();
+  inventory.fromFloor = 1;
+  inventory.toFloor = 2;
+  inventory.flags.acces = true;
+  const estimate = {
+    totalWeightKg: 1234,
+    fromIsoDistanceMeters: 47,
+    toIsoDistanceMeters: 62,
+    fromIsoLimitKg: 2553,
+    toIsoLimitKg: 1935,
+  } as Parameters<typeof fatigueAdvice>[3];
+
+  const result = fatigueAdvice([], inventory, 4, estimate);
+  assert.deepEqual(result.rows.slice(0, 4), [
+    ['Poids total à porter', '≈ 1 234 kg'],
+    ['Masse portée par manœuvre', '≈ 617 kg'],
+    ['Limite ISO 11228-1 au départ', '2 553 kg / jour (47 m équivalents)'],
+    ['Limite ISO 11228-1 à l’arrivée', '1 935 kg / jour (62 m équivalents)'],
+  ]);
+});
+
+test('sans estimation, le même accès est appliqué au départ et à l’arrivée', () => {
+  const inventory = blankInventory();
+  inventory.flags.acces = true;
+  const result = fatigueAdvice([], inventory, 2);
+  const from = result.rows.find(([label]) => label === 'Limite ISO 11228-1 au départ')?.[1];
+  const to = result.rows.find(([label]) => label === 'Limite ISO 11228-1 à l’arrivée')?.[1];
+  assert.equal(from, '4 000 kg / jour (30 m équivalents)');
+  assert.equal(to, from);
+});

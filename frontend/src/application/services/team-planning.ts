@@ -73,7 +73,7 @@ export const shortTimestamp = (value: string) =>
     minute: '2-digit',
   });
 export const slotKey = (value: string) =>
-  /après-midi|aprem/i.test(value) ? 'aprem' : /matin/i.test(value) ? 'matin' : 'journee';
+  /apr/i.test(value) ? 'aprem' : /matin/i.test(value) ? 'matin' : 'journee';
 export const slotTimes = (slot: string): [string, string] =>
   slot === 'matin'
     ? ['08:00', '12:00']
@@ -128,6 +128,12 @@ export const teamOf = (booking: Booking) => ({
 export const teamIds = (booking: Booking) => {
   const crew = teamOf(booking);
   return [...crew.chauffeur, ...crew.menuisier, ...crew.manoeuvre];
+};
+export const normalizeCrewLead = (crew: ReturnType<typeof teamOf>) => {
+  const members = [...crew.chauffeur, ...crew.menuisier, ...crew.manoeuvre];
+  if (crew.chef && members.includes(crew.chef)) return crew;
+  const chef = crew.chauffeur[0] || crew.manoeuvre[0] || crew.menuisier[0];
+  return chef ? { ...crew, chef } : crew;
 };
 function mergeRecordChanges<T extends string>(
   current: Record<string, T>,
@@ -184,11 +190,15 @@ export function mergeTeamChanges(current: Booking, base: Booking, patch: Partial
   );
   return { crew, crewBriefs, crewReplies, crewMessages, crewRefusedBy };
 }
-export const needsOf = (booking: Booking) => ({
-  chauffeur: 1,
-  menuisier: Number(booking.options.bed + booking.options.wardrobe + booking.options.desk > 0),
-  manoeuvre: Math.max(0, booking.options.labour ?? 2),
-});
+export const needsOf = (booking: Booking) => {
+  const quote = booking.quotes?.at(-1);
+  const options = quote?.options ?? booking.options;
+  return {
+    chauffeur: 1,
+    menuisier: Number(options.bed + options.wardrobe + options.desk > 0),
+    manoeuvre: Math.max(0, quote?.providedCrew ?? options.labour ?? 2),
+  };
+};
 export function trafficTiles(enabled: boolean) {
   return `https://mt{s}.google.com/vt/lyrs=${enabled ? 'm,traffic' : 'm'}&hl=fr&gl=SN&x={x}&y={y}&z={z}&t=${Math.floor(Date.now() / 120000)}`;
 }

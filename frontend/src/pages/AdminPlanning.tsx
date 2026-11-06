@@ -30,6 +30,10 @@ export function AdminPlanning() {
     navigate(`${routes.administrationCreateQuote}?modifier=${encodeURIComponent(booking.id)}`);
   const createAtDay = (date: string, time: string) =>
     navigate(routes.administrationCreateQuote, { state: { calendarAppointment: { date, time } } });
+  const openTeam = (booking: (typeof bookings)[number]) =>
+    navigate(
+      `${routes.administrationFleet}?date=${encodeURIComponent(booking.date ?? '')}&booking=${encodeURIComponent(booking.id)}`,
+    );
   return (
     <div>
       {error ? (
@@ -46,6 +50,7 @@ export function AdminPlanning() {
           employees={employees}
           onSelect={select}
           onCreateAtDay={createAtDay}
+          onOpenTeam={openTeam}
         />
       )}
     </div>

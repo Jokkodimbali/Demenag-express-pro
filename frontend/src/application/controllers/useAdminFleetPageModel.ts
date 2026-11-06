@@ -22,6 +22,7 @@ import {
   jobSpan,
   moveDay,
   needsOf,
+  normalizeCrewLead,
   overlaps,
   referenceVehicleName,
   roleName,
@@ -683,6 +684,17 @@ export function useAdminFleetPageModel() {
         }
       }
       const saved = await saveTeam(currentBooking, { crew });
+      if (saved)
+        plannedBookings = plannedBookings.map((item) => (item.id === saved.id ? saved : item));
+    }
+    for (const booking of bookings.filter(
+      (item) => item.date === selectedDay && item.crew,
+    )) {
+      const currentBooking = plannedBookings.find((item) => item.id === booking.id) ?? booking;
+      const crew = teamOf(currentBooking);
+      const normalizedCrew = normalizeCrewLead(crew);
+      if (normalizedCrew.chef === crew.chef) continue;
+      const saved = await saveTeam(currentBooking, { crew: normalizedCrew });
       if (saved)
         plannedBookings = plannedBookings.map((item) => (item.id === saved.id ? saved : item));
     }
