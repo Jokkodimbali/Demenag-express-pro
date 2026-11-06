@@ -831,15 +831,16 @@
   gap: 6px;
 }
 .admin-quote-page .call-inventory .inventory-quantity button {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  min-height: 44px;
   border-radius: 9px;
 }
 .admin-quote-page .call-inventory .inventory-quantity output {
   min-width: 26px;
 }
 .admin-quote-page .call-inventory .inventory-variant-add {
-  min-height: 40px;
+  min-width: 44px;
+  min-height: 44px;
 }
 .admin-quote-page .moving-estimate-checks {
   display: flex;

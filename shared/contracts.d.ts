@@ -131,6 +131,23 @@ export type ClientQuestionAnswer = {
   question: string;
   answer: string;
 };
+export type CustomInventoryType = {
+  k: string;
+  n: string;
+  p?: string;
+  sec: string;
+  like?: string;
+  L?: number | '';
+  W?: number | '';
+  H?: number | '';
+  kg?: number | '';
+  menuPriceLocal?: number | '';
+  menuPriceImport?: number | '';
+  dm?: boolean;
+  up?: boolean;
+  frag?: boolean;
+  notop?: boolean;
+};
 export type Settings = BookingRules & {
   distanceBounds: [number, number, number];
   labourPrice: number;
@@ -155,6 +172,8 @@ export type Settings = BookingRules & {
   whatsappMode?: 'api' | 'wame' | 'web' | 'app';
   whatsappQuoteTemplate?: string;
   whatsappProvisionalTemplate?: string;
+  contactFirstTemplate?: string;
+  contactLastTemplate?: string;
   businessName: string;
   businessAddress: string;
   businessEmail?: string;
@@ -178,6 +197,8 @@ export type Settings = BookingRules & {
   paymentQr?: string | null;
   questionnaire?: ClientQuestion[];
   movingLaborPlanning?: MovingLaborPlanningSettings;
+  customInventoryTypes?: CustomInventoryType[];
+  hiddenInventoryKeys?: string[];
 };
 export type MovingLaborPlanningSettings = {
   maxHandlingHours: number;
@@ -308,13 +329,27 @@ export type BookingInventorySource = {
   flags: Record<string, boolean>;
   ready?: 'oui' | 'non' | '';
   stairs?: 'oui' | 'non' | 'verif' | '';
+  blanketLengthCm?: number;
+  blanketWidthCm?: number;
   custom: {
     id: string;
+    typeKey?: string;
     label: string;
     quantity: number;
     format?: 'small' | 'medium' | 'large';
     dismantle?: boolean;
     origin?: 'local' | 'import';
+    cL?: number;
+    cW?: number;
+    cH?: number;
+    kg?: number;
+    mp?: number;
+    menuPriceLocal?: number;
+    menuPriceImport?: number;
+    like?: string;
+    up?: boolean;
+    frag?: boolean;
+    notop?: boolean;
   }[];
   crew?: number;
 };

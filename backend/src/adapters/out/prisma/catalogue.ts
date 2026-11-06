@@ -38,6 +38,17 @@ export class PrismaCatalogue implements CatalogueRepository {
       { timeout: 30000 },
     );
   }
+  async inventoryIllustration(key: string): Promise<string | null> {
+    const row = await this.db.illustrationInventaire.findUnique({ where: { cle: key } });
+    return row?.image ?? null;
+  }
+  async saveInventoryIllustration(key: string, image: string): Promise<void> {
+    await this.db.illustrationInventaire.upsert({
+      where: { cle: key },
+      create: { cle: key, image },
+      update: { image },
+    });
+  }
   async googleMapsApiKey(): Promise<string> {
     const settings = await this.db.parametreApplication.findUnique({
       where: { id: 'main' },

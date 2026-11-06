@@ -119,12 +119,15 @@ export const overlaps = (left: string, right: string) =>
   left === 'journee' || right === 'journee' || left === right;
 export const activeBookings = (bookings: Booking[]) =>
   bookings.filter((booking) => booking.date && booking.status !== 'cancelled');
-export const teamOf = (booking: Booking) => ({
-  chauffeur: booking.crew?.chauffeur ?? (booking.driverId ? [booking.driverId] : []),
-  menuisier: booking.crew?.menuisier ?? [],
-  manoeuvre: booking.crew?.manoeuvre ?? [],
-  chef: booking.crew?.chef ?? '',
-});
+export const teamOf = (booking: Booking) => {
+  const rental = booking.quotes?.at(-1)?.billingMode === 'driver-rental';
+  return {
+    chauffeur: booking.crew?.chauffeur ?? (booking.driverId ? [booking.driverId] : []),
+    menuisier: rental ? [] : (booking.crew?.menuisier ?? []),
+    manoeuvre: rental ? [] : (booking.crew?.manoeuvre ?? []),
+    chef: booking.crew?.chef ?? '',
+  };
+};
 export const teamIds = (booking: Booking) => {
   const crew = teamOf(booking);
   return [...crew.chauffeur, ...crew.menuisier, ...crew.manoeuvre];
@@ -192,6 +195,8 @@ export function mergeTeamChanges(current: Booking, base: Booking, patch: Partial
 }
 export const needsOf = (booking: Booking) => {
   const quote = booking.quotes?.at(-1);
+  if (quote?.billingMode === 'driver-rental')
+    return { chauffeur: 1, menuisier: 0, manoeuvre: 0 };
   const options = quote?.options ?? booking.options;
   return {
     chauffeur: 1,

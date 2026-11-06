@@ -50,6 +50,8 @@ export interface CatalogueRepository {
   catalogue(): Promise<Catalogue>;
   updateCatalogue(value: Catalogue): Promise<Catalogue>;
   deleteVehicle(id: string): Promise<void>;
+  inventoryIllustration(key: string): Promise<string | null>;
+  saveInventoryIllustration(key: string, image: string): Promise<void>;
 }
 export interface GoogleMapsSettingsRepository {
   googleMapsApiKey(): Promise<string>;

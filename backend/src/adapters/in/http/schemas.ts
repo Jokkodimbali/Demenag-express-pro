@@ -61,15 +61,29 @@ const inventorySnapshotSchema = z.object({
       flags: z.record(z.string().max(100), z.boolean()),
       ready: z.enum(['oui', 'non', '']).optional(),
       stairs: z.enum(['oui', 'non', 'verif', '']).optional(),
+      blanketLengthCm: z.number().finite().min(1).max(1000).optional(),
+      blanketWidthCm: z.number().finite().min(1).max(1000).optional(),
       custom: z
         .array(
           z.object({
             id: z.string().max(100),
+            typeKey: z.string().max(100).optional(),
             label: z.string().max(120),
             quantity: z.number().int().min(0).max(999),
             format: z.enum(['small', 'medium', 'large']).optional(),
             dismantle: z.boolean().optional(),
             origin: z.enum(['local', 'import']).optional(),
+            cL: z.number().finite().min(0).max(100000).optional(),
+            cW: z.number().finite().min(0).max(100000).optional(),
+            cH: z.number().finite().min(0).max(100000).optional(),
+            kg: z.number().finite().min(0).max(100000).optional(),
+            mp: z.number().int().min(0).max(10000000).optional(),
+            menuPriceLocal: z.number().int().min(0).max(10000000).optional(),
+            menuPriceImport: z.number().int().min(0).max(10000000).optional(),
+            like: z.string().max(100).optional(),
+            up: z.boolean().optional(),
+            frag: z.boolean().optional(),
+            notop: z.boolean().optional(),
           }),
         )
         .max(500),
@@ -600,6 +614,8 @@ export const catalogueSchema = z.object({
       .default(
         'Bonjour {nom},\n\nMerci pour votre demande. Voici votre devis provisoire Demenag Express n° {num} :\n- Date : {date}{heure}\n- Trajet : {trajet}\n- Véhicule : {vehicule}, {voyages}\n- Montant estimé : {total}\n\nCe montant est une estimation établie d’après votre inventaire. Il sera confirmé par le devis final.\nJe vous envoie le PDF du devis juste après ce message.\n\nPour confirmer ou modifier votre demande, répondez simplement ici.',
       ),
+    contactFirstTemplate: z.string().max(200).default('{ref} {prenom}'),
+    contactLastTemplate: z.string().max(200).default('{nom} · {date}'),
     businessName: z.string().trim().min(2).max(100),
     businessAddress: z.string().trim().max(300).default(''),
     businessEmail: z.string().trim().max(200).default(''),
@@ -647,6 +663,29 @@ export const catalogueSchema = z.object({
         (questions) => new Set(questions.map((question) => question.id)).size === questions.length,
       )
       .default([]),
+    customInventoryTypes: z
+      .array(
+        z.object({
+          k: z.string().regex(/^u[a-z0-9-]{1,40}$/),
+          n: z.string().trim().min(1).max(100),
+          p: z.string().trim().max(120).optional(),
+          sec: z.string().trim().min(1).max(80),
+          like: z.string().max(100).optional(),
+          L: z.number().finite().min(0).max(100000).or(z.literal('')).optional(),
+          W: z.number().finite().min(0).max(100000).or(z.literal('')).optional(),
+          H: z.number().finite().min(0).max(100000).or(z.literal('')).optional(),
+          kg: z.number().finite().min(0).max(100000).or(z.literal('')).optional(),
+          menuPriceLocal: z.number().int().min(0).max(10000000).or(z.literal('')).optional(),
+          menuPriceImport: z.number().int().min(0).max(10000000).or(z.literal('')).optional(),
+          dm: z.boolean().optional(),
+          up: z.boolean().optional(),
+          frag: z.boolean().optional(),
+          notop: z.boolean().optional(),
+        }),
+      )
+      .max(100)
+      .optional(),
+    hiddenInventoryKeys: z.array(z.string().max(100)).max(100).optional(),
   }),
 });
 

@@ -7,6 +7,7 @@ import {
   defaultLegacyFinalQuoteTemplate,
   defaultProvisionalQuoteTemplate,
   renderQuoteTemplate,
+  quoteConditionsText,
   whatsappPaymentLine,
 } from './whatsapp-templates';
 
@@ -32,6 +33,10 @@ export function quoteNotificationUrl(booking: Booking, quote: Quote, settings?: 
         .join('\n') + `\nTotal péages : ${money(tollTotal)}`
     : '';
   const paymentLine = whatsappPaymentLine(settings);
+  const conditions = quoteConditionsText(
+    booking.inventorySnapshot?.sourceInventory,
+    quote.billingMode,
+  );
   const date = booking.date
     ? booking.date.split('-').reverse().join('/')
     : booking.month
@@ -47,6 +52,7 @@ export function quoteNotificationUrl(booking: Booking, quote: Quote, settings?: 
       total: `${money(quote.price.total)}${tolls.length ? ` (+ péages à votre charge : ${money(tollTotal)})` : ''}`,
       peages: tollText,
       paiement: paymentLine,
+      conditions,
       allers: String(tripCount),
       voyages: `${tripCount}${tripCount > 1 ? ' allers-retours' : ' aller-retour'}`,
       vehicule: booking.vehicle.shortName || booking.vehicle.name,
@@ -57,7 +63,7 @@ export function quoteNotificationUrl(booking: Booking, quote: Quote, settings?: 
           : '',
       trajet: `${booking.fromAddress || '—'} → ${booking.toAddress || '—'}`,
     },
-    { tollText, paymentLine },
+    { tollText, paymentLine, conditions },
   );
   if (quote.billingMode === 'driver-rental') {
     const kit = quote.rentalKit ?? [];

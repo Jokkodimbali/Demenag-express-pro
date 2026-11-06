@@ -26,7 +26,10 @@ import { bookingInventorySnapshot, estimateMovingWork } from '../../domain/movin
 import { defaultClientQuestions } from '../../domain/questionnaire';
 import { quoteNotificationUrl } from '../../application/services/quote-notification';
 import { whatsappNumber, whatsappUrl } from '../../application/services/whatsapp';
-import { whatsappPaymentLine } from '../../application/services/whatsapp-templates';
+import {
+  quoteConditionsText,
+  whatsappPaymentLine,
+} from '../../application/services/whatsapp-templates';
 import { defaultRentalKit } from '../../domain/rental-kit';
 
 const trafficDuration = (minutes: number) => {
@@ -726,10 +729,11 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       })
     : '';
   const reminderPayment = whatsappPaymentLine(catalogue?.settings);
+  const reminderConditions = quoteConditionsText(estimateInventory, quoteConfig.billingMode);
   const reminderHref = editingBooking
     ? whatsappUrl(
         draft.customerPhone,
-        `Bonjour ${draft.customerName}, petit rappel de Demenag Express : votre déménagement (${editingBooking.reference}) est prévu ${reminderWhen}, le ${reminderDateLabel}${draft.timeSlot && draft.timeSlot !== 'À définir' ? ` à ${draft.timeSlot}` : ''}.\n${draft.fromAddress ? `Départ : ${draft.fromAddress}\n` : ''}${draft.toAddress ? `Arrivée : ${draft.toAddress}\n` : ''}Merci de préparer vos affaires pour le chargement.${reminderPayment ? `\n${reminderPayment}` : ''}\nPour toute question, contactez-nous au ${catalogue?.settings.whatsappPhone || catalogue?.settings.businessPhone || ''}. À bientôt !`,
+        `Bonjour ${draft.customerName}, petit rappel de Demenag Express : votre déménagement (${editingBooking.reference}) est prévu ${reminderWhen}, le ${reminderDateLabel}${draft.timeSlot && draft.timeSlot !== 'À définir' ? ` à ${draft.timeSlot}` : ''}.\n${draft.fromAddress ? `Départ : ${draft.fromAddress}\n` : ''}${draft.toAddress ? `Arrivée : ${draft.toAddress}\n` : ''}${reminderConditions || 'Merci de préparer vos affaires pour le chargement.'}${reminderPayment ? `\n${reminderPayment}` : ''}\nPour toute question, contactez-nous au ${catalogue?.settings.whatsappPhone || catalogue?.settings.businessPhone || ''}. À bientôt !`,
         catalogue?.settings,
       )
     : '';

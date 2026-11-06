@@ -3,7 +3,7 @@ import { useApp } from '../context';
 import { messages } from '../../content/fr';
 import type { Draft } from '../booking-draft';
 import { useBookingCommands } from './useBookingCommands';
-import type { MovingLaborPlanningSettings, Vehicle } from '../../domain/model';
+import type { CustomInventoryType, MovingLaborPlanningSettings, Vehicle } from '../../domain/model';
 import { estimatedInventoryItemVolume, estimateMovingWork } from '../../domain/moving-estimate';
 import { blankInventory, inventoryItems, type Inventory } from '../../domain/inventory';
 import { referenceAnnexVolume } from '../../domain/reference-inventory-note';
@@ -47,7 +47,9 @@ export function useCallInventory({
   audience: 'admin' | 'client';
   referenceMode: boolean;
 }) {
-  const { requestConfirmation } = useApp();
+  const { requestConfirmation, catalogue } = useApp();
+  const customInventoryTypes = catalogue?.settings.customInventoryTypes ?? [];
+  const hiddenInventoryKeys = catalogue?.settings.hiddenInventoryKeys ?? [];
   const [customLabel, setCustomLabel] = useState('');
   const [inventoryError, setInventoryError] = useState('');
   const [open, setOpen] = useState(audience === 'client' && !referenceMode);
@@ -174,6 +176,43 @@ export function useCallInventory({
     });
     setCustomLabel('');
   };
+  const addCustomType = (type: CustomInventoryType) => {
+    const current = inventory.custom.find((item) => item.typeKey === type.k);
+    if (current) {
+      update({
+        ...inventory,
+        custom: inventory.custom.map((item) =>
+          item.id === current.id ? { ...item, quantity: Math.min(999, item.quantity + 1) } : item,
+        ),
+      });
+      return;
+    }
+    update({
+      ...inventory,
+      custom: [
+        ...inventory.custom,
+        {
+          id: crypto.randomUUID(),
+          typeKey: type.k,
+          label: type.n.trim().toLocaleLowerCase('fr-FR'),
+          quantity: 1,
+          format: 'medium',
+          dismantle: Boolean(type.dm),
+          origin: 'local',
+          cL: Number(type.L) || undefined,
+          cW: Number(type.W) || undefined,
+          cH: Number(type.H) || undefined,
+          kg: Number(type.kg) || undefined,
+          menuPriceLocal: Number(type.menuPriceLocal) || undefined,
+          menuPriceImport: Number(type.menuPriceImport) || undefined,
+          like: type.like || undefined,
+          up: Boolean(type.up),
+          frag: Boolean(type.frag),
+          notop: Boolean(type.notop),
+        },
+      ],
+    });
+  };
   const setEntry = (key: string, patch: Partial<Inventory['entries'][string]>) => {
     const item = inventoryItems.find((entry) => entry.key === key);
     const current = inventory.entries[key] ?? {
@@ -276,6 +315,9 @@ export function useCallInventory({
     update,
     clearInventory,
     addCustomItem,
+    customInventoryTypes,
+    hiddenInventoryKeys,
+    addCustomType,
     setEntry,
     total,
     estimateVehicle,

@@ -73,6 +73,36 @@ test('le démontage d’un objet personnalisé réduit son volume comme dans la 
   assert.equal(dismantled.volume, 0.4);
 });
 
+test('un objet libre décrit utilise ses dimensions et son poids dans les totaux figés', () => {
+  const inventory = blankInventory();
+  inventory.blanketLengthCm = 210;
+  inventory.blanketWidthCm = 180;
+  inventory.custom = [
+    {
+      id: 'aquarium',
+      label: 'aquarium',
+      quantity: 1,
+      cL: 100,
+      cW: 50,
+      cH: 50,
+      kg: 70,
+      up: true,
+      frag: true,
+      notop: true,
+    },
+  ];
+
+  const estimate = estimateMovingWork(inventory, vehicle, null, { trips: 1 });
+  const snapshot = bookingInventorySnapshot(inventory, estimate);
+
+  assert.equal(snapshot.items[0]?.volumeM3, 0.25);
+  assert.equal(snapshot.totalWeightKg, 70);
+  assert.equal(snapshot.maxItemWeightKg, 70);
+  assert.equal(snapshot.sourceInventory?.blanketLengthCm, 210);
+  assert.equal(snapshot.sourceInventory?.blanketWidthCm, 180);
+  assert.equal(snapshot.sourceInventory?.custom[0]?.frag, true);
+});
+
 test('la recommandation ne rajoute pas de menuisiers quand la manutention reste limitante', () => {
   const inventory = blankInventory();
   inventory.entries.carton = {

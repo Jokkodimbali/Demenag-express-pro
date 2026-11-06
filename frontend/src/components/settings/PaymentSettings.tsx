@@ -46,6 +46,8 @@ export function PaymentSettings({ catalogue }: { catalogue: Catalogue }) {
       <span className="reference-settings-card-title" id="payment-settings-title">
         {uiText['paiementClient']}
       </span>
+      <input type="hidden" name="paymentWaveConfigured" value="1" />
+      <input type="hidden" name="paymentCashConfigured" value="1" />
       <div className="payment-settings-options">
         <label>
           <input

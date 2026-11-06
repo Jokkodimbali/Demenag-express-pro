@@ -340,13 +340,29 @@ export type Inventory = {
   flags: Record<string, boolean>;
   ready?: 'oui' | 'non' | '';
   stairs?: 'oui' | 'non' | 'verif' | '';
+  /** Snapshot of the blanket dimensions used by this quote, in centimetres. */
+  blanketLengthCm?: number;
+  blanketWidthCm?: number;
   custom: {
     id: string;
+    typeKey?: string;
     label: string;
     quantity: number;
     format?: InventoryFormat;
     dismantle?: boolean;
     origin?: 'local' | 'import';
+    /** Optional user-entered dimensions in centimetres. */
+    cL?: number;
+    cW?: number;
+    cH?: number;
+    kg?: number;
+    mp?: number;
+    menuPriceLocal?: number;
+    menuPriceImport?: number;
+    like?: string;
+    up?: boolean;
+    frag?: boolean;
+    notop?: boolean;
   }[];
   crew?: number;
 };
@@ -385,7 +401,16 @@ export function inventoryNote(inventory: Inventory): string {
         const format =
           inventoryFormats.find((option) => option.value === (item.format ?? 'medium'))?.label ??
           'Moyen';
-        return `${item.quantity} ${item.label} · ${format.toLowerCase()} format${item.dismantle ? ' · démontage/montage' : ''}`;
+        const dimensions = [item.cL, item.cW, item.cH].every((value) => Number(value) > 0)
+          ? ` · ${item.cL} × ${item.cW} × ${item.cH} cm`
+          : '';
+        const weight = item.kg && item.kg > 0 ? ` · ${item.kg} kg` : '';
+        const constraints = [
+          item.up ? 'toujours debout' : '',
+          item.frag ? 'fragile' : '',
+          item.notop ? 'ne rien poser dessus' : '',
+        ].filter(Boolean);
+        return `${item.quantity} ${item.label} · ${format.toLowerCase()} format${dimensions}${weight}${item.like ? ` · comme ${inventoryItems.find((definition) => definition.key === item.like)?.label ?? item.like}` : ''}${constraints.length ? ` · ${constraints.join(', ')}` : ''}${item.dismantle ? ' · démontage/montage' : ''}`;
       }),
   );
   const flags = inventoryFlags

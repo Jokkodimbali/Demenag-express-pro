@@ -150,6 +150,8 @@ export interface CatalogueUseCases {
   update(actor: User, vehicles: Vehicle[], settings: Settings): Promise<void>;
   googleMapsApiKey(actor: User): Promise<string>;
   updateGoogleMapsApiKey(actor: User, value: string): Promise<void>;
+  inventoryIllustration(key: string): Promise<string | null>;
+  saveInventoryIllustration(actor: User, key: string, image: string): Promise<void>;
   removeVehicle(actor: User, id: string): Promise<void>;
   listTollPoints(): Promise<TollPoint[]>;
   createTollPoint(actor: User, input: TollPointInput): Promise<TollPoint>;

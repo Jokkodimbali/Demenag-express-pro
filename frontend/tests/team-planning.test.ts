@@ -6,6 +6,7 @@ import {
   needsOf,
   normalizeCrewLead,
   slotKey,
+  teamOf,
 } from '../src/application/services/team-planning';
 import { queueTeamSave, type CrewUpdateInput } from '../src/application/services/team-save-queue';
 
@@ -137,6 +138,16 @@ test('sans devis, les besoins d’équipe utilisent les options de réservation'
   });
 
   assert.deepEqual(needsOf(current), { chauffeur: 1, menuisier: 1, manoeuvre: 0 });
+});
+
+test('la location avec chauffeur ne demande pas de manœuvre ni de menuisier', () => {
+  const current = booking({
+    options: { labour: 4, bed: 2, wardrobe: 1, desk: 0 },
+    crew: { chauffeur: ['driver-a'], menuisier: ['carpenter-a'], manoeuvre: ['mover-a'], chef: 'driver-a' },
+    quotes: [{ billingMode: 'driver-rental', providedCrew: 4 }] as Booking['quotes'],
+  });
+  assert.deepEqual(needsOf(current), { chauffeur: 1, menuisier: 0, manoeuvre: 0 });
+  assert.deepEqual(teamOf(current), { chauffeur: ['driver-a'], menuisier: [], manoeuvre: [], chef: 'driver-a' });
 });
 
 test('la composition automatique choisit le chef selon la priorité de la référence', () => {

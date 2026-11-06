@@ -165,6 +165,8 @@ model ParametreApplication {
   modeWhatsapp                  String  @default("api") @map("whatsapp_mode")
   modeleDevisWhatsapp           String  @default("Bonjour {nom},\n\nVoici votre devis final Demenag Express n° {num} :\n- Date : {date}{heure}\n- Trajet : {trajet}\n- Véhicule : {vehicule}, {voyages}\n- Montant total : {total}\n\nCe montant est définitif.\nJe vous envoie le PDF du devis final juste après ce message.\n\nMerci pour votre confiance.") @map("whatsapp_quote_template")
   modeleDevisProvisoireWhatsapp String  @default("Bonjour {nom},\n\nMerci pour votre demande. Voici votre devis provisoire Demenag Express n° {num} :\n- Date : {date}{heure}\n- Trajet : {trajet}\n- Véhicule : {vehicule}, {voyages}\n- Montant estimé : {total}\n\nCe montant est une estimation établie d’après votre inventaire. Il sera confirmé par le devis final.\nJe vous envoie le PDF du devis juste après ce message.\n\nPour confirmer ou modifier votre demande, répondez simplement ici.") @map("whatsapp_provisional_template")
+  modelePrenomContactWhatsapp     String  @default("{ref} {prenom}") @map("contact_first_template")
+  modeleNomContactWhatsapp        String  @default("{nom} · {date}") @map("contact_last_template")
   nomEntreprise                 String  @default("Demenag Express") @map("business_name")
   adresseEntreprise             String  @default("Dakar, Sénégal") @map("business_address")
   emailEntreprise               String  @default("") @map("business_email")
@@ -200,6 +202,15 @@ model ParametreApplication {
   questionnaire             Json    @default("[]") @map("client_questionnaire")
 
   @@map("settings")
+  @@schema("demenag")
+}
+
+model IllustrationInventaire {
+  cle       String   @id @db.VarChar(150) @map("key")
+  image     String   @db.Text
+  modifieLe DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("inventory_illustrations")
   @@schema("demenag")
 }
 

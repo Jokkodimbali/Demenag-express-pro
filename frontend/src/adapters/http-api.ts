@@ -142,6 +142,10 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
     markAllNotificationsRead: () => request(`${httpRoutes.notifications}/read-all`, 'PATCH'),
     announceDrivers: (title, message) => request(httpRoutes.announce, 'POST', { title, message }),
     catalogue: () => sharePendingRead(httpRoutes.catalogue, () => request(httpRoutes.catalogue)),
+    inventoryIllustration: async (key) =>
+      (await request<{ image: string | null }>(httpRoutes.inventoryIllustration(key))).image,
+    saveInventoryIllustration: (key, image) =>
+      request(httpRoutes.inventoryIllustration(key), 'PUT', { image }),
     googleMapsApiKey: async () => (await request<{ key: string }>(httpRoutes.googleMapsKey)).key,
     updateGoogleMapsApiKey: (key) => request(httpRoutes.googleMapsKey, 'PUT', { key }),
     tollPoints: () => sharePendingRead(httpRoutes.tollPoints, () => request(httpRoutes.tollPoints)),

@@ -112,17 +112,32 @@ export function referenceInventoryNote(
     }
   }
   for (const item of inventory.custom) {
-    addItem(
-      item.label,
-      item.label,
-      'custom',
-      item.quantity,
-      1,
-      undefined,
-      item.format,
-      item.origin,
-      Boolean(item.dismantle),
-      false,
+    if (item.quantity <= 0) continue;
+    const dimensions = [item.cL, item.cW, item.cH].map(Number);
+    const hasDimensions = dimensions.every((value) => value > 0);
+    const like = inventoryItems.find((definition) => definition.key === item.like);
+    const volume = hasDimensions
+      ? ((dimensions[0]! * dimensions[1]! * dimensions[2]!) / 1_000_000) *
+        (item.dismantle ? 0.8 : 1)
+      : like
+        ? estimatedInventoryItemVolume(
+            like.key,
+            like.defaultSize ?? 1,
+            Boolean(item.dismantle),
+            item.format,
+          )
+        : estimatedInventoryItemVolume('custom', 1, Boolean(item.dismantle), item.format);
+    const facts = [
+      hasDimensions ? `${dimensions.join(' × ')} cm` : '',
+      item.kg && item.kg > 0 ? `${item.kg} kg` : '',
+      like ? `comme ${like.label.toLowerCase()}` : '',
+      item.up ? 'toujours debout' : '',
+      item.frag ? 'fragile' : '',
+      item.notop ? 'ne rien poser dessus' : '',
+      item.dismantle ? 'démontage et montage' : '',
+    ].filter(Boolean);
+    lines.push(
+      `- ${item.quantity} ${item.quantity > 1 ? item.label.toLowerCase() : item.label.toLowerCase()}${facts.length ? ` (${facts.join(', ')})` : ''} : ≈ ${volumeLabel(volume * item.quantity)} m³`,
     );
   }
 

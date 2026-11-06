@@ -3,12 +3,12 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
-const expectedDocument = '327a265997294834c0131b99fd0d0046367a900d1d4a705df68b1639d338c2b9';
+const expectedDocument = '0e0f6051c1da84ced1107d6cdacf5b3b63c9a43baa137bc5d1e5bf1f79fb6540';
 const expectedReferenceScripts = {
   'support.js': '8fe7df74405f3c55f49b7249c74ea1397e65d07dea2b1bd3b4a489bec2e28cbe',
   'image-slot.js': '7fca2b8ffd71fa00e78c1f8ed0ba79bf888293397f9fc51c65a0f07ad6014890',
   'gmaps-plus.js': 'e7c6271beb26d8b6f4f9703be0610177ed65bc4dc390acaec72e8e9006e101c7',
-  'loading-sim.js': '579e8b57d8019824f42ba31d80b767884fa1999c1fe54e60632ca8550271e48c',
+  'loading-sim.js': '92a69b8757987807312d48ae54b76ef1e689b1d047c069ffeaa1dd2d047c9fe8',
   'equip-art.js': 'ccee26898c273dfdfc36b28f6ba2446a76989763084f463c14610c593412b0d8',
 };
 const expectedAssets = {

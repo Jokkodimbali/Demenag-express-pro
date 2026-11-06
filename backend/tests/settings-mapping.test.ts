@@ -14,6 +14,8 @@ function settingsRow(matrix: unknown): ParametreApplication {
     tarifMontage: 15000,
     telephoneEntreprise: '+221775105104',
     numeroWhatsapp: '+221775105104',
+    modelePrenomContactWhatsapp: '{ref} {prenom}',
+    modeleNomContactWhatsapp: '{nom} · {date}',
     nomEntreprise: 'Demenag Express',
     adresseEntreprise: 'Dakar, Sénégal',
     piedFacture: 'Merci pour votre confiance.',
@@ -69,10 +71,61 @@ test('les deux modèles WhatsApp restent distincts lors de la lecture et de la s
   assert.equal(saved.modeleDevisProvisoireWhatsapp, 'Modèle provisoire {num}');
 });
 
+test('le format des contacts reste enregistré avec les paramètres', () => {
+  const row = {
+    ...settingsRow({}),
+    modelePrenomContactWhatsapp: '{ref} {prenom}',
+    modeleNomContactWhatsapp: '{nom} · {date}',
+  } as ParametreApplication;
+  const mapped = fromSettings(row);
+  assert.equal(mapped.contactFirstTemplate, '{ref} {prenom}');
+  assert.equal(mapped.contactLastTemplate, '{nom} · {date}');
+  const saved = toSettings(mapped);
+  assert.equal(saved.modelePrenomContactWhatsapp, '{ref} {prenom}');
+  assert.equal(saved.modeleNomContactWhatsapp, '{nom} · {date}');
+});
+
 test('la suppression du QR de paiement reste persistée au lieu de restaurer le QR par défaut', () => {
   const row = { ...settingsRow({}), qrPaiement: null } as ParametreApplication;
   const settings = fromSettings(row);
 
   assert.equal(settings.paymentQr, null);
   assert.equal(toSettings(settings).qrPaiement, null);
+});
+
+test('les types personnalisés de l’inventaire et les types masqués sont conservés en JSON', () => {
+  const inventoryTypes = [
+    {
+      k: 'uaquarium',
+      n: 'Aquarium',
+      p: 'Aquariums',
+      sec: 'Objets fragiles',
+      L: 100,
+      W: 50,
+      H: 60,
+      kg: 70,
+      up: true,
+      frag: true,
+      notop: true,
+      menuPriceLocal: 5000,
+      menuPriceImport: 7500,
+    },
+  ];
+  const row = {
+    ...settingsRow({}),
+    planificationManoeuvre: {
+      blanketLengthCm: 204,
+      blanketWidthCm: 184,
+      customInventoryTypes: inventoryTypes,
+      hiddenInventoryKeys: ['vitrine'],
+    },
+  } as ParametreApplication;
+
+  const mapped = fromSettings(row);
+  assert.deepEqual(mapped.customInventoryTypes, inventoryTypes);
+  assert.deepEqual(mapped.hiddenInventoryKeys, ['vitrine']);
+  const saved = toSettings(mapped).planificationManoeuvre as Record<string, unknown>;
+  assert.deepEqual(saved.customInventoryTypes, inventoryTypes);
+  assert.deepEqual(saved.hiddenInventoryKeys, ['vitrine']);
+  assert.equal(saved.blanketLengthCm, 204);
 });

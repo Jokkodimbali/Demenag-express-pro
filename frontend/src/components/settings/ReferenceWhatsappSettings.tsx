@@ -25,6 +25,8 @@ function localNumber(value: string, countryCode: string) {
 }
 
 export function ReferenceWhatsappSettings({ catalogue }: { catalogue: Catalogue }) {
+  const [contactFirst, setContactFirst] = useState(catalogue.settings.contactFirstTemplate ?? '{ref} {prenom}');
+  const [contactLast, setContactLast] = useState(catalogue.settings.contactLastTemplate ?? '{nom} · {date}');
   const [countryCode, setCountryCode] = useState(catalogue.settings.whatsappCountryCode ?? '221');
   const [businessNumber, setBusinessNumber] = useState(() =>
     localNumber(
@@ -100,6 +102,23 @@ export function ReferenceWhatsappSettings({ catalogue }: { catalogue: Catalogue 
             required
           />
         </label>
+        <div className="reference-settings-contact-format">
+          <div className="reference-settings-section-heading">
+            <strong>NOM DU CONTACT CLIENT DANS LE TÉLÉPHONE</strong>
+            <button type="button" onClick={(event) => {
+              const form = event.currentTarget.form;
+              setContactFirst('{ref} {prenom}');
+              setContactLast('{nom} · {date}');
+              window.setTimeout(() => form?.requestSubmit(), 0);
+            }}>Par défaut</button>
+          </div>
+          <div className="reference-settings-contact-fields">
+            <label><span>Prénom</span><input name="contactFirstTemplate" maxLength={200} value={contactFirst} onChange={(event) => setContactFirst(event.target.value)} /></label>
+            <label><span>Nom</span><input name="contactLastTemplate" maxLength={200} value={contactLast} onChange={(event) => setContactLast(event.target.value)} /></label>
+          </div>
+          <small>Champs : {'{ref}'} {'{prenom}'} {'{nom}'} {'{client}'} {'{date}'} {'{vehicule}'} {'{quartier}'}</small>
+          <span>Exemple : <strong>{contactFirst.replace('{ref}', 'DEM-4861').replace('{prenom}', 'Moussa')} {contactLast.replace('{nom}', 'Diop').replace('{date}', '06/11')}</strong></span>
+        </div>
         <label>
           <span>{uiText['ouvrirAVEC']}</span>
           <select

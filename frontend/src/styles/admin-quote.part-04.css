@@ -568,3 +568,94 @@
   line-height: 1.45;
   white-space: normal;
 }
+.admin-quote-page .inventory-custom-entry {
+  min-width: 0;
+}
+.admin-quote-page .inventory-custom-details {
+  margin: 0 0 10px 10px;
+  padding: 10px 12px;
+  border: 1px solid #42474d;
+  border-radius: 10px;
+  background: #24272b;
+  color: #e6e8eb;
+}
+.admin-quote-page .inventory-custom-details summary {
+  min-height: 44px;
+  color: #f6d73c;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.admin-quote-page .inventory-custom-details > label,
+.admin-quote-page .inventory-custom-dimensions > label {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+  margin: 8px 0;
+  color: #d5d9de;
+  font-size: 12px;
+}
+.admin-quote-page .inventory-custom-details select,
+.admin-quote-page .inventory-custom-details input[type='number'] {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 7px 9px;
+  border: 1px solid #51575f;
+  border-radius: 8px;
+  background: #1c1f22;
+  color: #fff;
+  font-size: 14px;
+}
+.admin-quote-page .inventory-custom-dimensions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.admin-quote-page .inventory-custom-constraints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 8px 0;
+}
+.admin-quote-page .inventory-custom-constraints label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #e6e8eb;
+  font-size: 12px;
+}
+.admin-quote-page .inventory-custom-details > small {
+  display: block;
+  color: #aeb4bb;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.loading-simulation-blanket-size {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px;
+  border: 1px solid #454a50;
+  border-radius: 10px;
+  background: #24272b;
+}
+.loading-simulation-blanket-size > span,
+.loading-simulation-blanket-size > small {
+  color: #d5d9de;
+  font-size: 12px;
+}
+.loading-simulation-blanket-size > button {
+  margin-left: auto;
+}
+@media (max-width: 760px) {
+  .admin-quote-page .inventory-custom-dimensions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .loading-simulation-blanket-size > button {
+    width: 100%;
+    margin-left: 0;
+  }
+}

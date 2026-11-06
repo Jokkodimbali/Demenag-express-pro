@@ -13,6 +13,8 @@ import { registerMapRoutes } from './map-routes.js';
 import { registerClaudeRoutes } from './claude-routes.js';
 import { registerSecurityMiddleware } from './security-middleware.js';
 import { apiRoutes } from './routes.js';
+import { z } from 'zod';
+const inventoryImageKey = z.string().regex(/^[a-z0-9:_-]{1,150}$/u);
 export function createApp(deps: Dependencies) {
   const app = express();
   registerSecurityMiddleware(app, deps);
@@ -27,6 +29,10 @@ export function createApp(deps: Dependencies) {
     }
   });
   app.get(apiRoutes.catalogue, async (_req, res) => res.json(await deps.catalogue.get()));
+  app.get(apiRoutes.inventoryIllustration, async (req, res) => {
+    const key = inventoryImageKey.parse(req.params.key);
+    res.json({ image: await deps.catalogue.inventoryIllustration(key) });
+  });
   app.get(apiRoutes.tollPoints, async (_req, res) =>
     res.json(await deps.catalogue.listTollPoints()),
   );

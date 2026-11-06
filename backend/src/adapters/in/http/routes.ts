@@ -2,6 +2,7 @@ export const apiRoutes = {
   health: '/api/health',
   ready: '/api/ready',
   catalogue: '/api/catalogue',
+  inventoryIllustration: '/api/inventory-illustrations/:key',
   googleMapsKey: '/api/admin/google-maps-key',
   tollPoints: '/api/toll-points',
   auth: {

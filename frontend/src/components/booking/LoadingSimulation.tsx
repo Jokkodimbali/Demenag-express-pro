@@ -57,6 +57,10 @@ export function LoadingSimulation({
 }) {
   const { blanketLengthCm, blanketWidthCm, blanketStock, saveBlanketStock, imageDataUrl } =
     useLoadingSimulationPreferences();
+  const quoteBlanketLengthCm = draft.inventory.blanketLengthCm ?? blanketLengthCm;
+  const quoteBlanketWidthCm = draft.inventory.blanketWidthCm ?? blanketWidthCm;
+  const quoteBlanketSizeDiffers =
+    quoteBlanketLengthCm !== blanketLengthCm || quoteBlanketWidthCm !== blanketWidthCm;
   const [open, setOpen] = useState(true);
   const [ready, setReady] = useState(false);
   const [loadingError, setLoadingError] = useState('');
@@ -79,9 +83,15 @@ export function LoadingSimulation({
   const input = useMemo(
     () =>
       vehicle
-        ? simulationInput(draft.inventory, vehicle, stock, blanketLengthCm, blanketWidthCm)
+        ? simulationInput(
+            draft.inventory,
+            vehicle,
+            stock,
+            quoteBlanketLengthCm,
+            quoteBlanketWidthCm,
+          )
         : null,
-    [draft.inventory, vehicle, stock, blanketLengthCm, blanketWidthCm],
+    [draft.inventory, vehicle, stock, quoteBlanketLengthCm, quoteBlanketWidthCm],
   );
   const hasItems = Boolean(input && (input.lines.length || input.annex > 0));
 
@@ -119,14 +129,22 @@ export function LoadingSimulation({
       if (item.active === false) return;
       try {
         result[item.id] = window.DemSim!.plan(
-          simulationInput(draft.inventory, item, stock, blanketLengthCm, blanketWidthCm),
+          simulationInput(draft.inventory, item, stock, quoteBlanketLengthCm, quoteBlanketWidthCm),
         );
       } catch {
         // A vehicle with incomplete dimensions is omitted, as in the reference.
       }
     });
     return result;
-  }, [ready, hasItems, vehicles, draft.inventory, stock, blanketLengthCm, blanketWidthCm]);
+  }, [
+    ready,
+    hasItems,
+    vehicles,
+    draft.inventory,
+    stock,
+    quoteBlanketLengthCm,
+    quoteBlanketWidthCm,
+  ]);
   useEffect(() => {
     if (!onPlanNeeds) return;
     const trips = vehiclePlans[draft.vehicleId]?.trips ?? [];
@@ -249,8 +267,8 @@ export function LoadingSimulation({
       plan,
       draft,
       vehicle,
-      blanketLengthCm,
-      blanketWidthCm,
+      blanketLengthCm: quoteBlanketLengthCm,
+      blanketWidthCm: quoteBlanketWidthCm,
       stock,
       estimate,
       details,
@@ -604,6 +622,37 @@ export function LoadingSimulation({
                     )}
                     {sections.steps && (
                       <div className="loading-simulation-section-content">
+                        <div className="loading-simulation-blanket-size">
+                          <span>
+                            Serviettes de ce devis :{' '}
+                            <strong>
+                              {quoteBlanketLengthCm} × {quoteBlanketWidthCm} cm
+                            </strong>
+                          </span>
+                          {quoteBlanketSizeDiffers && (
+                            <small>
+                              Paramètres actuels : {blanketLengthCm} × {blanketWidthCm} cm
+                            </small>
+                          )}
+                          <button
+                            type="button"
+                            className="button secondary small"
+                            onClick={() =>
+                              setDraft((current) => ({
+                                ...current,
+                                inventory: {
+                                  ...current.inventory,
+                                  blanketLengthCm,
+                                  blanketWidthCm,
+                                },
+                              }))
+                            }
+                          >
+                            {quoteBlanketSizeDiffers
+                              ? 'Appliquer les dimensions des paramètres à ce devis'
+                              : 'Figer ces dimensions pour ce devis'}
+                          </button>
+                        </div>
                         <label>
                           {visibleUiText.text45}{' '}
                           <input
@@ -625,7 +674,8 @@ export function LoadingSimulation({
                         )}
                         <span className="loading-simulation-kit">
                           {visibleUiText.text47}
-                          {trip.need} ({blanketLengthCm} × {blanketWidthCm} {visibleUiText.text48}
+                          {trip.need} ({quoteBlanketLengthCm} × {quoteBlanketWidthCm}{' '}
+                          {visibleUiText.text48}
                           {' · '}
                           {visibleUiText.text49}
                           {trip.blankets ?? 0} {visibleUiText.text15}

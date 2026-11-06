@@ -189,6 +189,18 @@ export const fromSettings = (row: ParametreApplication): Settings => ({
     blanketStock: 20,
     ...(row.planificationManoeuvre as Partial<MovingLaborPlanningSettings>),
   },
+  customInventoryTypes: Array.isArray(
+    (row.planificationManoeuvre as { customInventoryTypes?: unknown })?.customInventoryTypes,
+  )
+    ? ((row.planificationManoeuvre as { customInventoryTypes: Settings['customInventoryTypes'] })
+        .customInventoryTypes ?? [])
+    : [],
+  hiddenInventoryKeys: Array.isArray(
+    (row.planificationManoeuvre as { hiddenInventoryKeys?: unknown })?.hiddenInventoryKeys,
+  )
+    ? ((row.planificationManoeuvre as { hiddenInventoryKeys: Settings['hiddenInventoryKeys'] })
+        .hiddenInventoryKeys ?? [])
+    : [],
   assemblyPrice: row.tarifMontage,
   montageP: (row.grillePrixMontage as Settings['montageP']) ?? {},
   businessPhone: row.telephoneEntreprise,
@@ -199,6 +211,8 @@ export const fromSettings = (row: ParametreApplication): Settings => ({
     : 'api',
   whatsappQuoteTemplate: String(row.modeleDevisWhatsapp ?? ''),
   whatsappProvisionalTemplate: String(row.modeleDevisProvisoireWhatsapp ?? ''),
+  contactFirstTemplate: row.modelePrenomContactWhatsapp,
+  contactLastTemplate: row.modeleNomContactWhatsapp,
   businessName: row.nomEntreprise,
   businessAddress: row.adresseEntreprise,
   businessEmail: row.emailEntreprise,
@@ -241,23 +255,27 @@ export const toSettings = (value: Settings) => ({
   tarifEtageManoeuvre: value.labourFloorPrice ?? 500,
   tarifAscenseurManoeuvre: value.labourLiftPrice ?? 500,
   grillePrixManoeuvre: value.labourMatrix ?? {},
-  planificationManoeuvre: value.movingLaborPlanning ?? {
-    maxHandlingHours: 3,
-    maxDayHours: 8,
-    defaultStartHour: 8,
-    maxMoversPerVehicle: 6,
-    cubicMetersPerHourPerMover: 2.7,
-    pauseMinutes: 30,
-    teamVolumePerMover: 6,
-    tripSetupMinutes: 15,
-    handlingCalibration: 1,
-    carryDistanceMeters: 15,
-    heat: 1,
-    wbgtAdj: 0,
-    blanketLengthCm: 204,
-    blanketWidthCm: 184,
-    blanketStock: 20,
-  },
+  planificationManoeuvre: {
+    ...(value.movingLaborPlanning ?? {
+      maxHandlingHours: 3,
+      maxDayHours: 8,
+      defaultStartHour: 8,
+      maxMoversPerVehicle: 6,
+      cubicMetersPerHourPerMover: 2.7,
+      pauseMinutes: 30,
+      teamVolumePerMover: 6,
+      tripSetupMinutes: 15,
+      handlingCalibration: 1,
+      carryDistanceMeters: 15,
+      heat: 1,
+      wbgtAdj: 0,
+      blanketLengthCm: 204,
+      blanketWidthCm: 184,
+      blanketStock: 20,
+    }),
+    customInventoryTypes: value.customInventoryTypes ?? [],
+    hiddenInventoryKeys: value.hiddenInventoryKeys ?? [],
+  } as Prisma.InputJsonValue,
   tarifMontage: value.assemblyPrice,
   grillePrixMontage: (value.montageP ?? {}) as Prisma.InputJsonValue,
   telephoneEntreprise: value.businessPhone,
@@ -270,6 +288,8 @@ export const toSettings = (value: Settings) => ({
   modeleDevisProvisoireWhatsapp:
     value.whatsappProvisionalTemplate ??
     'Bonjour {nom},\n\nMerci pour votre demande. Voici votre devis provisoire Demenag Express n° {num} :\n- Date : {date}{heure}\n- Trajet : {trajet}\n- Véhicule : {vehicule}, {voyages}\n- Montant estimé : {total}\n\nCe montant est une estimation établie d’après votre inventaire. Il sera confirmé par le devis final.\nJe vous envoie le PDF du devis juste après ce message.\n\nPour confirmer ou modifier votre demande, répondez simplement ici.',
+  modelePrenomContactWhatsapp: value.contactFirstTemplate ?? '{ref} {prenom}',
+  modeleNomContactWhatsapp: value.contactLastTemplate ?? '{nom} · {date}',
   nomEntreprise: value.businessName,
   adresseEntreprise: value.businessAddress,
   emailEntreprise: value.businessEmail ?? '',

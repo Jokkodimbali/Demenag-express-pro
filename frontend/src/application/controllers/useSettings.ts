@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../context';
 import { errorMessage } from '../error-message';
 import { catalogueFromForm } from '../validation/forms';
+import type { Settings } from '../../domain/model';
 export function useSettings() {
   const { api, catalogue, setCatalogue } = useApp();
   const [busy, setBusy] = useState(false),
@@ -88,5 +89,20 @@ export function useSettings() {
     setError('');
     await flushPending(e.currentTarget);
   }
-  return { catalogue, busy, error, saved, submit, onChange, onBlur };
+  async function updateSettings(patch: Partial<Settings>) {
+    await flushPending();
+    const persist = async () => {
+      const current = catalogueRef.current;
+      if (!current) return;
+      const updated = await api.updateCatalogue({
+        ...current,
+        settings: { ...current.settings, ...patch },
+      });
+      catalogueRef.current = updated;
+      setCatalogue(updated);
+    };
+    saveQueue.current = saveQueue.current.then(persist, persist);
+    return saveQueue.current;
+  }
+  return { catalogue, busy, error, saved, submit, onChange, onBlur, updateSettings };
 }

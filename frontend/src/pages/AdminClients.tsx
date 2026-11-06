@@ -15,6 +15,8 @@ import { pageSizes } from '../config/pagination';
 import { money } from '../domain/format';
 import type { Booking, User } from '../domain/model';
 import { routes } from '../routing/routes';
+import { contactVcard } from '../domain/contact-vcard';
+import type { Settings } from '../domain/model';
 
 type DirectoryEntry = { phone: string; name: string; address: string };
 type ClientRowValue = {
@@ -27,12 +29,35 @@ type ClientRowValue = {
   final: number;
   last: string;
   account: User | null;
+  references: string[];
+  bookings: Booking[];
 };
 const digitsOnly = (value: string) => value.replace(/\D/g, '').slice(-9);
 const shortDate = (value: string) => {
   const [year, month, day] = value.split('-');
   return `${day}/${month}/${year}`;
 };
+function downloadContacts(
+  contacts: Pick<ClientRowValue, 'name' | 'phone' | 'bookings'>[],
+  filename: string,
+  settings: Pick<Settings, 'contactFirstTemplate' | 'contactLastTemplate'>,
+) {
+  const cards = contacts
+    .map((contact) => contactVcard(contact, settings))
+    .filter((contact) => contact.valid)
+    .map((contact) => contact.vcard);
+  if (!cards.length) return;
+  const url = URL.createObjectURL(
+    new Blob([`${cards.join('\r\n')}\r\n`], { type: 'text/vcard;charset=utf-8' }),
+  );
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 30000);
+}
 function amounts(booking: Booking) {
   const final = [...booking.quotes].reverse().find((quote) => quote.kind === 'final');
   return {
@@ -46,6 +71,8 @@ function ClientRow({
   onQuote,
   onReset,
   onHide,
+  onContact,
+  onHistory,
   busy,
 }: {
   value: ClientRowValue;
@@ -56,6 +83,8 @@ function ClientRow({
   onQuote: () => void;
   onReset: () => void;
   onHide: () => void;
+  onContact: () => void;
+  onHistory: (reference: string) => void;
   busy: boolean;
 }) {
   const [name, setName] = useState(value.name),
@@ -84,7 +113,7 @@ function ClientRow({
     setter(event.target.value);
   return (
     <tr aria-busy={busy}>
-      <td>
+      <td data-label="Nom">
         <input
           aria-label={`Nom · ${value.name}`}
           value={name}
@@ -95,7 +124,7 @@ function ClientRow({
           className="reference-client-edit name"
         />
       </td>
-      <td>
+      <td data-label="Téléphone">
         <div className="reference-client-phone">
           <input
             aria-label={`Téléphone · ${value.name}`}
@@ -121,7 +150,7 @@ function ClientRow({
           </small>
         ) : null}
       </td>
-      <td>
+      <td data-label="Adresse">
         <input
           aria-label={`Adresse · ${value.name}`}
           value={address}
@@ -131,20 +160,42 @@ function ClientRow({
           className="reference-client-edit address"
         />
       </td>
-      <td className="reference-client-number">{value.moves}</td>
-      <td className="reference-client-amount">
+      <td data-label="Déménagements" className="reference-client-number">
+        {value.moves}
+      </td>
+      <td data-label="Montant total" className="reference-client-amount">
         <strong>{money(value.total)}</strong>
         <span>
           {uiText['dontFinal']}
           {money(value.final)}
         </span>
       </td>
-      <td className="reference-client-last">{value.last}</td>
-      <td>
+      <td data-label="Dernier rendez-vous" className="reference-client-last">
+        {value.last}
+      </td>
+      <td data-label="Actions">
         <div className="reference-client-actions">
           <button className="reference-client-quote" onClick={onQuote}>
             {uiText['nouveauDevis']}
           </button>
+          <button
+            className="reference-client-contact"
+            onClick={onContact}
+            title={`Enregistrer ${value.name} dans les contacts`}
+          >
+            Contact
+          </button>
+          {value.references.map((reference) => (
+            <button
+              className="reference-client-history"
+              key={reference}
+              type="button"
+              title={`Ouvrir le rendez-vous ${reference}`}
+              onClick={() => onHistory(reference)}
+            >
+              {reference}
+            </button>
+          ))}
           <button
             className="reference-client-delete"
             title={uiText['supprimer']}
@@ -234,6 +285,8 @@ export function AdminClients() {
             final,
             last: last ? shortDate(last) : '—',
             account: acct,
+            references: all.map((booking) => booking.reference),
+            bookings: all,
           },
         ];
       })
@@ -244,7 +297,8 @@ export function AdminClients() {
     (row) =>
       row.name.toLocaleLowerCase('fr').includes(needle) ||
       row.phone.replace(/\D/g, '').includes(query.replace(/\D/g, '') || '!') ||
-      row.address.toLocaleLowerCase('fr').includes(needle),
+      row.address.toLocaleLowerCase('fr').includes(needle) ||
+      row.references.some((reference) => reference.toLocaleLowerCase('fr').includes(needle)),
   );
   const pagination = usePagination(filtered, pageSizes.clients, needle);
   async function saveClient(
@@ -323,6 +377,13 @@ export function AdminClients() {
             placeholder={uiText['rechercherUnNomUnNumeroUneAdresse']}
             aria-label={uiText['rechercherUnNomUnNumeroUneAdresse']}
           />
+          <button
+            className="reference-client-contact-export"
+            type="button"
+            onClick={() => downloadContacts(rows, 'Contacts-Demenag-Express.vcf', catalogue?.settings ?? {})}
+          >
+            Exporter tous les contacts
+          </button>
         </div>
         {error || directoryError ? (
           <p className="reference-client-error" role="alert">
@@ -358,6 +419,16 @@ export function AdminClients() {
                   busy={busyKey === client.key}
                   onSave={saveClient}
                   onQuote={() => newQuote(client)}
+                  onContact={() =>
+                    downloadContacts(
+                      [client],
+                      `${client.name.replace(/[^\p{L}\p{N}-]+/gu, '-')}.vcf`,
+                      catalogue?.settings ?? {},
+                    )
+                  }
+                  onHistory={(reference) =>
+                    navigate(`${routes.administrationBookings}?q=${encodeURIComponent(reference)}`)
+                  }
                   onHide={() => void hideClient(client)}
                   onReset={() => {
                     setResetError('');

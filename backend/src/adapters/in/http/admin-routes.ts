@@ -16,6 +16,7 @@ import { accountSchema, createAccountSchema, userIdSchema } from './validation/a
 import { z } from 'zod';
 const accountingMonthValue = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
 const clientPhoneSchema = z.string().regex(/^\d{9}$/);
+const inventoryImageKey = z.string().regex(/^[a-z0-9:_-]{1,150}$/u);
 const employeeProofUpdateSchema = z
   .object({
     kind: z.enum(['retrait', 'depot']).optional(),
@@ -303,6 +304,12 @@ export function registerAdminRoutes(
     const p = catalogueSchema.parse(req.body);
     await deps.catalogue.update(getActor(res), p.vehicles, p.settings);
     res.json(await deps.catalogue.get());
+  });
+  app.put(apiRoutes.inventoryIllustration, authenticate, admin, async (req, res) => {
+    const key = inventoryImageKey.parse(req.params.key);
+    const { image } = z.object({ image: z.string().max(1_000_000).regex(/^data:image\/webp;base64,[A-Za-z0-9+/=]+$/u) }).parse(req.body);
+    await deps.catalogue.saveInventoryIllustration(getActor(res), key, image);
+    res.status(204).end();
   });
   app.get(apiRoutes.googleMapsKey, authenticate, admin, async (_req, res) =>
     res.json({ key: await deps.catalogue.googleMapsApiKey(getActor(res)) }),

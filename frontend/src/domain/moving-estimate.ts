@@ -59,6 +59,21 @@ const dismantleFactors: Record<string, number> = {
 const formatIndexes: Record<InventoryFormat, number> = { small: 0, medium: 1, large: 2 };
 const genericFormatFactors = [0.6, 1, 1.6];
 const numberFrom = (value: string) => Number.parseFloat(value.replace(',', '.')) || 0;
+const customItemVolume = (item: Inventory['custom'][number]) => {
+  if ([item.cL, item.cW, item.cH].every((value) => Number(value) > 0)) {
+    return ((item.cL! * item.cW! * item.cH!) / 1_000_000) * (item.dismantle ? 0.8 : 1);
+  }
+  if (item.like && inventoryItems.some((definition) => definition.key === item.like)) {
+    const definition = inventoryItems.find((candidate) => candidate.key === item.like);
+    return estimatedInventoryItemVolume(
+      item.like,
+      definition?.defaultSize ?? 1,
+      Boolean(item.dismantle),
+      item.format,
+    );
+  }
+  return estimatedInventoryItemVolume('custom', 1, Boolean(item.dismantle), item.format);
+};
 export const defaultMovingLaborPlanning: MovingLaborPlanningSettings = {
   maxHandlingHours: 3,
   maxDayHours: 8,
@@ -262,9 +277,33 @@ function inventoryWeight(inventory: Inventory, annexVolume: number) {
   inventory.variants.forEach((item) =>
     consume(item.itemKey, item.quantity, item.size, item.format ?? 'medium', item.dismantle),
   );
-  inventory.custom.forEach((item) =>
-    consume('custom', item.quantity, 0, item.format ?? 'medium', Boolean(item.dismantle)),
-  );
+  inventory.custom.forEach((item) => {
+    if (item.quantity <= 0) return;
+    const likeKey =
+      item.like && inventoryItems.some((definition) => definition.key === item.like)
+        ? item.like
+        : 'custom';
+    const assumedWeight = referenceLineWeight(
+      likeKey,
+      1,
+      item.format ?? 'medium',
+      Boolean(item.dismantle),
+    );
+    const factor = Number(item.kg) > 0 ? Number(item.kg) / Math.max(1, assumedWeight.max) : 1;
+    const itemWeight = {
+      total: assumedWeight.total * factor,
+      max: Number(item.kg) > 0 ? Number(item.kg) : assumedWeight.max,
+    };
+    total += itemWeight.total * item.quantity;
+    max = Math.max(max, itemWeight.max);
+    needs(
+      item.frag && itemWeight.max > 15 ? 'glass' : likeKey,
+      itemWeight.max,
+      1,
+      Boolean(item.dismantle),
+      item.format ?? 'medium',
+    );
+  });
   total += Math.round(annexVolume * 110);
   return { total: Math.round(total), max, largestHandlingCrew };
 }
@@ -319,8 +358,7 @@ function inventoryVolumes(inventory: Inventory): VolumeGroups {
       add(variant.itemKey, variant.size, variant.quantity, variant.dismantle, variant.format);
   });
   inventory.custom.forEach((item) => {
-    groups.furniture +=
-      itemVolume('custom', 1, Boolean(item.dismantle), item.format ?? 'medium') * item.quantity;
+    groups.furniture += customItemVolume(item) * item.quantity;
   });
   const homeVolume =
     inventory.annexOn === false ? 0 : (dwellingVolumes[inventory.dwellingType] ?? 0);
@@ -564,11 +602,7 @@ export function estimateMovingWork(
   const toIso = isoSite(inventory.toFloor, inventory.toLift);
   const isoCrew = Math.max(
     1,
-    Math.ceil(
-      weight.total / fromIso.limit +
-        weight.total / toIso.limit -
-        0.05,
-    ),
+    Math.ceil(weight.total / fromIso.limit + weight.total / toIso.limit - 0.05),
   );
   const stairFloors = Math.max(
     inventory.fromLift ? 0 : inventory.fromFloor,
@@ -955,13 +989,12 @@ export function bookingInventorySnapshot(
   const customItems = inventory.custom
     .filter((item) => item.quantity > 0)
     .map((item) => {
-      const format = item.format ?? 'medium';
       return {
         section: 'Autres objets',
         label: item.label.charAt(0).toLocaleUpperCase('fr-FR') + item.label.slice(1),
         quantity: item.quantity,
         details: item.dismantle ? 'démontage et montage' : '—',
-        volumeM3: itemVolume('custom', 1, Boolean(item.dismantle), format) * item.quantity,
+        volumeM3: customItemVolume(item) * item.quantity,
       };
     });
   const allItems = [...items, ...customItems];

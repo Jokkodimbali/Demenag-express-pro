@@ -15,6 +15,13 @@ export class CatalogueService implements CatalogueUseCases {
     requireAdministrator(actor);
     return this.repository.updateGoogleMapsApiKey(value);
   }
+  inventoryIllustration(key: string) {
+    return this.repository.inventoryIllustration(key);
+  }
+  saveInventoryIllustration(actor: User, key: string, image: string) {
+    requireAdministrator(actor);
+    return this.repository.saveInventoryIllustration(key, image);
+  }
   async update(actor: User, vehicles: Vehicle[], settings: Settings) {
     requireAdministrator(actor);
     await this.repository.update(vehicles, settings);
