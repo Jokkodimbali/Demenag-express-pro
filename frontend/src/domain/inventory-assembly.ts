@@ -56,32 +56,33 @@ export function inventoryAssemblyLines(
     });
   };
 
-  for (const [key, entry] of Object.entries(inventory.entries)) {
-    if (!entry.dismantle && !(['salon', 'chaise'].includes(key) && entry.menuisier)) continue;
-    const item = inventoryItems.find((candidate) => candidate.key === key);
-    append(
-      key,
-      item?.label.toLocaleLowerCase('fr-FR') ?? key,
-      entry.quantity,
-      entry.size,
-      entry.origin ?? 'local',
-      item?.defaultSize ?? 1,
-      item?.sizeLabel,
-    );
-  }
-  for (const variant of inventory.variants) {
-    if (!variant.dismantle && !(['salon', 'chaise'].includes(variant.itemKey) && variant.menuisier))
-      continue;
-    const item = inventoryItems.find((candidate) => candidate.key === variant.itemKey);
-    append(
-      variant.itemKey,
-      item?.label.toLocaleLowerCase('fr-FR') ?? variant.itemKey,
-      variant.quantity,
-      variant.size,
-      variant.origin ?? 'local',
-      item?.defaultSize ?? 1,
-      item?.sizeLabel,
-    );
+  for (const item of inventoryItems) {
+    const entry = inventory.entries[item.key];
+    if (entry && (entry.dismantle || (['salon', 'chaise'].includes(item.key) && entry.menuisier)))
+      append(
+        item.key,
+        item.label.toLocaleLowerCase('fr-FR'),
+        entry.quantity,
+        entry.size,
+        entry.origin ?? 'local',
+        item.defaultSize ?? 1,
+        item.sizeLabel,
+      );
+    for (const variant of inventory.variants.filter(
+      (candidate) => candidate.itemKey === item.key,
+    )) {
+      if (!variant.dismantle && !(['salon', 'chaise'].includes(item.key) && variant.menuisier))
+        continue;
+      append(
+        item.key,
+        item.label.toLocaleLowerCase('fr-FR'),
+        variant.quantity,
+        variant.size,
+        variant.origin ?? 'local',
+        item.defaultSize ?? 1,
+        item.sizeLabel,
+      );
+    }
   }
   for (const item of inventory.custom) {
     if (!item.dismantle) continue;

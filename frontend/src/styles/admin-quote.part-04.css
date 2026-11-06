@@ -150,6 +150,29 @@
   font-size: 12.5px;
   line-height: 1.45;
 }
+.admin-quote-calc-mode {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 11px;
+  background: #1e2023;
+}
+.admin-quote-calc-mode button {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #d5d9de;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.admin-quote-calc-mode button.selected {
+  background: #f6d73c;
+  color: #1e2023;
+}
 .admin-quote-team-values {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));

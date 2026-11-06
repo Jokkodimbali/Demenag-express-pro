@@ -694,10 +694,10 @@
   min-width: 0;
 }
 .admin-quote-aside > .loading-simulation-wrapper {
-  order: 1;
+  order: 2;
 }
 .admin-quote-aside > .admin-quote-action-pdf {
-  order: 2;
+  order: 1;
 }
 .admin-quote-paper {
   background: #fff;

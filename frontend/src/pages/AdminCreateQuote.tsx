@@ -86,6 +86,15 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
     changeQuoteOption,
     toggleQuoteSection,
   } = model;
+  const enterManualCalculation = () => {
+    const crew = Math.max(1, movingEstimate?.crew ?? draft.options.labour ?? 2);
+    setQuoteConfig((current) => ({ ...current, calcMode: 'manual' }));
+    setDraft((current) => ({
+      ...current,
+      options: { ...current.options, labour: crew },
+      inventory: { ...current.inventory, crew },
+    }));
+  };
   if (loading)
     return (
       <div className="panel loading" role="status">
@@ -526,7 +535,6 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                     type="number"
                     min={1}
                     max={10000000}
-                    required={!publicRequest}
                     value={quoteConfig.customPrice ?? ''}
                     onChange={(event) =>
                       setQuoteConfig((current) => ({
@@ -555,9 +563,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             ignoreTraffic={quoteConfig.trafficOff}
             manualLegMinutes={quoteConfig.calcMode === 'manual' ? quoteConfig.legMinutes : 0}
             hasToll={tollLines.some((line) => line.quantity * line.unitPrice > 0)}
-            onManualCalculation={() =>
-              setQuoteConfig((current) => ({ ...current, calcMode: 'manual' }))
-            }
+            onManualCalculation={enterManualCalculation}
             heatOff={quoteConfig.heatOff}
             heatRest={quoteConfig.heatRest}
             onHeatChange={
@@ -686,10 +692,10 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                           disabled={quoteConfig.trips <= 1}
                           onClick={() => {
                             const trips = Math.max(1, quoteConfig.trips - 1);
+                            enterManualCalculation();
                             setQuoteConfig((current) => ({
                               ...current,
                               trips,
-                              calcMode: 'manual',
                             }));
                             if (publicRequest)
                               setDraft((current) => ({ ...current, estimatedTrips: trips }));
@@ -707,10 +713,10 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                               catalogue.settings.maxTrips,
                               quoteConfig.trips + 1,
                             );
+                            enterManualCalculation();
                             setQuoteConfig((current) => ({
                               ...current,
                               trips,
-                              calcMode: 'manual',
                             }));
                             if (publicRequest)
                               setDraft((current) => ({ ...current, estimatedTrips: trips }));

@@ -164,7 +164,7 @@ export function referenceMovingEstimateNote(
   const trips = estimate.trips;
   const first = `Estimation : volume ≈ ${estimate.volume.toFixed(1).replace('.', ',')} m³, soit ${trips} aller${trips > 1 ? 's' : ''}-retour${trips > 1 ? 's' : ''} en ${vehicle}.`;
   const labour =
-    `Main-d'œuvre : ${estimate.crew} manœuvres` +
+    `Main-d'œuvre : ${estimate.crew} manœuvres (≈ ${estimate.totalWeightKg} kg, objet le plus lourd ≈ ${estimate.maxItemWeightKg} kg)` +
     (estimate.carpenterCount
       ? ` + ${estimate.carpenterCount} menuisier${estimate.carpenterCount > 1 ? 's' : ''}`
       : '') +
@@ -174,9 +174,7 @@ export function referenceMovingEstimateNote(
     (estimate.packingMinutes > 90
       ? ` · emballage la veille ≈ ${referenceDuration(estimate.packingMinutes)}`
       : '') +
-    (estimate.minimumDays > 1
-      ? ` · dépasse ${maxDayHours} h : prévoir ${estimate.minimumDays} jours ou un véhicule de plus`
-      : '') +
+    (estimate.totalMinutes > maxDayHours * 60 + 1 ? ` · journée de plus de ${maxDayHours} h` : '') +
     '.';
   return `${first}\n${labour}`;
 }

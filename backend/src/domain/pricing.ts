@@ -5,7 +5,7 @@ import type { Options, Price, QuotePricingSettings, Vehicle, WorkAccess } from '
 const MAX_DATABASE_INTEGER = 2_147_483_647;
 
 const accessLabel = (floor: number, lift: boolean) =>
-  `${floor === 0 ? 'RDC' : floor === 1 ? '1er étage' : `${floor}e étage`}${floor > 0 ? (lift ? ' avec ascenseur' : ' sans ascenseur') : ''}`;
+  `${floor === 0 ? 'RDC' : floor === 1 ? '1er' : `${floor}e`}${floor > 0 ? (lift ? ' avec asc.' : ' sans asc.') : ''}`;
 
 export function assemblyUnitPrice(
   settings: QuotePricingSettings,
@@ -113,7 +113,7 @@ export function calculatePrice(
   ][tier];
   const lines = [
     {
-      label: `Transport ${vehicle.shortName || vehicle.name} · ${transportTier} (aller-retour)`,
+      label: `Transport ${vehicle.name || vehicle.shortName || ''} · ${transportTier} (aller-retour)`,
       quantity: trips,
       unitPrice: transport,
       total: transport * trips,

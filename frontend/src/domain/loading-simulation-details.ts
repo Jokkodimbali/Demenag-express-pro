@@ -347,11 +347,19 @@ export function fatigueAdvice(
   crew: number,
   estimate?: MovingEstimate | null,
 ) {
-  const from = isoSite(inventory.fromFloor, inventory.fromLift, true);
-  const to = isoSite(inventory.toFloor, inventory.toLift, false);
-  const kg =
+  const access = Boolean(inventory.flags.acces);
+  const fromFallback = isoSite(inventory.fromFloor, inventory.fromLift, access);
+  const toFallback = isoSite(inventory.toFloor, inventory.toLift, access);
+  const from = estimate
+    ? { distance: estimate.fromIsoDistanceMeters, limit: estimate.fromIsoLimitKg }
+    : fromFallback;
+  const to = estimate
+    ? { distance: estimate.toIsoDistanceMeters, limit: estimate.toIsoLimitKg }
+    : toFallback;
+  const kg = estimate?.totalWeightKg ?? (
     lines.reduce((sum, line) => sum + simulationLineWeight(line).total * line.q, 0) +
-    Math.round(referenceAnnexVolume(inventory) * 110);
+    Math.round(referenceAnnexVolume(inventory) * 110)
+  );
   const classLevel =
     Math.max(
       inventory.fromLift ? 0 : inventory.fromFloor,
@@ -363,7 +371,8 @@ export function fatigueAdvice(
   const heatFactor = heat ? 1 + Math.max(0, heat.wbgt - heat.reference) * 0.08 : 1;
   const scoreFor = (people: number) =>
     Math.round(((kg / from.limit + kg / to.limit) / people) * heatFactor * 100);
-  const score = scoreFor(Math.max(1, crew));
+  const effectiveCrew = Math.max(1, crew);
+  const score = scoreFor(effectiveCrew);
   const level =
     score < 50
       ? ['Faible', '#3DDC84']
@@ -413,7 +422,7 @@ export function fatigueAdvice(
     recommendations,
     rows: [
       ['Poids total à porter', `≈ ${number(kg)} kg`],
-      ['Masse portée par manœuvre', `≈ ${number((kg * 2) / crew)} kg`],
+      ['Masse portée par manœuvre', `≈ ${number((kg * 2) / effectiveCrew)} kg`],
       [
         'Limite ISO 11228-1 au départ',
         `${number(from.limit)} kg / jour (${from.distance} m équivalents)`,

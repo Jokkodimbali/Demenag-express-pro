@@ -34,6 +34,10 @@ const planningDefaults = {
   maxMoversPerVehicle: 6,
   cubicMetersPerHourPerMover: 2.7,
   pauseMinutes: 30,
+  teamVolumePerMover: 6,
+  tripSetupMinutes: 15,
+  handlingCalibration: 1,
+  carryDistanceMeters: 15,
   heat: 1,
   wbgtAdj: 0,
   blanketLengthCm: 204,
@@ -77,6 +81,10 @@ const planningFields = [
     'Meubles au rez-de-chaussée. Cartons ×1,4, objets lourds ×0,72.',
   ],
   ['pauseMinutes', 'Pause si la journée dépasse 5 h (min)', '0 pour ne pas compter de pause.'],
+  ['teamVolumePerMover', 'Volume de base par manœuvre (m³)', 'Utilisé pour le premier calcul de l’effectif conseillé.'],
+  ['tripSetupMinutes', 'Mise en place par voyage (min)', 'Ce temps est ajouté au chargement et au déchargement de chaque voyage.'],
+  ['handlingCalibration', 'Coefficient de calage', 'Multiplie les durées de chargement et de déchargement.'],
+  ['carryDistanceMeters', 'Distance de portage de référence (m)', 'Distance utilisée avec le poids transporté pour estimer l’effectif ISO.'],
 ] as const;
 const sectionStyle: CSSProperties = {
   background: '#272a2e',
@@ -517,9 +525,13 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
                               ? 0.1
                               : key === 'pauseMinutes'
                                 ? 0
-                                : key === 'defaultStartHour'
-                                  ? 0
-                                  : 0.5
+                                : key === 'handlingCalibration'
+                                ? 0.5
+                                : key === 'carryDistanceMeters'
+                                  ? 1
+                                  : key === 'defaultStartHour'
+                                    ? 0
+                                    : 0.5
                   }
                   max={
                     key === 'wbgtAdj'
@@ -536,11 +548,19 @@ export function TransportSettings({ catalogue }: { catalogue: Catalogue }) {
                                 ? 20
                                 : key === 'cubicMetersPerHourPerMover'
                                   ? 50
-                                  : 180
+                                  : key === 'teamVolumePerMover'
+                                    ? 100
+                                    : key === 'handlingCalibration'
+                                      ? 5
+                                    : key === 'carryDistanceMeters'
+                                      ? 200
+                                      : 180
                   }
                   required
                   step={
-                    key === 'cubicMetersPerHourPerMover'
+                    key === 'cubicMetersPerHourPerMover' ||
+                    key === 'teamVolumePerMover' ||
+                    key === 'handlingCalibration'
                       ? '0.1'
                       : key === 'wbgtAdj' || key === 'maxHandlingHours' || key === 'maxDayHours'
                         ? '0.5'

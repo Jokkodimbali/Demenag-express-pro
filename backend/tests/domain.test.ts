@@ -116,7 +116,7 @@ test('Le tarif par manœuvre ajoute les étages sans ascenseur et le forfait asc
     access,
   );
   assert.equal(price.lines[1].unitPrice, 7500);
-  assert.match(price.lines[1].label, /2e étage sans ascenseur → 1er étage avec ascenseur/);
+  assert.match(price.lines[1].label, /2e sans asc\. → 1er avec asc\./);
 });
 test('Le prix par manœuvre saisi sur le devis remplace la grille admin', () => {
   const price = calculatePrice(

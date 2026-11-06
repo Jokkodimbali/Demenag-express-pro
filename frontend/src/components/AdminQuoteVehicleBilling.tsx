@@ -181,6 +181,54 @@ export function AdminQuoteVehicleBilling({
         aria-label={t.teamAndCalculation}
       >
         <h3>{t.teamAndCalculation}</h3>
+        <div className="admin-quote-calc-mode" role="group" aria-label="Mode de calcul">
+          <button
+            type="button"
+            aria-pressed={quoteConfig.calcMode === 'auto'}
+            className={quoteConfig.calcMode === 'auto' ? 'selected' : ''}
+            onClick={() => {
+              setQuoteConfig((current) => ({
+                ...current,
+                calcMode: 'auto',
+                legMinutes: 0,
+              }));
+              setDraft((current) => ({
+                ...current,
+                inventory: { ...current.inventory, crew: 0 },
+              }));
+            }}
+          >
+            Automatique
+          </button>
+          <button
+            type="button"
+            aria-pressed={quoteConfig.calcMode === 'manual'}
+            className={quoteConfig.calcMode === 'manual' ? 'selected' : ''}
+            onClick={() => {
+              const crew = Math.max(
+                1,
+                movingEstimate?.crew ?? draft.options.labour ?? 2,
+              );
+              setQuoteConfig((current) => ({
+                ...current,
+                calcMode: 'manual',
+                // travelLegMinutes includes the reference's 10 minute loading/parking allowance.
+                // Manual legMinutes stores only the route duration; the estimate adds that allowance.
+                legMinutes:
+                  movingEstimate?.travelLegMinutes != null
+                    ? Math.max(0, Math.round(movingEstimate.travelLegMinutes - 10))
+                    : current.legMinutes,
+              }));
+              setDraft((current) => ({
+                ...current,
+                options: { ...current.options, labour: crew },
+                inventory: { ...current.inventory, crew },
+              }));
+            }}
+          >
+            Manuel
+          </button>
+        </div>
         <p>
           {quoteConfig.calcMode === 'manual'
             ? 'Vous fixez les manœuvres, allers-retours et durée de trajet. L’inventaire ne les modifie plus. Le véhicule reste libre.'

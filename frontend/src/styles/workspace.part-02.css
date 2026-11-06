@@ -293,9 +293,12 @@
   flex-wrap: wrap;
   align-items: flex-end;
   gap: 8px 14px;
+  max-width: 100%;
+  overflow: visible;
 }
 .admin-tab-group {
   display: flex;
+  flex: 0 1 auto;
   flex-direction: column;
   gap: 4px;
   min-width: 0;

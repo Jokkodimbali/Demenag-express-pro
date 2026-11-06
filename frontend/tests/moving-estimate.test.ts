@@ -228,8 +228,70 @@ test('deux véhicules en parallèle reprennent la solution proposée par la réf
   assert.equal(single.trips, 6);
   assert.equal(single.totalMinutes, 785);
   assert.equal(parallel.crew, 12);
-  assert.equal(Math.round(parallel.handlingMinutes / 5) * 5, 315);
+  assert.equal(Math.round(parallel.handlingMinutes / 5) * 5, 305);
   assert.equal(Math.round(parallel.rawTotalMinutes / 5) * 5, 410);
+});
+
+test('le scénario de référence conserve ses volumes, son équipe et ses durées', () => {
+  const inventory = blankInventory();
+  inventory.dwellingType = 'F3';
+  inventory.annexOn = true;
+  inventory.fromFloor = 3;
+  inventory.toFloor = 1;
+  inventory.toLift = true;
+  inventory.flags = { acces: true, fragile: true, escalier: true, emballage: true };
+  for (const [key, quantity, size, dismantle] of [
+    ['salon', 1, 5, false],
+    ['armoire', 1, 3, true],
+    ['frigo', 1, 1, false],
+    ['carton', 12, 1, false],
+    ['lit', 1, 2, true],
+    ['matelas', 1, 2, false],
+  ] as const)
+    inventory.entries[key] = { quantity, size, format: 'medium', dismantle };
+
+  const estimate = estimateMovingWork(
+    inventory,
+    vehicle,
+    { distanceKm: 20, durationMinutes: 0 },
+    {
+      startTime: '08:00',
+      date: '2026-11-10',
+      month: '2026-11',
+      fromAddress: 'Ouakam, Dakar',
+      toAddress: 'Almadies, Dakar',
+    },
+  );
+
+  assert.equal(estimate.volume, 10.79);
+  assert.equal(estimate.capacity, 13.9);
+  assert.equal(estimate.trips, 2);
+  assert.equal(estimate.crew, 6);
+  assert.equal(estimate.carpenterCount, 2);
+  assert.ok(Math.abs(estimate.handlingMinutes - 206.170947) < 0.001);
+  assert.equal(estimate.totalMinutes, 525);
+  assert.equal(estimate.endTime, '16:45');
+  assert.equal(estimate.totalWeightKg, 819);
+  assert.equal(estimate.maxItemWeightKg, 65);
+
+  const manualEstimate = estimateMovingWork(
+    inventory,
+    vehicle,
+    { distanceKm: 20, durationMinutes: 0 },
+    {
+      startTime: '08:00',
+      date: '2026-11-10',
+      month: '2026-11',
+      fromAddress: 'Ouakam, Dakar',
+      toAddress: 'Almadies, Dakar',
+      crew: 4,
+    },
+  );
+  assert.equal(manualEstimate.crew, 4);
+  assert.equal(manualEstimate.recommendedCrew, 6);
+  assert.ok(Math.abs(manualEstimate.handlingMinutes - 239.581449) < 0.001);
+  assert.equal(manualEstimate.totalMinutes, 590);
+  assert.equal(manualEstimate.endTime, '17:50');
 });
 
 test('le choix manuel est conservé et reste comparé à la recommandation automatique', () => {

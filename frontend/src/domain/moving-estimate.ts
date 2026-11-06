@@ -66,6 +66,10 @@ export const defaultMovingLaborPlanning: MovingLaborPlanningSettings = {
   maxMoversPerVehicle: 6,
   cubicMetersPerHourPerMover: 2.7,
   pauseMinutes: 30,
+  teamVolumePerMover: 6,
+  tripSetupMinutes: 15,
+  handlingCalibration: 1,
+  carryDistanceMeters: 15,
   heat: 1,
   wbgtAdj: 0,
 };
@@ -198,7 +202,13 @@ function inventoryWeight(inventory: Inventory, annexVolume: number) {
   const stairAccess =
     (inventory.fromFloor > 0 && !inventory.fromLift) ||
     (inventory.toFloor > 0 && !inventory.toLift);
-  const needs = (key: string, maxKg: number, dismantle: boolean, format: InventoryFormat) => {
+  const needs = (
+    key: string,
+    maxKg: number,
+    size: number,
+    dismantle: boolean,
+    format: InventoryFormat,
+  ) => {
     const itemCount = Math.min(4, Math.max(1, Math.ceil(maxKg / 25)));
     const kind = ['frigo', 'congelateur', 'machine-laver', 'cuisiniere', 'climatiseur'].includes(
       key,
@@ -224,7 +234,7 @@ function inventoryWeight(inventory: Inventory, annexVolume: number) {
     let count = itemCount;
     if (kind === 'appliance' || kind === 'glass' || kind === 'sofa') count = Math.max(2, count);
     if (kind === 'case' && !dismantle) count = Math.max(2, count);
-    if (kind === 'mattress') count = sizeForHandling(key, inventory) >= 2 ? 2 : 1;
+    if (kind === 'mattress') count = size >= 2 ? 2 : 1;
     if (kind === 'table') count = dismantle ? Math.max(1, count) : Math.max(2, count);
     if (kind === 'tv') count = maxKg > 15 || format === 'large' ? 2 : 1;
     if (kind === 'single') count = 1;
@@ -244,7 +254,7 @@ function inventoryWeight(inventory: Inventory, annexVolume: number) {
     const weight = referenceLineWeight(key, size, format, dismantle);
     total += weight.total * quantity;
     max = Math.max(max, weight.max);
-    needs(key, weight.max, dismantle, format);
+    needs(key, weight.max, size, dismantle, format);
   };
   Object.entries(inventory.entries).forEach(([key, item]) =>
     consume(key, item.quantity, item.size, item.format ?? 'medium', item.dismantle),
@@ -257,15 +267,6 @@ function inventoryWeight(inventory: Inventory, annexVolume: number) {
   );
   total += Math.round(annexVolume * 110);
   return { total: Math.round(total), max, largestHandlingCrew };
-}
-
-function sizeForHandling(key: string, inventory: Inventory) {
-  const main = inventory.entries[key]?.size ?? 0;
-  return Math.max(
-    main,
-    ...inventory.variants.filter((item) => item.itemKey === key).map((item) => item.size),
-    0,
-  );
 }
 
 function vehicleCapacity(vehicle: Vehicle): number {
@@ -390,6 +391,12 @@ export type MovingEstimate = {
   crew: number;
   recommendedCrew: number;
   carpenterCount: number;
+  totalWeightKg: number;
+  fromIsoDistanceMeters: number;
+  toIsoDistanceMeters: number;
+  fromIsoLimitKg: number;
+  toIsoLimitKg: number;
+  maxItemWeightKg: number;
   dismantleFromMinutes: number;
   dismantleToMinutes: number;
   loadingMinutes: number;
@@ -444,28 +451,30 @@ export function estimateMovingWork(
   const labor = { ...defaultMovingLaborPlanning, ...options.laborPlanning };
   const parallelVehicles = options.parallelVehicles ?? 1;
   const categoryRates = {
-    light: { rate: 1.4, stairs: 0.1, lift: 0.03 },
-    furniture: { rate: 1, stairs: 0.15, lift: 0.05 },
-    bulky: { rate: 1.2, stairs: 0.2, lift: 0.15 },
-    heavy: { rate: 0.72, stairs: 0.25, lift: 0.08 },
+    light: { r: 1.4, st: 0.1, lift: 0.03 },
+    furn: { r: 1, st: 0.15, lift: 0.05 },
+    bulky: { r: 1.2, st: 0.2, lift: 0.15 },
+    heavy: { r: 0.72, st: 0.25, lift: 0.08 },
   } as const;
-  const handlingFactor = (inventory.flags.acces ? 1.2 : 1) * (inventory.flags.fragile ? 1.1 : 1);
+  const categoryVolumes = {
+    light: groups.light,
+    furn: groups.furniture,
+    bulky: groups.bulky,
+    heavy: groups.heavy,
+  };
+  const accessFactor = inventory.flags.acces ? 1.2 : 1;
+  const fragileFactor = inventory.flags.fragile ? 1.1 : 1;
   const siteHours = (floor: number, lift: boolean, unloading = false) =>
-    (Object.keys(categoryRates) as Array<keyof typeof categoryRates>).reduce((sum, category) => {
-      const rate = categoryRates[category];
-      const floorFactor =
-        floor <= 0
-          ? 1
-          : lift
-            ? 1.05 + rate.lift * floor
-            : 1 + rate.stairs * floor * (inventory.flags.escalier ? 1.4 : 1);
-      const unloadFactor = unloading ? 1.2 : 1;
-      return (
-        sum +
-        (groups[category] / (labor.cubicMetersPerHourPerMover * rate.rate * unloadFactor)) *
-          floorFactor *
-          handlingFactor
-      );
+    Object.keys(categoryRates).reduce((sum, category) => {
+      const key = category as keyof typeof categoryRates;
+      const config = categoryRates[key];
+      const rate = labor.cubicMetersPerHourPerMover * config.r * (unloading ? 1.2 : 1);
+      const floorFactor = !(floor > 0)
+        ? 1
+        : lift
+          ? 1.05 + config.lift * floor
+          : 1 + config.st * floor * (inventory.flags.escalier ? 1.4 : 1);
+      return sum + (categoryVolumes[key] / rate) * floorFactor * accessFactor * fragileFactor;
     }, 0);
   const dismantlingBySide = { from: 0, to: 0 };
   const dismantlingMinutes: Record<string, [number, number]> = {
@@ -544,15 +553,20 @@ export function estimateMovingWork(
       : distance <= 20
         ? 10000 - ((distance - 1) * 4000) / 19
         : (6000 * 20) / distance;
-  const isoSiteLimit = (floor: number, lift: boolean) => {
-    const distance = Math.round(15 * (inventory.flags.acces ? 2 : 1) + (lift ? 2 : 15) * floor);
-    return Math.round(isoLimit(distance));
+  const isoSite = (floor: number, lift: boolean) => {
+    const distance = Math.round(
+      (Number(labor.carryDistanceMeters) || 15) * (inventory.flags.acces ? 2 : 1) +
+        (lift ? 2 : 15) * floor,
+    );
+    return { distance, limit: Math.round(isoLimit(distance)) };
   };
+  const fromIso = isoSite(inventory.fromFloor, inventory.fromLift);
+  const toIso = isoSite(inventory.toFloor, inventory.toLift);
   const isoCrew = Math.max(
     1,
     Math.ceil(
-      weight.total / isoSiteLimit(inventory.fromFloor, inventory.fromLift) +
-        weight.total / isoSiteLimit(inventory.toFloor, inventory.toLift) -
+      weight.total / fromIso.limit +
+        weight.total / toIso.limit -
         0.05,
     ),
   );
@@ -566,10 +580,23 @@ export function estimateMovingWork(
       : Math.max(inventory.fromFloor, inventory.toFloor) >= 4
         ? 1
         : 0;
+  const teamVolumePerMover = Math.max(1, Number(labor.teamVolumePerMover) || 6);
   const volumeCrew =
-    Math.max(Math.ceil(volume / 6), Math.ceil(weight.total / Math.max(100, 6 * 110))) + stairExtra;
+    Math.max(
+      Math.ceil(volume / teamVolumePerMover),
+      Math.ceil(weight.total / Math.max(100, teamVolumePerMover * 110)),
+    ) + stairExtra;
+  const stairsRequireCarryHelp =
+    (inventory.fromFloor >= 2 && !inventory.fromLift) ||
+    (inventory.toFloor >= 2 && !inventory.toLift);
+  const carryCrew = Math.min(
+    4,
+    (weight.max <= 25 ? 1 : weight.max <= 100 ? 2 : 3) +
+      (stairsRequireCarryHelp && weight.max > 33 ? 1 : 0),
+  );
   const minimumCrew = Math.max(
     stairsRequireExtra ? 3 : 2,
+    carryCrew,
     Math.min(labor.maxMoversPerVehicle, Math.max(volumeCrew, isoCrew)),
     weight.largestHandlingCrew,
     2 * parallelVehicles,
@@ -586,12 +613,17 @@ export function estimateMovingWork(
   };
   const loadingBase = siteHours(inventory.fromFloor, inventory.fromLift) * densityFactor;
   const unloadingBase = siteHours(inventory.toFloor, inventory.toLift, true) * densityFactor;
-  const tripOverheadHours = (15 / 60) * Math.ceil(requestedTrips / parallelVehicles);
+  const tripOverheadHours =
+    (Math.max(0, Number(labor.tripSetupMinutes) || 0) / 60) *
+    Math.ceil(requestedTrips / parallelVehicles);
+  const handlingCalibration = Math.max(0.5, Number(labor.handlingCalibration) || 1);
   const loadingWithCrew = (crew: number, carpenter: number) =>
-    Math.max(loadingBase / efficiency(crew), carpenter ? dismantlingBySide.from / carpenter : 0) +
+    Math.max(loadingBase / efficiency(crew), carpenter ? dismantlingBySide.from / carpenter : 0) *
+      handlingCalibration +
     tripOverheadHours;
   const unloadingWithCrew = (crew: number, carpenter: number) =>
-    Math.max(unloadingBase / efficiency(crew), carpenter ? dismantlingBySide.to / carpenter : 0) +
+    Math.max(unloadingBase / efficiency(crew), carpenter ? dismantlingBySide.to / carpenter : 0) *
+      handlingCalibration +
     tripOverheadHours;
   let recommendedCrew = minimumCrew;
   let recommendedCarpenters =
@@ -637,8 +669,10 @@ export function estimateMovingWork(
   const legLoaded = routeMinutes ? 10 + routeMinutes : 0;
   const legEmpty = routeMinutes ? 10 + routeMinutes * 0.85 : 0;
   const journeyCount = Math.ceil(requestedTrips / parallelVehicles);
-  const loadingMinutes = roundFive((loadingHours * 60) / journeyCount) * journeyCount;
-  const unloadingMinutes = roundFive((unloadingHours * 60) / journeyCount) * journeyCount;
+  // Keep raw totals for summaries. The reference rounds each trip segment
+  // separately when it builds the schedule below.
+  const loadingMinutes = loadingHours * 60;
+  const unloadingMinutes = unloadingHours * 60;
   const packingOnPreviousDay = packingMinutes > 90;
   const driveMinutes = journeyCount * legLoaded + Math.max(0, journeyCount - 1) * legEmpty;
   const startAt = startMinutes(options.startTime ?? '', labor.defaultStartHour);
@@ -851,6 +885,12 @@ export function estimateMovingWork(
     crew,
     recommendedCrew,
     carpenterCount,
+    totalWeightKg: weight.total,
+    fromIsoDistanceMeters: fromIso.distance,
+    toIsoDistanceMeters: toIso.distance,
+    fromIsoLimitKg: fromIso.limit,
+    toIsoLimitKg: toIso.limit,
+    maxItemWeightKg: weight.max,
     dismantleFromMinutes: recommendedCarpenters
       ? (dismantlingBySide.from / recommendedCarpenters) * 60
       : 0,
@@ -964,6 +1004,8 @@ export function bookingInventorySnapshot(
     estimatedTrips: estimate.trips,
     moverCount: estimate.crew,
     carpenterCount: estimate.carpenterCount,
+    totalWeightKg: estimate.totalWeightKg,
+    maxItemWeightKg: estimate.maxItemWeightKg,
     loadingMinutes: estimate.loadingMinutes,
     unloadingMinutes: estimate.unloadingMinutes,
     packingMinutes: estimate.packingMinutes,

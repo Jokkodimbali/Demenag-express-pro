@@ -686,8 +686,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       ? Math.round((previewSubtotal * Math.min(100, quoteConfig.discount)) / 100)
       : Math.min(previewSubtotal, quoteConfig.discount);
   const previewDiscountLabel = `Remise${quoteConfig.discountType === 'pct' && quoteConfig.discount ? ` (${Math.min(100, quoteConfig.discount)} %)` : ''}${quoteConfig.discountReason.trim() ? ` · ${quoteConfig.discountReason.trim()}` : ''}`;
-  const previewTotal =
-    previewTier === 3 && !quoteConfig.customPrice ? null : previewSubtotal - previewDiscount;
+  const previewTotal = previewSubtotal - previewDiscount;
   const savedQuote = editingBooking?.quotes.filter((quote) => quote.kind === quoteKind).at(-1);
   const canSendQuoteWhatsApp = Boolean(
     whatsappNumber(draft.customerPhone, catalogue?.settings.whatsappCountryCode ?? '221').length >=

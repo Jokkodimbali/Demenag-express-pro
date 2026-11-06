@@ -379,7 +379,6 @@ export function AdminCreateQuoteAside({
               ? 'Enregistrer les modifications'
               : 'Enregistrer'}
       </button>
-      {simulation}
       {!publicRequest && (
         <button
           type="button"
@@ -389,6 +388,7 @@ export function AdminCreateQuoteAside({
           {`Télécharger le PDF ${quoteKind === 'final' ? 'final' : 'provisoire'}`}
         </button>
       )}
+      {simulation}
     </aside>
   );
 }

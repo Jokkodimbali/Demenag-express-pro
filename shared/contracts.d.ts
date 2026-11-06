@@ -186,6 +186,10 @@ export type MovingLaborPlanningSettings = {
   maxMoversPerVehicle: number;
   cubicMetersPerHourPerMover: number;
   pauseMinutes: number;
+  teamVolumePerMover?: number;
+  tripSetupMinutes?: number;
+  handlingCalibration?: number;
+  carryDistanceMeters?: number;
   heat?: number;
   wbgtAdj?: number;
   blanketLengthCm?: number;
@@ -334,6 +338,8 @@ export type BookingInventorySnapshot = {
   estimatedTrips: number;
   moverCount: number;
   carpenterCount: number;
+  totalWeightKg?: number;
+  maxItemWeightKg?: number;
   loadingMinutes: number;
   unloadingMinutes: number;
   packingMinutes: number;
