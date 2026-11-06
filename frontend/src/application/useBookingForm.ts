@@ -29,11 +29,13 @@ export function useBookingForm({
   quoteConfig,
   quoteKind,
   onQuoteSaved,
+  getRentalKit,
 }: {
   mode?: 'booking' | 'admin-quote';
   quoteConfig?: AdminQuoteConfig;
   quoteKind?: Quote['kind'];
   onQuoteSaved?: (booking: Booking) => void;
+  getRentalKit?: () => RentalKitItem[];
 } = {}) {
   const { catalogue, tollPoints, loading, error, reload, api, user, authLoading, draft, setDraft } =
     useApp();
@@ -453,6 +455,7 @@ export function useBookingForm({
             rentalKit:
               quoteConfig?.billingMode === 'driver-rental'
                 ? (quoteConfig.rentalKit ??
+                  getRentalKit?.() ??
                   defaultRentalKit(
                     catalogue?.vehicles.find((vehicle) => vehicle.id === draft.vehicleId) ??
                       booking.vehicle,

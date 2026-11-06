@@ -140,6 +140,11 @@ export function AdminLayout() {
                       key={to}
                       to={to}
                       end
+                      onClick={(event) => {
+                        if (to !== routes.administrationCreateQuote) return;
+                        event.preventDefault();
+                        navigate(to, { state: { resetQuote: crypto.randomUUID() } });
+                      }}
                       className={({ isActive }) => (isActive ? 'active' : '')}
                     >
                       {label}
@@ -189,7 +194,11 @@ export function AdminLayout() {
             <button
               className="admin-new-quote"
               type="button"
-              onClick={() => navigate(routes.administrationCreateQuote)}
+              onClick={() =>
+                navigate(routes.administrationCreateQuote, {
+                  state: { resetQuote: crypto.randomUUID() },
+                })
+              }
             >
               + Nouveau devis
             </button>
@@ -228,16 +237,14 @@ export function AdminLayout() {
                       type="button"
                       className="admin-todo-mark"
                       onClick={() => {
-                        void api
-                          .markAllNotificationsRead()
-                          .then(() =>
-                            setNotifications((current) =>
-                              current.map((item) => ({
-                                ...item,
-                                readAt: item.readAt ?? new Date().toISOString(),
-                              })),
-                            ),
-                          );
+                        void api.markAllNotificationsRead().then(() =>
+                          setNotifications((current) =>
+                            current.map((item) => ({
+                              ...item,
+                              readAt: item.readAt ?? new Date().toISOString(),
+                            })),
+                          ),
+                        );
                         setTodoOpen(false);
                       }}
                     >

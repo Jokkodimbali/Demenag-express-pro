@@ -27,7 +27,11 @@ export function ClaudeSettings() {
           autoComplete="off"
           value={key}
           onChange={(event) => setKey(event.target.value)}
-          placeholder={status.connected ? text.claudeSavedKey : text.claudeKeyPlaceholder}
+          placeholder={
+            status.connected
+              ? `${text.claudeSavedKey} ${status.keyHint ?? ''}`
+              : text.claudeKeyPlaceholder
+          }
           aria-label={text.claudeAccessibleLabel}
         />
         <button

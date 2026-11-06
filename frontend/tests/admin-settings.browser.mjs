@@ -118,6 +118,10 @@ try {
     return response.json();
   });
   expect(publicCatalogue.settings).not.toHaveProperty('googleMapsApiKey');
+  const forbiddenMapsKey = await data.clients.first
+    .get('/api/admin/google-maps-key')
+    .set(integrationHeader);
+  expect(forbiddenMapsKey.status).toBe(401);
   const field = (name) => form.locator(`[name="${name}"]`);
   const persistBlur = async (input, value) => {
     const save = page.waitForResponse(
@@ -626,7 +630,7 @@ try {
   expect((await settingsRow()).tarifManoeuvre).toBe(1234);
   expect(pageErrors).toEqual([]);
   console.log(
-    'Paramètres admin : accès admin, refus non-admin, tarifs véhicule, matrice de manœuvres et 4 scénarios, matrice montage par origine/taille, planification et valeurs par défaut, couvertures, questionnaire pliable/édition/ordre/ajout/suppression, dimensions, ajout/édition/suppression véhicule avec garde chauffeur, paiement et QR, WhatsApp, clé Maps, sauvegarde DB, rechargement, responsive et validation API vérifiés.',
+    'Paramètres admin : accès et refus non-admin, ordre et style des nouveautés de référence, identité PDF, conditions activables et persistées, matériel fourni, tarifs véhicule, matrices, planification, questionnaire pliable, dimensions, véhicules, paiement, WhatsApp, clé Maps séparée du catalogue public et sauvegardée en base, rechargement, responsive et validation API vérifiés.',
   );
 } finally {
   await page.waitForTimeout(1000).catch(() => {});

@@ -45,10 +45,12 @@ export class ClaudeService implements ClaudeUseCases {
     requireAdmin(actor);
     const configuration = await this.repository.find();
     if (!configuration) return { connected: false, model: '', models: [] };
+    const key = await this.repository.apiKey();
     return {
       connected: true,
       model: configuration.model || this.defaultModel(configuration.models),
       models: configuration.models,
+      keyHint: key ? this.keyHint(key) : '',
     };
   }
 
@@ -61,7 +63,7 @@ export class ClaudeService implements ClaudeUseCases {
     if (!models.length) throw new AppError(502, 'Aucun modèle disponible sur ce compte Claude.');
     const model = this.defaultModel(models);
     await this.repository.saveKey(cleanKey, { model, models });
-    return { connected: true, model, models };
+    return { connected: true, model, models, keyHint: this.keyHint(cleanKey) };
   }
 
   async selectModel(actor: User, model: string) {
@@ -164,5 +166,9 @@ export class ClaudeService implements ClaudeUseCases {
 
   private defaultModel(models: ClaudeModel[]) {
     return models.find((model) => /opus/iu.test(model.id))?.id ?? models[0]?.id ?? '';
+  }
+
+  private keyHint(key: string) {
+    return `${key.slice(0, 10)}…${key.slice(-4)}`;
   }
 }

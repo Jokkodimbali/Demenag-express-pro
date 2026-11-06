@@ -44,6 +44,7 @@ export function LoadingSimulation({
   estimate,
   setDraft,
   setQuoteConfig,
+  onPlanNeeds,
 }: {
   draft: Draft;
   vehicles: Vehicle[];
@@ -52,6 +53,7 @@ export function LoadingSimulation({
   estimate?: MovingEstimate | null;
   setDraft: Dispatch<SetStateAction<Draft>>;
   setQuoteConfig: Dispatch<SetStateAction<AdminQuoteConfig>>;
+  onPlanNeeds?: Dispatch<SetStateAction<{ blankets: number; straps: number } | null>>;
 }) {
   const { blanketLengthCm, blanketWidthCm, blanketStock, saveBlanketStock, imageDataUrl } =
     useLoadingSimulationPreferences();
@@ -125,6 +127,18 @@ export function LoadingSimulation({
     });
     return result;
   }, [ready, hasItems, vehicles, draft.inventory, stock, blanketLengthCm, blanketWidthCm]);
+  useEffect(() => {
+    if (!onPlanNeeds) return;
+    const trips = vehiclePlans[draft.vehicleId]?.trips ?? [];
+    onPlanNeeds(
+      trips.length
+        ? {
+            blankets: Math.max(...trips.map((trip) => trip.need || trip.blankets || 0)),
+            straps: Math.max(...trips.map((trip) => trip.straps || 0)),
+          }
+        : null,
+    );
+  }, [draft.vehicleId, onPlanNeeds, vehiclePlans]);
   const trip = plan?.trips[Math.min(tripIndex, plan.trips.length - 1)] ?? null;
   const currentStep = step === null ? null : Math.min(step, trip?.boxes.length ?? 0);
   const currentStepRef = useRef(currentStep);
@@ -252,6 +266,22 @@ export function LoadingSimulation({
 
   return (
     <div className="loading-simulation-wrapper">
+      {plan && (
+        <>
+          <button
+            className="loading-simulation-download"
+            type="button"
+            onClick={() => void downloadPlan()}
+          >
+            {visibleUiText.text56}
+          </button>
+          {pdfError && (
+            <span className="loading-simulation-warning" role="alert">
+              {pdfError}
+            </span>
+          )}
+        </>
+      )}
       <section className="loading-simulation">
         <button
           type="button"
@@ -729,22 +759,6 @@ export function LoadingSimulation({
           </div>
         )}
       </section>
-      {plan && (
-        <>
-          <button
-            className="loading-simulation-download"
-            type="button"
-            onClick={() => void downloadPlan()}
-          >
-            {visibleUiText.text56}
-          </button>
-          {pdfError && (
-            <span className="loading-simulation-warning" role="alert">
-              {pdfError}
-            </span>
-          )}
-        </>
-      )}
     </div>
   );
 }

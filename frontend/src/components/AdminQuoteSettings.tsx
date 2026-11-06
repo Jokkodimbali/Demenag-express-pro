@@ -12,12 +12,11 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
     quoteKind,
     setQuoteKind,
     canCreateFinal,
-    editingBooking,
     setStageError,
     movingEstimate,
   } = model;
   const heatAvailable = Boolean(
-    movingEstimate?.crew && (catalogue.settings.movingLaborPlanning?.heat ?? 0) > 0,
+    movingEstimate?.volume && (catalogue.settings.movingLaborPlanning?.heat ?? 0) > 0,
   );
   const heatActive = heatAvailable && !quoteConfig.heatOff;
 
@@ -108,7 +107,6 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
               type="button"
               aria-pressed={quoteKind === 'final'}
               className={quoteKind === 'final' ? 'active' : ''}
-              disabled={Boolean(editingBooking?.quotes.some((quote) => quote.kind === 'final'))}
               title={
                 !canCreateFinal
                   ? 'Une date est nécessaire pour enregistrer un devis final.'

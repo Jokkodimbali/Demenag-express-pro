@@ -51,7 +51,7 @@ export const referenceSettingsText = {
   claudeConnected: 'Connecté',
   claudeDisconnected: 'Non connecté',
   claudeNoModel: 'modèle non choisi',
-  claudeSavedKey: 'Clé enregistrée',
+  claudeSavedKey: 'Clé enregistrée :',
   claudeKeyPlaceholder: 'sk-ant-…',
   claudeAccessibleLabel: 'Clé API Claude',
   claudeConnecting: 'Connexion…',

@@ -5,8 +5,8 @@ import { uiText } from '../content/reference-ui-text';
 import type { useAdminCreateQuoteModel } from '../application/controllers/useAdminCreateQuoteModel';
 import type { Catalogue, Vehicle } from '../domain/model';
 import type { ReactNode } from 'react';
-import { useState } from 'react';
 import { visibleUiText } from '../content/visible-ui-text';
+import { adminQuoteVehicleText as quoteText } from '../content/admin-quote-vehicle';
 
 type Model = ReturnType<typeof useAdminCreateQuoteModel>;
 
@@ -31,9 +31,6 @@ export function AdminCreateQuoteAside({
     effectiveDistance,
     previewLines,
     quoteConfig,
-    setQuoteConfig,
-    setDraft,
-    movingEstimate,
     previewDiscountLabel,
     previewDiscount,
     previewTotal,
@@ -65,12 +62,14 @@ export function AdminCreateQuoteAside({
     editError,
     editingReservation,
     downloadCurrentQuote,
-    rentalKit,
-    rentalOvertimeAmount,
   } = model;
-  const [newKitItem, setNewKitItem] = useState('');
   return (
     <aside className="admin-quote-aside">
+      <div className="admin-quote-step-heading" data-step="6">
+        <span className="admin-quote-step-number">6</span>
+        <span>{quoteText.stepReview}</span>
+        <i aria-hidden="true" />
+      </div>
       <div className="admin-quote-paper" aria-label={uiText['apercuDuDevisEnDirect']}>
         <header>
           <div className="admin-quote-brand">
@@ -85,7 +84,7 @@ export function AdminCreateQuoteAside({
           </div>
           <div className="admin-quote-paper-title">
             <strong>{quoteKind === 'final' ? 'DEVIS FINAL' : 'DEVIS PROVISOIRE'}</strong>
-            <span>{uiText['brouillon']}</span>
+            <span>{editingReservation ? uiText['brouillon'] : 'Nouvelle réservation'}</span>
           </div>
         </header>
         <div className="admin-quote-stripe">
@@ -213,303 +212,6 @@ export function AdminCreateQuoteAside({
             : `Devis temporaire, calculé sur ${quoteConfig.trips} aller(s)-retour(s) estimé(s). Le transport est facturé par aller-retour effectué : le devis final, basé sur le nombre réel d'allers-retours, sera envoyé par Demenag Express à la fin du déménagement.`}
         </p>
       </div>
-      {!publicRequest && quoteConfig.billingMode === 'complete' && (
-        <section className="admin-quote-billing admin-quote-card" aria-label="Facturation">
-          <h3>FACTURATION</h3>
-          <div
-            className="admin-quote-billing-options"
-            role="group"
-            aria-label="Mode de facturation"
-          >
-            <button
-              type="button"
-              className="active"
-              aria-pressed="true"
-              onClick={() => setQuoteConfig((current) => ({ ...current, billingMode: 'complete' }))}
-            >
-              Déménagement complet
-            </button>
-            <button
-              type="button"
-              aria-pressed="false"
-              onClick={() =>
-                setQuoteConfig((current) => ({ ...current, billingMode: 'driver-rental' }))
-              }
-            >
-              Location avec chauffeur
-            </button>
-          </div>
-        </section>
-      )}
-      {!publicRequest && quoteConfig.billingMode === 'driver-rental' && (
-        <section className="admin-quote-rental admin-quote-card" aria-label="Facturation">
-          <h3>FACTURATION</h3>
-          <div
-            className="admin-quote-rental-details"
-            aria-label="Location avec chauffeur et matériel fourni"
-          >
-            <div className="admin-quote-rental-heading">
-              <strong>Location avec chauffeur · matériel fourni</strong>
-              {quoteConfig.rentalKit !== null && (
-                <button
-                  type="button"
-                  onClick={() => setQuoteConfig((current) => ({ ...current, rentalKit: null }))}
-                >
-                  Liste conseillée
-                </button>
-              )}
-            </div>
-            <p>
-              Le client fournit ses manœuvres. Demenag Express fournit le matériel ci-dessous, le
-              plan de chargement et le planning.
-            </p>
-            <div className="admin-quote-rental-items">
-              {rentalKit.map((item, index) => (
-                <div className="admin-quote-rental-item" key={`${item.id}-${index}`}>
-                  {item.image && <img src={item.image} alt="" />}
-                  <span>{item.label}</span>
-                  <button
-                    type="button"
-                    aria-label={`Diminuer ${item.label}`}
-                    disabled={item.quantity <= 0}
-                    onClick={() =>
-                      setQuoteConfig((current) => ({
-                        ...current,
-                        rentalKit: rentalKit.map((entry, itemIndex) =>
-                          itemIndex === index
-                            ? { ...entry, quantity: Math.max(0, entry.quantity - 1) }
-                            : entry,
-                        ),
-                      }))
-                    }
-                  >
-                    −
-                  </button>
-                  <strong>{item.quantity}</strong>
-                  <button
-                    type="button"
-                    aria-label={`Augmenter ${item.label}`}
-                    onClick={() =>
-                      setQuoteConfig((current) => ({
-                        ...current,
-                        rentalKit: rentalKit.map((entry, itemIndex) =>
-                          itemIndex === index ? { ...entry, quantity: entry.quantity + 1 } : entry,
-                        ),
-                      }))
-                    }
-                  >
-                    +
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`Retirer ${item.label}`}
-                    onClick={() =>
-                      setQuoteConfig((current) => ({
-                        ...current,
-                        rentalKit: rentalKit.filter((_, itemIndex) => itemIndex !== index),
-                      }))
-                    }
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-            <div className="admin-quote-rental-add">
-              <input
-                value={newKitItem}
-                onChange={(event) => setNewKitItem(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key !== 'Enter') return;
-                  event.preventDefault();
-                  addKitItem();
-                }}
-                placeholder="Ajouter du matériel (ex. diable, carton)"
-                aria-label="Ajouter du matériel fourni"
-              />
-              <button type="button" onClick={addKitItem}>
-                Ajouter
-              </button>
-            </div>
-            <div className="admin-quote-rental-summary">
-              <div>
-                <span>MANŒUVRES À FOURNIR PAR LE CLIENT</span>
-                <strong>
-                  {movingEstimate?.crew ?? 0} manœuvre{(movingEstimate?.crew ?? 0) === 1 ? '' : 's'}
-                </strong>
-              </div>
-              <div>
-                <span>PLANNING PRÉVISIONNEL</span>
-                <strong>
-                  {movingEstimate
-                    ? `${movingEstimate.startTime} → ${movingEstimate.endTime} (${Math.floor(movingEstimate.totalMinutes / 60)} h${movingEstimate.totalMinutes % 60 ? ` ${String(movingEstimate.totalMinutes % 60).padStart(2, '0')}` : ''})`
-                    : 'Remplissez l’inventaire'}
-                </strong>
-              </div>
-            </div>
-            <div className="admin-quote-rental-overtime">
-              <strong>
-                Au-delà de la fin prévue :{' '}
-                {money(catalogue.settings.rentalOvertimeHourlyRate ?? 10000)} / heure. Ce rappel
-                figure sur le devis du client.
-              </strong>
-              <span>Dépassement constaté (devis final)</span>
-              <button
-                type="button"
-                disabled={(quoteConfig.overtimeMinutes ?? 0) < 5}
-                onClick={() =>
-                  setQuoteConfig((current) => ({
-                    ...current,
-                    overtimeMinutes: Math.max(0, (current.overtimeMinutes ?? 0) - 5),
-                  }))
-                }
-              >
-                −
-              </button>
-              <b>{quoteConfig.overtimeMinutes ?? 0} min</b>
-              <button
-                type="button"
-                onClick={() =>
-                  setQuoteConfig((current) => ({
-                    ...current,
-                    overtimeMinutes: (current.overtimeMinutes ?? 0) + 5,
-                  }))
-                }
-              >
-                +
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  setQuoteConfig((current) => ({
-                    ...current,
-                    overtimeMinutes: (current.overtimeMinutes ?? 0) + 30,
-                  }))
-                }
-              >
-                +30 min
-              </button>
-              <strong>{money(rentalOvertimeAmount)}</strong>
-            </div>
-          </div>
-        </section>
-      )}
-      {!publicRequest && (
-        <section
-          className="admin-quote-team-calculation admin-quote-card"
-          aria-label="Équipe et calcul"
-        >
-          <h3>ÉQUIPE ET CALCUL</h3>
-          <p>
-            {quoteConfig.calcMode === 'manual'
-              ? 'Vous fixez les manœuvres, allers-retours et durée de trajet. L’inventaire ne les modifie plus. Le véhicule reste libre.'
-              : 'L’inventaire calcule les allers-retours et conseille le nombre de manœuvres. Le véhicule reste libre.'}
-          </p>
-          <div className="admin-quote-team-values">
-            <div className="admin-quote-calculation-value">
-              <span>Manœuvres</span>
-              <div>
-                <button
-                  type="button"
-                  aria-label="Réduire le nombre de manœuvres"
-                  disabled={(draft.options.labour || movingEstimate?.crew || 1) <= 1}
-                  onClick={() => updateCrew(-1)}
-                >
-                  −
-                </button>
-                <strong>{movingEstimate?.crew || draft.options.labour || 1}</strong>
-                <button
-                  type="button"
-                  aria-label="Augmenter le nombre de manœuvres"
-                  disabled={
-                    (draft.options.labour || movingEstimate?.crew || 1) >=
-                    catalogue.settings.maxOptions
-                  }
-                  onClick={() => updateCrew(1)}
-                >
-                  +
-                </button>
-              </div>
-            </div>
-            {quoteConfig.calcMode === 'manual' && (
-              <>
-                <div className="admin-quote-calculation-value">
-                  <span>Allers-retours</span>
-                  <div>
-                    <button
-                      type="button"
-                      aria-label="Réduire les allers-retours"
-                      disabled={quoteConfig.trips <= 1}
-                      onClick={() =>
-                        setQuoteConfig((current) => ({
-                          ...current,
-                          trips: Math.max(1, current.trips - 1),
-                        }))
-                      }
-                    >
-                      −
-                    </button>
-                    <strong>{quoteConfig.trips}</strong>
-                    <button
-                      type="button"
-                      aria-label="Augmenter les allers-retours"
-                      disabled={quoteConfig.trips >= Math.min(30, catalogue.settings.maxTrips)}
-                      onClick={() =>
-                        setQuoteConfig((current) => ({
-                          ...current,
-                          trips: Math.min(30, catalogue.settings.maxTrips, current.trips + 1),
-                        }))
-                      }
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-                {Boolean(model.route) && (
-                  <div className="admin-quote-calculation-value">
-                    <span>Trajet (aller)</span>
-                    <div>
-                      <button
-                        type="button"
-                        aria-label="Réduire la durée du trajet"
-                        disabled={quoteConfig.legMinutes <= 5}
-                        onClick={() =>
-                          setQuoteConfig((current) => ({
-                            ...current,
-                            legMinutes: Math.max(5, (current.legMinutes || 10) - 5),
-                          }))
-                        }
-                      >
-                        −
-                      </button>
-                      <strong>{quoteConfig.legMinutes || 10} min</strong>
-                      <button
-                        type="button"
-                        aria-label="Augmenter la durée du trajet"
-                        disabled={quoteConfig.legMinutes >= 600}
-                        onClick={() =>
-                          setQuoteConfig((current) => ({
-                            ...current,
-                            legMinutes: Math.min(600, (current.legMinutes || 10) + 5),
-                          }))
-                        }
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-          {quoteConfig.calcMode === 'manual' && movingEstimate && (
-            <span className="admin-quote-team-advice">
-              Conseillé par l’inventaire : {movingEstimate.recommendedCrew} manœuvres ·{' '}
-              {movingEstimate.trips} aller(s)-retour(s)
-            </span>
-          )}
-        </section>
-      )}
       {!publicRequest && (
         <section className="admin-quote-stage" aria-label={uiText['etapeActuelleDuDevis']}>
           <span className="admin-quote-stage-label">
@@ -655,7 +357,7 @@ export function AdminCreateQuoteAside({
         </p>
       )}
       <button
-        className={`button primary admin-quote-submit${publicRequest ? ' reference-request-submit' : ''}`}
+        className={`button primary admin-quote-submit${publicRequest ? ' reference-request-submit' : ' admin-quote-save-bar-submit'}`}
         disabled={
           submitting ||
           estimating ||
@@ -689,33 +391,4 @@ export function AdminCreateQuoteAside({
       )}
     </aside>
   );
-
-  function addKitItem() {
-    const label = newKitItem.trim();
-    if (!label) return;
-    setQuoteConfig((current) => ({
-      ...current,
-      billingMode: 'driver-rental',
-      rentalKit: [...rentalKit, { id: `custom-${crypto.randomUUID()}`, label, quantity: 1 }],
-    }));
-    setNewKitItem('');
-  }
-
-  function updateCrew(delta: number) {
-    setQuoteConfig((current) => ({ ...current, calcMode: 'manual' }));
-    setDraft((current) => {
-      const crew = Math.max(
-        1,
-        Math.min(
-          catalogue.settings.maxOptions,
-          (current.options.labour || movingEstimate?.crew || 1) + delta,
-        ),
-      );
-      return {
-        ...current,
-        options: { ...current.options, labour: crew },
-        inventory: { ...current.inventory, crew },
-      };
-    });
-  }
 }

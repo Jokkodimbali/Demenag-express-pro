@@ -28,6 +28,7 @@ export function defaultRentalKit(
   vehicle: Vehicle,
   crew: number,
   configuration: RentalKitConfigurationItem[] = defaultRentalKitConfiguration,
+  planNeeds?: { blankets: number; straps: number } | null,
 ): RentalKitItem[] {
   const movers = Math.max(1, Math.round(crew) || 2);
   const items = configuration.length ? configuration : defaultRentalKitConfiguration;
@@ -36,13 +37,13 @@ export function defaultRentalKit(
       item.rule === 'vehicle' || item.rule === 'one'
         ? 1
         : item.rule === 'blankets'
-          ? Math.max(4, movers * 2)
+          ? planNeeds?.blankets || Math.max(4, movers * 2)
           : item.rule === 'liftingStraps'
             ? Math.max(1, Math.ceil(movers / 2))
             : item.rule === 'gloves'
               ? movers
               : item.rule === 'tieDownStraps'
-                ? 4
+                ? Math.max(4, planNeeds?.straps || 4)
                 : Math.max(0, item.quantity ?? 1);
     return {
       id: item.id,

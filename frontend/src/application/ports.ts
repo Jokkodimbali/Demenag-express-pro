@@ -56,7 +56,12 @@ export interface GoogleMapsSettingsRepository {
   updateGoogleMapsApiKey(value: string): Promise<void>;
 }
 export type ClaudeModel = { id: string; name: string };
-export type ClaudeSettingsStatus = { connected: boolean; model: string; models: ClaudeModel[] };
+export type ClaudeSettingsStatus = {
+  connected: boolean;
+  model: string;
+  models: ClaudeModel[];
+  keyHint?: string;
+};
 export type ClaudeCompletionInput = {
   system?: string;
   prompt?: string;

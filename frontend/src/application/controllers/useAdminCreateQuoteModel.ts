@@ -6,6 +6,7 @@ import { useBookingCommands } from '../../application/controllers/useBookingComm
 import {
   readAdminQuoteDraft,
   saveAdminQuoteDraft,
+  clearAdminQuoteDraft,
   type AdminQuoteConfig,
 } from '../../application/admin-quote-draft-storage';
 import {
@@ -48,7 +49,11 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const calendarAppointment = (
     location.state as { calendarAppointment?: { date: string; time: string } } | null
   )?.calendarAppointment;
+  const resetQuoteToken = (location.state as { resetQuote?: string } | null)?.resetQuote;
   const editingReservation = new URLSearchParams(location.search).has('modifier');
+  const resetAdminQuote = Boolean(
+    resetQuoteToken && !editingReservation && !initialClient && !calendarAppointment,
+  );
   const startNewRequest = Boolean(
     publicRequest &&
     !editingReservation &&
@@ -73,8 +78,13 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     overtimeMinutes: 0,
     rentalKit: null,
   });
+  const [simulationNeeds, setSimulationNeeds] = useState<{
+    blankets: number;
+    straps: number;
+  } | null>(null);
   const [questionnaireOpen, setQuestionnaireOpen] = useState(false);
   const [quoteKind, setQuoteKind] = useState<Quote['kind']>('provisional');
+  const [resetVersion, setResetVersion] = useState(0);
   const [pdfError, setPdfError] = useState('');
   const [stageError, setStageError] = useState('');
   const [reminderNotice, setReminderNotice] = useState('');
@@ -120,6 +130,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     mode: publicRequest && user?.role !== 'admin' ? 'booking' : 'admin-quote',
     quoteConfig,
     quoteKind,
+    getRentalKit: () => rentalKit,
     onQuoteSaved: (booking) => {
       if (!sendWhatsAppAfterSave.current) return;
       sendWhatsAppAfterSave.current = false;
@@ -188,6 +199,42 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     editError,
   } = state;
   useEffect(() => {
+    if (!resetAdminQuote) return;
+    clearAdminQuoteDraft();
+    setDraft(blankDraft(appCatalogue ?? undefined));
+    setQuoteConfig({
+      trips: 1,
+      calcMode: 'auto',
+      legMinutes: 0,
+      trafficOff: false,
+      heatOff: false,
+      heatRest: 0,
+      discount: 0,
+      discountType: 'fcfa',
+      discountReason: '',
+      customPrice: null,
+      labourUnitPriceOverride: null,
+      billingMode: 'complete',
+      overtimeMinutes: 0,
+      rentalKit: null,
+    });
+    setTollLines([]);
+    setQuoteKind('provisional');
+    setQuestionnaireOpen(false);
+    setSimulationNeeds(null);
+    setStageError('');
+    setPdfError('');
+    setReminderNotice('');
+    trafficRequest.current += 1;
+    setTraffic(null);
+    setTrafficBusy(false);
+    setTrafficError(false);
+    setOpenQuoteSections({ client: false, route: false, tolls: false, options: false });
+    setResetVersion((current) => current + 1);
+    window.scrollTo({ top: 0 });
+    navigate(location.pathname, { replace: true, state: null });
+  }, [appCatalogue, location.pathname, navigate, resetAdminQuote, setDraft, setTollLines]);
+  useEffect(() => {
     if (!startNewRequest || requestInitialized.current) return;
     requestInitialized.current = true;
     setDraft((current) => ({
@@ -240,7 +287,8 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
           : (draft.inventory.stairs ?? ('' as const)),
   };
   useEffect(() => {
-    const saved = editingReservation || publicRequest ? null : readAdminQuoteDraft();
+    const saved =
+      editingReservation || publicRequest || resetAdminQuote ? null : readAdminQuoteDraft();
     if (saved) {
       setDraft(saved.draft);
       setQuoteConfig(saved.quoteConfig);
@@ -248,7 +296,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     }
     restoredDraft.current = true;
     skipInitialSave.current = true;
-  }, [editingReservation, publicRequest, setDraft, setTollLines]);
+  }, [editingReservation, publicRequest, resetAdminQuote, setDraft, setTollLines]);
 
   useEffect(() => {
     if (!initialClient) return;
@@ -538,6 +586,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
           selected,
           movingEstimate?.crew ?? draft.options.labour,
           catalogue?.settings.rentalKitConfiguration,
+          simulationNeeds,
         )
       : []);
   const rentalOvertimeAmount =
@@ -849,6 +898,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     initialClient,
     editingReservation,
     startNewRequest,
+    resetVersion,
     requestInitialized,
     restoredDraft,
     skipInitialSave,
@@ -944,6 +994,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     inventoryMenuOptions,
     previewLines,
     rentalKit,
+    setSimulationNeeds,
     rentalOvertimeAmount,
     previewSubtotal,
     previewDiscount,

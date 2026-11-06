@@ -2,6 +2,142 @@
   color: #fff;
   position: relative;
 }
+.admin-quote-step-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding-top: 6px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.admin-quote-step-number {
+  display: flex;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #f6d73c;
+  color: #1e2023;
+  font-size: 14px;
+  letter-spacing: 0;
+}
+.admin-quote-step-heading i {
+  flex: 1;
+  height: 1px;
+  background: #3b4046;
+}
+.admin-quote-vehicle-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.admin-quote-vehicle-label {
+  color: #aeb4bb;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+.admin-quote-vehicle-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: 10px;
+}
+.admin-quote-vehicle-choices button {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 2px solid #3b4046;
+  border-radius: 14px;
+  background: #1e2023;
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+.admin-quote-vehicle-choices button.active {
+  border-color: #f6d73c;
+  background: #333025;
+}
+.admin-quote-vehicle-choices-compact {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.admin-quote-vehicle-choices-compact button {
+  min-height: 42px;
+  justify-content: center;
+  padding: 8px 4px;
+  border-width: 1.5px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+}
+.admin-quote-vehicle-choices img {
+  width: 76px;
+  max-width: 40%;
+  height: 54px;
+  object-fit: contain;
+}
+.admin-quote-vehicle-choices button > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+.admin-quote-vehicle-choices strong {
+  font-size: 15px;
+}
+.admin-quote-vehicle-choices small {
+  color: #aeb4bb;
+  font-size: 13px;
+}
+.admin-quote-vehicle-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #3b4046;
+  border-radius: 14px;
+  background: #1e2023;
+}
+.admin-quote-vehicle-detail > strong {
+  color: #f6d73c;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+}
+.admin-quote-vehicle-detail .reference-vehicle-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.admin-quote-vehicle-detail .reference-vehicle-facts span {
+  padding: 5px 9px;
+  border-radius: 8px;
+  background: #30343a;
+  font-size: 12px;
+}
+.admin-quote-vehicle-detail .reference-vehicle-facts .volume {
+  background: #f6d73c;
+  color: #1e2023;
+  font-weight: 800;
+}
+.admin-quote-vehicle-rates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  color: #aeb4bb;
+  font-size: 12px;
+}
+.admin-quote-vehicle-rates strong {
+  color: #fff;
+}
 .reference-request-page {
   width: 100%;
   max-width: 1320px;
@@ -151,6 +287,41 @@
   color: #1e2023;
   font-size: 16px;
   box-shadow: 0 6px 20px #0007;
+}
+.admin-quote-save-bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1300;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  min-height: 72px;
+  padding: 10px clamp(18px, 3vw, 32px);
+  border-top: 1px solid #3b4046;
+  background: rgb(30 32 35 / 96%);
+  backdrop-filter: blur(10px);
+}
+.admin-quote-save-bar > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.admin-quote-save-bar small {
+  color: #aeb4bb;
+  font-size: 11px;
+  font-weight: 700;
+}
+.admin-quote-save-bar strong {
+  color: #f6d73c;
+  font-size: 19px;
+  font-weight: 900;
+}
+.admin-quote-save-bar .admin-quote-submit {
+  position: absolute;
+  right: clamp(18px, 3vw, 32px);
+  bottom: 10px;
 }
 .reference-toll-point-host {
   border: 0;
@@ -685,7 +856,24 @@
   width: 100%;
   max-width: 1320px;
   margin-inline: auto;
-  padding: clamp(20px, 5vw, 40px) 14px 64px;
+  padding: clamp(20px, 5vw, 40px) 14px 104px;
+}
+.admin-workspace:has(.admin-quote-page) {
+  padding-bottom: 104px;
+}
+.admin-quote-save-bar-submit {
+  bottom: 10px;
+  z-index: 1401;
+}
+.admin-quote-save-bar-submit:hover {
+  transform: translateY(-1px);
+}
+.admin-quote-save-bar-submit:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+.admin-quote-save-bar-submit.reference-request-submit {
+  bottom: clamp(14px, 3vw, 28px);
 }
 .admin-workspace:has(.admin-quote-page) .admin-reference-heading {
   flex-direction: column;
