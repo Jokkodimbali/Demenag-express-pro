@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useBookingForm } from '../../application/useBookingForm';
 import { blankDraft, useApp } from '../../application/context';
@@ -13,14 +13,15 @@ import {
   referenceInventoryNote,
   referenceMovingEstimateNote,
 } from '../../domain/reference-inventory-note';
-import { referenceTierLabels, today } from '../../domain/format';
+import { referenceTierLabels } from '../../application/presentation/format';
+import { today } from '../../domain/date';
 import {
   assemblyUnitPrice,
   labourUnitPrice,
   labourUnitPriceOverrideFromQuote,
 } from '../../domain/labour-price';
 import { inventoryAssemblyLines, inventoryAssemblyOptions } from '../../domain/inventory-assembly';
-import { googleTrafficDuration } from '../../application/google-maps-traffic';
+import { useAdminQuoteTraffic } from './useAdminQuoteTraffic';
 import type { Booking, Options, Price, Quote } from '../../domain/model';
 import { bookingInventorySnapshot, estimateMovingWork } from '../../domain/moving-estimate';
 import { defaultClientQuestions } from '../../domain/questionnaire';
@@ -31,15 +32,6 @@ import {
   whatsappPaymentLine,
 } from '../../application/services/whatsapp-templates';
 import { defaultRentalKit } from '../../domain/rental-kit';
-
-const trafficDuration = (minutes: number) => {
-  const rounded = Math.max(5, Math.round(minutes / 5) * 5);
-  const hours = Math.floor(rounded / 60);
-  const remaining = rounded % 60;
-  return hours
-    ? `${hours} h${remaining ? ` ${String(remaining).padStart(2, '0')}` : ''}`
-    : `${remaining} min`;
-};
 
 export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const location = useLocation();
@@ -100,35 +92,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     tolls: false,
     options: false,
   });
-  const [traffic, setTraffic] = useState<{
-    minutes: number;
-    freeMinutes: number;
-    fetchedAt: number;
-    future: boolean;
-  } | null>(null);
-  const [trafficBusy, setTrafficBusy] = useState(false);
-  const [trafficError, setTrafficError] = useState(false);
-  const trafficRequest = useRef(0);
   const { exportQuote, catalogue: appCatalogue, user, api } = useApp();
-  const [googleMapsKey, setGoogleMapsKey] = useState('');
-  useEffect(() => {
-    if (user?.role !== 'admin' || publicRequest) {
-      setGoogleMapsKey('');
-      return;
-    }
-    let active = true;
-    void api
-      .googleMapsApiKey()
-      .then((value) => {
-        if (active) setGoogleMapsKey(value);
-      })
-      .catch(() => {
-        if (active) setGoogleMapsKey('');
-      });
-    return () => {
-      active = false;
-    };
-  }, [api, publicRequest, user?.role]);
   const bookingCommands = useBookingCommands();
   const state = useBookingForm({
     mode: publicRequest && user?.role !== 'admin' ? 'booking' : 'admin-quote',
@@ -202,6 +166,22 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     editLoading,
     editError,
   } = state;
+  const route = draft.route ?? undefined;
+  const {
+    googleMapsKey,
+    traffic,
+    trafficBusy,
+    trafficError,
+    trafficDuration,
+    refreshTraffic,
+    trafficDelay,
+    trafficColor,
+  } = useAdminQuoteTraffic({
+    enabled: user?.role === 'admin' && !publicRequest,
+    route,
+    date: draft.date,
+    timeSlot: draft.timeSlot,
+  });
   useEffect(() => {
     if (!resetAdminQuote) return;
     void clearAdminQuoteDraft(api);
@@ -229,10 +209,6 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     setStageError('');
     setPdfError('');
     setReminderNotice('');
-    trafficRequest.current += 1;
-    setTraffic(null);
-    setTrafficBusy(false);
-    setTrafficError(false);
     setOpenQuoteSections({ client: false, route: false, tolls: false, options: false });
     setResetVersion((current) => current + 1);
     window.scrollTo({ top: 0 });
@@ -403,71 +379,10 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     draft.fromAddress,
     draft.toAddress,
   );
-  const route = draft.route;
-  const refreshTraffic = useCallback(async () => {
-    if (!googleMapsKey || !route) return;
-    const request = ++trafficRequest.current;
-    const timeMatch = /^(\d{1,2}):(\d{2})$/u.exec(draft.timeSlot);
-    const departure =
-      draft.date && timeMatch
-        ? new Date(`${draft.date}T${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}:00`)
-        : undefined;
-    const future = Boolean(departure && departure.getTime() > Date.now() + 60000);
-    setTrafficBusy(true);
-    setTrafficError(false);
-    try {
-      const result = await googleTrafficDuration(route.from, route.to, googleMapsKey, departure);
-      if (request === trafficRequest.current) {
-        setTraffic(
-          result
-            ? {
-                minutes: result.minutes,
-                freeMinutes: result.freeMinutes,
-                fetchedAt: result.fetchedAt,
-                future,
-              }
-            : null,
-        );
-        setTrafficError(!result);
-      }
-    } catch {
-      if (request === trafficRequest.current) {
-        setTraffic(null);
-        setTrafficError(true);
-      }
-    } finally {
-      if (request === trafficRequest.current) setTrafficBusy(false);
-    }
-  }, [draft.date, draft.timeSlot, googleMapsKey, route]);
-  useEffect(() => {
-    if (!googleMapsKey || !route) {
-      trafficRequest.current++;
-      setTraffic(null);
-      setTrafficBusy(false);
-      setTrafficError(false);
-      return;
-    }
-    setTraffic(null);
-    void refreshTraffic();
-    const interval = window.setInterval(() => void refreshTraffic(), 300000);
-    return () => {
-      window.clearInterval(interval);
-    };
-  }, [googleMapsKey, route, refreshTraffic]);
   const pricingRoute =
     draft.route && draft.distanceKmOverride != null
       ? { ...draft.route, distanceKm: draft.distanceKmOverride }
       : draft.route;
-  const trafficDelay = traffic ? traffic.minutes - traffic.freeMinutes : 0;
-  const trafficColor = !googleMapsKey
-    ? '#6B737B'
-    : !traffic
-      ? '#AEB4BB'
-      : trafficDelay > 15
-        ? '#FF5A5F'
-        : trafficDelay > 5
-          ? '#FFD23F'
-          : '#3DDC84';
   const labourPrice = catalogue
     ? labourUnitPrice(catalogue.settings, {
         fromFloor: draft.inventory.fromFloor,
@@ -972,12 +887,8 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     setOpenQuoteSections,
     googleMapsKey,
     traffic,
-    setTraffic,
     trafficBusy,
-    setTrafficBusy,
     trafficError,
-    setTrafficError,
-    trafficRequest,
     exportQuote,
     appCatalogue,
     user,

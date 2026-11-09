@@ -11,7 +11,7 @@ import {
 import { quoteNotificationUrl } from '../application/services/quote-notification';
 import { clientIdentifier } from '../application/services/client-summary';
 import { messages } from '../content/fr';
-import { dateLabel, money } from '../domain/format';
+import { dateLabel, money } from '../application/presentation/format';
 import type { Booking, Vehicle } from '../domain/model';
 import { useApp } from '../application/context';
 

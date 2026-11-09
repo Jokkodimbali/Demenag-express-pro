@@ -1,6 +1,6 @@
 import { visibleUiText } from '../content/visible-ui-text';
 import { useState } from 'react';
-import { money } from '../domain/format';
+import { money } from '../application/presentation/format';
 import { adminQuoteVehicleText as t } from '../content/admin-quote-vehicle';
 import type { useAdminCreateQuoteModel } from '../application/controllers/useAdminCreateQuoteModel';
 import type { Catalogue } from '../domain/model';

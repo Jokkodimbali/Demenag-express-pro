@@ -4,7 +4,7 @@ import { liveBookingPrice } from '../application/services/live-booking-price';
 import { uiText } from '../content/reference-ui-text';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { money } from '../domain/format';
+import { money } from '../application/presentation/format';
 import { isUndatedBookingForMonth } from '../domain/calendar';
 import type { Booking } from '../domain/model';
 import type { Driver, Vehicle } from '../../../shared/contracts.js';

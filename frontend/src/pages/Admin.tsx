@@ -10,7 +10,7 @@ import { BookingCard } from '../components/BookingCard';
 import { ConfirmationDialog } from '../components/ConfirmationDialog';
 import { useApp } from '../application/context';
 import { messages } from '../content/fr';
-import { money } from '../domain/format';
+import { money } from '../application/presentation/format';
 import type { Booking } from '../domain/model';
 import { bookingReminder } from '../application/services/booking-reminder';
 import { usePagination } from '../application/usePagination';

@@ -1,4 +1,4 @@
-import { money } from '../../domain/format';
+import { money } from '../../application/presentation/format';
 import type { Booking, Quote } from '../../domain/model';
 import type { Settings } from '../../domain/model';
 import { whatsappUrl } from './whatsapp';

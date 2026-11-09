@@ -7,7 +7,7 @@ import { FleetVehicleDimensions } from '../components/FleetVehicleDimensions';
 import { Modal } from '../components/Modal';
 import { fields } from '../content/forms/fleet';
 import { messages } from '../content/fr';
-import { money } from '../domain/format';
+import { money } from '../application/presentation/format';
 import type { Vehicle } from '../domain/model';
 import { vehicleCapacity } from '../domain/vehicle-capacity';
 import { VehiclePhotoEditor } from '../components/VehiclePhotoEditor';

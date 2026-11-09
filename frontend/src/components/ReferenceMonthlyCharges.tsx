@@ -5,7 +5,7 @@ import {
   referenceFixedChargeKey,
   type FinanceMonth,
 } from '../domain/accounting-forecast';
-import { money } from '../domain/format';
+import { money } from '../application/presentation/format';
 import { accountingFinanceText as text } from '../content/accounting-finance';
 
 type FixedKey = 'sal' | 'vid' | 'ass' | 'amo' | 'anx' | 'res' | 'det' | 'leg';

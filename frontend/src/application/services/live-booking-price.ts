@@ -5,7 +5,7 @@ import {
   labourUnitPrice,
   labourUnitPriceOverrideFromQuote,
 } from '../../domain/labour-price';
-import { referenceTierLabels } from '../../domain/format';
+import { referenceTierLabels } from '../../application/presentation/format';
 
 /** Reprice an open estimate against today's catalogue; completed moves remain historical. */
 export function liveBookingPrice(

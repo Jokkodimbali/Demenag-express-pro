@@ -3,7 +3,7 @@ import { addPdfImage, cleanPdfText, pdfParagraph } from './quote-pdf-render';
 import { drawQuoteSignature } from './quote-pdf-signature';
 import { drawQuoteTerms } from './quote-pdf-terms';
 import { messages } from '../content/fr';
-import { dateLabel, money, referenceTierLabels } from '../domain/format';
+import { dateLabel, money, referenceTierLabels } from '../application/presentation/format';
 import { referenceDwellingVolume } from '../domain/reference-inventory-note';
 import { defaultQuoteTerms } from '../domain/quote-terms';
 import type { Booking, Quote, Settings } from '../domain/model';

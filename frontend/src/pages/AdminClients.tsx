@@ -14,7 +14,7 @@ import { usePagination } from '../application/usePagination';
 import { Modal } from '../components/Modal';
 import { Pagination } from '../components/Pagination';
 import { pageSizes } from '../config/pagination';
-import { money } from '../domain/format';
+import { money } from '../application/presentation/format';
 import type { Booking, User } from '../domain/model';
 import { routes } from '../routing/routes';
 import { contactVcard } from '../domain/contact-vcard';

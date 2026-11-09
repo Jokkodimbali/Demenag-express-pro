@@ -1,5 +1,5 @@
 import { visibleUiText } from '../content/visible-ui-text';
-import { money } from '../domain/format';
+import { money } from '../application/presentation/format';
 import type { MovingEstimate } from '../domain/moving-estimate';
 import type { Quote } from '../domain/model';
 

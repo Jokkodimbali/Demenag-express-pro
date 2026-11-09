@@ -72,6 +72,17 @@ async function visit(directory) {
         errors.push(`${file}: adaptateur concret dans une vue : ${specifier}.`);
       const isDomain = file.startsWith('backend/src/domain/');
       const isApplication = file.startsWith('backend/src/application/');
+      const isFrontendDomain = file.startsWith('frontend/src/domain/');
+      const isFrontendApplication = file.startsWith('frontend/src/application/');
+      if (
+        isFrontendDomain &&
+        /^frontend\/src\/(application|adapters|components|pages|config|content|routing)\//.test(
+          target,
+        )
+      )
+        errors.push(`${file}: le domaine frontend ne doit pas dépendre de ${specifier}.`);
+      if (isFrontendApplication && /^frontend\/src\/(components|pages)\//.test(target))
+        errors.push(`${file}: l’application frontend ne doit pas dépendre des vues ${specifier}.`);
       if (
         (isDomain || isApplication) &&
         /(^|\/)(adapters|generated|composition)(\/|\.)/.test(target)

@@ -1,7 +1,7 @@
 import { uiText } from '../content/reference-ui-text';
 import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
-import { money } from '../domain/format';
+import { money } from '../application/presentation/format';
 import { useApp } from '../application/context';
 import type { TollPoint } from '../domain/model';
 import { tollPrice } from '../domain/toll-prices';

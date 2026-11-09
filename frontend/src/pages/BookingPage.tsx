@@ -11,7 +11,7 @@ import { normalizedClientPhone } from '../application/services/client-summary';
 import { ScheduleOptions } from '../components/booking/ScheduleOptions';
 import { VehicleSelector } from '../components/booking/VehicleSelector';
 import { messages } from '../content/fr';
-import { money } from '../domain/format';
+import { money } from '../application/presentation/format';
 import { routes } from '../routing/routes';
 import { bookingInventorySnapshot, estimateMovingWork } from '../domain/moving-estimate';
 import type { VehicleTransition } from '../domain/vehicle-transition';

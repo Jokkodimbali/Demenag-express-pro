@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { messages } from '../content/fr';
-import { referenceTierLabels, tierLabels } from '../domain/format';
+import { referenceTierLabels, tierLabels } from './presentation/format';
 import type { Booking, BookingInput, Options, Price, Quote } from '../domain/model';
 import { inventoryNote } from '../domain/inventory';
 import { tollPrice } from '../domain/toll-prices';

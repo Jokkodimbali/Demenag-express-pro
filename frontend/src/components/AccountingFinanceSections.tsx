@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ChevronDown, Download, Plus, Trash2 } from 'lucide-react';
 import type { AccountingFinanceConfiguration, Booking } from '../domain/model';
 import { inventoryItems } from '../domain/inventory';
-import { money } from '../domain/format';
+import { money } from '../application/presentation/format';
 import {
   accountingItemKey,
   accountingMenuPrice,

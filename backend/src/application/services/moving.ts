@@ -43,7 +43,6 @@ import {
   purgeTrashedBooking,
   restoreTrashedBooking,
 } from './moving-trash.js';
-
 export class MovingService implements MovingUseCases {
   constructor(
     private bookings: BookingRepository,

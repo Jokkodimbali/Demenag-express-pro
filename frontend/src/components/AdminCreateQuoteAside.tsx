@@ -1,5 +1,5 @@
 import { Warehouse } from 'lucide-react';
-import { money } from '../domain/format';
+import { money } from '../application/presentation/format';
 import { whatsappNumber } from '../application/services/whatsapp';
 import { uiText } from '../content/reference-ui-text';
 import type { useAdminCreateQuoteModel } from '../application/controllers/useAdminCreateQuoteModel';

@@ -7,7 +7,7 @@ import { accountingText } from '../content/accounting';
 import { AccountingFinanceSections } from '../components/AccountingFinanceSections';
 import { ReferenceAccountingOverview } from '../components/ReferenceAccountingOverview';
 import { ReferenceMonthlyCharges } from '../components/ReferenceMonthlyCharges';
-import { money } from '../domain/format';
+import { money } from '../application/presentation/format';
 import { routes } from '../routing/routes';
 
 export function AdminAccounting() {

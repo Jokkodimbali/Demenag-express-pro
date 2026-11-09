@@ -15,7 +15,7 @@ import {
   bookingRevenueAmount,
   completedBookingRevenueAmount,
 } from '../application/services/revenue';
-import { money } from '../domain/format';
+import { money } from '../application/presentation/format';
 import { accountingFinanceText as text } from '../content/accounting-finance';
 import type { ClaudeCompletionInput } from '../application/ports';
 
