@@ -7,6 +7,7 @@ import type { Catalogue, Vehicle } from '../domain/model';
 import type { ReactNode } from 'react';
 import { visibleUiText } from '../content/visible-ui-text';
 import { adminQuoteVehicleText as quoteText } from '../content/admin-quote-vehicle';
+import { AdminQuoteCalculationDetails } from './AdminQuoteCalculationDetails';
 
 type Model = ReturnType<typeof useAdminCreateQuoteModel>;
 
@@ -212,6 +213,20 @@ export function AdminCreateQuoteAside({
             : `Devis temporaire, calculé sur ${quoteConfig.trips} aller(s)-retour(s) estimé(s). Le transport est facturé par aller-retour effectué : le devis final, basé sur le nombre réel d'allers-retours, sera envoyé par Demenag Express à la fin du déménagement.`}
         </p>
       </div>
+      {!publicRequest && (
+        <AdminQuoteCalculationDetails
+          estimate={model.movingEstimate}
+          inventoryCount={model.inventoryCount}
+          vehicle={selected}
+          trips={quoteConfig.trips}
+          total={previewTotal}
+          lineCount={previewLines.length}
+          discount={previewDiscount}
+          hasTolls={totalTolls > 0}
+          manual={quoteConfig.calcMode === 'manual'}
+          settings={catalogue.settings}
+        />
+      )}
       {!publicRequest && (
         <section className="admin-quote-stage" aria-label={uiText['etapeActuelleDuDevis']}>
           <span className="admin-quote-stage-label">

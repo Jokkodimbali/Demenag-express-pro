@@ -10,8 +10,13 @@ import {
   handlingAdvice,
 } from '../../domain/loading-simulation-details';
 import type { Vehicle } from '../../domain/model';
-import { simulationInput, format, tripLabel, loadingRules } from './loading-simulation-model';
-import type { SimPlan, SimView } from './loading-simulation-model';
+import {
+  simulationInput,
+  format,
+  tripLabel,
+  loadingRules,
+} from '../../application/services/loading-simulation-model';
+import type { SimPlan, SimView } from '../../application/services/loading-simulation-model';
 import { generateLoadingSimulationPdf } from './loading-simulation-pdf';
 import { useLoadingSimulationPreferences } from '../../application/controllers/useLoadingSimulationPreferences';
 import { visibleUiText } from '../../content/visible-ui-text';

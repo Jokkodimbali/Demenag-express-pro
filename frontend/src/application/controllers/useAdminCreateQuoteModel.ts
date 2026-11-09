@@ -27,6 +27,11 @@ import {
   whatsappPaymentLine,
 } from '../../application/services/whatsapp-templates';
 import { createAdminQuotePreview } from '../../application/services/admin-quote-preview';
+import {
+  cheaperCompatibleVehicle,
+  vehicleFitWarnings,
+} from '../../application/services/quote-vehicle-fit';
+import { fitConfirmationCopy } from '../../application/services/quote-fit-confirmation';
 
 export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const location = useLocation();
@@ -88,7 +93,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     tolls: false,
     options: false,
   });
-  const { exportQuote, catalogue: appCatalogue, user, api } = useApp();
+  const { exportQuote, catalogue: appCatalogue, user, api, requestConfirmation } = useApp();
   const bookingCommands = useBookingCommands();
   const state = useBookingForm({
     mode: publicRequest && user?.role !== 'admin' ? 'booking' : 'admin-quote',
@@ -411,6 +416,24 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const movingEstimateVolume = movingEstimate?.volume ?? 0;
   const movingEstimateCrew = movingEstimate?.crew ?? 0;
   const movingEstimateTrips = movingEstimate?.trips ?? 0;
+  const cheaperVehicle = selected
+    ? cheaperCompatibleVehicle({
+        inventory: estimateInventory,
+        current: selected,
+        vehicles: catalogue?.vehicles ?? [],
+        route: pricingRoute
+          ? { distanceKm: pricingRoute.distanceKm, durationMinutes: pricingRoute.durationMinutes }
+          : null,
+        date: draft.date,
+        month: draft.month,
+        fromAddress: draft.fromAddress,
+        toAddress: draft.toAddress,
+        startTime: draft.timeSlot,
+        hasToll: tollLines.some((line) => line.quantity * line.unitPrice > 0),
+        settings: catalogue?.settings,
+        estimate: movingEstimate,
+      })
+    : null;
   const readyAnswer = draft.questionnaireAnswers['key-ready'];
   const stairsAnswer = draft.questionnaireAnswers['key-stairs'];
   const inventoryEstimateKey = JSON.stringify({
@@ -744,6 +767,28 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     setQuoteConfig((current) => ({ ...current, calcMode: 'manual' }));
   };
 
+  async function confirmVehicleFit() {
+    const warnings =
+      quoteConfig.calcMode === 'manual' || !selected || !catalogue
+        ? []
+        : vehicleFitWarnings(estimateInventory, selected, catalogue.settings);
+    if (!warnings.length) return true;
+    const copy = fitConfirmationCopy(warnings);
+    const confirmed = await requestConfirmation({
+      titleId: 'admin-quote-vehicle-fit-confirmation',
+      eyebrow: 'Vérification du véhicule',
+      title: copy.title,
+      description: copy.description,
+      confirmLabel: 'Enregistrer quand même',
+    });
+    if (!confirmed && whatsappWindow.current) {
+      whatsappWindow.current.close();
+      whatsappWindow.current = null;
+      sendWhatsAppAfterSave.current = false;
+    }
+    return confirmed;
+  }
+
   function toggleQuoteSection(section: keyof typeof openQuoteSections) {
     setOpenQuoteSections((current) => ({ ...current, [section]: !current[section] }));
   }
@@ -817,6 +862,8 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     trafficColor,
     labourPrice,
     movingEstimate,
+    cheaperVehicle,
+    confirmVehicleFit,
     selectedVehicleId,
     movingEstimateVolume,
     movingEstimateCrew,

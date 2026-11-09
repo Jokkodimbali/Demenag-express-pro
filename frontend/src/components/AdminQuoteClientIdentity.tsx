@@ -1,5 +1,6 @@
 import { ChevronDown } from 'lucide-react';
 import { uiText } from '../content/reference-ui-text';
+import { visibleUiText } from '../content/visible-ui-text';
 import type { Draft } from '../application/booking-draft';
 
 type ClientRecognition = { phone: string; name: string; bookingCount: number } | null;
@@ -39,8 +40,8 @@ export function AdminQuoteClientIdentity({
           {editingReference
             ? `DEVIS POUR ${editingReference}`
             : publicRequest
-              ? 'VOS INFORMATIONS'
-              : 'NOUVEAU DEVIS · CLIENT EN AGENCE'}
+              ? visibleUiText.text234
+              : visibleUiText.text235}
         </span>
       </button>
       {expanded && (
@@ -51,7 +52,9 @@ export function AdminQuoteClientIdentity({
               required
               maxLength={100}
               value={draft.customerName}
-              onChange={(event) => setDraft((current) => ({ ...current, customerName: event.target.value }))}
+              onChange={(event) =>
+                setDraft((current) => ({ ...current, customerName: event.target.value }))
+              }
               placeholder={uiText['nomDuClient']}
               aria-label={uiText['nomDuClient']}
             />
@@ -61,18 +64,27 @@ export function AdminQuoteClientIdentity({
             <input
               required
               value={draft.customerPhone}
-              onChange={(event) => setDraft((current) => ({ ...current, customerPhone: event.target.value }))}
+              onChange={(event) =>
+                setDraft((current) => ({ ...current, customerPhone: event.target.value }))
+              }
               placeholder={uiText['telephone']}
               aria-label={uiText['telephone']}
             />
           </label>
-          {recognizingClient && <p className="muted" role="status">{uiText['verificationDuClient']}</p>}
-          {clientRecognition && clientRecognition.phone && (
-            <p className="client-recognition">
-              {uiText['clientDejaConnu']}{clientRecognition.name} · {clientRecognition.bookingCount} {uiText['reservationS']}
+          {recognizingClient && (
+            <p className="muted" role="status">
+              {uiText['verificationDuClient']}
             </p>
           )}
-          <button type="button" className="button secondary" onClick={onContinue}>Continuer</button>
+          {clientRecognition && clientRecognition.phone && (
+            <p className="client-recognition">
+              {uiText['clientDejaConnu']}
+              {clientRecognition.name} · {clientRecognition.bookingCount} {uiText['reservationS']}
+            </p>
+          )}
+          <button type="button" className="button secondary" onClick={onContinue}>
+            {visibleUiText.text200}
+          </button>
         </div>
       )}
     </section>

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../context';
 import { errorMessage } from '../error-message';
 import { catalogueFromForm } from '../validation/forms';
-import type { Settings } from '../../domain/model';
+import type { Catalogue, Settings } from '../../domain/model';
 export function useSettings() {
   const { api, catalogue, setCatalogue } = useApp();
   const [busy, setBusy] = useState(false),
@@ -104,5 +104,43 @@ export function useSettings() {
     saveQueue.current = saveQueue.current.then(persist, persist);
     return saveQueue.current;
   }
-  return { catalogue, busy, error, saved, submit, onChange, onBlur, updateSettings };
+
+  async function replaceCatalogue(transform: (current: Catalogue) => Catalogue) {
+    await flushPending();
+    let succeeded = false;
+    const persist = async () => {
+      const current = catalogueRef.current;
+      if (!current) return;
+      if (mounted.current) {
+        setBusy(true);
+        setSaved(false);
+        setError('');
+      }
+      try {
+        const updated = await api.updateCatalogue(transform(current));
+        catalogueRef.current = updated;
+        setCatalogue(updated);
+        succeeded = true;
+        if (mounted.current) setSaved(true);
+      } catch (cause) {
+        if (mounted.current) setError(errorMessage(cause));
+      } finally {
+        if (mounted.current) setBusy(false);
+      }
+    };
+    saveQueue.current = saveQueue.current.then(persist, persist);
+    await saveQueue.current;
+    return succeeded;
+  }
+  return {
+    catalogue,
+    busy,
+    error,
+    saved,
+    submit,
+    onChange,
+    onBlur,
+    updateSettings,
+    replaceCatalogue,
+  };
 }

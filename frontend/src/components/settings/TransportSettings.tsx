@@ -208,15 +208,19 @@ function amount(value: number) {
 export function TransportSettings({
   catalogue,
   onSaveInventoryCatalog,
+  onResetTariffs,
 }: {
   catalogue: Catalogue;
   onSaveInventoryCatalog: (types: CustomInventoryType[], hiddenKeys: string[]) => Promise<void>;
+  onResetTariffs: () => Promise<boolean>;
 }) {
   const [scenario, setScenario] = useState<LabourMatrixScenario>('none');
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [dimensionBusy, setDimensionBusy] = useState(false);
   const [dimensionError, setDimensionError] = useState('');
-  const { api, setCatalogue } = useApp();
+  const [resettingTariffs, setResettingTariffs] = useState(false);
+  const [resetTariffsStatus, setResetTariffsStatus] = useState('');
+  const { api, setCatalogue, requestConfirmation } = useApp();
   const selected = scenarios.find((entry) => entry.id === scenario)!;
   const customConfigured = catalogue.settings.montageP?.custom;
   const customPricing =
@@ -290,6 +294,13 @@ export function TransportSettings({
     ['integ', 'Intégrations'],
   ] as const;
   const anyGroupOpen = groupLabels.some(([key]) => openGroups[key]);
+  const paymentMethods =
+    [
+      catalogue.settings.paymentWave !== false ? 'Wave' : '',
+      catalogue.settings.paymentCash !== false ? 'espèces' : '',
+    ]
+      .filter(Boolean)
+      .join(' et ') || 'aucun mode de paiement';
   const openGroup = (key: string) => {
     setOpenGroups((current) => ({ ...current, [key]: true }));
     window.setTimeout(
@@ -300,6 +311,24 @@ export function TransportSettings({
       50,
     );
   };
+  async function resetReferenceTariffs() {
+    const confirmed = await requestConfirmation({
+      titleId: 'reference-tariff-reset-confirmation',
+      eyebrow: visibleUiText.pricingResetConfirmEyebrow,
+      title: visibleUiText.pricingResetConfirmTitle,
+      description: visibleUiText.pricingResetConfirmDescription,
+      confirmLabel: visibleUiText.pricingResetConfirmLabel,
+    });
+    if (!confirmed) return;
+    setResettingTariffs(true);
+    setResetTariffsStatus('');
+    try {
+      const succeeded = await onResetTariffs();
+      if (succeeded) setResetTariffsStatus(visibleUiText.pricingResetSuccess);
+    } finally {
+      setResettingTariffs(false);
+    }
+  }
   const group = (
     key: string,
     number: number,
@@ -352,6 +381,27 @@ export function TransportSettings({
           {anyGroupOpen ? 'Tout fermer' : 'Tout ouvrir'}
         </button>
       </nav>
+      <div className="reference-settings-reset-defaults">
+        <div>
+          <strong>{visibleUiText.pricingResetHeading}</strong>
+          <span>{visibleUiText.pricingResetDescription}</span>
+        </div>
+        <button
+          type="button"
+          disabled={resettingTariffs}
+          onClick={() => void resetReferenceTariffs()}
+        >
+          ↻{' '}
+          {resettingTariffs
+            ? visibleUiText.pricingResetButtonBusy
+            : visibleUiText.pricingResetButton}
+        </button>
+      </div>
+      {resetTariffsStatus && (
+        <p role="status" className="reference-settings-reset-status">
+          {resetTariffsStatus}
+        </p>
+      )}
       <p className="reference-settings-data-hint">{visibleUiText.text201}</p>
       <div className="reference-settings-grid">
         {group(
@@ -886,8 +936,8 @@ export function TransportSettings({
         {group(
           'docs',
           4,
-          'Documents',
-          'Entreprise · conditions générales · paiement · WhatsApp',
+          'Documents et communication',
+          `Entreprise · conditions générales · paiement ${paymentMethods} · WhatsApp`,
           <>
             <CompanyQuoteSettings catalogue={catalogue} />
             <QuoteTermsSettings catalogue={catalogue} />

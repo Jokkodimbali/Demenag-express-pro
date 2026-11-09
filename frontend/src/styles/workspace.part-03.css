@@ -66,6 +66,58 @@
   color: #f6d73c;
   text-decoration: underline;
 }
+.reference-settings-reset-defaults {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border: 1.5px solid #f6d73c;
+  border-radius: 14px;
+  background: #272a2e;
+}
+.reference-settings-reset-defaults > div {
+  display: flex;
+  flex: 1 1 260px;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.reference-settings-reset-defaults strong {
+  color: #fff;
+  font-size: 14px;
+}
+.reference-settings-reset-defaults span,
+.reference-settings-reset-status {
+  color: #aeb4bb;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.reference-settings-reset-defaults button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 10px;
+  background: #f6d73c;
+  color: #1e2023;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.reference-settings-reset-defaults button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+.reference-settings-reset-status {
+  margin: 0 0 12px;
+  color: #3ddc84;
+}
 .reference-settings-data-hint {
   margin: 0 0 14px;
 }

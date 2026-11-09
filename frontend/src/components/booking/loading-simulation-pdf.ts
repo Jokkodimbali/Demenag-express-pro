@@ -1,7 +1,7 @@
 import type { Draft } from '../../application/booking-draft';
 import type { MovingEstimate } from '../../domain/moving-estimate';
 import type { Vehicle } from '../../domain/model';
-import { loadingRules, type SimPlan } from './loading-simulation-model';
+import { loadingRules, type SimPlan } from '../../application/services/loading-simulation-model';
 
 type PdfEquipment = { key: string; name: string; quantity: string; why: string; norm: string };
 type PdfInput = {

@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 import { normalizedClientPhone } from '../application/services/client-summary';
 import { CallInventory } from '../components/booking/CallInventory';
 import { FleetVehicleImagePreview } from '../components/FleetVehicleDimensions';
-import { ClientQuestionnaire } from '../components/booking/ClientQuestionnaire';
+import { AdminQuoteQuestionnaire } from '../components/AdminQuoteQuestionnaire';
 import { TollRateSelector } from '../components/TollRateSelector';
 import { money, referenceTierLabels } from '../application/presentation/format';
 import { today } from '../domain/date';
@@ -19,6 +19,7 @@ import { AdminQuoteVehicleBilling } from '../components/AdminQuoteVehicleBilling
 import { AdminQuoteSettings } from '../components/AdminQuoteSettings';
 import { AdminQuoteSaveBar } from '../components/AdminQuoteSaveBar';
 import { AdminQuoteStepHeading } from '../components/AdminQuoteStepHeading';
+import { AdminQuoteCheaperVehicle } from '../components/AdminQuoteCheaperVehicle';
 import { LoadingSimulation } from '../components/booking/LoadingSimulation';
 import { adminQuoteVehicleText as quoteText } from '../content/admin-quote-vehicle';
 import { quoteConditionsText } from '../application/services/whatsapp-templates';
@@ -79,6 +80,8 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
     previewSubtotal,
     previewDiscount,
     manoeuvreOvertimeLine,
+    cheaperVehicle,
+    confirmVehicleFit,
     onTollToggle,
     changeQuoteOption,
     toggleQuoteSection,
@@ -158,7 +161,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
       )}
       <form
         id="admin-quote-form"
-        onSubmit={(event) => {
+        onSubmit={async (event) => {
           if (!normalizePhoneNumber(draft.customerPhone)) {
             event.preventDefault();
             setOpenQuoteSections((current) => ({ ...current, client: true }));
@@ -198,6 +201,8 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             );
             return;
           }
+          event.preventDefault();
+          if (!(await confirmVehicleFit())) return;
           setStageError('');
           void submit(
             event,
@@ -635,6 +640,15 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
               );
             }}
           />
+          <AdminQuoteCheaperVehicle
+            suggestion={cheaperVehicle}
+            onSelect={(vehicleId, trips) => {
+              setDraft((current) => ({ ...current, vehicleId, estimatedTrips: trips }));
+              setQuoteConfig((current) =>
+                current.calcMode === 'manual' ? current : { ...current, trips },
+              );
+            }}
+          />
           {!publicRequest && (
             <>
               <AdminQuoteStepHeading number={4} title={quoteText.stepVehicle} />
@@ -915,58 +929,12 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             )}
           </section>
           {!publicRequest && (
-            <ClientQuestionnaire
+            <AdminQuoteQuestionnaire
               questions={questionnaire}
-              answers={draft.questionnaireAnswers}
+              draft={draft}
+              setDraft={setDraft}
               open={questionnaireOpen}
               onToggle={() => setQuestionnaireOpen((value) => !value)}
-              onNavigate={(step) => {
-                if (step === 1 || step === 4)
-                  setOpenQuoteSections((current) => ({ ...current, client: true }));
-                if (step === 2 || step === 5)
-                  setOpenQuoteSections((current) => ({ ...current, route: true }));
-                const target = [
-                  '#admin-quote-client-fields',
-                  '#admin-quote-route-fields',
-                  '.call-inventory',
-                  '.admin-quote-vehicle-panel',
-                  '#admin-quote-option-fields',
-                  '.admin-quote-aside',
-                ][step - 1];
-                window.requestAnimationFrame(() => {
-                  document
-                    .querySelector(target)
-                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                });
-              }}
-              onChange={(id, value) =>
-                setDraft((current) => {
-                  const inventory = { ...current.inventory };
-                  if (id === 'key-ready') {
-                    inventory.ready = value.startsWith('Oui')
-                      ? 'oui'
-                      : value.startsWith('Non')
-                        ? 'non'
-                        : '';
-                  }
-                  if (id === 'key-stairs') {
-                    inventory.stairs = value.startsWith('Non, par le balcon')
-                      ? 'balcon'
-                      : value.startsWith('Non')
-                        ? 'non'
-                        : value.startsWith('Oui')
-                          ? 'oui'
-                          : value.startsWith('À vérifier')
-                            ? 'verif'
-                            : '';
-                  }
-                  return {
-                    ...current,
-                    inventory,
-                    questionnaireAnswers: { ...current.questionnaireAnswers, [id]: value },
-                  };
-                })
-              }
             />
           )}
         </div>

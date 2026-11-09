@@ -208,10 +208,21 @@ export function createAdminQuotePreview(input: {
     availableMenuLines,
     menuIncluded: includeMenu,
     menuOptions,
-    cheaperVehicle: null as { vehicle: Vehicle; trips: number; total: number; savings: number } | null,
+    cheaperVehicle: null as {
+      vehicle: Vehicle;
+      trips: number;
+      total: number;
+      savings: number;
+    } | null,
   };
 }
 
 export function previewQuote(quote: Quote, notes: string, options: Options): Quote {
   return { ...quote, notes, options };
+}
+
+export function moneyPreview(value: number) {
+  return (
+    new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Math.round(value)) + ' FCFA'
+  );
 }

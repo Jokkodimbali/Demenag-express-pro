@@ -516,3 +516,120 @@
   min-width: 0;
   white-space: normal;
 }
+.admin-quote-cheaper-vehicle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  border: 1.5px solid #3ddc84;
+  border-radius: 10px;
+  background: #1e3a2a;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+.admin-quote-cheaper-vehicle button {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 9px;
+  background: #3ddc84;
+  color: #1e2023;
+  font-weight: 800;
+  cursor: pointer;
+}
+.admin-quote-calculation-details {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #3b4046;
+  border-radius: 12px;
+  background: #272a2e;
+}
+.admin-quote-calculation-details > summary {
+  min-height: 36px;
+  color: #d5d9de;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 36px;
+  cursor: pointer;
+}
+.admin-quote-calculation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr));
+  gap: 6px;
+}
+.admin-quote-calculation-grid > div {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid #3b4046;
+  border-radius: 10px;
+  background: #1e2023;
+}
+.admin-quote-calculation-grid > div.final {
+  border-color: #f6d73c;
+}
+.admin-quote-calculation-grid > div > span {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 7px;
+  background: #30343a;
+  color: #f6d73c;
+  font-size: 12px;
+  font-weight: 800;
+}
+.admin-quote-calculation-grid > div > div,
+.admin-quote-calculation-grid > div > div > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+.admin-quote-calculation-grid > div > div > div {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.admin-quote-calculation-grid small {
+  color: #aeb4bb;
+  font-size: 12px;
+  font-weight: 700;
+}
+.admin-quote-calculation-grid strong {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: right;
+}
+.admin-quote-calculation-grid p {
+  margin: 0;
+  color: #d5d9de;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.admin-quote-calculation-rules-title {
+  margin-top: 4px;
+  color: #aeb4bb;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+.admin-quote-calculation-details ul {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0;
+  padding-left: 18px;
+  color: #aeb4bb;
+  font-size: 12px;
+  line-height: 1.5;
+}
