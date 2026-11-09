@@ -3,9 +3,11 @@ import { useSettings } from '../application/controllers/useSettings';
 import { TransportSettings } from '../components/settings/TransportSettings';
 import { messages } from '../content/fr';
 import type { CustomInventoryType } from '../domain/model';
-import { resetCatalogueTariffsToReference } from '../domain/reference-tariff-defaults';
+import { resetCatalogueAssemblyToReference } from '../domain/reference-tariff-defaults';
+import { useState } from 'react';
 
 export function Settings() {
+  const [resetRevision, setResetRevision] = useState(0);
   const {
     catalogue,
     busy,
@@ -16,6 +18,7 @@ export function Settings() {
     onBlur,
     updateSettings,
     replaceCatalogue,
+    resetReferenceDefaults,
   } = useSettings();
   if (!catalogue) return null;
   async function saveInventoryCatalog(
@@ -25,7 +28,16 @@ export function Settings() {
     await updateSettings({ customInventoryTypes, hiddenInventoryKeys });
   }
   async function resetTariffsToReference() {
-    return replaceCatalogue(resetCatalogueTariffsToReference);
+    try {
+      return await resetReferenceDefaults();
+    } finally {
+      setResetRevision((revision) => revision + 1);
+    }
+  }
+  async function resetAssemblyToReference() {
+    const updated = await replaceCatalogue(resetCatalogueAssemblyToReference);
+    if (updated) setResetRevision((revision) => revision + 1);
+    return updated;
   }
   return (
     <form onSubmit={submit} onChange={onChange} onBlur={onBlur} className="settings-form">
@@ -33,6 +45,8 @@ export function Settings() {
         catalogue={catalogue}
         onSaveInventoryCatalog={saveInventoryCatalog}
         onResetTariffs={resetTariffsToReference}
+        onResetAssembly={resetAssemblyToReference}
+        resetRevision={resetRevision}
       />
       {error && (
         <p role="alert" className="alert error">

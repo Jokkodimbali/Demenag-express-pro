@@ -2,6 +2,9 @@ import type { BookingInventorySource, Options, Settings } from './model.js';
 import { assemblyUnitPrice } from './pricing.js';
 
 const aliases: Record<string, string> = {
+  'table-basse': 'tbasse',
+  'meuble-tv': 'meubletv',
+  television: 'tv',
   'table-manger': 'tablem',
   bibliotheque: 'biblio',
   congelateur: 'congel',

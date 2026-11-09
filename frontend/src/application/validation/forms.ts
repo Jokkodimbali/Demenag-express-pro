@@ -10,7 +10,8 @@ import type {
 import { messages } from '../../content/fr';
 import { vehicleCapacity } from '../../domain/vehicle-capacity';
 import { createLabourPriceMatrix } from '../../domain/labour-price';
-import { referenceInventoryKey } from '../../domain/inventory-assembly';
+import { referenceInventoryAliases, referenceInventoryKey } from '../../domain/inventory-assembly';
+import { referenceAssemblyPriceDefaults } from '../../../../shared/reference-tariff-defaults.js';
 import { normalizePaymentQr } from '../services/payment-qr';
 
 const role = (value: FormDataEntryValue | null): User['role'] =>
@@ -142,15 +143,7 @@ export async function catalogueFromForm(data: FormData, catalogue: Catalogue): P
   const numberField = (name: string, fallback: number) =>
     data.has(name) ? Number(data.get(name)) : fallback;
   const montageP = { ...(catalogue.settings.montageP ?? {}) };
-  for (const [legacyKey, canonicalKey] of Object.entries({
-    'table-manger': 'tablem',
-    bibliotheque: 'biblio',
-    congelateur: 'congel',
-    'machine-laver': 'mal',
-    'micro-ondes': 'micro',
-    climatiseur: 'clim',
-    ventilateur: 'ventilo',
-  })) {
+  for (const [legacyKey, canonicalKey] of Object.entries(referenceInventoryAliases)) {
     if (montageP[legacyKey] && !montageP[canonicalKey])
       montageP[canonicalKey] = montageP[legacyKey];
     delete montageP[legacyKey];
@@ -178,6 +171,18 @@ export async function catalogueFromForm(data: FormData, catalogue: Catalogue): P
     } else if (baseOrigin) {
       montageP[key] = { ...current, [baseOrigin]: integer(value) };
     }
+  }
+  const assemblyPrice = numberField('assembly', catalogue.settings.assemblyPrice);
+  for (const [key, configured] of Object.entries(montageP)) {
+    if (key in referenceAssemblyPriceDefaults || !configured || typeof configured !== 'object')
+      continue;
+    const fields = Object.keys(configured);
+    if (
+      fields.every((field) => field === 'local' || field === 'import') &&
+      configured.local === assemblyPrice &&
+      configured.import === Math.round(assemblyPrice * 1.5)
+    )
+      delete montageP[key];
   }
   const labourPrice = numberField('labourPrice', catalogue.settings.labourPrice);
   const labourFloorPrice = numberField(
@@ -354,7 +359,7 @@ export async function catalogueFromForm(data: FormData, catalogue: Catalogue): P
       labourFloorPrice,
       labourLiftPrice,
       labourMatrix,
-      assemblyPrice: numberField('assembly', catalogue.settings.assemblyPrice),
+      assemblyPrice,
       montageP,
       movingLaborPlanning,
       questionnaire: questionnaireFromForm(data, catalogue.settings.questionnaire ?? []),

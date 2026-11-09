@@ -1,10 +1,12 @@
 import { useClaudeSettingsController } from '../../application/controllers/useClaudeSettingsController';
 import { referenceSettingsText as text } from '../../content/reference-settings-text';
+import { useEffect } from 'react';
 
-export function ClaudeSettings() {
+export function ClaudeSettings({ onConnectionChange }: { onConnectionChange?: (connected: boolean) => void }) {
   const { status, key, setKey, busy, notice, error, connect, test, disconnect, selectModel } =
     useClaudeSettingsController();
   const modelName = status.models.find((item) => item.id === status.model)?.name ?? status.model;
+  useEffect(() => { onConnectionChange?.(status.connected); }, [onConnectionChange, status.connected]);
 
   return (
     <section className="reference-settings-wide reference-settings-card reference-claude-settings">

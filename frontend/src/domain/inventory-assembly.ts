@@ -2,7 +2,10 @@ import type { BookingInventorySource, Options, Settings } from './model';
 import { inventoryItems } from './inventory';
 import { assemblyUnitPrice } from './labour-price';
 
-const keyAliases: Record<string, string> = {
+export const referenceInventoryAliases: Record<string, string> = {
+  'table-basse': 'tbasse',
+  'meuble-tv': 'meubletv',
+  television: 'tv',
   'table-manger': 'tablem',
   bibliotheque: 'biblio',
   congelateur: 'congel',
@@ -12,7 +15,7 @@ const keyAliases: Record<string, string> = {
   ventilateur: 'ventilo',
 };
 
-export const referenceInventoryKey = (key: string) => keyAliases[key] ?? key;
+export const referenceInventoryKey = (key: string) => referenceInventoryAliases[key] ?? key;
 
 type AssemblyLine = { label: string; quantity: number; unitPrice: number };
 

@@ -3,6 +3,8 @@ import { useApp } from '../context';
 import { errorMessage } from '../error-message';
 import { catalogueFromForm } from '../validation/forms';
 import type { Catalogue, Settings } from '../../domain/model';
+import { defaultAccountingFinanceConfiguration } from '../../domain/accounting-forecast';
+import { resetAccountingChargesToReference, resetCatalogueTariffsToReference } from '../../domain/reference-tariff-defaults';
 export function useSettings() {
   const { api, catalogue, setCatalogue } = useApp();
   const [busy, setBusy] = useState(false),
@@ -132,6 +134,16 @@ export function useSettings() {
     await saveQueue.current;
     return succeeded;
   }
+  async function resetReferenceDefaults() {
+    const updated = await replaceCatalogue(resetCatalogueTariffsToReference);
+    if (!updated) return false;
+    const currentFinance = {
+      ...defaultAccountingFinanceConfiguration(),
+      ...(await api.accountingConfiguration()),
+    };
+    await api.saveAccountingConfiguration(resetAccountingChargesToReference(currentFinance));
+    return true;
+  }
   return {
     catalogue,
     busy,
@@ -142,5 +154,6 @@ export function useSettings() {
     onBlur,
     updateSettings,
     replaceCatalogue,
+    resetReferenceDefaults,
   };
 }

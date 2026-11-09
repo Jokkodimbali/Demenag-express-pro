@@ -74,7 +74,7 @@ export const inventoryItems: InventoryItem[] = [
       label: 'Chaise',
       plural: 'Chaises',
       hasFormat: true,
-      volumeByFormat: [0.05, 0.25, 0.4],
+      volumeByFormat: [0.12, 0.25, 0.4],
     },
     {
       key: 'buffet',

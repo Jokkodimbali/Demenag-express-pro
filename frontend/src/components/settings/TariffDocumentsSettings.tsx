@@ -27,7 +27,7 @@ export function TariffDocumentsSettings({ catalogue }: { catalogue: Catalogue })
         <p>{visibleUiText.text198}</p>
         <div className="reference-tariff-actions">
           <button type="button" disabled={busy} onClick={() => void exportDocument('agent', false)}>
-            {visibleUiText.text195}
+            {visibleUiText.pricingAgentDownload}
           </button>
           <button type="button" disabled={busy} onClick={() => void exportDocument('agent', true)}>
             {visibleUiText.text196}

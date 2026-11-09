@@ -30,8 +30,10 @@ export function useReferenceGoogleMapsSettings() {
     try {
       await api.updateGoogleMapsApiKey(value.trim());
       setError('');
+      return true;
     } catch (cause) {
       setError(errorMessage(cause));
+      return false;
     }
   }
 

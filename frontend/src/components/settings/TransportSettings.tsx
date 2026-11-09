@@ -1,9 +1,10 @@
 import { uiText } from '../../content/reference-ui-text';
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { FleetVehicleDimensions } from '../FleetVehicleDimensions';
 import { useApp } from '../../application/context';
 import { errorMessage } from '../../application/error-message';
 import { labourUnitPrice } from '../../domain/labour-price';
+import { defaultMovingLaborPlanning } from '../../domain/moving-estimate';
 import { CatalogueService } from '../../application/services/catalogue';
 import type { Catalogue, LabourMatrixScenario } from '../../domain/model';
 import { inventoryItems } from '../../domain/inventory';
@@ -20,6 +21,7 @@ import { QuoteTermsSettings } from './QuoteTermsSettings';
 import { ClaudeSettings } from './ClaudeSettings';
 import { InventoryCatalogSettings } from './InventoryCatalogSettings';
 import { TariffDocumentsSettings } from './TariffDocumentsSettings';
+import { useIntegrationSummary } from '../../application/controllers/useIntegrationSummary';
 import type { CustomInventoryType } from '../../domain/model';
 
 const tiers = ['Moins de 15 km', '15 – 25 km', '25 – 35 km'];
@@ -31,29 +33,7 @@ const scenarios: { id: LabourMatrixScenario; label: string; from: boolean; to: b
 ];
 const floors = ['RDC', '1er', '2e', '3e', '4e', '5e'];
 const planningDefaults = {
-  maxHandlingHours: 3,
-  maxDayHours: 8,
-  defaultStartHour: 8,
-  maxMoversPerVehicle: 6,
-  cubicMetersPerHourPerMover: 2.7,
-  pauseMinutes: 30,
-  teamVolumePerMover: 6,
-  tripSetupMinutes: 15,
-  handlingCalibration: 1,
-  carryDistanceMeters: 15,
-  heat: 1,
-  wbgtAdj: 0,
-  maxTotalHours: 12,
-  metabolicReference: 200,
-  effortGround: 200,
-  effortLift: 210,
-  effortStairs: 230,
-  effortPerFloor: 12,
-  effortMaximum: 290,
-  followingTripDiscountPercent: 60,
-  lowDemandDiscountPercent: 10,
-  manoeuvreOvertimeThresholdHours: 8,
-  manoeuvreOvertimeHourlyRate: 0,
+  ...defaultMovingLaborPlanning,
   blanketLengthCm: 204,
   blanketWidthCm: 184,
   blanketStock: 20,
@@ -106,26 +86,6 @@ const planningFields = [
     'Ajoutée à l’effort de base dans les escaliers.',
   ],
   ['effortMaximum', 'Effort maximal (W/m²)', 'Plafond appliqué au portage dans les escaliers.'],
-  [
-    'followingTripDiscountPercent',
-    'Allers-retours suivants (%)',
-    'Part du tarif du premier aller-retour, arrondie aux 500 FCFA les plus proches.',
-  ],
-  [
-    'lowDemandDiscountPercent',
-    'Remise jour creux (%)',
-    'Du lundi au jeudi, du 6 au 24 du mois, sur le transport uniquement.',
-  ],
-  [
-    'manoeuvreOvertimeThresholdHours',
-    'Seuil heures manœuvres (h)',
-    'Durée planifiée avant application du supplément horaire.',
-  ],
-  [
-    'manoeuvreOvertimeHourlyRate',
-    'Heure supplémentaire manœuvre (FCFA/h)',
-    '0 désactive la facturation de ces heures.',
-  ],
   [
     'defaultStartHour',
     'Heure de début par défaut',
@@ -209,18 +169,25 @@ export function TransportSettings({
   catalogue,
   onSaveInventoryCatalog,
   onResetTariffs,
+  onResetAssembly,
+  resetRevision,
 }: {
   catalogue: Catalogue;
   onSaveInventoryCatalog: (types: CustomInventoryType[], hiddenKeys: string[]) => Promise<void>;
   onResetTariffs: () => Promise<boolean>;
+  onResetAssembly: () => Promise<boolean>;
+  resetRevision: number;
 }) {
+  const rootRef = useRef<HTMLDivElement>(null);
   const [scenario, setScenario] = useState<LabourMatrixScenario>('none');
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [dimensionBusy, setDimensionBusy] = useState(false);
   const [dimensionError, setDimensionError] = useState('');
   const [resettingTariffs, setResettingTariffs] = useState(false);
   const [resetTariffsStatus, setResetTariffsStatus] = useState('');
+  const [resetTariffsError, setResetTariffsError] = useState('');
   const { api, setCatalogue, requestConfirmation } = useApp();
+  const { claudeConnected, mapsConfigured, setClaudeConnected, setMapsConfigured } = useIntegrationSummary();
   const selected = scenarios.find((entry) => entry.id === scenario)!;
   const customConfigured = catalogue.settings.montageP?.custom;
   const customPricing =
@@ -272,6 +239,9 @@ export function TransportSettings({
     setBlanketWidthCm(planning.blanketWidthCm);
     setBlanketStock(planning.blanketStock);
   }, [planning.blanketLengthCm, planning.blanketWidthCm, planning.blanketStock]);
+  useEffect(() => {
+    if (resetRevision) rootRef.current?.closest('form')?.reset();
+  }, [resetRevision]);
 
   async function saveVehicleDimensions(vehicle: Catalogue['vehicles'][number]) {
     setDimensionBusy(true);
@@ -322,11 +292,31 @@ export function TransportSettings({
     if (!confirmed) return;
     setResettingTariffs(true);
     setResetTariffsStatus('');
+    setResetTariffsError('');
     try {
       const succeeded = await onResetTariffs();
       if (succeeded) setResetTariffsStatus(visibleUiText.pricingResetSuccess);
+    } catch (cause) {
+      setResetTariffsError(errorMessage(cause));
     } finally {
       setResettingTariffs(false);
+    }
+  }
+  async function resetAssemblyPrices() {
+    const confirmed = await requestConfirmation({
+      titleId: 'reference-assembly-reset-confirmation',
+      eyebrow: 'Tarifs du menuisier',
+      title: 'Revenir à la grille par défaut ?',
+      description: 'Les prix client du démontage / montage reviennent à la grille d’origine (paie du menuisier + 30 %) et le manœuvre à 6 500 FCFA. Les devis déjà enregistrés gardent leurs prix.',
+      confirmLabel: 'Rétablir',
+    });
+    if (!confirmed) return;
+    setResetTariffsStatus('');
+    setResetTariffsError('');
+    try {
+      if (await onResetAssembly()) setResetTariffsStatus('Grille client rétablie.');
+    } catch (cause) {
+      setResetTariffsError(errorMessage(cause));
     }
   }
   const group = (
@@ -356,7 +346,7 @@ export function TransportSettings({
   );
 
   return (
-    <div className="reference-settings-page">
+    <div className="reference-settings-page" ref={rootRef}>
       <nav className="reference-settings-quick-nav" aria-label={visibleUiText.text199}>
         <span>{visibleUiText.text200}</span>
         {groupLabels.map(([key, label]) => (
@@ -391,7 +381,10 @@ export function TransportSettings({
           disabled={resettingTariffs}
           onClick={() => void resetReferenceTariffs()}
         >
-          ↻{' '}
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+            <path d="M3 3v5h5" />
+          </svg>
           {resettingTariffs
             ? visibleUiText.pricingResetButtonBusy
             : visibleUiText.pricingResetButton}
@@ -402,6 +395,7 @@ export function TransportSettings({
           {resetTariffsStatus}
         </p>
       )}
+      {resetTariffsError && <p role="alert" className="alert error">{resetTariffsError}</p>}
       <p className="reference-settings-data-hint">{visibleUiText.text201}</p>
       <div className="reference-settings-grid">
         {group(
@@ -473,12 +467,34 @@ export function TransportSettings({
                     defaultValue={liftSupplement}
                   />
                 </label>
+                <label>
+                  <span>{visibleUiText.pricingManoeuvreIncludedHours}</span>
+                  <input style={inputStyle} type="number" min="1" name="movingLaborPlanning.manoeuvreOvertimeThresholdHours" defaultValue={planning.manoeuvreOvertimeThresholdHours} />
+                </label>
+                <label>
+                  <span>{visibleUiText.pricingManoeuvreOvertimeHourly}</span>
+                  <input style={inputStyle} type="number" min="0" name="movingLaborPlanning.manoeuvreOvertimeHourlyRate" defaultValue={planning.manoeuvreOvertimeHourlyRate} />
+                </label>
+                <span className="reference-settings-kicker">{visibleUiText.pricingAutomaticDiscounts}</span>
+                <label>
+                  <span>{visibleUiText.pricingFollowingTrips}</span>
+                  <input style={inputStyle} type="number" min="10" max="100" name="movingLaborPlanning.followingTripDiscountPercent" defaultValue={planning.followingTripDiscountPercent} />
+                </label>
+                <label>
+                  <span>{visibleUiText.pricingLowDemand}</span>
+                  <input style={inputStyle} type="number" min="0" max="50" name="movingLaborPlanning.lowDemandDiscountPercent" defaultValue={planning.lowDemandDiscountPercent} />
+                </label>
               </div>
               <input type="hidden" name="assembly" value={catalogue.settings.assemblyPrice} />
 
-              <span className="reference-settings-kicker">
-                {uiText['demontageMONTAGEPARMEUBLEPRIXCLIENT']}
-              </span>
+              <div className="reference-settings-assembly-heading">
+                <span className="reference-settings-kicker">
+                  {uiText['demontageMONTAGEPARMEUBLEPRIXCLIENT']}
+                </span>
+                <button type="button" onClick={() => void resetAssemblyPrices()}>
+                  {visibleUiText.pricingAssemblyReset}
+                </button>
+              </div>
               <div className="reference-settings-assembly-columns">
                 {assemblyColumns.map((sections, columnIndex) => (
                   <div className="reference-settings-assembly-column" key={columnIndex}>
@@ -692,7 +708,6 @@ export function TransportSettings({
               </div>
             </section>
 
-            <TariffDocumentsSettings catalogue={catalogue} />
           </>,
         )}
         {group(
@@ -744,15 +759,7 @@ export function TransportSettings({
                       style={inputStyle}
                       type="number"
                       min={
-                        key === 'followingTripDiscountPercent'
-                          ? 10
-                          : key === 'lowDemandDiscountPercent'
-                            ? 0
-                            : key === 'manoeuvreOvertimeHourlyRate'
-                              ? 0
-                              : key === 'manoeuvreOvertimeThresholdHours'
-                                ? 1
-                                : key === 'wbgtAdj'
+                        key === 'wbgtAdj'
                                   ? -10
                                   : key === 'heat'
                                     ? 0
@@ -785,15 +792,7 @@ export function TransportSettings({
                             ? 200
                             : key === 'maxTotalHours'
                               ? 48
-                              : key === 'followingTripDiscountPercent'
-                                ? 100
-                                : key === 'lowDemandDiscountPercent'
-                                  ? 50
-                                  : key === 'manoeuvreOvertimeThresholdHours'
-                                    ? 24
-                                    : key === 'manoeuvreOvertimeHourlyRate'
-                                      ? 10000000
-                                      : key === 'wbgtAdj'
+                          : key === 'wbgtAdj'
                                         ? 10
                                         : key === 'heat'
                                           ? 1
@@ -849,7 +848,11 @@ export function TransportSettings({
               </button>
             </section>
 
-            <QuestionnaireSettings questions={catalogue.settings.questionnaire ?? []} />
+            <InventoryCatalogSettings
+              types={catalogue.settings.customInventoryTypes ?? []}
+              hiddenKeys={catalogue.settings.hiddenInventoryKeys ?? []}
+              onSave={onSaveInventoryCatalog}
+            />
 
             <section style={sectionStyle}>
               <span className="reference-settings-card-title">{visibleUiText.text67}</span>
@@ -925,12 +928,9 @@ export function TransportSettings({
               </button>
             </section>
 
+            <TariffDocumentsSettings catalogue={catalogue} />
             <RentalKitSettings catalogue={catalogue} />
-            <InventoryCatalogSettings
-              types={catalogue.settings.customInventoryTypes ?? []}
-              hiddenKeys={catalogue.settings.hiddenInventoryKeys ?? []}
-              onSave={onSaveInventoryCatalog}
-            />
+            <QuestionnaireSettings questions={catalogue.settings.questionnaire ?? []} />
           </>,
         )}
         {group(
@@ -949,10 +949,10 @@ export function TransportSettings({
           'integ',
           5,
           'Intégrations',
-          'Claude et Google Maps',
+          `${claudeConnected ? 'Claude connecté' : 'Claude non connecté'} · ${mapsConfigured ? 'clé Google Maps enregistrée' : 'sans clé Google Maps'}`,
           <>
-            <ClaudeSettings />
-            <ReferenceGoogleMapsSettings />
+            <ClaudeSettings onConnectionChange={setClaudeConnected} />
+            <ReferenceGoogleMapsSettings onKeyChange={setMapsConfigured} />
           </>,
         )}
       </div>
