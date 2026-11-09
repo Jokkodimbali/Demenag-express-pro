@@ -1,3 +1,4 @@
+import { visibleUiText } from '../content/visible-ui-text';
 import { liveBookingPrice } from '../application/services/live-booking-price';
 import { uiText } from '../content/reference-ui-text';
 import { messages } from '../content/fr';
@@ -188,7 +189,7 @@ function ClientRow({
             onClick={onContact}
             title={`Enregistrer ${value.name} dans les contacts`}
           >
-            Contact
+            {visibleUiText.text203}
           </button>
           {value.references.map((reference) => (
             <button
@@ -397,7 +398,7 @@ export function AdminClients() {
               downloadContacts(rows, 'Contacts-Demenag-Express.vcf', catalogue?.settings ?? {})
             }
           >
-            Exporter tous les contacts
+            {visibleUiText.text204}
           </button>
         </div>
         {error || directoryError ? (

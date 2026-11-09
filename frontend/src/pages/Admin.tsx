@@ -484,7 +484,7 @@ export function Admin() {
                             );
                           }}
                         >
-                          Équipe →
+                          {visibleUiText.text152}
                         </button>
                         <button
                           type="button"
@@ -593,7 +593,7 @@ export function Admin() {
                           );
                         }}
                       >
-                        Équipe →
+                        {visibleUiText.text152}
                       </button>
                       <button
                         type="button"

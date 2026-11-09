@@ -1,3 +1,4 @@
+import { visibleUiText } from '../content/visible-ui-text';
 import { useState } from 'react';
 import { money } from '../domain/format';
 import { adminQuoteVehicleText as t } from '../content/admin-quote-vehicle';
@@ -181,7 +182,7 @@ export function AdminQuoteVehicleBilling({
         aria-label={t.teamAndCalculation}
       >
         <h3>{t.teamAndCalculation}</h3>
-        <div className="admin-quote-calc-mode" role="group" aria-label="Mode de calcul">
+        <div className="admin-quote-calc-mode" role="group" aria-label={visibleUiText.text3}>
           <button
             type="button"
             aria-pressed={quoteConfig.calcMode === 'auto'}
@@ -198,17 +199,14 @@ export function AdminQuoteVehicleBilling({
               }));
             }}
           >
-            Automatique
+            {visibleUiText.text4}
           </button>
           <button
             type="button"
             aria-pressed={quoteConfig.calcMode === 'manual'}
             className={quoteConfig.calcMode === 'manual' ? 'selected' : ''}
             onClick={() => {
-              const crew = Math.max(
-                1,
-                movingEstimate?.crew ?? draft.options.labour ?? 2,
-              );
+              const crew = Math.max(1, movingEstimate?.crew ?? draft.options.labour ?? 2);
               setQuoteConfig((current) => ({
                 ...current,
                 calcMode: 'manual',
@@ -226,7 +224,7 @@ export function AdminQuoteVehicleBilling({
               }));
             }}
           >
-            Manuel
+            {visibleUiText.text5}
           </button>
         </div>
         <p>

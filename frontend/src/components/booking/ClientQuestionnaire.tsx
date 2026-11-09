@@ -72,7 +72,7 @@ export function ClientQuestionnaire({
         <button
           type="button"
           className="questionnaire-backdrop"
-          aria-label="Fermer le questionnaire"
+          aria-label={visibleUiText.text169}
           onClick={onToggle}
         />
       )}
@@ -197,9 +197,7 @@ export function ClientQuestionnaire({
                     </small>
                   )}
                   {answers['key-stairs'] === stairsChoices[2] && (
-                    <small>
-                      Le supplément de passage par le balcon sera précisé dans le devis.
-                    </small>
+                    <small>{visibleUiText.text170}</small>
                   )}
                   {answers['key-stairs'] === stairsChoices[3] && (
                     <small>{uiText['demandezLaLargeurDeLEscalierEtDesPortesOuUnePhoto']}</small>
@@ -246,7 +244,8 @@ export function ClientQuestionnaire({
                           className="questionnaire-step-link"
                           onClick={() => onNavigate(stepFor(group))}
                         >
-                          Étape {stepFor(group)} →
+                          {visibleUiText.text171}
+                          {stepFor(group)} →
                         </button>
                       )}
                     </div>

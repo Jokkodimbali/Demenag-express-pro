@@ -66,7 +66,7 @@ export function AdminCreateQuoteAside({
   return (
     <aside className="admin-quote-aside">
       <div className="admin-quote-step-heading" data-step="6">
-        <span className="admin-quote-step-number">6</span>
+        <span className="admin-quote-step-number">{visibleUiText.text114}</span>
         <span>{quoteText.stepReview}</span>
         <i aria-hidden="true" />
       </div>
@@ -215,7 +215,8 @@ export function AdminCreateQuoteAside({
       {!publicRequest && (
         <section className="admin-quote-stage" aria-label={uiText['etapeActuelleDuDevis']}>
           <span className="admin-quote-stage-label">
-            ENVOI DU DEVIS · {quoteKind === 'final' ? 'FINAL' : 'PROVISOIRE'}
+            {visibleUiText.text115}
+            {quoteKind === 'final' ? 'FINAL' : 'PROVISOIRE'}
           </span>
           {quoteKind === 'final' && (
             <span className="admin-quote-stage-instruction">

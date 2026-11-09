@@ -1,15 +1,9 @@
+import { visibleUiText } from '../content/visible-ui-text';
 import { uiText } from '../content/reference-ui-text';
-import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { messages } from '../content/fr';
 import { routes } from '../routing/routes';
-import { useApp } from '../application/context';
-import type { Booking } from '../domain/model';
-import type { AppNotification } from '../application/ports';
-
-type SearchResult =
-  | { kind: 'booking'; booking: Booking }
-  | { kind: 'client'; phone: string; name: string; address: string };
+import { useAdminLayoutModel } from '../application/controllers/useAdminLayoutModel';
 
 const groups = [
   {
@@ -45,115 +39,26 @@ const groups = [
   },
 ];
 export function AdminLayout() {
-  const { api } = useApp();
   const navigate = useNavigate();
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [todoOpen, setTodoOpen] = useState(false);
-  const [todoError, setTodoError] = useState('');
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  const [notificationCount, setNotificationCount] = useState(0);
-  const [notificationBookings, setNotificationBookings] = useState<Booking[] | null>(null);
-  const requestId = useRef(0);
-  const todoRef = useRef<HTMLDivElement>(null);
-  const knownNotificationIds = useRef(new Set<string>());
-  const normalizedQuery = query.trim().toLocaleLowerCase('fr');
-  useEffect(() => {
-    let active = true;
-    void api
-      .notifications()
-      .then((inbox) => {
-        if (active) {
-          setNotifications(inbox.items);
-          setNotificationCount(inbox.unreadCount);
-          knownNotificationIds.current = new Set(inbox.items.map((item) => item.id));
-        }
-      })
-      .catch(() => {});
-    const onNotification = (event: Event) => {
-      if (!(event instanceof CustomEvent)) return;
-      const item = event.detail as AppNotification;
-      if (!item?.id) return;
-      if (!knownNotificationIds.current.has(item.id)) {
-        knownNotificationIds.current.add(item.id);
-        if (!item.readAt) setNotificationCount((count) => count + 1);
-      }
-      setNotifications((current) => {
-        return [item, ...current.filter((value) => value.id !== item.id)];
-      });
-    };
-    window.addEventListener('demenag:notification', onNotification);
-    return () => {
-      active = false;
-      window.removeEventListener('demenag:notification', onNotification);
-    };
-  }, [api]);
-  const todo = notifications.filter((item) => !item.readAt).slice(0, 12);
-  useEffect(() => {
-    if (!todoOpen) return;
-    const onPointerDown = (event: PointerEvent) => {
-      if (!todoRef.current?.contains(event.target as Node)) setTodoOpen(false);
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      setTodoOpen(false);
-      todoRef.current?.querySelector<HTMLButtonElement>('.admin-todo-toggle')?.focus();
-    };
-    document.addEventListener('pointerdown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [todoOpen]);
-  useEffect(() => {
-    const current = ++requestId.current;
-    if (normalizedQuery.length < 2) return;
-    const timer = window.setTimeout(() => {
-      void Promise.all([api.bookings(), api.clientProfiles()])
-        .then(([bookings, clients]) => {
-          if (requestId.current !== current) return;
-          const digits = normalizedQuery.replace(/\D/g, '');
-          const bookingResults: SearchResult[] = bookings
-            .filter(
-              (booking) =>
-                [
-                  booking.reference,
-                  booking.customerName,
-                  booking.fromAddress,
-                  booking.toAddress,
-                ].some((value) => value.toLocaleLowerCase('fr').includes(normalizedQuery)) ||
-                (digits.length >= 3 && booking.phone.replace(/\D/g, '').includes(digits)),
-            )
-            .slice(0, 8)
-            .map((booking) => ({ kind: 'booking', booking }));
-          const clientResults: SearchResult[] = clients
-            .filter(
-              (client) =>
-                client.name.toLocaleLowerCase('fr').includes(normalizedQuery) ||
-                (digits.length >= 3 && client.phone.replace(/\D/g, '').includes(digits)),
-            )
-            .slice(0, 4)
-            .map((client) => ({ kind: 'client', ...client }));
-          setResults([...bookingResults, ...clientResults]);
-          setSearching(false);
-        })
-        .catch(() => {
-          if (requestId.current === current) setSearching(false);
-        });
-    }, 250);
-    return () => window.clearTimeout(timer);
-  }, [api, normalizedQuery]);
-  function openResult(result: SearchResult) {
-    setQuery('');
-    setResults([]);
-    if (result.kind === 'booking')
-      navigate(
-        `${routes.administrationCreateQuote}?modifier=${encodeURIComponent(result.booking.id)}`,
-      );
-    else navigate(`${routes.administrationClients}?q=${encodeURIComponent(result.phone)}`);
-  }
+  const {
+    query,
+    setQuery,
+    results,
+    setResults,
+    searching,
+    setSearching,
+    normalizedQuery,
+    todoOpen,
+    setTodoOpen,
+    todoError,
+    notificationCount,
+    notificationBookings,
+    todoRef,
+    todo,
+    openResult,
+    toggleTodo,
+    markAllNotificationsRead,
+  } = useAdminLayoutModel();
   return (
     <section className="container workspace-page admin-workspace">
       <header className="admin-reference-heading">
@@ -196,11 +101,11 @@ export function AdminLayout() {
                   setSearching(event.target.value.trim().length >= 2);
                   setResults([]);
                 }}
-                placeholder="Rechercher : nom, téléphone, n° DEM, adresse"
-                aria-label="Rechercher une réservation"
+                placeholder={visibleUiText.text116}
+                aria-label={visibleUiText.text117}
               />
               {normalizedQuery.length >= 2 && (
-                <div className="admin-global-results" aria-label="Résultats de recherche">
+                <div className="admin-global-results" aria-label={visibleUiText.text118}>
                   {results.map((result) => (
                     <button
                       key={result.kind === 'booking' ? result.booking.id : `client-${result.phone}`}
@@ -219,7 +124,7 @@ export function AdminLayout() {
                       </small>
                     </button>
                   ))}
-                  {!searching && !results.length && <span>Aucun résultat.</span>}
+                  {!searching && !results.length && <span>{visibleUiText.text119}</span>}
                 </div>
               )}
             </div>
@@ -232,31 +137,25 @@ export function AdminLayout() {
                 })
               }
             >
-              + Nouveau devis
+              {visibleUiText.text120}
             </button>
             <div className="admin-todo" ref={todoRef}>
               <button
                 type="button"
                 className={`admin-todo-toggle ${notificationCount > 0 ? 'has-items' : ''}`}
                 id="admin-todo-toggle"
-                style={{
-                  '--admin-todo-bg': notificationCount > 0 ? '#f6d73c' : 'transparent',
-                  color: notificationCount > 0 ? '#1e2023' : '#d5d9de',
-                } as React.CSSProperties}
+                style={
+                  {
+                    '--admin-todo-bg': notificationCount > 0 ? '#f6d73c' : 'transparent',
+                    color: notificationCount > 0 ? '#1e2023' : '#d5d9de',
+                  } as React.CSSProperties
+                }
                 aria-expanded={todoOpen}
                 aria-controls="admin-todo-panel"
-                onClick={() => {
-                  setTodoError('');
-                  setTodoOpen((value) => {
-                    const opening = !value;
-                    if (opening && notificationBookings === null) {
-                      void api.bookings().then(setNotificationBookings).catch(() => {});
-                    }
-                    return opening;
-                  });
-                }}
+                onClick={toggleTodo}
               >
-                À traiter · {notificationCount}
+                {visibleUiText.text121}
+                {notificationCount}
               </button>
               {todoOpen && (
                 <div
@@ -266,7 +165,9 @@ export function AdminLayout() {
                   aria-labelledby="admin-todo-toggle"
                 >
                   {todo.map((item) => {
-                    const booking = notificationBookings?.find((value) => value.id === item.bookingId);
+                    const booking = notificationBookings?.find(
+                      (value) => value.id === item.bookingId,
+                    );
                     const isNewBooking = item.title === 'Nouvelle réservation à confirmer';
                     const dateLabel = booking?.date
                       ? new Date(`${booking.date}T12:00:00`).toLocaleDateString('fr-FR')
@@ -294,7 +195,11 @@ export function AdminLayout() {
                             ? `${booking.reference} · ${booking.customerName}`
                             : item.message}
                         </strong>
-                        <span>{isNewBooking ? dateLabel : new Date(item.createdAt).toLocaleString('fr-FR')}</span>
+                        <span>
+                          {isNewBooking
+                            ? dateLabel
+                            : new Date(item.createdAt).toLocaleString('fr-FR')}
+                        </span>
                       </button>
                     );
                   })}
@@ -305,27 +210,17 @@ export function AdminLayout() {
                         : 'Rien de nouveau.'}
                     </span>
                   )}
-                  {todoError && <p className="admin-todo-error" role="alert">{todoError}</p>}
+                  {todoError && (
+                    <p className="admin-todo-error" role="alert">
+                      {todoError}
+                    </p>
+                  )}
                   <button
                     type="button"
                     className="admin-todo-mark"
-                    onClick={() => {
-                      void api
-                        .markAllNotificationsRead()
-                        .then(() => {
-                          setNotifications((current) =>
-                            current.map((item) => ({
-                              ...item,
-                              readAt: item.readAt ?? new Date().toISOString(),
-                            })),
-                          );
-                          setNotificationCount(0);
-                          setTodoOpen(false);
-                        })
-                        .catch(() => setTodoError('Les notifications n’ont pas pu être marquées comme vues.'));
-                    }}
+                    onClick={() => void markAllNotificationsRead()}
                   >
-                    Tout marquer comme vu
+                    {visibleUiText.text122}
                   </button>
                 </div>
               )}

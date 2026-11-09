@@ -1,3 +1,4 @@
+import { visibleUiText } from '../content/visible-ui-text';
 import { uiText } from '../content/reference-ui-text';
 import { KeyRound, Pencil, Truck, UserRoundPlus } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
@@ -149,7 +150,7 @@ export function Users() {
               type="tel"
               inputMode="tel"
               maxLength={30}
-              placeholder="+221 77 123 45 67 ou +33 6 12 34 56 78"
+              placeholder={visibleUiText.text123}
               required
               defaultValue={editing === 'new' ? '' : editing.phone}
               onChange={(event) => {

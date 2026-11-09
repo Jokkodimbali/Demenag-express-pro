@@ -149,7 +149,9 @@ try {
   await expect(todoPanel).toBeVisible();
   for (const width of [390, 320]) {
     await page.setViewportSize({ width, height: 844 });
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
     const bounds = await todoPanel.boundingBox();
     expect(bounds).not.toBeNull();
     expect(bounds.x).toBeGreaterThanOrEqual(0);
@@ -208,9 +210,7 @@ try {
     .filter({ hasText: displayedReference(first) })
     .getByRole('button', { name: 'Équipe →' })
     .click();
-  await expect(page).toHaveURL(
-    new RegExp(`/admin/flotte\\?date=${tomorrow}&booking=${first.id}`),
-  );
+  await expect(page).toHaveURL(new RegExp(`/admin/flotte\\?date=${tomorrow}&booking=${first.id}`));
   await page.goBack();
   await expect(calendar).toBeVisible();
   await calendar.locator('input[type="date"]').fill(tomorrow);

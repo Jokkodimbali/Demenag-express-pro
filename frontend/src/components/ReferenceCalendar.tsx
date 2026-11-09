@@ -1,3 +1,4 @@
+import { visibleUiText } from '../content/visible-ui-text';
 import { useApp } from '../application/context';
 import { liveBookingPrice } from '../application/services/live-booking-price';
 import { uiText } from '../content/reference-ui-text';
@@ -6,7 +7,6 @@ import { useMemo, useState } from 'react';
 import { money } from '../domain/format';
 import { isUndatedBookingForMonth } from '../domain/calendar';
 import type { Booking } from '../domain/model';
-import { downloadPlanningWeekPdf } from '../adapters/pdf';
 import type { Driver, Vehicle } from '../../../shared/contracts.js';
 
 type View = 'day' | 'week' | 'month';
@@ -17,6 +17,12 @@ type CalendarProps = {
   onSelect: (booking: Booking) => void;
   onCreateAtDay: (date: string, time: string) => void;
   onOpenTeam: (booking: Booking) => void;
+  onExportWeek: (
+    bookings: Booking[],
+    employees: Driver[],
+    anchor: string,
+    filtersApplied: boolean,
+  ) => Promise<void>;
 };
 type CalendarEvent = {
   booking: Booking;
@@ -158,6 +164,7 @@ export function ReferenceCalendar({
   onSelect,
   onCreateAtDay,
   onOpenTeam,
+  onExportWeek,
 }: CalendarProps) {
   const { catalogue } = useApp();
   const amount = (booking: Booking) => {
@@ -389,11 +396,11 @@ export function ReferenceCalendar({
         </header>
         <div className="reference-calendar-toolbar">
           <label className="reference-calendar-date">
-            <span className="visually-hidden">Aller à une date</span>
+            <span className="visually-hidden">{visibleUiText.text143}</span>
             <input
               type="date"
               value={timelineAnchor}
-              title="Aller à une date"
+              title={visibleUiText.text143}
               onChange={(event) => {
                 const next = event.currentTarget.value;
                 if (next) setCurrentDay(next);
@@ -405,7 +412,7 @@ export function ReferenceCalendar({
             className="reference-calendar-export"
             onClick={() => {
               setExportError('');
-              void downloadPlanningWeekPdf(
+              void onExportWeek(
                 filteredBookings,
                 employees,
                 timelineAnchor,
@@ -413,17 +420,17 @@ export function ReferenceCalendar({
               ).catch(() => setExportError('Le PDF de la semaine n’a pas pu être généré.'));
             }}
           >
-            PDF de la semaine
+            {visibleUiText.text144}
           </button>
         </div>
         <div className="reference-calendar-filters">
           <label>
-            <span className="visually-hidden">Filtrer par véhicule</span>
+            <span className="visually-hidden">{visibleUiText.text145}</span>
             <select
               value={vehicleFilter}
               onChange={(event) => setVehicleFilter(event.currentTarget.value)}
             >
-              <option value="">Tous les véhicules</option>
+              <option value="">{visibleUiText.text146}</option>
               {vehicles.map((vehicle) => (
                 <option key={vehicle.id} value={vehicle.id}>
                   {vehicle.name}
@@ -432,23 +439,23 @@ export function ReferenceCalendar({
             </select>
           </label>
           <label>
-            <span className="visually-hidden">Filtrer par statut</span>
+            <span className="visually-hidden">{visibleUiText.text147}</span>
             <select
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.currentTarget.value)}
             >
-              <option value="">Provisoire et final</option>
-              <option value="provisional">Provisoire</option>
-              <option value="final">Final</option>
+              <option value="">{visibleUiText.text148}</option>
+              <option value="provisional">{visibleUiText.text133}</option>
+              <option value="final">{visibleUiText.text134}</option>
             </select>
           </label>
           <label>
-            <span className="visually-hidden">Filtrer par employé</span>
+            <span className="visually-hidden">{visibleUiText.text149}</span>
             <select
               value={employeeFilter}
               onChange={(event) => setEmployeeFilter(event.currentTarget.value)}
             >
-              <option value="">Tous les employés</option>
+              <option value="">{visibleUiText.text150}</option>
               {employees.map((employee) => (
                 <option key={employee.id} value={employee.id}>
                   {employee.name}
@@ -466,7 +473,7 @@ export function ReferenceCalendar({
                 setEmployeeFilter('');
               }}
             >
-              Effacer les filtres
+              {visibleUiText.text151}
             </button>
           )}
         </div>
@@ -740,7 +747,9 @@ export function ReferenceCalendar({
                   >
                     <span>{weekLabels[(atNoon(day).getUTCDay() + 6) % 7]}</span>
                     <strong>{Number(day.slice(-2))}</strong>
-                    {occupancy && <small className="reference-time-grid-occupancy">{occupancy}</small>}
+                    {occupancy && (
+                      <small className="reference-time-grid-occupancy">{occupancy}</small>
+                    )}
                     {dayBookings.length > 0 && (
                       <>
                         <i>
@@ -883,7 +892,7 @@ export function ReferenceCalendar({
                                 onOpenTeam(booking);
                               }}
                             >
-                              Équipe →
+                              {visibleUiText.text152}
                             </button>
                           )}
                         </div>
@@ -910,7 +919,7 @@ export function ReferenceCalendar({
           className="reference-calendar-create"
           onClick={() => onCreateAtDay(selectedDay, '08:00')}
         >
-          + Nouveau RDV ce jour
+          {visibleUiText.text153}
         </button>
         {selected.length === 0 ? (
           <span>{uiText['aucunRendezVousCeJour']}</span>

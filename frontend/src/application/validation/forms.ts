@@ -322,10 +322,14 @@ export async function catalogueFromForm(data: FormData, catalogue: Catalogue): P
         data.get('w.tplP') ?? catalogue.settings.whatsappProvisionalTemplate ?? '',
       ),
       contactFirstTemplate: String(
-        data.get('contactFirstTemplate') ?? catalogue.settings.contactFirstTemplate ?? '{ref} {prenom}',
+        data.get('contactFirstTemplate') ??
+          catalogue.settings.contactFirstTemplate ??
+          '{ref} {prenom}',
       ),
       contactLastTemplate: String(
-        data.get('contactLastTemplate') ?? catalogue.settings.contactLastTemplate ?? '{nom} · {date}',
+        data.get('contactLastTemplate') ??
+          catalogue.settings.contactLastTemplate ??
+          '{nom} · {date}',
       ),
       businessEmail: String(data.get('businessEmail') ?? catalogue.settings.businessEmail ?? ''),
       businessAddress: String(

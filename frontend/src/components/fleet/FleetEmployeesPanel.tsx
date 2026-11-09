@@ -86,7 +86,7 @@ export function FleetEmployeesPanel({ model }: { model: Model }) {
           />
           <input
             type="tel"
-            placeholder="+221 77 123 45 67 ou +33 6 12 34 56 78"
+            placeholder={visibleUiText.text123}
             inputMode="tel"
             maxLength={30}
             value={newEmployee.phone}

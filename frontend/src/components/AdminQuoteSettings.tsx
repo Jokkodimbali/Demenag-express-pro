@@ -1,3 +1,4 @@
+import { visibleUiText } from '../content/visible-ui-text';
 import type { useAdminCreateQuoteModel } from '../application/controllers/useAdminCreateQuoteModel';
 import type { Catalogue } from '../domain/model';
 
@@ -23,11 +24,11 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
 
   return (
     <>
-      <section className="admin-quote-reference-settings" aria-label="Réglages du devis">
-        <strong>RÉGLAGES DU DEVIS</strong>
+      <section className="admin-quote-reference-settings" aria-label={visibleUiText.text124}>
+        <strong>{visibleUiText.text125}</strong>
         <div className="admin-quote-reference-setting">
-          <span>Facturation</span>
-          <div role="group" aria-label="Mode de facturation">
+          <span>{visibleUiText.text126}</span>
+          <div role="group" aria-label={visibleUiText.text127}>
             <button
               type="button"
               aria-pressed={quoteConfig.billingMode !== 'driver-rental'}
@@ -40,7 +41,7 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
                 }))
               }
             >
-              Déménagement complet
+              {visibleUiText.text128}
             </button>
             <button
               type="button"
@@ -50,13 +51,13 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
                 setQuoteConfig((current) => ({ ...current, billingMode: 'driver-rental' }))
               }
             >
-              Location avec chauffeur
+              {visibleUiText.text129}
             </button>
           </div>
         </div>
         <div className="admin-quote-reference-setting">
-          <span>Calcul</span>
-          <div role="group" aria-label="Mode de calcul">
+          <span>{visibleUiText.text130}</span>
+          <div role="group" aria-label={visibleUiText.text3}>
             <button
               type="button"
               aria-pressed={quoteConfig.calcMode === 'auto'}
@@ -69,7 +70,7 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
                 }));
               }}
             >
-              Automatique
+              {visibleUiText.text4}
             </button>
             <button
               type="button"
@@ -89,20 +90,20 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
                 }));
               }}
             >
-              Manuel
+              {visibleUiText.text5}
             </button>
           </div>
         </div>
         <div className="admin-quote-reference-setting">
-          <span>Étape</span>
-          <div role="group" aria-label="Étape du devis">
+          <span>{visibleUiText.text131}</span>
+          <div role="group" aria-label={visibleUiText.text132}>
             <button
               type="button"
               aria-pressed={quoteKind === 'provisional'}
               className={quoteKind === 'provisional' ? 'active' : ''}
               onClick={() => setQuoteKind('provisional')}
             >
-              Provisoire
+              {visibleUiText.text133}
             </button>
             <button
               type="button"
@@ -118,13 +119,13 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
                 setStageError('');
               }}
             >
-              Final
+              {visibleUiText.text134}
             </button>
           </div>
         </div>
         <div className="admin-quote-reference-setting">
-          <span>Matériel</span>
-          <div role="group" aria-label="État de préparation du matériel">
+          <span>{visibleUiText.text135}</span>
+          <div role="group" aria-label={visibleUiText.text136}>
             {(['oui', 'non'] as const).map((value) => {
               const active = estimateInventory.ready === value;
               return (
@@ -160,8 +161,8 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
           </div>
         </div>
         <div className="admin-quote-reference-setting">
-          <span>Passage</span>
-          <div role="group" aria-label="Passage par les escaliers ou le balcon">
+          <span>{visibleUiText.text137}</span>
+          <div role="group" aria-label={visibleUiText.text138}>
             {(
               [
                 ['oui', 'Escalier'],
@@ -207,7 +208,7 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
         {(draft.questionnaireAnswers['key-stairs']?.startsWith('Non, par le balcon') ||
           draft.inventory.stairs === 'balcon') && (
           <label className="admin-quote-reference-setting">
-            <span>Supplément passage par le balcon (FCFA)</span>
+            <span>{visibleUiText.text139}</span>
             <input
               type="number"
               min="0"
@@ -228,8 +229,8 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
           </label>
         )}
         <div className="admin-quote-reference-setting">
-          <span>Embouteillages</span>
-          <div role="group" aria-label="Prise en compte des embouteillages">
+          <span>{visibleUiText.text140}</span>
+          <div role="group" aria-label={visibleUiText.text141}>
             <button
               type="button"
               aria-pressed={!quoteConfig.trafficOff}
@@ -244,8 +245,8 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
         </div>
         {heatAvailable && (
           <div className="admin-quote-reference-setting">
-            <span>Récupération chaleur</span>
-            <div role="group" aria-label="Récupération liée à la chaleur">
+            <span>{visibleUiText.text57}</span>
+            <div role="group" aria-label={visibleUiText.text142}>
               <button
                 type="button"
                 aria-pressed={heatActive}

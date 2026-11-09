@@ -6,6 +6,8 @@
 @import './styles/workspace.css';
 @import './styles/responsive.css';
 @import './styles/prototype.css';
+@import './prototype.part-02.css';
+@import './styles/prototype.part-02.css';
 @import './styles/admin-quote.css';
 @import './styles/reference-home.css';
 @import './styles/booking-confirmation.css';

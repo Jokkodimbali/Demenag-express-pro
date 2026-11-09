@@ -1,3 +1,4 @@
+import { visibleUiText } from '../content/visible-ui-text';
 import { uiText } from '../content/reference-ui-text';
 import { ChevronDown } from 'lucide-react';
 import { Suspense, lazy } from 'react';
@@ -15,22 +16,14 @@ import { useAdminCreateQuoteModel } from '../application/controllers/useAdminCre
 import { AdminCreateQuoteAside } from '../components/AdminCreateQuoteAside';
 import { AdminQuoteVehicleBilling } from '../components/AdminQuoteVehicleBilling';
 import { AdminQuoteSettings } from '../components/AdminQuoteSettings';
+import { AdminQuoteSaveBar } from '../components/AdminQuoteSaveBar';
+import { AdminQuoteStepHeading } from '../components/AdminQuoteStepHeading';
 import { LoadingSimulation } from '../components/booking/LoadingSimulation';
 import { adminQuoteVehicleText as quoteText } from '../content/admin-quote-vehicle';
 import { quoteConditionsText } from '../application/services/whatsapp-templates';
 import { normalizePhoneNumber, sanitizePhoneInput } from '../domain/phone-number';
 
 const RouteMap = lazy(() => import('../components/RouteMap'));
-
-function QuoteStepHeading({ number, title }: { number: number; title: string }) {
-  return (
-    <div className="admin-quote-step-heading" data-step={number}>
-      <span className="admin-quote-step-number">{number}</span>
-      <span>{title}</span>
-      <i aria-hidden="true" />
-    </div>
-  );
-}
 
 export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: boolean }) {
   const model = useAdminCreateQuoteModel(publicRequest);
@@ -306,7 +299,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
               </div>
             </section>
           )}
-          <QuoteStepHeading number={1} title={quoteText.stepClient} />
+          <AdminQuoteStepHeading number={1} title={quoteText.stepClient} />
           <section className="admin-quote-card">
             <button
               className="admin-quote-section-toggle"
@@ -352,7 +345,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                           customerPhone: sanitizePhoneInput(event.target.value),
                         }))
                       }
-                      placeholder="+221 77 123 45 67 ou +33 6 12 34 56 78"
+                      placeholder={visibleUiText.text123}
                       aria-label={uiText['telephone']}
                     />
                   </div>
@@ -467,7 +460,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             )}
           </section>
 
-          <QuoteStepHeading number={2} title={quoteText.stepRoute} />
+          <AdminQuoteStepHeading number={2} title={quoteText.stepRoute} />
           <section
             className={`admin-quote-card${publicRequest ? ' reference-request-route-card' : ''}`}
           >
@@ -584,7 +577,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             )}
           </section>
 
-          <QuoteStepHeading number={3} title={quoteText.stepInventory} />
+          <AdminQuoteStepHeading number={3} title={quoteText.stepInventory} />
           <CallInventory
             draft={draft}
             setDraft={setDraft}
@@ -643,7 +636,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
           />
           {!publicRequest && (
             <>
-              <QuoteStepHeading number={4} title={quoteText.stepVehicle} />
+              <AdminQuoteStepHeading number={4} title={quoteText.stepVehicle} />
               <section className="admin-quote-card admin-quote-vehicle-panel">
                 <span className="admin-quote-vehicle-label">{quoteText.vehicle}</span>
                 <div
@@ -672,7 +665,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             </>
           )}
 
-          <QuoteStepHeading number={5} title={quoteText.stepOptions} />
+          <AdminQuoteStepHeading number={5} title={quoteText.stepOptions} />
           {!publicRequest && (
             <section className="admin-quote-card">
               <div className="admin-quote-card-head">
@@ -991,34 +984,13 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
           }
         />
         {!publicRequest && (
-          <div className="admin-quote-save-bar" aria-live="polite">
-            <div>
-              <small>{quoteKind === 'final' ? 'TOTAL' : 'TOTAL ESTIMÉ'}</small>
-              <strong>
-                {model.previewTotal == null ? 'Sur devis' : money(model.previewTotal)}
-              </strong>
-            </div>
-            <div>
-              <small>Allers-retours</small>
-              <strong>{quoteConfig.trips}</strong>
-            </div>
-            {movingEstimate && (
-              <>
-                <div>
-                  <small>
-                    {quoteConfig.billingMode === 'driver-rental'
-                      ? 'Manœuvres (client)'
-                      : 'Manœuvres'}
-                  </small>
-                  <strong>{movingEstimate.crew}</strong>
-                </div>
-                <div>
-                  <small>Fin prévue</small>
-                  <strong>{movingEstimate.endTime}</strong>
-                </div>
-              </>
-            )}
-          </div>
+          <AdminQuoteSaveBar
+            quoteKind={quoteKind}
+            total={model.previewTotal}
+            trips={quoteConfig.trips}
+            movingEstimate={movingEstimate}
+            driverRental={quoteConfig.billingMode === 'driver-rental'}
+          />
         )}
       </form>
     </div>

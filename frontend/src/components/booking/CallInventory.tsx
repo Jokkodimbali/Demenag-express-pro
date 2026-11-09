@@ -1,3 +1,4 @@
+import { visibleUiText } from '../../content/visible-ui-text';
 import { uiText } from '../../content/reference-ui-text';
 import { useCallInventory } from '../../application/controllers/useCallInventory';
 import { MovingPlanningPanel } from './MovingPlanningPanel';
@@ -138,11 +139,11 @@ export function CallInventory({
             </p>
           )}
           {audience === 'client' && (
-            <section className="inventory-loading-conditions" aria-label="Conditions de chargement">
-              <strong>CONDITIONS DE CHARGEMENT · AFFICHÉES SUR LE DEVIS</strong>
+            <section className="inventory-loading-conditions" aria-label={visibleUiText.text154}>
+              <strong>{visibleUiText.text155}</strong>
               <div>
-                <span>Le matériel sera-t-il prêt à être chargé ?</span>
-                <div role="group" aria-label="État de préparation du matériel">
+                <span>{visibleUiText.text156}</span>
+                <div role="group" aria-label={visibleUiText.text136}>
                   {(
                     [
                       ['oui', 'Oui, tout est prêt'],
@@ -165,15 +166,11 @@ export function CallInventory({
                     </button>
                   ))}
                 </div>
-                {inventory.ready === 'non' && (
-                  <small>
-                    Le temps d’emballage est ajouté au planning. Pensez à prévoir cartons et film.
-                  </small>
-                )}
+                {inventory.ready === 'non' && <small>{visibleUiText.text157}</small>}
               </div>
               <div>
-                <span>Tout passe-t-il par l’escalier ?</span>
-                <div role="group" aria-label="Passage par les escaliers ou le balcon">
+                <span>{visibleUiText.text158}</span>
+                <div role="group" aria-label={visibleUiText.text138}>
                   {(
                     [
                       ['oui', 'Oui, tout passe par l’escalier'],
@@ -197,15 +194,8 @@ export function CallInventory({
                     </button>
                   ))}
                 </div>
-                {inventory.stairs === 'balcon' && (
-                  <small>
-                    Le passage par le balcon entraîne un supplément fixé par Demenag Express après
-                    étude.
-                  </small>
-                )}
-                {inventory.stairs === 'verif' && (
-                  <small>Demandez la largeur de l’escalier et des portes, ou une photo.</small>
-                )}
+                {inventory.stairs === 'balcon' && <small>{visibleUiText.text159}</small>}
+                {inventory.stairs === 'verif' && <small>{visibleUiText.text160}</small>}
               </div>
             </section>
           )}
@@ -963,9 +953,9 @@ export function CallInventory({
                 </div>
                 {(audience === 'admin' || referenceMode) && (
                   <details className="inventory-custom-details">
-                    <summary>Décrire cet objet pour les calculs et le chargement</summary>
+                    <summary>{visibleUiText.text161}</summary>
                     <label>
-                      Objet ressemblant à
+                      {visibleUiText.text162}
                       <select
                         value={item.like ?? ''}
                         onChange={(event) =>
@@ -979,7 +969,7 @@ export function CallInventory({
                           })
                         }
                       >
-                        <option value="">Objet générique</option>
+                        <option value="">{visibleUiText.text163}</option>
                         {inventoryItems.map((definition) => (
                           <option key={definition.key} value={definition.key}>
                             {definition.label}
@@ -990,7 +980,7 @@ export function CallInventory({
                     <div className="inventory-custom-dimensions">
                       {(['cL', 'cW', 'cH'] as const).map((key, index) => (
                         <label key={key}>
-                          {['Longueur', 'Largeur', 'Hauteur'][index]} (cm)
+                          {['Longueur', 'Largeur', 'Hauteur'][index]} {visibleUiText.text164}
                           <input
                             type="number"
                             min={0}
@@ -1016,7 +1006,7 @@ export function CallInventory({
                         </label>
                       ))}
                       <label>
-                        Poids (kg)
+                        {visibleUiText.text165}
                         <input
                           type="number"
                           min={0}
@@ -1041,7 +1031,7 @@ export function CallInventory({
                         />
                       </label>
                       <label>
-                        Prix menuisier spécifique (FCFA)
+                        {visibleUiText.text166}
                         <input
                           type="number"
                           min={0}
@@ -1093,10 +1083,7 @@ export function CallInventory({
                         </label>
                       ))}
                     </div>
-                    <small>
-                      Les dimensions et le poids saisis remplacent les valeurs génériques dans le
-                      volume, la manutention et la simulation 3D.
-                    </small>
+                    <small>{visibleUiText.text167}</small>
                   </details>
                 )}
               </div>
@@ -1104,10 +1091,7 @@ export function CallInventory({
           </div>
           <div className="inventory-custom">
             {customInventoryTypes.length > 0 && (
-              <div
-                className="inventory-custom-type-picker"
-                aria-label="Objets personnalisés du catalogue"
-              >
+              <div className="inventory-custom-type-picker" aria-label={visibleUiText.text168}>
                 {customInventoryTypes.map((type) => (
                   <button type="button" key={type.k} onClick={() => addCustomType(type)}>
                     + {type.n}

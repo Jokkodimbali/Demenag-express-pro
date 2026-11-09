@@ -103,13 +103,13 @@ export function ReferenceWhatsappSettings({ catalogue }: { catalogue: Catalogue 
             maxLength={30}
             value={businessNumber}
             onChange={(event) => setBusinessNumber(sanitizePhoneInput(event.target.value))}
-            placeholder="+221 77 510 51 04 ou +33 6 12 34 56 78"
+            placeholder={visibleUiText.text179}
             required
           />
         </label>
         <div className="reference-settings-contact-format">
           <div className="reference-settings-section-heading">
-            <strong>NOM DU CONTACT CLIENT DANS LE TÉLÉPHONE</strong>
+            <strong>{visibleUiText.text188}</strong>
             <button
               type="button"
               onClick={(event) => {
@@ -119,12 +119,12 @@ export function ReferenceWhatsappSettings({ catalogue }: { catalogue: Catalogue 
                 window.setTimeout(() => form?.requestSubmit(), 0);
               }}
             >
-              Par défaut
+              {visibleUiText.text189}
             </button>
           </div>
           <div className="reference-settings-contact-fields">
             <label>
-              <span>Prénom</span>
+              <span>{visibleUiText.text190}</span>
               <input
                 name="contactFirstTemplate"
                 maxLength={200}
@@ -133,7 +133,7 @@ export function ReferenceWhatsappSettings({ catalogue }: { catalogue: Catalogue 
               />
             </label>
             <label>
-              <span>Nom</span>
+              <span>{visibleUiText.text186}</span>
               <input
                 name="contactLastTemplate"
                 maxLength={200}
@@ -143,11 +143,11 @@ export function ReferenceWhatsappSettings({ catalogue }: { catalogue: Catalogue 
             </label>
           </div>
           <small>
-            Champs : {'{ref}'} {'{prenom}'} {'{nom}'} {'{client}'} {'{date}'} {'{vehicule}'}{' '}
-            {'{quartier}'}
+            {visibleUiText.text191}
+            {'{ref}'} {'{prenom}'} {'{nom}'} {'{client}'} {'{date}'} {'{vehicule}'} {'{quartier}'}
           </small>
           <span>
-            Exemple :{' '}
+            {visibleUiText.text192}{' '}
             <strong>
               {contactFirst.replace('{ref}', 'DEM-4861').replace('{prenom}', 'Moussa')}{' '}
               {contactLast.replace('{nom}', 'Diop').replace('{date}', '06/11')}

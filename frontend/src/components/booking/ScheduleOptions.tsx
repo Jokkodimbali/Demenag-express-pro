@@ -1,3 +1,4 @@
+import { visibleUiText } from '../../content/visible-ui-text';
 import { uiText } from '../../content/reference-ui-text';
 import { Minus, Plus } from 'lucide-react';
 import type { BookingViewState } from '../../application/contracts/booking-view';
@@ -101,7 +102,7 @@ export function ScheduleOptions({
                 setDraft((d) => ({ ...d, timeSlot: e.target.value }));
               }}
             >
-              <option value="">Choisir un créneau</option>
+              <option value="">{visibleUiText.text175}</option>
               {slotOptions.map((slot) => (
                 <option key={slot.value} value={slot.value}>
                   {slot.label}

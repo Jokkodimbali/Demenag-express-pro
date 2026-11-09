@@ -1,3 +1,4 @@
+import { visibleUiText } from '../../content/visible-ui-text';
 import { useEffect, useState } from 'react';
 import { inventoryItems } from '../../domain/inventory';
 import type { CustomInventoryType } from '../../domain/model';
@@ -47,11 +48,8 @@ export function InventoryCatalogSettings({ types, hiddenKeys, onSave }: Props) {
     >
       <header>
         <div>
-          <h2 id="settings-inventory-catalog-title">Catalogue de l’inventaire</h2>
-          <p>
-            Ajoutez des types d’objets et leurs mesures. Les fiches de devis gardent les valeurs
-            enregistrées au moment de leur création.
-          </p>
+          <h2 id="settings-inventory-catalog-title">{visibleUiText.text180}</h2>
+          <p>{visibleUiText.text181}</p>
         </div>
         <button
           type="button"
@@ -67,12 +65,15 @@ export function InventoryCatalogSettings({ types, hiddenKeys, onSave }: Props) {
             ])
           }
         >
-          + Nouveau type
+          {visibleUiText.text182}
         </button>
       </header>
 
       <details>
-        <summary>Types d’origine ({inventoryItems.length})</summary>
+        <summary>
+          {visibleUiText.text183}
+          {inventoryItems.length})
+        </summary>
         <div className="settings-inventory-hidden-list">
           {inventoryItems.map((item) => (
             <label key={item.key}>
@@ -96,18 +97,21 @@ export function InventoryCatalogSettings({ types, hiddenKeys, onSave }: Props) {
       {draftTypes.map((type, index) => (
         <article className="settings-inventory-type" key={type.k}>
           <div className="settings-inventory-type-heading">
-            <strong>Type personnalisé {index + 1}</strong>
+            <strong>
+              {visibleUiText.text184}
+              {index + 1}
+            </strong>
             <button
               type="button"
               className="button secondary"
               onClick={() => setDraftTypes((current) => current.filter((_, i) => i !== index))}
             >
-              Retirer
+              {visibleUiText.text185}
             </button>
           </div>
           <div className="settings-inventory-type-fields">
             <label>
-              Nom
+              {visibleUiText.text186}
               <input
                 value={type.n}
                 maxLength={100}
@@ -115,7 +119,7 @@ export function InventoryCatalogSettings({ types, hiddenKeys, onSave }: Props) {
               />
             </label>
             <label>
-              Rubrique
+              {visibleUiText.text101}
               <select
                 value={type.sec}
                 onChange={(event) => patchType(index, { sec: event.target.value })}
@@ -126,12 +130,12 @@ export function InventoryCatalogSettings({ types, hiddenKeys, onSave }: Props) {
               </select>
             </label>
             <label>
-              Ressemble à
+              {visibleUiText.text187}
               <select
                 value={type.like ?? ''}
                 onChange={(event) => patchType(index, { like: event.target.value || undefined })}
               >
-                <option value="">Objet générique</option>
+                <option value="">{visibleUiText.text163}</option>
                 {inventoryItems
                   .filter((item) => !['carton', 'sac'].includes(item.key))
                   .map((item) => (

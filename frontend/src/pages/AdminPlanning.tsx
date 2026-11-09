@@ -1,31 +1,16 @@
-import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAdministration } from '../application/controllers/useAdministration';
 import { useApp } from '../application/context';
 import { ReferenceCalendar } from '../components/ReferenceCalendar';
 import { messages } from '../content/fr';
 import { routes } from '../routing/routes';
-import type { Driver } from '../../../shared/contracts.js';
+import { useCalendarEmployees } from '../application/controllers/useCalendarEmployees';
 
 export function AdminPlanning() {
   const { bookings, loading, error } = useAdministration();
-  const { api, catalogue } = useApp();
+  const { catalogue, exportPlanningWeek } = useApp();
   const navigate = useNavigate();
-  const [employees, setEmployees] = useState<Driver[]>([]);
-  useEffect(() => {
-    let active = true;
-    void api
-      .drivers()
-      .then((rows) => {
-        if (active) setEmployees(rows);
-      })
-      .catch(() => {
-        if (active) setEmployees([]);
-      });
-    return () => {
-      active = false;
-    };
-  }, [api]);
+  const employees = useCalendarEmployees();
   const select = (booking: (typeof bookings)[number]) =>
     navigate(`${routes.administrationCreateQuote}?modifier=${encodeURIComponent(booking.id)}`);
   const createAtDay = (date: string, time: string) =>
@@ -51,6 +36,7 @@ export function AdminPlanning() {
           onSelect={select}
           onCreateAtDay={createAtDay}
           onOpenTeam={openTeam}
+          onExportWeek={exportPlanningWeek}
         />
       )}
     </div>

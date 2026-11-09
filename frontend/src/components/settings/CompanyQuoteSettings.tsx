@@ -1,3 +1,4 @@
+import { visibleUiText } from '../../content/visible-ui-text';
 import type { Catalogue } from '../../domain/model';
 import { referenceSettingsText as text } from '../../content/reference-settings-text';
 import { sanitizePhoneInput } from '../../domain/phone-number';
@@ -24,7 +25,7 @@ export function CompanyQuoteSettings({ catalogue }: { catalogue: Catalogue }) {
             inputMode="tel"
             maxLength={30}
             defaultValue={catalogue.settings.businessPhone}
-            placeholder="+221 77 510 51 04 ou +33 6 12 34 56 78"
+            placeholder={visibleUiText.text179}
             onChange={(event) => {
               event.currentTarget.value = sanitizePhoneInput(event.currentTarget.value);
             }}

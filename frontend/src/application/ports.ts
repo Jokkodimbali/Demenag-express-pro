@@ -277,3 +277,15 @@ export type AccountingDocumentExporter = (
   entries: AccountingEntry[],
   endMonth: string,
 ) => Promise<void>;
+export type PlanningWeekExporter = (
+  bookings: Booking[],
+  drivers: Driver[],
+  anchor: string,
+  filtersApplied?: boolean,
+) => Promise<void>;
+export type TariffDocumentExporter = (
+  catalogue: Catalogue,
+  kind: 'client' | 'agent',
+  share: boolean,
+  tollPoints: TollPoint[],
+) => Promise<void>;

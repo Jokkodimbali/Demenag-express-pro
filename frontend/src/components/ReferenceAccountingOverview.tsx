@@ -17,7 +17,7 @@ import {
 } from '../application/services/revenue';
 import { money } from '../domain/format';
 import { accountingFinanceText as text } from '../content/accounting-finance';
-import type { ApplicationApi } from '../application/ports';
+import type { ClaudeCompletionInput } from '../application/ports';
 
 type Props = {
   config: AccountingFinanceConfiguration;
@@ -36,7 +36,7 @@ type Props = {
     revenueCount: number;
     chargeCount: number;
   };
-  api: Pick<ApplicationApi, 'completeClaude'>;
+  completeClaude: (input: ClaudeCompletionInput) => Promise<string>;
 };
 
 type FinanceChatMessage = AccountingFinanceConfiguration['financeChat'][number];
@@ -67,7 +67,7 @@ export function ReferenceAccountingOverview({
   forecastHistory,
   allPeriods,
   summary,
-  api,
+  completeClaude,
 }: Props) {
   const [showCalculation, setShowCalculation] = useState(false);
   const [analysis, setAnalysis] = useState('');
@@ -257,7 +257,7 @@ export function ReferenceAccountingOverview({
       'Donne : 1) si l’objectif est réaliste, 2) trois leviers concrets chiffrés, 3) le principal risque.',
     ].join('\n');
     try {
-      const result = await api.completeClaude({ prompt });
+      const result = await completeClaude({ prompt });
       setAnalysis(
         String(result ?? '')
           .replace(/\*\*|#+ ?/g, '')
@@ -344,7 +344,7 @@ export function ReferenceAccountingOverview({
       'Réponds à la dernière question du gérant, en français, en texte brut sans markdown, de façon précise et chiffrée. 10 lignes maximum sauf s’il demande plus de détails.',
     ].join('\n');
     try {
-      const response = String((await api.completeClaude({ prompt })) ?? '')
+      const response = String((await completeClaude({ prompt })) ?? '')
         .replace(/\*\*/g, '')
         .replace(/^#+\s*/gm, '')
         .trim()

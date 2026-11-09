@@ -1,51 +1,36 @@
-import { useState } from 'react';
+import { visibleUiText } from '../../content/visible-ui-text';
 import type { Catalogue } from '../../domain/model';
-import { exportTariffDocument } from '../../adapters/tariff-documents';
-import { useApp } from '../../application/context';
+import { useTariffDocuments } from '../../application/controllers/useTariffDocuments';
 
 export function TariffDocumentsSettings({ catalogue }: { catalogue: Catalogue }) {
-  const { api } = useApp();
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState('');
-  async function exportPdf(kind: 'client' | 'agent', share: boolean) {
-    setBusy(true);
-    setMessage('');
-    try {
-      const tollPoints = kind === 'agent' ? await api.tollPoints() : [];
-      await exportTariffDocument(catalogue, kind, share, tollPoints);
-      setMessage(kind === 'client' ? 'Grille tarifaire prête.' : 'Guide tarifaire prêt.');
-    } catch {
-      setMessage('Le document tarifaire n’a pas pu être généré.');
-    } finally {
-      setBusy(false);
-    }
-  }
+  const { busy, message, exportDocument } = useTariffDocuments(catalogue);
   return (
     <section className="reference-settings-wide reference-settings-card reference-tariff-documents">
       <div>
-        <h3>Grille tarifaire client</h3>
-        <p>PDF généré à partir des tarifs actuels enregistrés dans la base de données.</p>
+        <h3>{visibleUiText.text193}</h3>
+        <p>{visibleUiText.text194}</p>
         <div className="reference-tariff-actions">
-          <button type="button" disabled={busy} onClick={() => void exportPdf('client', false)}>
-            Télécharger le PDF
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void exportDocument('client', false)}
+          >
+            {visibleUiText.text195}
           </button>
-          <button type="button" disabled={busy} onClick={() => void exportPdf('client', true)}>
-            Partager
+          <button type="button" disabled={busy} onClick={() => void exportDocument('client', true)}>
+            {visibleUiText.text196}
           </button>
         </div>
       </div>
       <div>
-        <h3>Guide tarifaire pour agent IA</h3>
-        <p>
-          Formules, véhicules, transport, manœuvres, menuiserie, location et règles de calcul issus
-          des paramètres enregistrés.
-        </p>
+        <h3>{visibleUiText.text197}</h3>
+        <p>{visibleUiText.text198}</p>
         <div className="reference-tariff-actions">
-          <button type="button" disabled={busy} onClick={() => void exportPdf('agent', false)}>
-            Télécharger le PDF
+          <button type="button" disabled={busy} onClick={() => void exportDocument('agent', false)}>
+            {visibleUiText.text195}
           </button>
-          <button type="button" disabled={busy} onClick={() => void exportPdf('agent', true)}>
-            Partager
+          <button type="button" disabled={busy} onClick={() => void exportDocument('agent', true)}>
+            {visibleUiText.text196}
           </button>
         </div>
       </div>

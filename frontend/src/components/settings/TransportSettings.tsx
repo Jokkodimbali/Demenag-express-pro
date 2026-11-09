@@ -270,8 +270,8 @@ export function TransportSettings({
 
   return (
     <div className="reference-settings-page">
-      <nav className="reference-settings-quick-nav" aria-label="Aller aux paramètres">
-        <span>Aller à :</span>
+      <nav className="reference-settings-quick-nav" aria-label={visibleUiText.text199}>
+        <span>{visibleUiText.text200}</span>
         {groupLabels.map(([key, label]) => (
           <button
             key={key}
@@ -294,10 +294,7 @@ export function TransportSettings({
           {anyGroupOpen ? 'Tout fermer' : 'Tout ouvrir'}
         </button>
       </nav>
-      <p className="reference-settings-data-hint">
-        Les sauvegardes et la remise à zéro sont dans l’onglet Données. Tous les paramètres sont
-        enregistrés dans la base de données.
-      </p>
+      <p className="reference-settings-data-hint">{visibleUiText.text201}</p>
       <div className="reference-settings-grid">
         {group(
           'tarifs',
@@ -329,7 +326,7 @@ export function TransportSettings({
               <span className="reference-settings-card-title">{uiText['supplementsFixes']}</span>
               <div className="reference-settings-fixed-fields">
                 <label>
-                  <span>Location avec chauffeur · dépassement du planning (par heure)</span>
+                  <span>{visibleUiText.text202}</span>
                   <input
                     style={inputStyle}
                     type="number"

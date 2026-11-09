@@ -83,7 +83,7 @@ export function AdminProfileForm() {
               required
               minLength={9}
               maxLength={25}
-              placeholder="+221 77 123 45 67 ou +33 6 12 34 56 78"
+              placeholder={visibleUiText.text123}
               onChange={(event) => {
                 event.currentTarget.value = sanitizePhoneInput(event.currentTarget.value);
               }}

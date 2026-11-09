@@ -356,10 +356,10 @@ export function fatigueAdvice(
   const to = estimate
     ? { distance: estimate.toIsoDistanceMeters, limit: estimate.toIsoLimitKg }
     : toFallback;
-  const kg = estimate?.totalWeightKg ?? (
+  const kg =
+    estimate?.totalWeightKg ??
     lines.reduce((sum, line) => sum + simulationLineWeight(line).total * line.q, 0) +
-    Math.round(referenceAnnexVolume(inventory) * 110)
-  );
+      Math.round(referenceAnnexVolume(inventory) * 110);
   const classLevel =
     Math.max(
       inventory.fromLift ? 0 : inventory.fromFloor,

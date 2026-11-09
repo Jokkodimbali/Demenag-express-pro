@@ -1,11 +1,7 @@
 import { uiText } from '../../content/reference-ui-text';
-import { useEffect, useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import type { Draft } from '../../application/booking-draft';
-import {
-  compressInventoryIllustration,
-  readLegacyInventoryIllustration,
-  removeLegacyInventoryIllustration,
-} from '../../application/inventory-illustrations';
+import { useInventoryIllustrations } from '../../application/controllers/useInventoryIllustrations';
 import { useApp } from '../../application/context';
 import {
   estimatedInventoryItemVolume,
@@ -226,9 +222,7 @@ export function InventoryHoverCard({
   imageScope?: string;
   historicalMaximum?: number;
 }) {
-  const { api, user } = useApp();
-  const [images, setImages] = useState<Record<string, string>>({});
-  const [uploadError, setUploadError] = useState('');
+  const { user } = useApp();
   const formatOptions = item.hasFormat ? inventoryFormats : [];
   const displayLabel = item.label.charAt(0).toLocaleUpperCase('fr-FR') + item.label.slice(1);
   const sizeLabel = item.sizeLabel;
@@ -254,78 +248,21 @@ export function InventoryHoverCard({
   const scope = imageScope ?? item.key;
   const hasVariants = formatOptions.length > 0 || sizeOptions.length > 0;
   const defaultImageKey = `${scope}:default`;
-  useEffect(() => {
-    const imageKeys = [
-      ...(item.hasFormat
-        ? inventoryFormats.map((option) => `${scope}:format:${option.value}`)
-        : []),
-      ...(item.sizeLabel
-        ? [Math.max(minimumSize, Math.min(size - 1, maximumSize - 2))]
-            .flatMap((first) => [first, first + 1, first + 2])
-            .filter((value) => value <= maximumSize)
-            .map((value) => `${scope}:size:${value}`)
-        : []),
-      ...(!hasVariants ? [defaultImageKey] : []),
-    ];
-    let active = true;
-    void Promise.all(
-      imageKeys.map(async (key) => {
-        const stored = await api.inventoryIllustration(key);
-        if (stored) return [key, stored] as const;
-        const legacy =
-          user?.role === 'admin'
-            ? await readLegacyInventoryIllustration(key).catch(() => null)
-            : null;
-        if (legacy && user?.role === 'admin') {
-          try {
-            await api.saveInventoryIllustration(key, legacy);
-            await removeLegacyInventoryIllustration(key);
-          } catch {
-            // L’image locale reste visible et sera retentée au prochain affichage.
-          }
-        }
-        return [key, legacy] as const;
-      }),
-    )
-      .then((entries) => {
-        if (active)
-          setImages(
-            Object.fromEntries(entries.filter((entry) => entry[1])) as Record<string, string>,
-          );
-      })
-      .catch(() => {
-        if (active) setUploadError("Les images enregistrées n'ont pas pu être chargées.");
-      });
-    return () => {
-      active = false;
-    };
-  }, [
-    scope,
-    item.key,
-    item.hasFormat,
-    item.sizeLabel,
-    size,
-    minimumSize,
-    maximumSize,
-    hasVariants,
-    defaultImageKey,
-    api,
-    user?.role,
-  ]);
-
-  const upload = async (key: string, file: File | undefined) => {
-    if (!file) return;
-    setUploadError('');
-    try {
-      const image = await compressInventoryIllustration(file);
-      await api.saveInventoryIllustration(key, image);
-      setImages((current) => ({ ...current, [key]: image }));
-    } catch (error) {
-      setUploadError(
-        error instanceof Error ? error.message : "L'image n'a pas pu être enregistrée.",
-      );
-    }
-  };
+  const imageKeys = [
+    ...(item.hasFormat ? inventoryFormats.map((option) => `${scope}:format:${option.value}`) : []),
+    ...(item.sizeLabel
+      ? [Math.max(minimumSize, Math.min(size - 1, maximumSize - 2))]
+          .flatMap((first) => [first, first + 1, first + 2])
+          .filter((value) => value <= maximumSize)
+          .map((value) => `${scope}:size:${value}`)
+      : []),
+    ...(!hasVariants ? [defaultImageKey] : []),
+  ];
+  const {
+    images,
+    error: uploadError,
+    upload,
+  } = useInventoryIllustrations(imageKeys, user?.role === 'admin');
 
   const illustration = (key: string, label: string) =>
     user?.role !== 'admin' ? (

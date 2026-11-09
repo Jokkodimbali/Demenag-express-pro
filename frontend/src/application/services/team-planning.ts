@@ -195,8 +195,7 @@ export function mergeTeamChanges(current: Booking, base: Booking, patch: Partial
 }
 export const needsOf = (booking: Booking) => {
   const quote = booking.quotes?.at(-1);
-  if (quote?.billingMode === 'driver-rental')
-    return { chauffeur: 1, menuisier: 0, manoeuvre: 0 };
+  if (quote?.billingMode === 'driver-rental') return { chauffeur: 1, menuisier: 0, manoeuvre: 0 };
   const options = quote?.options ?? booking.options;
   return {
     chauffeur: 1,

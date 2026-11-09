@@ -624,14 +624,15 @@ export function LoadingSimulation({
                       <div className="loading-simulation-section-content">
                         <div className="loading-simulation-blanket-size">
                           <span>
-                            Serviettes de ce devis :{' '}
+                            {visibleUiText.text172}{' '}
                             <strong>
-                              {quoteBlanketLengthCm} × {quoteBlanketWidthCm} cm
+                              {quoteBlanketLengthCm} × {quoteBlanketWidthCm} {visibleUiText.text173}
                             </strong>
                           </span>
                           {quoteBlanketSizeDiffers && (
                             <small>
-                              Paramètres actuels : {blanketLengthCm} × {blanketWidthCm} cm
+                              {visibleUiText.text174}
+                              {blanketLengthCm} × {blanketWidthCm} {visibleUiText.text173}
                             </small>
                           )}
                           <button
