@@ -1,20 +1,24 @@
+import { visibleUiText } from '../content/visible-ui-text';
 import { liveBookingPrice } from '../application/services/live-booking-price';
 import { uiText } from '../content/reference-ui-text';
 import { messages } from '../content/fr';
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAdministration } from '../application/controllers/useAdministration';
 import { useAdminClients } from '../application/controllers/useAdminClients';
 import { useApp } from '../application/context';
 import { errorMessage } from '../application/error-message';
 import { normalizedClientPhone } from '../application/services/client-summary';
+import { normalizePhoneNumber, sanitizePhoneInput } from '../domain/phone-number';
 import { usePagination } from '../application/usePagination';
 import { Modal } from '../components/Modal';
 import { Pagination } from '../components/Pagination';
 import { pageSizes } from '../config/pagination';
-import { money } from '../domain/format';
+import { money } from '../application/presentation/format';
 import type { Booking, User } from '../domain/model';
 import { routes } from '../routing/routes';
+import { contactVcard } from '../domain/contact-vcard';
+import type { Settings } from '../domain/model';
 
 type DirectoryEntry = { phone: string; name: string; address: string };
 type ClientRowValue = {
@@ -27,12 +31,34 @@ type ClientRowValue = {
   final: number;
   last: string;
   account: User | null;
+  references: string[];
+  bookings: Booking[];
 };
-const digitsOnly = (value: string) => value.replace(/\D/g, '').slice(-9);
 const shortDate = (value: string) => {
   const [year, month, day] = value.split('-');
   return `${day}/${month}/${year}`;
 };
+function downloadContacts(
+  contacts: Pick<ClientRowValue, 'name' | 'phone' | 'bookings'>[],
+  filename: string,
+  settings: Pick<Settings, 'contactFirstTemplate' | 'contactLastTemplate'>,
+) {
+  const cards = contacts
+    .map((contact) => contactVcard(contact, settings))
+    .filter((contact) => contact.valid)
+    .map((contact) => contact.vcard);
+  if (!cards.length) return;
+  const url = URL.createObjectURL(
+    new Blob([`${cards.join('\r\n')}\r\n`], { type: 'text/vcard;charset=utf-8' }),
+  );
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 30000);
+}
 function amounts(booking: Booking) {
   const final = [...booking.quotes].reverse().find((quote) => quote.kind === 'final');
   return {
@@ -46,6 +72,8 @@ function ClientRow({
   onQuote,
   onReset,
   onHide,
+  onContact,
+  onHistory,
   busy,
 }: {
   value: ClientRowValue;
@@ -56,6 +84,8 @@ function ClientRow({
   onQuote: () => void;
   onReset: () => void;
   onHide: () => void;
+  onContact: () => void;
+  onHistory: (reference: string) => void;
   busy: boolean;
 }) {
   const [name, setName] = useState(value.name),
@@ -69,8 +99,10 @@ function ClientRow({
   }, [value.name, value.phone, value.address]);
   async function save() {
     if (name === value.name && phone === value.phone && address === value.address) return;
-    if (name.trim().length < 2 || digitsOnly(phone).length < 9) {
-      setRowError('Vérifiez le nom et le numéro du client.');
+    if (name.trim().length < 2 || !normalizePhoneNumber(phone)) {
+      setRowError(
+        'Vérifiez le nom et saisissez un numéro valide avec son indicatif international.',
+      );
       return;
     }
     setRowError('');
@@ -84,7 +116,7 @@ function ClientRow({
     setter(event.target.value);
   return (
     <tr aria-busy={busy}>
-      <td>
+      <td data-label="Nom">
         <input
           aria-label={`Nom · ${value.name}`}
           value={name}
@@ -95,16 +127,19 @@ function ClientRow({
           className="reference-client-edit name"
         />
       </td>
-      <td>
+      <td data-label="Téléphone">
         <div className="reference-client-phone">
           <input
             aria-label={`Téléphone · ${value.name}`}
             value={phone}
-            onChange={update(setPhone)}
+            type="tel"
+            inputMode="tel"
+            maxLength={30}
+            onChange={(event) => setPhone(sanitizePhoneInput(event.target.value))}
             onBlur={() => void save()}
             className="reference-client-edit"
           />
-          <a href={`tel:${digitsOnly(phone)}`}>{uiText['appeler']}</a>
+          <a href={`tel:${normalizePhoneNumber(phone) ?? phone}`}>{uiText['appeler']}</a>
           {value.account?.passwordResetRequestedAt ? (
             <button
               className="reference-client-reset"
@@ -121,7 +156,7 @@ function ClientRow({
           </small>
         ) : null}
       </td>
-      <td>
+      <td data-label="Adresse">
         <input
           aria-label={`Adresse · ${value.name}`}
           value={address}
@@ -131,20 +166,42 @@ function ClientRow({
           className="reference-client-edit address"
         />
       </td>
-      <td className="reference-client-number">{value.moves}</td>
-      <td className="reference-client-amount">
+      <td data-label="Déménagements" className="reference-client-number">
+        {value.moves}
+      </td>
+      <td data-label="Montant total" className="reference-client-amount">
         <strong>{money(value.total)}</strong>
         <span>
           {uiText['dontFinal']}
           {money(value.final)}
         </span>
       </td>
-      <td className="reference-client-last">{value.last}</td>
-      <td>
+      <td data-label="Dernier rendez-vous" className="reference-client-last">
+        {value.last}
+      </td>
+      <td data-label="Actions">
         <div className="reference-client-actions">
           <button className="reference-client-quote" onClick={onQuote}>
             {uiText['nouveauDevis']}
           </button>
+          <button
+            className="reference-client-contact"
+            onClick={onContact}
+            title={`Enregistrer ${value.name} dans les contacts`}
+          >
+            {visibleUiText.text203}
+          </button>
+          {value.references.map((reference) => (
+            <button
+              className="reference-client-history"
+              key={reference}
+              type="button"
+              title={`Ouvrir le rendez-vous ${reference}`}
+              onClick={() => onHistory(reference)}
+            >
+              {reference}
+            </button>
+          ))}
           <button
             className="reference-client-delete"
             title={uiText['supprimer']}
@@ -163,7 +220,12 @@ export function AdminClients() {
   const { loadDirectory, updateClient, hideClientProfile, resetClientPassword } = useAdminClients();
   const { bookings, loading, error, setRetry } = useAdministration();
   const navigate = useNavigate();
-  const [query, setQuery] = useState('');
+  const [searchParams] = useSearchParams();
+  const [query, setQuery] = useState(() => searchParams.get('q') ?? '');
+  useEffect(() => {
+    const next = searchParams.get('q');
+    if (next) setQuery(next);
+  }, [searchParams]);
   const [profiles, setProfiles] = useState<DirectoryEntry[]>([]);
   const [hidden, setHidden] = useState<{ phone: string; hiddenAt: string }[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -197,10 +259,12 @@ export function AdminClients() {
       group.push(booking);
       summaries.set(key, group);
     }
-    const profileMap = new Map(profiles.map((profile) => [digitsOnly(profile.phone), profile]));
+    const profileMap = new Map(
+      profiles.map((profile) => [normalizedClientPhone(profile.phone), profile]),
+    );
     return [...summaries.entries()]
       .flatMap(([key, all]) => {
-        const hiddenEntry = hidden.find((entry) => digitsOnly(entry.phone) === key);
+        const hiddenEntry = hidden.find((entry) => normalizedClientPhone(entry.phone) === key);
         const latest = [...all].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
         if (hiddenEntry && latest.createdAt <= hiddenEntry.hiddenAt) return [];
         const profile = profileMap.get(key);
@@ -217,7 +281,9 @@ export function AdminClients() {
         );
         const final = active.reduce((sum, booking) => sum + amounts(booking).finalized, 0);
         const acct =
-          users.find((user) => user.role === 'client' && digitsOnly(user.phone) === key) ?? null;
+          users.find(
+            (user) => user.role === 'client' && normalizedClientPhone(user.phone) === key,
+          ) ?? null;
         return [
           {
             key,
@@ -229,6 +295,8 @@ export function AdminClients() {
             final,
             last: last ? shortDate(last) : '—',
             account: acct,
+            references: all.map((booking) => booking.reference),
+            bookings: all,
           },
         ];
       })
@@ -239,7 +307,8 @@ export function AdminClients() {
     (row) =>
       row.name.toLocaleLowerCase('fr').includes(needle) ||
       row.phone.replace(/\D/g, '').includes(query.replace(/\D/g, '') || '!') ||
-      row.address.toLocaleLowerCase('fr').includes(needle),
+      row.address.toLocaleLowerCase('fr').includes(needle) ||
+      row.references.some((reference) => reference.toLocaleLowerCase('fr').includes(needle)),
   );
   const pagination = usePagination(filtered, pageSizes.clients, needle);
   async function saveClient(
@@ -249,11 +318,12 @@ export function AdminClients() {
     setBusyKey(initial.key);
     try {
       await updateClient(initial.key, next);
-      const newKey = digitsOnly(next.phone);
+      const newKey = normalizedClientPhone(next.phone);
       setProfiles((old) => [
         ...old.filter(
           (profile) =>
-            digitsOnly(profile.phone) !== initial.key && digitsOnly(profile.phone) !== newKey,
+            normalizedClientPhone(profile.phone) !== initial.key &&
+            normalizedClientPhone(profile.phone) !== newKey,
         ),
         { phone: next.phone, name: next.name, address: next.address },
       ]);
@@ -273,7 +343,10 @@ export function AdminClients() {
     if (!confirmed) return;
     try {
       const entry = await hideClientProfile(client.key);
-      setHidden((old) => [...old.filter((value) => digitsOnly(value.phone) !== client.key), entry]);
+      setHidden((old) => [
+        ...old.filter((value) => normalizedClientPhone(value.phone) !== client.key),
+        entry,
+      ]);
     } catch (e) {
       setDirectoryError(errorMessage(e));
     }
@@ -318,6 +391,15 @@ export function AdminClients() {
             placeholder={uiText['rechercherUnNomUnNumeroUneAdresse']}
             aria-label={uiText['rechercherUnNomUnNumeroUneAdresse']}
           />
+          <button
+            className="reference-client-contact-export"
+            type="button"
+            onClick={() =>
+              downloadContacts(rows, 'Contacts-Demenag-Express.vcf', catalogue?.settings ?? {})
+            }
+          >
+            {visibleUiText.text204}
+          </button>
         </div>
         {error || directoryError ? (
           <p className="reference-client-error" role="alert">
@@ -353,6 +435,16 @@ export function AdminClients() {
                   busy={busyKey === client.key}
                   onSave={saveClient}
                   onQuote={() => newQuote(client)}
+                  onContact={() =>
+                    downloadContacts(
+                      [client],
+                      `${client.name.replace(/[^\p{L}\p{N}-]+/gu, '-')}.vcf`,
+                      catalogue?.settings ?? {},
+                    )
+                  }
+                  onHistory={(reference) =>
+                    navigate(`${routes.administrationBookings}?q=${encodeURIComponent(reference)}`)
+                  }
                   onHide={() => void hideClient(client)}
                   onReset={() => {
                     setResetError('');

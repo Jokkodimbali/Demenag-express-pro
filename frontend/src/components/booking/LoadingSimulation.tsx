@@ -10,8 +10,13 @@ import {
   handlingAdvice,
 } from '../../domain/loading-simulation-details';
 import type { Vehicle } from '../../domain/model';
-import { simulationInput, format, tripLabel, loadingRules } from './loading-simulation-model';
-import type { SimPlan, SimView } from './loading-simulation-model';
+import {
+  simulationInput,
+  format,
+  tripLabel,
+  loadingRules,
+} from '../../application/services/loading-simulation-model';
+import type { SimPlan, SimView } from '../../application/services/loading-simulation-model';
 import { generateLoadingSimulationPdf } from './loading-simulation-pdf';
 import { useLoadingSimulationPreferences } from '../../application/controllers/useLoadingSimulationPreferences';
 import { visibleUiText } from '../../content/visible-ui-text';
@@ -44,6 +49,7 @@ export function LoadingSimulation({
   estimate,
   setDraft,
   setQuoteConfig,
+  onPlanNeeds,
 }: {
   draft: Draft;
   vehicles: Vehicle[];
@@ -52,9 +58,14 @@ export function LoadingSimulation({
   estimate?: MovingEstimate | null;
   setDraft: Dispatch<SetStateAction<Draft>>;
   setQuoteConfig: Dispatch<SetStateAction<AdminQuoteConfig>>;
+  onPlanNeeds?: Dispatch<SetStateAction<{ blankets: number; straps: number } | null>>;
 }) {
   const { blanketLengthCm, blanketWidthCm, blanketStock, saveBlanketStock, imageDataUrl } =
     useLoadingSimulationPreferences();
+  const quoteBlanketLengthCm = draft.inventory.blanketLengthCm ?? blanketLengthCm;
+  const quoteBlanketWidthCm = draft.inventory.blanketWidthCm ?? blanketWidthCm;
+  const quoteBlanketSizeDiffers =
+    quoteBlanketLengthCm !== blanketLengthCm || quoteBlanketWidthCm !== blanketWidthCm;
   const [open, setOpen] = useState(true);
   const [ready, setReady] = useState(false);
   const [loadingError, setLoadingError] = useState('');
@@ -77,9 +88,15 @@ export function LoadingSimulation({
   const input = useMemo(
     () =>
       vehicle
-        ? simulationInput(draft.inventory, vehicle, stock, blanketLengthCm, blanketWidthCm)
+        ? simulationInput(
+            draft.inventory,
+            vehicle,
+            stock,
+            quoteBlanketLengthCm,
+            quoteBlanketWidthCm,
+          )
         : null,
-    [draft.inventory, vehicle, stock, blanketLengthCm, blanketWidthCm],
+    [draft.inventory, vehicle, stock, quoteBlanketLengthCm, quoteBlanketWidthCm],
   );
   const hasItems = Boolean(input && (input.lines.length || input.annex > 0));
 
@@ -117,14 +134,34 @@ export function LoadingSimulation({
       if (item.active === false) return;
       try {
         result[item.id] = window.DemSim!.plan(
-          simulationInput(draft.inventory, item, stock, blanketLengthCm, blanketWidthCm),
+          simulationInput(draft.inventory, item, stock, quoteBlanketLengthCm, quoteBlanketWidthCm),
         );
       } catch {
         // A vehicle with incomplete dimensions is omitted, as in the reference.
       }
     });
     return result;
-  }, [ready, hasItems, vehicles, draft.inventory, stock, blanketLengthCm, blanketWidthCm]);
+  }, [
+    ready,
+    hasItems,
+    vehicles,
+    draft.inventory,
+    stock,
+    quoteBlanketLengthCm,
+    quoteBlanketWidthCm,
+  ]);
+  useEffect(() => {
+    if (!onPlanNeeds) return;
+    const trips = vehiclePlans[draft.vehicleId]?.trips ?? [];
+    onPlanNeeds(
+      trips.length
+        ? {
+            blankets: Math.max(...trips.map((trip) => trip.need || trip.blankets || 0)),
+            straps: Math.max(...trips.map((trip) => trip.straps || 0)),
+          }
+        : null,
+    );
+  }, [draft.vehicleId, onPlanNeeds, vehiclePlans]);
   const trip = plan?.trips[Math.min(tripIndex, plan.trips.length - 1)] ?? null;
   const currentStep = step === null ? null : Math.min(step, trip?.boxes.length ?? 0);
   const currentStepRef = useRef(currentStep);
@@ -235,8 +272,8 @@ export function LoadingSimulation({
       plan,
       draft,
       vehicle,
-      blanketLengthCm,
-      blanketWidthCm,
+      blanketLengthCm: quoteBlanketLengthCm,
+      blanketWidthCm: quoteBlanketWidthCm,
       stock,
       estimate,
       details,
@@ -252,6 +289,22 @@ export function LoadingSimulation({
 
   return (
     <div className="loading-simulation-wrapper">
+      {plan && (
+        <>
+          <button
+            className="loading-simulation-download"
+            type="button"
+            onClick={() => void downloadPlan()}
+          >
+            {visibleUiText.text56}
+          </button>
+          {pdfError && (
+            <span className="loading-simulation-warning" role="alert">
+              {pdfError}
+            </span>
+          )}
+        </>
+      )}
       <section className="loading-simulation">
         <button
           type="button"
@@ -548,6 +601,30 @@ export function LoadingSimulation({
                                 }}
                               />
                             </div>
+                            {details.fatigue.gauges.map((gauge) => (
+                              <div key={gauge.label} className="loading-simulation-fatigue-gauge">
+                                <div className="loading-simulation-fatigue-rows">
+                                  <span>{gauge.label}</span>
+                                  <strong>{gauge.score} %</strong>
+                                </div>
+                                <div className="loading-simulation-fatigue-track">
+                                  <span
+                                    style={{
+                                      width: `${Math.min(100, gauge.score)}%`,
+                                      background:
+                                        gauge.score >= 100
+                                          ? '#FF5A5F'
+                                          : gauge.score >= 80
+                                            ? '#FF9F5A'
+                                            : gauge.score >= 50
+                                              ? '#FFD23F'
+                                              : '#3DDC84',
+                                    }}
+                                  />
+                                </div>
+                                <small>{gauge.detail}</small>
+                              </div>
+                            ))}
                             <div className="loading-simulation-fatigue-rows">
                               {details.fatigue.rows.map(([label, value]) => (
                                 <div key={label}>
@@ -574,6 +651,38 @@ export function LoadingSimulation({
                     )}
                     {sections.steps && (
                       <div className="loading-simulation-section-content">
+                        <div className="loading-simulation-blanket-size">
+                          <span>
+                            {visibleUiText.text172}{' '}
+                            <strong>
+                              {quoteBlanketLengthCm} × {quoteBlanketWidthCm} {visibleUiText.text173}
+                            </strong>
+                          </span>
+                          {quoteBlanketSizeDiffers && (
+                            <small>
+                              {visibleUiText.text174}
+                              {blanketLengthCm} × {blanketWidthCm} {visibleUiText.text173}
+                            </small>
+                          )}
+                          <button
+                            type="button"
+                            className="button secondary small"
+                            onClick={() =>
+                              setDraft((current) => ({
+                                ...current,
+                                inventory: {
+                                  ...current.inventory,
+                                  blanketLengthCm,
+                                  blanketWidthCm,
+                                },
+                              }))
+                            }
+                          >
+                            {quoteBlanketSizeDiffers
+                              ? 'Appliquer les dimensions des paramètres à ce devis'
+                              : 'Figer ces dimensions pour ce devis'}
+                          </button>
+                        </div>
                         <label>
                           {visibleUiText.text45}{' '}
                           <input
@@ -595,7 +704,8 @@ export function LoadingSimulation({
                         )}
                         <span className="loading-simulation-kit">
                           {visibleUiText.text47}
-                          {trip.need} ({blanketLengthCm} × {blanketWidthCm} {visibleUiText.text48}
+                          {trip.need} ({quoteBlanketLengthCm} × {quoteBlanketWidthCm}{' '}
+                          {visibleUiText.text48}
                           {' · '}
                           {visibleUiText.text49}
                           {trip.blankets ?? 0} {visibleUiText.text15}
@@ -729,22 +839,6 @@ export function LoadingSimulation({
           </div>
         )}
       </section>
-      {plan && (
-        <>
-          <button
-            className="loading-simulation-download"
-            type="button"
-            onClick={() => void downloadPlan()}
-          >
-            {visibleUiText.text56}
-          </button>
-          {pdfError && (
-            <span className="loading-simulation-warning" role="alert">
-              {pdfError}
-            </span>
-          )}
-        </>
-      )}
     </div>
   );
 }

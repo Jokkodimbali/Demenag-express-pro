@@ -2,7 +2,7 @@ import { uiText } from '../../content/reference-ui-text';
 import { ArrowRight, ShieldCheck, Truck } from 'lucide-react';
 import type { BookingViewState } from '../../application/contracts/booking-view';
 import { messages } from '../../content/fr';
-import { money } from '../../domain/format';
+import { money } from '../../application/presentation/format';
 import { inventoryNote } from '../../domain/inventory';
 import type { Catalogue, Vehicle } from '../../domain/model';
 

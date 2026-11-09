@@ -4,6 +4,7 @@ import type {
 } from '../../../application/ports/index.js';
 import { AppError } from '../../../domain/errors.js';
 import { messages } from '../../../domain/messages/fr.js';
+import { normalizePhoneNumber } from '../../../domain/phone-number.js';
 import { Prisma, type PrismaClient } from '../../../generated/prisma/client.js';
 import type { Booking } from '../../../domain/model.js';
 import { conflict, json, safeUser } from './helpers.js';
@@ -98,7 +99,12 @@ export class PrismaAdministration implements AdministrationRepository {
           )
             throw new AppError(409, 'Ce numéro appartient déjà à un autre client.');
           const account = await tx.utilisateur.findFirst({
-            where: { role: 'client', telephone: { in: [`+221${phone}`, phone] } },
+            where: {
+              role: 'client',
+              telephone: {
+                in: [normalizePhoneNumber(phone) ?? `+${phone}`, phone],
+              },
+            },
           });
           if (account) {
             await tx.utilisateur.update({

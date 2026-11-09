@@ -38,6 +38,45 @@ export class PrismaCatalogue implements CatalogueRepository {
       { timeout: 30000 },
     );
   }
+  async inventoryIllustration(key: string): Promise<string | null> {
+    const row = await this.db.illustrationInventaire.findUnique({ where: { cle: key } });
+    return row?.image ?? null;
+  }
+  async saveInventoryIllustration(key: string, image: string): Promise<void> {
+    await this.db.illustrationInventaire.upsert({
+      where: { cle: key },
+      create: { cle: key, image },
+      update: { image },
+    });
+  }
+  async adminQuoteDraft(userId: string): Promise<unknown | null> {
+    const row = await this.db.brouillonDevisAdmin.findUnique({ where: { utilisateurId: userId } });
+    return row?.donnees ?? null;
+  }
+  async saveAdminQuoteDraft(userId: string, draft: unknown): Promise<void> {
+    await this.db.brouillonDevisAdmin.upsert({
+      where: { utilisateurId: userId },
+      create: { utilisateurId: userId, donnees: draft as Prisma.InputJsonValue },
+      update: { donnees: draft as Prisma.InputJsonValue },
+    });
+  }
+  async clearAdminQuoteDraft(userId: string): Promise<void> {
+    await this.db.brouillonDevisAdmin.deleteMany({ where: { utilisateurId: userId } });
+  }
+  async googleMapsApiKey(): Promise<string> {
+    const settings = await this.db.parametreApplication.findUnique({
+      where: { id: 'main' },
+      select: { cleApiGoogleMaps: true },
+    });
+    if (!settings) throw new AppError(503, messages.leCatalogueDoitEtreInitialise);
+    return settings.cleApiGoogleMaps;
+  }
+  async updateGoogleMapsApiKey(value: string): Promise<void> {
+    await this.db.parametreApplication.update({
+      where: { id: 'main' },
+      data: { cleApiGoogleMaps: value },
+    });
+  }
   async removeVehicle(id: string) {
     await this.db.$transaction(async (tx) => {
       const [bookingCount, driverCount] = await Promise.all([

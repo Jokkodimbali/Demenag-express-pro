@@ -49,6 +49,18 @@
 .reference-clients-heading > input:focus {
   border-color: #f6d73c;
 }
+.reference-client-contact-export {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1.5px solid #4a5057;
+  border-radius: 10px;
+  background: transparent;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
 .reference-clients-empty {
   color: #aeb4bb;
   font-size: 14px;
@@ -192,21 +204,102 @@
   border: 0;
   border-radius: 9px;
   padding: 0 12px;
-  min-height: 36px;
+  min-height: 44px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.reference-client-contact {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1.5px solid #4a5057;
+  border-radius: 9px;
+  background: transparent;
+  color: #fff;
   font-size: 13px;
   font-weight: 800;
   cursor: pointer;
 }
 .reference-client-delete {
-  width: 36px;
-  height: 36px;
-  flex: 0 0 36px;
+  width: 44px;
+  min-height: 44px;
+  flex: 0 0 44px;
   border-radius: 9px;
   border: 1px solid #3b4046;
   background: transparent;
   color: #ff6b6b;
   font-size: 16px;
   cursor: pointer;
+}
+@media (max-width: 760px) {
+  .reference-clients-heading {
+    align-items: stretch;
+  }
+  .reference-clients-heading > input,
+  .reference-client-contact-export {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+  .reference-client-table-scroll {
+    overflow: visible;
+  }
+  .reference-clients-card table,
+  .reference-clients-card tbody {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+  .reference-clients-card thead {
+    display: none;
+  }
+  .reference-clients-card tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    margin-bottom: 12px;
+    padding: 7px 12px;
+    border: 1px solid #3b4046;
+    border-radius: 12px;
+    background: #1e2023;
+  }
+  .reference-clients-card tbody td {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 0;
+    border-bottom: 1px solid #30343a;
+    text-align: right;
+  }
+  .reference-clients-card tbody td::before {
+    content: attr(data-label);
+    flex: 0 0 38%;
+    color: #aeb4bb;
+    font-size: 12px;
+    font-weight: 700;
+    text-align: left;
+  }
+  .reference-clients-card tbody td:last-child {
+    align-items: flex-start;
+    border-bottom: 0;
+  }
+  .reference-clients-card tbody td:last-child::before {
+    padding-top: 12px;
+  }
+  .reference-client-phone,
+  .reference-client-actions {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+  .reference-client-edit {
+    width: min(100%, 260px);
+    min-width: 0;
+  }
+  .reference-client-last {
+    white-space: normal;
+  }
 }
 .reference-client-error {
   display: block;

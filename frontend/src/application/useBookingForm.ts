@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { messages } from '../content/fr';
-import { referenceTierLabels, tierLabels } from '../domain/format';
+import { referenceTierLabels, tierLabels } from './presentation/format';
 import type { Booking, BookingInput, Options, Price, Quote } from '../domain/model';
 import { inventoryNote } from '../domain/inventory';
 import { tollPrice } from '../domain/toll-prices';
@@ -11,6 +11,15 @@ import { blankDraft, useApp } from './context';
 import { errorMessage } from './error-message';
 import { routes } from '../routing/routes';
 import { clearAdminQuoteDraft } from './admin-quote-draft-storage';
+import type { RentalKitItem } from '../domain/model';
+import { defaultRentalKit } from '../domain/rental-kit';
+import {
+  bookingDateError,
+  bookingTimeError,
+  type BookingField,
+  type BookingFieldErrors,
+} from '../domain/booking-validation';
+import { normalizePhoneNumber } from '../domain/phone-number';
 export type AdminQuoteConfig = {
   trips: number;
   discount: number;
@@ -18,17 +27,23 @@ export type AdminQuoteConfig = {
   discountReason: string;
   customPrice: number | null;
   labourUnitPriceOverride?: number | null;
+  billingMode?: 'complete' | 'standard' | 'driver-rental';
+  menuIncluded?: boolean;
+  overtimeMinutes?: number;
+  rentalKit?: RentalKitItem[] | null;
 };
 export function useBookingForm({
   mode = 'booking',
   quoteConfig,
   quoteKind,
   onQuoteSaved,
+  getRentalKit,
 }: {
   mode?: 'booking' | 'admin-quote';
   quoteConfig?: AdminQuoteConfig;
   quoteKind?: Quote['kind'];
   onQuoteSaved?: (booking: Booking) => void;
+  getRentalKit?: () => RentalKitItem[];
 } = {}) {
   const { catalogue, tollPoints, loading, error, reload, api, user, authLoading, draft, setDraft } =
     useApp();
@@ -36,6 +51,7 @@ export function useBookingForm({
   const location = useLocation();
   const editId = new URLSearchParams(location.search).get('modifier');
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<BookingFieldErrors>({});
   const [editLoading, setEditLoading] = useState(Boolean(editId));
   const [editError, setEditError] = useState('');
   const [tollLines, setTollLines] = useState<TollExtraLine[]>([]);
@@ -200,6 +216,7 @@ export function useBookingForm({
         },
         administrativeQuote ? (quoteConfig?.trips ?? 1) : draft.estimatedTrips,
         administrativeQuote ? draft.distanceKmOverride : null,
+        draft.noDate ? null : draft.date,
       )
       .then(setPrice)
       .catch((e: unknown) => {
@@ -238,6 +255,8 @@ export function useBookingForm({
     draft.inventory.toLift,
     draft.route,
     draft.distanceKmOverride,
+    draft.date,
+    draft.noDate,
     draft.vehicleId,
     draft.options,
     quoteConfig?.trips,
@@ -247,15 +266,26 @@ export function useBookingForm({
   useEffect(() => {
     if (!catalogue) return;
     setDraft((current) => {
-      if (editingBooking?.vehicle.id === current.vehicleId) return current;
+      const bookingDraft =
+        mode === 'booking' &&
+        !editingBooking &&
+        !catalogue.settings.enabledSlots.some(
+          (slot) => `${String(slot.startHour).padStart(2, '0')}:00` === current.timeSlot,
+        )
+          ? {
+              ...current,
+              timeSlot: `${String(catalogue.settings.enabledSlots[0]?.startHour ?? 8).padStart(2, '0')}:00`,
+            }
+          : current;
+      if (editingBooking?.vehicle.id === bookingDraft.vehicleId) return bookingDraft;
       const vehicleId = catalogue.vehicles.some(
-        (v) => v.id === current.vehicleId && v.active !== false,
+        (v) => v.id === bookingDraft.vehicleId && v.active !== false,
       )
-        ? current.vehicleId
-        : (catalogue.vehicles.find((v) => v.active !== false)?.id ?? current.vehicleId);
-      return vehicleId === current.vehicleId ? current : { ...current, vehicleId };
+        ? bookingDraft.vehicleId
+        : (catalogue.vehicles.find((v) => v.active !== false)?.id ?? bookingDraft.vehicleId);
+      return vehicleId === bookingDraft.vehicleId ? bookingDraft : { ...bookingDraft, vehicleId };
     });
-  }, [catalogue, editingBooking, setDraft]);
+  }, [catalogue, editingBooking, mode, setDraft]);
   useEffect(() => {
     const phone = normalizedClientPhone(draft.customerPhone);
     lookupPhone.current = phone;
@@ -267,7 +297,7 @@ export function useBookingForm({
         current.customerName === previousName ? { ...current, customerName: '' } : current,
       );
     }
-    if (!/^\d{9}$/.test(phone) || !user) {
+    if (!normalizePhoneNumber(draft.customerPhone) || !user) {
       setRecognizingClient(false);
       return;
     }
@@ -279,7 +309,7 @@ export function useBookingForm({
   }, [draft.customerPhone, user?.id]);
   async function recognizeClient(phone: string) {
     const normalizedPhone = normalizedClientPhone(phone);
-    if (!/^\d{9}$/.test(normalizedPhone) || !user) {
+    if (!normalizePhoneNumber(phone) || !user) {
       setClientRecognition(null);
       return;
     }
@@ -316,12 +346,52 @@ export function useBookingForm({
       if (lookupPhone.current === normalizedPhone) setRecognizingClient(false);
     }
   }
+  function validatePublicFields(scope: 'schedule' | 'contact' | 'all') {
+    const errors: BookingFieldErrors = {};
+    if (!administrativeQuote && scope !== 'contact') {
+      if (catalogue) {
+        const dateError = bookingDateError(draft.date, catalogue.settings);
+        const timeError = bookingTimeError(
+          draft.date,
+          draft.timeSlot,
+          catalogue.settings,
+          new Date(),
+          Boolean(editingBooking && editingBooking.timeSlot === draft.timeSlot),
+        );
+        if (dateError) errors.date = dateError;
+        if (timeError) errors.timeSlot = timeError;
+      } else {
+        if (!draft.date) errors.date = 'Choisissez une date de déménagement.';
+        if (!draft.timeSlot) errors.timeSlot = 'Choisissez un créneau horaire.';
+      }
+    }
+    if (!administrativeQuote && scope !== 'schedule') {
+      if (draft.customerName.trim().length < 2)
+        errors.customerName = 'Saisissez votre nom et votre prénom (au moins 2 caractères).';
+      if (!draft.customerPhone.trim())
+        errors.customerPhone = 'Saisissez votre numéro de téléphone.';
+      else if (!normalizePhoneNumber(draft.customerPhone))
+        errors.customerPhone =
+          'Format invalide. Ajoutez l’indicatif, par exemple +221 77 123 45 67 ou +33 6 12 34 56 78.';
+    }
+    setFieldErrors(errors);
+    return errors;
+  }
+  function clearFieldError(field: BookingField) {
+    setFieldErrors((current) => {
+      if (!current[field]) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  }
   async function submit(
     e: React.FormEvent,
     quoteWorkSummary = '',
     workPlan: NonNullable<BookingInput['workPlan']> = [],
     inventorySnapshot?: BookingInput['inventorySnapshot'],
     quoteOptions?: Options,
+    quoteExtraLines: Array<{ label: string; quantity: number; unitPrice: number }> = [],
   ) {
     e.preventDefault();
     if (submitLock.current) return;
@@ -335,6 +405,7 @@ export function useBookingForm({
       return;
     }
     setSubmitError('');
+    if (Object.keys(validatePublicFields('all')).length > 0) return;
     if (!draft.route || !price) {
       setSubmitError(messages.calculezLeTrajetPourObtenirUneEstimation);
       return;
@@ -422,7 +493,7 @@ export function useBookingForm({
           ? await api.updateAdminBooking(editingBooking.id, input, editingBooking.version)
           : await api.updateClientBooking(editingBooking.id, input, editingBooking.version)
         : await api.createBooking(input);
-      if (administrativeQuote) clearAdminQuoteDraft();
+      if (administrativeQuote) void clearAdminQuoteDraft(api);
       bookingLookup.current = null;
       setDraft(blankDraft());
       if (editingBooking && !administrativeQuote) {
@@ -440,10 +511,25 @@ export function useBookingForm({
             discountType: quoteConfig?.discountType ?? 'fcfa',
             discountReason: quoteConfig?.discountReason ?? '',
             notes: bookingNotes,
-            extraLines: [],
+            extraLines: quoteExtraLines,
             tolls: quoteTollsFromLines(tollLines),
             options: administrativeQuote && quoteOptions ? quoteOptions : draft.options,
             version: booking.version,
+            billingMode: quoteConfig?.billingMode ?? 'complete',
+            menuIncluded: quoteConfig?.menuIncluded ?? false,
+            rentalKit:
+              quoteConfig?.billingMode === 'driver-rental'
+                ? (quoteConfig.rentalKit ??
+                  getRentalKit?.() ??
+                  defaultRentalKit(
+                    catalogue?.vehicles.find((vehicle) => vehicle.id === draft.vehicleId) ??
+                      booking.vehicle,
+                    draft.options.labour,
+                    catalogue?.settings.rentalKitConfiguration,
+                  ))
+                : [],
+            overtimeMinutes: quoteConfig?.overtimeMinutes ?? 0,
+            providedCrew: draft.options.labour,
           });
           onQuoteSaved?.(savedQuoteBooking);
           navigate(`${routes.administrationBookings}?q=${booking.reference}&detail=${booking.id}`);
@@ -463,7 +549,22 @@ export function useBookingForm({
       setDone(booking);
       document.getElementById('reserver')?.scrollIntoView({ behavior: 'smooth' });
     } catch (e) {
-      setSubmitError(errorMessage(e));
+      const message = errorMessage(e);
+      if (administrativeQuote) {
+        setSubmitError(message);
+      } else if (/numéro valide avec son indicatif international/i.test(message)) {
+        setFieldErrors((current) => ({ ...current, customerPhone: message }));
+      } else if (/date invalide|date à venir|au maximum .* jours/i.test(message)) {
+        setFieldErrors((current) => ({ ...current, date: message }));
+      } else if (
+        /créneau invalide|créneau n’est plus disponible|préavis|heure qui n’est pas déjà passée/i.test(
+          message,
+        )
+      ) {
+        setFieldErrors((current) => ({ ...current, timeSlot: message }));
+      } else {
+        setSubmitError(message);
+      }
     } finally {
       setSubmitting(false);
       submitLock.current = false;
@@ -546,6 +647,9 @@ export function useBookingForm({
     estimateError,
     submitError,
     submitting,
+    fieldErrors,
+    validateSchedule: () => Object.keys(validatePublicFields('schedule')).length === 0,
+    clearFieldError,
     done,
     setDone,
     tiers,

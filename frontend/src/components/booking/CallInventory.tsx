@@ -1,6 +1,8 @@
+import { visibleUiText } from '../../content/visible-ui-text';
 import { uiText } from '../../content/reference-ui-text';
 import { useCallInventory } from '../../application/controllers/useCallInventory';
 import { MovingPlanningPanel } from './MovingPlanningPanel';
+import { CallInventoryCustomItems } from './CallInventoryCustomItems';
 import { inventoryDismantleFactor } from '../../domain/moving-estimate';
 import { inventoryFlags, inventoryItems, inventoryNote } from '../../domain/inventory';
 import {
@@ -11,7 +13,6 @@ import {
 } from '../../domain/reference-inventory-note';
 import type { CallInventoryProps } from './CallInventoryWidgets';
 
-const sections = [...new Set(inventoryItems.map((item) => item.section))];
 import {
   inventoryItemEstimate,
   referenceItemSubline,
@@ -63,6 +64,9 @@ export function CallInventory({
     update,
     clearInventory,
     addCustomItem,
+    customInventoryTypes,
+    addCustomType,
+    hiddenInventoryKeys,
     setEntry,
     total,
     currentEstimate,
@@ -89,17 +93,22 @@ export function CallInventory({
     audience,
     referenceMode,
   });
+  const availableInventoryItems = inventoryItems.filter(
+    (item) =>
+      !hiddenInventoryKeys.includes(item.key) ||
+      (inventory.entries[item.key]?.quantity ?? 0) > 0 ||
+      inventory.variants.some((variant) => variant.itemKey === item.key && variant.quantity > 0),
+  );
+  const availableSections = [...new Set(availableInventoryItems.map((item) => item.section))];
   return (
     <section className={`panel call-inventory${referenceMode ? ' reference-call-inventory' : ''}`}>
       <div className="inventory-heading">
         <div>
           <strong>
-            {audience === 'client' && !referenceMode
-              ? 'VOTRE INVENTAIRE'
-              : "FICHE D'APPEL · INVENTAIRE"}
+            {audience === 'client' ? 'VOTRE INVENTAIRE' : "FICHE D'APPEL · INVENTAIRE"}
           </strong>
           <span>
-            {audience === 'client' && !referenceMode
+            {audience === 'client'
               ? 'Indiquez les objets à déménager pour estimer le volume et les allers-retours.'
               : "Cochez et comptez pendant l'appel, le devis se remplit tout seul."}
           </span>
@@ -109,7 +118,7 @@ export function CallInventory({
           className="inventory-collapse"
           onClick={() => setOpen((value) => !value)}
         >
-          {audience === 'client' && !referenceMode
+          {audience === 'client'
             ? open
               ? 'Réduire'
               : 'Développer'
@@ -120,7 +129,7 @@ export function CallInventory({
       </div>
       {open && (
         <div className="inventory-content">
-          {audience === 'client' && !referenceMode && (
+          {audience === 'client' && (
             <p className="muted">
               {uiText['lesMontagesDeLitArmoireEtBureauSelectionnesAlimententD']}
             </p>
@@ -129,6 +138,67 @@ export function CallInventory({
             <p className="alert error" role="alert">
               {inventoryError}
             </p>
+          )}
+          {audience === 'client' && (
+            <section className="inventory-loading-conditions" aria-label={visibleUiText.text154}>
+              <strong>{visibleUiText.text155}</strong>
+              <div>
+                <span>{visibleUiText.text156}</span>
+                <div role="group" aria-label={visibleUiText.text136}>
+                  {(
+                    [
+                      ['oui', 'Oui, tout est prêt'],
+                      ['non', 'Non, emballage par l’équipe'],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <button
+                      type="button"
+                      key={value}
+                      aria-pressed={inventory.ready === value}
+                      className={inventory.ready === value ? 'active' : ''}
+                      onClick={() =>
+                        update({
+                          ...inventory,
+                          ready: inventory.ready === value ? '' : value,
+                        })
+                      }
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {inventory.ready === 'non' && <small>{visibleUiText.text157}</small>}
+              </div>
+              <div>
+                <span>{visibleUiText.text158}</span>
+                <div role="group" aria-label={visibleUiText.text138}>
+                  {(
+                    [
+                      ['oui', 'Oui, tout passe par l’escalier'],
+                      ['balcon', 'Non, par le balcon'],
+                      ['verif', 'À vérifier'],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <button
+                      type="button"
+                      key={value}
+                      aria-pressed={inventory.stairs === value}
+                      className={inventory.stairs === value ? 'active' : ''}
+                      onClick={() =>
+                        update({
+                          ...inventory,
+                          stairs: inventory.stairs === value ? '' : value,
+                        })
+                      }
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {inventory.stairs === 'balcon' && <small>{visibleUiText.text159}</small>}
+                {inventory.stairs === 'verif' && <small>{visibleUiText.text160}</small>}
+              </div>
+            </section>
           )}
           <div className="inventory-access">
             {(['from', 'to'] as const).map((side) => (
@@ -250,7 +320,7 @@ export function CallInventory({
               </label>
             )}
           </div>
-          {sections.map((section) => (
+          {availableSections.map((section) => (
             <details
               className="inventory-section"
               key={section}
@@ -265,7 +335,7 @@ export function CallInventory({
               <summary>
                 <span>{section}</span>
                 {(() => {
-                  const count = inventoryItems
+                  const count = availableInventoryItems
                     .filter((item) => item.section === section)
                     .reduce(
                       (sum, item) =>
@@ -284,7 +354,7 @@ export function CallInventory({
                 })()}
               </summary>
               <div className="inventory-list">
-                {inventoryItems
+                {availableInventoryItems
                   .filter((item) => item.section === section)
                   .map((item) => {
                     const entry = inventory.entries[item.key] ?? {
@@ -691,200 +761,31 @@ export function CallInventory({
               </div>
             </details>
           ))}
-          {(audience === 'admin' || referenceMode) && inventory.custom.length > 0 && (
-            <button
-              type="button"
-              className="inventory-custom-section-toggle"
-              aria-expanded={openCustom}
-              onClick={() => setOpenCustom((current) => !current)}
-            >
-              <span>{uiText['autresObjets']}</span>
-              <span>
-                {inventory.custom.reduce((sum, item) => sum + item.quantity, 0)}{' '}
-                {inventory.custom.reduce((sum, item) => sum + item.quantity, 0) > 1
-                  ? 'objets'
-                  : 'objet'}
-              </span>
-            </button>
-          )}
-          <div
-            className={
-              (audience === 'admin' || referenceMode) && !openCustom
-                ? 'inventory-custom-items is-closed'
-                : 'inventory-custom-items'
-            }
-          >
-            {inventory.custom.map((item) => (
-              <div
-                className={item.quantity > 0 ? 'inventory-row selected' : 'inventory-row'}
-                key={item.id}
-              >
-                <div
-                  className={`inventory-item-hover-wrap${activeWidget === item.id ? ' is-open' : ''}`}
-                  onMouseEnter={() => enterInventoryItem(item.id)}
-                  onMouseLeave={() => leaveInventoryItem(item.id)}
-                >
-                  <InventoryItemLabel
-                    estimate={(audience === 'admin' || referenceMode
-                      ? referenceItemSubline
-                      : inventoryItemEstimate)(
-                      {
-                        key: 'custom',
-                        label: item.label,
-                        plural: item.label,
-                        section: 'Autres objets',
-                        hasFormat: true,
-                      },
-                      1,
-                      item.format ?? 'medium',
-                      Boolean(item.dismantle),
-                      item.quantity,
-                    )}
-                    label={
-                      <button
-                        type="button"
-                        className="inventory-item-name"
-                        aria-expanded={activeWidget === item.id}
-                        onClick={() => {
-                          if (audience === 'admin' || referenceMode) {
-                            update({
-                              ...inventory,
-                              custom: inventory.custom.map((line) =>
-                                line.id === item.id
-                                  ? { ...line, quantity: Math.min(999, line.quantity + 1) }
-                                  : line,
-                              ),
-                            });
-                          } else {
-                            setActiveWidget((value) => (value === item.id ? null : item.id));
-                          }
-                        }}
-                      >
-                        {item.label}
-                      </button>
-                    }
-                  />
-                  {activeWidget === item.id && (
-                    <InventoryHoverCard
-                      item={{
-                        key: 'custom',
-                        label: item.label,
-                        plural: item.label,
-                        section: 'Autres objets',
-                        hasFormat: true,
-                        canDismantle: true,
-                        volumeByFormat: [0.3, 0.5, 0.8],
-                      }}
-                      imageScope={`custom:${item.id}`}
-                      format={item.format ?? 'medium'}
-                      size={1}
-                      quantity={item.quantity}
-                      dismantle={Boolean(item.dismantle)}
-                      onSelectFormat={(format) =>
-                        update({
-                          ...inventory,
-                          custom: inventory.custom.map((line) =>
-                            line.id === item.id ? { ...line, format } : line,
-                          ),
-                        })
-                      }
-                      onSelectSize={() => undefined}
-                    />
-                  )}
-                </div>
-                <InventoryFormatSelector
-                  itemKey="custom"
-                  itemLabel={item.label}
-                  value={item.format ?? 'medium'}
-                  onChange={(format) =>
-                    update({
-                      ...inventory,
-                      custom: inventory.custom.map((line) =>
-                        line.id === item.id ? { ...line, format } : line,
-                      ),
-                    })
-                  }
-                />
-                <label className="inventory-check">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(item.dismantle)}
-                    onChange={(event) =>
-                      update({
-                        ...inventory,
-                        custom: inventory.custom.map((line) =>
-                          line.id === item.id ? { ...line, dismantle: event.target.checked } : line,
-                        ),
-                      })
-                    }
-                  />
-                  {uiText['demontageMontage']}
-                </label>
-                <InventoryOriginToggle
-                  value={item.origin ?? 'local'}
-                  onChange={(origin) =>
-                    update({
-                      ...inventory,
-                      custom: inventory.custom.map((line) =>
-                        line.id === item.id ? { ...line, origin } : line,
-                      ),
-                    })
-                  }
-                />
-                <div className="inventory-quantity">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      update({
-                        ...inventory,
-                        custom: inventory.custom.map((line) =>
-                          line.id === item.id
-                            ? { ...line, quantity: Math.max(0, line.quantity - 1) }
-                            : line,
-                        ),
-                      })
-                    }
-                  >
-                    −
-                  </button>
-                  <output>{item.quantity}</output>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      update({
-                        ...inventory,
-                        custom: inventory.custom.map((line) =>
-                          line.id === item.id
-                            ? { ...line, quantity: Math.min(999, line.quantity + 1) }
-                            : line,
-                        ),
-                      })
-                    }
-                  >
-                    +
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  className={
-                    audience === 'admin' || referenceMode
-                      ? 'inventory-variant-add'
-                      : 'button secondary small'
-                  }
-                  title={audience === 'admin' || referenceMode ? 'Retirer' : undefined}
-                  onClick={() =>
-                    update({
-                      ...inventory,
-                      custom: inventory.custom.filter((line) => line.id !== item.id),
-                    })
-                  }
-                >
-                  {audience === 'admin' || referenceMode ? '×' : 'Supprimer'}
-                </button>
-              </div>
-            ))}
-          </div>
+          <CallInventoryCustomItems
+            inventory={inventory}
+            update={update}
+            audience={audience}
+            referenceMode={referenceMode}
+            openCustom={openCustom}
+            setOpenCustom={setOpenCustom}
+            activeWidget={activeWidget}
+            setActiveWidget={setActiveWidget}
+            enterInventoryItem={enterInventoryItem}
+            leaveInventoryItem={leaveInventoryItem}
+            customLabel={customLabel}
+            setCustomLabel={setCustomLabel}
+            addCustomItem={addCustomItem}
+          />
           <div className="inventory-custom">
+            {customInventoryTypes.length > 0 && (
+              <div className="inventory-custom-type-picker" aria-label={visibleUiText.text168}>
+                {customInventoryTypes.map((type) => (
+                  <button type="button" key={type.k} onClick={() => addCustomType(type)}>
+                    + {type.n}
+                  </button>
+                ))}
+              </div>
+            )}
             <label>
               {audience === 'client' && !referenceMode && 'Autre objet'}
               <input

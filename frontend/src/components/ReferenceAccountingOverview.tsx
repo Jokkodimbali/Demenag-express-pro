@@ -15,8 +15,9 @@ import {
   bookingRevenueAmount,
   completedBookingRevenueAmount,
 } from '../application/services/revenue';
-import { money } from '../domain/format';
+import { money } from '../application/presentation/format';
 import { accountingFinanceText as text } from '../content/accounting-finance';
+import type { ClaudeCompletionInput } from '../application/ports';
 
 type Props = {
   config: AccountingFinanceConfiguration;
@@ -35,9 +36,9 @@ type Props = {
     revenueCount: number;
     chargeCount: number;
   };
+  completeClaude: (input: ClaudeCompletionInput) => Promise<string>;
 };
 
-type ClaudeProvider = { complete?: (input: string) => Promise<unknown> };
 type FinanceChatMessage = AccountingFinanceConfiguration['financeChat'][number];
 
 function nextMonth(month: string) {
@@ -66,6 +67,7 @@ export function ReferenceAccountingOverview({
   forecastHistory,
   allPeriods,
   summary,
+  completeClaude,
 }: Props) {
   const [showCalculation, setShowCalculation] = useState(false);
   const [analysis, setAnalysis] = useState('');
@@ -246,12 +248,6 @@ export function ReferenceAccountingOverview({
   async function analyze() {
     setAnalyzing(true);
     setAnalysisError('');
-    const provider = (window as Window & { claude?: ClaudeProvider }).claude;
-    if (!provider?.complete) {
-      setAnalysisError(text.onlineAIUnavailable);
-      setAnalyzing(false);
-      return;
-    }
     const prompt = [
       'Tu es conseiller financier d’une petite entreprise de déménagement à Dakar (Sénégal), monnaie FCFA. Réponds en français, en texte brut sans markdown ni astérisques, en 12 lignes maximum, sans introduction. Base-toi uniquement sur les données ci-dessous.',
       `Mois : ${endMonth}. Régime : ${current?.suarl ? `SUARL, IS ${config.isRate} %` : 'informel sans impôt'}. Flotte : ${config.vehicleCount} véhicules.`,
@@ -261,7 +257,7 @@ export function ReferenceAccountingOverview({
       'Donne : 1) si l’objectif est réaliste, 2) trois leviers concrets chiffrés, 3) le principal risque.',
     ].join('\n');
     try {
-      const result = await provider.complete(prompt);
+      const result = await completeClaude({ prompt });
       setAnalysis(
         String(result ?? '')
           .replace(/\*\*|#+ ?/g, '')
@@ -284,17 +280,6 @@ export function ReferenceAccountingOverview({
     update({ financeChat: history });
     setChatInput('');
     setChatBusy(true);
-    const provider = (window as Window & { claude?: ClaudeProvider }).claude;
-    if (!provider?.complete) {
-      update({
-        financeChat: [
-          ...history,
-          { speaker: 'assistant' as const, message: text.financeChatUnavailable },
-        ].slice(-40),
-      });
-      setChatBusy(false);
-      return;
-    }
     const conversation = history
       .slice(-12)
       .map(
@@ -359,7 +344,7 @@ export function ReferenceAccountingOverview({
       'Réponds à la dernière question du gérant, en français, en texte brut sans markdown, de façon précise et chiffrée. 10 lignes maximum sauf s’il demande plus de détails.',
     ].join('\n');
     try {
-      const response = String((await provider.complete(prompt)) ?? '')
+      const response = String((await completeClaude({ prompt })) ?? '')
         .replace(/\*\*/g, '')
         .replace(/^#+\s*/gm, '')
         .trim()

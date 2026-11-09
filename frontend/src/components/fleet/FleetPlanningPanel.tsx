@@ -1,6 +1,7 @@
 import type { Driver } from '../../domain/model';
 import { uiText } from '../../content/reference-ui-text';
 import type { useAdminFleetPageModel } from '../../application/controllers/useAdminFleetPageModel';
+import { normalizePhoneNumber } from '../../domain/phone-number';
 type Model = ReturnType<typeof useAdminFleetPageModel>;
 export function FleetPlanningPanel({ model }: { model: Model }) {
   const {
@@ -209,7 +210,7 @@ export function FleetPlanningPanel({ model }: { model: Model }) {
           selectedIds: crew[role.id],
         }));
         return (
-          <article className="teams-job" key={booking.id}>
+          <article className="teams-job" key={booking.id} data-booking-id={booking.id}>
             <div className="teams-job-heading">
               <div>
                 <div>
@@ -479,7 +480,9 @@ export function FleetPlanningPanel({ model }: { model: Model }) {
                                 <option value={member.id} key={member.id}>
                                   {member.name}
                                   {booking.crewMessages?.[member.id] ? ' · personnalisé' : ''}
-                                  {!member.phone.replace(/\D/g, '') ? ' · sans numéro' : ''}
+                                  {!normalizePhoneNumber(member.phone)
+                                    ? ' · sans numéro valide'
+                                    : ''}
                                   {booking.crewBriefs?.[member.id] ? ' · ✓' : ''}
                                 </option>
                               ))}
@@ -537,23 +540,21 @@ export function FleetPlanningPanel({ model }: { model: Model }) {
                             />
                           </label>
                         )}
-                        {editMember && !editMember.phone.replace(/\D/g, '') && (
+                        {editMember && !normalizePhoneNumber(editMember.phone) && (
                           <span className="teams-no-phone">
                             {uiText['pasDeNumeroPourCettePersonneAjoutezLeDansLaListeEmploy']}
                           </span>
                         )}
                         <button
                           className="team-button success"
-                          disabled={
-                            !members.some((member) => member.phone.replace(/\D/g, '').length >= 9)
-                          }
+                          disabled={!members.some((member) => normalizePhoneNumber(member.phone))}
                           onClick={() =>
                             void sendBrief(booking, editMember ? [editMember] : members)
                           }
                         >
                           {editMember
                             ? `Envoyer à ${editMember.name.split(' ')[0]} (WhatsApp)`
-                            : `Envoyer à toute l'équipe (${members.filter((member) => member.phone.replace(/\D/g, '')).length})`}
+                            : `Envoyer à toute l'équipe (${members.filter((member) => normalizePhoneNumber(member.phone)).length})`}
                         </button>
                       </div>
                     )}

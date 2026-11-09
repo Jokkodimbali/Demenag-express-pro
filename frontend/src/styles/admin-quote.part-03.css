@@ -590,6 +590,21 @@
   align-items: center;
   pointer-events: none;
 }
+.questionnaire-backdrop {
+  display: none;
+}
+@media (max-width: 1099px) {
+  .questionnaire-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1199;
+    width: 100%;
+    border: 0;
+    background: #0008;
+    cursor: pointer;
+  }
+}
 .questionnaire-tab {
   pointer-events: auto;
   writing-mode: vertical-rl;
@@ -723,6 +738,27 @@
   border: 0;
   background: transparent;
   color: #fff;
+  cursor: pointer;
+}
+.questionnaire-group-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.questionnaire-group-heading .questionnaire-group-toggle {
+  flex: 1;
+  min-width: 0;
+}
+.questionnaire-step-link {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 0 9px;
+  border: 1px solid #4a5057;
+  border-radius: 8px;
+  background: transparent;
+  color: #f6d73c;
+  font-size: 11.5px;
+  font-weight: 800;
   cursor: pointer;
 }
 .questionnaire-group-toggle > span {
@@ -905,5 +941,34 @@
   .reference-request-submit {
     right: 14px;
     bottom: max(14px, env(safe-area-inset-bottom));
+  }
+  .admin-quote-save-bar {
+    min-height: 64px;
+    gap: 12px;
+    padding: 8px 12px;
+  }
+  .admin-quote-save-bar > div:nth-child(2) {
+    display: none;
+  }
+  .admin-quote-save-bar strong {
+    font-size: 16px;
+  }
+  .admin-quote-save-bar-submit:not(.reference-request-submit) {
+    right: 12px;
+    bottom: 8px;
+    min-height: 48px;
+    padding-inline: 16px;
+  }
+  .admin-quote-vehicle-choices-compact {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .admin-quote-vehicle-choices-compact button {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 1099px) {
+  .admin-workspace:has(.admin-quote-page) > .admin-reference-heading {
+    display: flex;
   }
 }

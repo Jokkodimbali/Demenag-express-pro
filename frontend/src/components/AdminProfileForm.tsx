@@ -7,6 +7,7 @@ import { dataUrl } from '../application/validation/forms';
 import { messages } from '../content/fr';
 import { PasswordForm } from './PasswordForm';
 import { visibleUiText } from '../content/visible-ui-text';
+import { sanitizePhoneInput } from '../domain/phone-number';
 
 export function AdminProfileForm() {
   const { user } = useApp();
@@ -82,6 +83,10 @@ export function AdminProfileForm() {
               required
               minLength={9}
               maxLength={25}
+              placeholder={visibleUiText.text123}
+              onChange={(event) => {
+                event.currentTarget.value = sanitizePhoneInput(event.currentTarget.value);
+              }}
             />
           </div>
           <div>

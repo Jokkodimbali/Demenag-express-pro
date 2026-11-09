@@ -20,7 +20,7 @@ import { BookingRouteMap } from './BookingRouteMap';
 import { TollRateSelector } from './TollRateSelector';
 import { quotedServiceOptions } from '../application/services/quote-service-options';
 import { messages } from '../content/fr';
-import { money, statuses } from '../domain/format';
+import { money, statuses } from '../application/presentation/format';
 import { assemblyUnitPrice, labourUnitPrice } from '../domain/labour-price';
 import { inventoryAssemblyLines } from '../domain/inventory-assembly';
 import type { Booking } from '../domain/model';

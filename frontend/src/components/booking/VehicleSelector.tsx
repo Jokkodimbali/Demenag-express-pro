@@ -2,7 +2,7 @@ import { uiText } from '../../content/reference-ui-text';
 import { Check } from 'lucide-react';
 import type { BookingViewState } from '../../application/contracts/booking-view';
 import { messages } from '../../content/fr';
-import { money } from '../../domain/format';
+import { money } from '../../application/presentation/format';
 import type { Catalogue, Vehicle } from '../../domain/model';
 import type { VehicleTransition } from '../../domain/vehicle-transition';
 

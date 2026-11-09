@@ -3,6 +3,7 @@ import test from 'node:test';
 import { quoteNotificationUrl } from '../src/application/services/quote-notification.ts';
 import { bookingReminder } from '../src/application/services/booking-reminder.ts';
 import { bookingConfirmationMessage } from '../src/application/services/whatsapp-templates.ts';
+import { quoteConditionsText } from '../src/application/services/whatsapp-templates.ts';
 import type { Booking, Quote, Settings } from '../src/domain/model.ts';
 
 const settings = {
@@ -52,6 +53,29 @@ const quote = (kind: Quote['kind']): Quote =>
 function decodeMessage(url: string) {
   return new URL(url).searchParams.get('text') ?? '';
 }
+
+test('les conditions de chargement sont ajoutées au message WhatsApp de devis', () => {
+  const conditionalBooking = {
+    ...booking,
+    inventorySnapshot: {
+      sourceInventory: { ready: 'non', stairs: 'verif' },
+    },
+  } as unknown as Booking;
+  const message = decodeMessage(
+    quoteNotificationUrl(conditionalBooking, quote('provisional'), settings),
+  );
+
+  assert.match(message, /emballage sur place par notre équipe/u);
+  assert.match(message, /Passage par l’escalier : à confirmer avec nous avant le jour J/u);
+  assert.equal(
+    quoteConditionsText({ ready: 'oui', stairs: 'oui' }, 'driver-rental'),
+    'CONDITIONS DE CHARGEMENT\n- Matériel : tout doit être emballé et prêt à charger à l’arrivée du véhicule.\n- Passage : tout le matériel passe par l’escalier.\nCes conditions doivent être respectées le jour du déménagement. Sinon, le déménagement n’aura pas lieu.',
+  );
+  assert.match(
+    quoteConditionsText({ stairs: 'balcon', balcPx: 25000 }),
+    /Passage : par le balcon \(supplément de 25\s+000 FCFA inclus\)\./u,
+  );
+});
 
 test('les modèles WhatsApp par défaut reprennent les textes provisoire et final de la référence', () => {
   const provisional = decodeMessage(quoteNotificationUrl(booking, quote('provisional'), settings));

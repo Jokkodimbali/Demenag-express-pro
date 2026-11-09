@@ -1,3 +1,4 @@
+import { visibleUiText } from '../content/visible-ui-text';
 import { uiText } from '../content/reference-ui-text';
 import { ChevronDown } from 'lucide-react';
 import { Suspense, lazy } from 'react';
@@ -5,15 +6,24 @@ import { Link } from 'react-router-dom';
 import { normalizedClientPhone } from '../application/services/client-summary';
 import { CallInventory } from '../components/booking/CallInventory';
 import { FleetVehicleImagePreview } from '../components/FleetVehicleDimensions';
-import { ClientQuestionnaire } from '../components/booking/ClientQuestionnaire';
+import { AdminQuoteQuestionnaire } from '../components/AdminQuoteQuestionnaire';
 import { TollRateSelector } from '../components/TollRateSelector';
-import { money, referenceTierLabels, today } from '../domain/format';
+import { money, referenceTierLabels } from '../application/presentation/format';
+import { today } from '../domain/date';
 import { bookingInventorySnapshot } from '../domain/moving-estimate';
 import { BookingConfirmation } from '../components/booking/BookingConfirmation';
 import { routes } from '../routing/routes';
 import { useAdminCreateQuoteModel } from '../application/controllers/useAdminCreateQuoteModel';
 import { AdminCreateQuoteAside } from '../components/AdminCreateQuoteAside';
+import { AdminQuoteVehicleBilling } from '../components/AdminQuoteVehicleBilling';
+import { AdminQuoteSettings } from '../components/AdminQuoteSettings';
+import { AdminQuoteSaveBar } from '../components/AdminQuoteSaveBar';
+import { AdminQuoteStepHeading } from '../components/AdminQuoteStepHeading';
+import { AdminQuoteCheaperVehicle } from '../components/AdminQuoteCheaperVehicle';
 import { LoadingSimulation } from '../components/booking/LoadingSimulation';
+import { adminQuoteVehicleText as quoteText } from '../content/admin-quote-vehicle';
+import { quoteConditionsText } from '../application/services/whatsapp-templates';
+import { normalizePhoneNumber, sanitizePhoneInput } from '../domain/phone-number';
 
 const RouteMap = lazy(() => import('../components/RouteMap'));
 
@@ -21,6 +31,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
   const model = useAdminCreateQuoteModel(publicRequest);
   const {
     editingReservation,
+    resetVersion,
     quoteConfig,
     setQuoteConfig,
     questionnaireOpen,
@@ -68,10 +79,22 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
     previewTier,
     previewSubtotal,
     previewDiscount,
+    manoeuvreOvertimeLine,
+    cheaperVehicle,
+    confirmVehicleFit,
     onTollToggle,
     changeQuoteOption,
     toggleQuoteSection,
   } = model;
+  const enterManualCalculation = () => {
+    const crew = Math.max(1, movingEstimate?.crew ?? draft.options.labour ?? 2);
+    setQuoteConfig((current) => ({ ...current, calcMode: 'manual' }));
+    setDraft((current) => ({
+      ...current,
+      options: { ...current.options, labour: crew },
+      inventory: { ...current.inventory, crew },
+    }));
+  };
   if (loading)
     return (
       <div className="panel loading" role="status">
@@ -138,17 +161,37 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
       )}
       <form
         id="admin-quote-form"
-        onSubmit={(event) => {
-          if (draft.customerPhone.replace(/\D/g, '').length < 9) {
+        onSubmit={async (event) => {
+          if (!normalizePhoneNumber(draft.customerPhone)) {
             event.preventDefault();
             setOpenQuoteSections((current) => ({ ...current, client: true }));
-            setStageError('Indiquez votre numéro de téléphone (9 chiffres).');
+            setStageError('Saisissez un numéro valide avec son indicatif international.');
             return;
           }
           if (publicRequest && !draft.date) {
             event.preventDefault();
             setOpenQuoteSections((current) => ({ ...current, client: true }));
             setStageError('Choisissez une date.');
+            return;
+          }
+          if (
+            quoteKind === 'final' &&
+            estimateInventory.stairs === 'balcon' &&
+            !(Number(estimateInventory.balcPx) > 0)
+          ) {
+            event.preventDefault();
+            setStageError('Passage par le balcon : fixez le supplément avant le devis final.');
+            return;
+          }
+          if (
+            quoteKind === 'final' &&
+            previewTier === 3 &&
+            !(Number(quoteConfig.customPrice) > 0)
+          ) {
+            event.preventDefault();
+            setStageError(
+              `Distance au-delà de ${catalogue.settings.distanceBounds[2]} km : fixez le prix par aller-retour avant le devis final.`,
+            );
             return;
           }
           if (quoteKind === 'final' && (!draft.date || draft.noDate)) {
@@ -158,10 +201,19 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             );
             return;
           }
+          event.preventDefault();
+          if (!(await confirmVehicleFit())) return;
           setStageError('');
           void submit(
             event,
-            [visibleInventoryText, estimateText, questionnaireText].filter(Boolean).join('\n'),
+            [
+              visibleInventoryText,
+              estimateText,
+              questionnaireText,
+              quoteConditionsText(estimateInventory, quoteConfig.billingMode),
+            ]
+              .filter(Boolean)
+              .join('\n'),
             (movingEstimate?.planning ?? []).map((step, index) => ({
               id: `plan-${index + 1}`,
               time: step.time,
@@ -169,16 +221,19 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
               detail: step.detail,
               minutes: step.minutes,
             })),
-            visibleInventoryText && movingEstimate
+            movingEstimate &&
+              (visibleInventoryText || estimateInventory.ready || estimateInventory.stairs)
               ? bookingInventorySnapshot(estimateInventory, movingEstimate)
               : null,
             movingEstimate?.volume
               ? { ...draft.options, labour: movingEstimate.crew }
               : draft.options,
+            manoeuvreOvertimeLine ? [manoeuvreOvertimeLine] : [],
           );
         }}
         className="admin-quote-layout"
       >
+        {!publicRequest && <AdminQuoteSettings model={model} catalogue={catalogue} />}
         <div className="admin-quote-fields">
           {publicRequest && (
             <section className="reference-request-vehicle">
@@ -252,6 +307,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
               </div>
             </section>
           )}
+          <AdminQuoteStepHeading number={1} title={quoteText.stepClient} />
           <section className="admin-quote-card">
             <button
               className="admin-quote-section-toggle"
@@ -288,12 +344,16 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                     <input
                       required
                       type="tel"
+                      inputMode="tel"
                       maxLength={25}
                       value={draft.customerPhone}
                       onChange={(event) =>
-                        setDraft((current) => ({ ...current, customerPhone: event.target.value }))
+                        setDraft((current) => ({
+                          ...current,
+                          customerPhone: sanitizePhoneInput(event.target.value),
+                        }))
                       }
-                      placeholder={uiText['telephone']}
+                      placeholder={visibleUiText.text123}
                       aria-label={uiText['telephone']}
                     />
                   </div>
@@ -390,28 +450,6 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                       }
                     />
                   </label>
-                  {!publicRequest && (
-                    <div
-                      className="admin-quote-vehicles"
-                      role="group"
-                      aria-label={uiText['vehicule2']}
-                    >
-                      {catalogue.vehicles.map((vehicle) => (
-                        <button
-                          type="button"
-                          key={vehicle.id}
-                          disabled={vehicle.active === false}
-                          aria-pressed={draft.vehicleId === vehicle.id}
-                          className={draft.vehicleId === vehicle.id ? 'active' : ''}
-                          onClick={() =>
-                            setDraft((current) => ({ ...current, vehicleId: vehicle.id }))
-                          }
-                        >
-                          {vehicle.name.replace(/^(Mercedes|Renault) /, '')}
-                        </button>
-                      ))}
-                    </div>
-                  )}
                 </div>
                 {recognizingClient && (
                   <p className="muted" role="status">
@@ -429,7 +467,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
               </div>
             )}
           </section>
-
+          <AdminQuoteStepHeading number={2} title={quoteText.stepRoute} />
           <section
             className={`admin-quote-card${publicRequest ? ' reference-request-route-card' : ''}`}
           >
@@ -449,6 +487,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                   fallback={<div className="map loading">{uiText['chargementDeLaCarte']}</div>}
                 >
                   <RouteMap
+                    key={resetVersion}
                     {...(!publicRequest ? { tollLines, onTollToggle } : {})}
                     adminQuote
                     fromNote={draft.fromNote}
@@ -520,23 +559,6 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                     >
                       {uiText['actualiser']}
                     </button>
-                    {!publicRequest && (
-                      <button
-                        type="button"
-                        aria-pressed={!quoteConfig.trafficOff}
-                        className={quoteConfig.trafficOff ? '' : 'selected'}
-                        onClick={() =>
-                          setQuoteConfig((current) => ({
-                            ...current,
-                            trafficOff: !current.trafficOff,
-                          }))
-                        }
-                      >
-                        {quoteConfig.trafficOff
-                          ? 'Embouteillages : ignorés'
-                          : 'Embouteillages : pris en compte'}
-                      </button>
-                    )}
                   </div>
                 )}
                 {draft.route && previewTier === 3 && (
@@ -547,7 +569,6 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                     type="number"
                     min={1}
                     max={10000000}
-                    required={!publicRequest}
                     value={quoteConfig.customPrice ?? ''}
                     onChange={(event) =>
                       setQuoteConfig((current) => ({
@@ -562,7 +583,103 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
               </div>
             )}
           </section>
-
+          <AdminQuoteStepHeading number={3} title={quoteText.stepInventory} />
+          <CallInventory
+            draft={draft}
+            setDraft={setDraft}
+            maxOptions={catalogue.settings.maxOptions}
+            vehicles={catalogue.vehicles}
+            selectedVehicleId={draft.vehicleId}
+            quoteTrips={quoteConfig.trips}
+            maxTrips={catalogue.settings.maxTrips}
+            laborPlanning={catalogue.settings.movingLaborPlanning}
+            ignoreTraffic={quoteConfig.trafficOff}
+            manualLegMinutes={quoteConfig.calcMode === 'manual' ? quoteConfig.legMinutes : 0}
+            hasToll={tollLines.some((line) => line.quantity * line.unitPrice > 0)}
+            onManualCalculation={enterManualCalculation}
+            heatOff={quoteConfig.heatOff}
+            heatRest={quoteConfig.heatRest}
+            onHeatChange={
+              publicRequest
+                ? undefined
+                : (value) => setQuoteConfig((current) => ({ ...current, ...value }))
+            }
+            audience={publicRequest ? 'client' : 'admin'}
+            referenceMode={publicRequest}
+            labourPriceEditor={
+              publicRequest ? undefined : (
+                <div className="admin-quote-labour-override">
+                  <label htmlFor="admin-labour-unit-price">{uiText['prixParManœuvreFCFA']}</label>
+                  <input
+                    id="admin-labour-unit-price"
+                    type="number"
+                    min="0"
+                    value={quoteConfig.labourUnitPriceOverride ?? ''}
+                    placeholder={String(labourPrice)}
+                    onChange={(event) =>
+                      setQuoteConfig((current) => ({
+                        ...current,
+                        labourUnitPriceOverride: event.target.value
+                          ? Math.max(0, Number(event.target.value)) || null
+                          : null,
+                      }))
+                    }
+                  />
+                  <small>
+                    {uiText['videGrilleAdmin']}
+                    {money(labourPrice)})
+                  </small>
+                </div>
+              )
+            }
+            estimateInventory={estimateInventory}
+            onApplyEstimate={(vehicleId, trips) => {
+              setDraft((current) => ({ ...current, vehicleId, estimatedTrips: trips }));
+              setQuoteConfig((current) =>
+                current.calcMode === 'manual' ? current : { ...current, trips },
+              );
+            }}
+          />
+          <AdminQuoteCheaperVehicle
+            suggestion={cheaperVehicle}
+            onSelect={(vehicleId, trips) => {
+              setDraft((current) => ({ ...current, vehicleId, estimatedTrips: trips }));
+              setQuoteConfig((current) =>
+                current.calcMode === 'manual' ? current : { ...current, trips },
+              );
+            }}
+          />
+          {!publicRequest && (
+            <>
+              <AdminQuoteStepHeading number={4} title={quoteText.stepVehicle} />
+              <section className="admin-quote-card admin-quote-vehicle-panel">
+                <span className="admin-quote-vehicle-label">{quoteText.vehicle}</span>
+                <div
+                  className="admin-quote-vehicle-choices admin-quote-vehicle-choices-compact"
+                  role="group"
+                  aria-label={quoteText.vehicle}
+                >
+                  {catalogue.vehicles
+                    .filter((vehicle) => vehicle.active !== false)
+                    .map((vehicle) => (
+                      <button
+                        type="button"
+                        key={vehicle.id}
+                        aria-pressed={draft.vehicleId === vehicle.id}
+                        className={draft.vehicleId === vehicle.id ? 'active' : ''}
+                        onClick={() =>
+                          setDraft((current) => ({ ...current, vehicleId: vehicle.id }))
+                        }
+                      >
+                        <strong>{vehicle.shortName || vehicle.name}</strong>
+                      </button>
+                    ))}
+                </div>
+              </section>
+              <AdminQuoteVehicleBilling model={model} catalogue={catalogue} />
+            </>
+          )}
+          <AdminQuoteStepHeading number={5} title={quoteText.stepOptions} />
           {!publicRequest && (
             <section className="admin-quote-card">
               <div className="admin-quote-card-head">
@@ -605,75 +722,98 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             </button>
             {openQuoteSections.options && (
               <div id="admin-quote-option-fields" className="admin-quote-option-fields">
-                <div className="admin-quote-service-row">
-                  <strong>{uiText['allersRetours']}</strong>
-                  <div className="admin-quote-stepper">
-                    <button
-                      type="button"
-                      aria-label={uiText['retirerUnAllerRetour']}
-                      disabled={quoteConfig.trips <= 1}
-                      onClick={() => {
-                        const trips = Math.max(1, quoteConfig.trips - 1);
-                        setQuoteConfig((current) => ({ ...current, trips, calcMode: 'manual' }));
-                        if (publicRequest)
-                          setDraft((current) => ({ ...current, estimatedTrips: trips }));
-                      }}
-                    >
-                      −
-                    </button>
-                    <output>{quoteConfig.trips}</output>
-                    <button
-                      type="button"
-                      aria-label={uiText['ajouterUnAllerRetour']}
-                      disabled={quoteConfig.trips >= catalogue.settings.maxTrips}
-                      onClick={() => {
-                        const trips = Math.min(catalogue.settings.maxTrips, quoteConfig.trips + 1);
-                        setQuoteConfig((current) => ({ ...current, trips, calcMode: 'manual' }));
-                        if (publicRequest)
-                          setDraft((current) => ({ ...current, estimatedTrips: trips }));
-                      }}
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-                {extras.map(([key, label]) => (
-                  <div className="admin-quote-service-row" key={key}>
-                    <strong>
-                      {key === 'labour'
-                        ? 'Manœuvres'
-                        : key === 'desk'
-                          ? 'Montage/démontage bureau'
-                          : key === 'wardrobe'
-                            ? 'Montage/démontage armoire'
-                            : 'Montage/démontage lit 2 places'}
-                    </strong>
-                    <div className="admin-quote-stepper">
-                      <button
-                        type="button"
-                        aria-label={`Retirer ${label}`}
-                        disabled={
-                          draft.options[key] === 0 ||
-                          (key === 'labour' &&
-                            Boolean(movingEstimate?.volume) &&
-                            draft.options.labour <= 1)
-                        }
-                        onClick={() => changeQuoteOption(key, -1)}
-                      >
-                        −
-                      </button>
-                      <output>{draft.options[key]}</output>
-                      <button
-                        type="button"
-                        aria-label={`Ajouter ${label}`}
-                        disabled={draft.options[key] >= catalogue.settings.maxOptions}
-                        onClick={() => changeQuoteOption(key, 1)}
-                      >
-                        +
-                      </button>
+                {(publicRequest || quoteConfig.billingMode !== 'driver-rental') && (
+                  <>
+                    <div className="admin-quote-service-row">
+                      <strong>{uiText['allersRetours']}</strong>
+                      <div className="admin-quote-stepper">
+                        <button
+                          type="button"
+                          aria-label={uiText['retirerUnAllerRetour']}
+                          disabled={quoteConfig.trips <= 1}
+                          onClick={() => {
+                            const trips = Math.max(1, quoteConfig.trips - 1);
+                            enterManualCalculation();
+                            setQuoteConfig((current) => ({
+                              ...current,
+                              trips,
+                            }));
+                            if (publicRequest)
+                              setDraft((current) => ({ ...current, estimatedTrips: trips }));
+                          }}
+                        >
+                          −
+                        </button>
+                        <output>{quoteConfig.trips}</output>
+                        <button
+                          type="button"
+                          aria-label={uiText['ajouterUnAllerRetour']}
+                          disabled={quoteConfig.trips >= catalogue.settings.maxTrips}
+                          onClick={() => {
+                            const trips = Math.min(
+                              catalogue.settings.maxTrips,
+                              quoteConfig.trips + 1,
+                            );
+                            enterManualCalculation();
+                            setQuoteConfig((current) => ({
+                              ...current,
+                              trips,
+                            }));
+                            if (publicRequest)
+                              setDraft((current) => ({ ...current, estimatedTrips: trips }));
+                          }}
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                    {extras
+                      .filter(
+                        ([key]) =>
+                          quoteConfig.billingMode === 'complete' ||
+                          (quoteConfig.billingMode === 'driver-rental' &&
+                            quoteConfig.menuIncluded) ||
+                          key === 'labour',
+                      )
+                      .map(([key, label]) => (
+                        <div className="admin-quote-service-row" key={key}>
+                          <strong>
+                            {key === 'labour'
+                              ? 'Manœuvres'
+                              : key === 'desk'
+                                ? 'Montage/démontage bureau'
+                                : key === 'wardrobe'
+                                  ? 'Montage/démontage armoire'
+                                  : 'Montage/démontage lit 2 places'}
+                          </strong>
+                          <div className="admin-quote-stepper">
+                            <button
+                              type="button"
+                              aria-label={`Retirer ${label}`}
+                              disabled={
+                                draft.options[key] === 0 ||
+                                (key === 'labour' &&
+                                  Boolean(movingEstimate?.volume) &&
+                                  draft.options.labour <= 1)
+                              }
+                              onClick={() => changeQuoteOption(key, -1)}
+                            >
+                              −
+                            </button>
+                            <output>{draft.options[key]}</output>
+                            <button
+                              type="button"
+                              aria-label={`Ajouter ${label}`}
+                              disabled={draft.options[key] >= catalogue.settings.maxOptions}
+                              onClick={() => changeQuoteOption(key, 1)}
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                  </>
+                )}
                 {!publicRequest && (
                   <div className="admin-quote-options-bottom">
                     <div className="admin-quote-discount-panel">
@@ -788,72 +928,13 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
               </div>
             )}
           </section>
-          <CallInventory
-            draft={draft}
-            setDraft={setDraft}
-            maxOptions={catalogue.settings.maxOptions}
-            vehicles={catalogue.vehicles}
-            selectedVehicleId={draft.vehicleId}
-            quoteTrips={quoteConfig.trips}
-            maxTrips={catalogue.settings.maxTrips}
-            laborPlanning={catalogue.settings.movingLaborPlanning}
-            ignoreTraffic={quoteConfig.trafficOff}
-            manualLegMinutes={quoteConfig.calcMode === 'manual' ? quoteConfig.legMinutes : 0}
-            hasToll={tollLines.some((line) => line.quantity * line.unitPrice > 0)}
-            onManualCalculation={() =>
-              setQuoteConfig((current) => ({ ...current, calcMode: 'manual' }))
-            }
-            heatOff={quoteConfig.heatOff}
-            heatRest={quoteConfig.heatRest}
-            onHeatChange={(value) => setQuoteConfig((current) => ({ ...current, ...value }))}
-            audience={publicRequest ? 'client' : 'admin'}
-            referenceMode={publicRequest}
-            labourPriceEditor={
-              publicRequest ? undefined : (
-                <div className="admin-quote-labour-override">
-                  <label htmlFor="admin-labour-unit-price">{uiText['prixParManœuvreFCFA']}</label>
-                  <input
-                    id="admin-labour-unit-price"
-                    type="number"
-                    min="0"
-                    value={quoteConfig.labourUnitPriceOverride ?? ''}
-                    placeholder={String(labourPrice)}
-                    onChange={(event) =>
-                      setQuoteConfig((current) => ({
-                        ...current,
-                        labourUnitPriceOverride: event.target.value
-                          ? Math.max(0, Number(event.target.value)) || null
-                          : null,
-                      }))
-                    }
-                  />
-                  <small>
-                    {uiText['videGrilleAdmin']}
-                    {money(labourPrice)})
-                  </small>
-                </div>
-              )
-            }
-            estimateInventory={estimateInventory}
-            onApplyEstimate={(vehicleId, trips) => {
-              setDraft((current) => ({ ...current, vehicleId, estimatedTrips: trips }));
-              setQuoteConfig((current) =>
-                current.calcMode === 'manual' ? current : { ...current, trips },
-              );
-            }}
-          />
           {!publicRequest && (
-            <ClientQuestionnaire
+            <AdminQuoteQuestionnaire
               questions={questionnaire}
-              answers={draft.questionnaireAnswers}
+              draft={draft}
+              setDraft={setDraft}
               open={questionnaireOpen}
               onToggle={() => setQuestionnaireOpen((value) => !value)}
-              onChange={(id, value) =>
-                setDraft((current) => ({
-                  ...current,
-                  questionnaireAnswers: { ...current.questionnaireAnswers, [id]: value },
-                }))
-              }
             />
           )}
         </div>
@@ -873,10 +954,20 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                 estimate={movingEstimate}
                 setDraft={setDraft}
                 setQuoteConfig={setQuoteConfig}
+                onPlanNeeds={model.setSimulationNeeds}
               />
             ) : null
           }
         />
+        {!publicRequest && (
+          <AdminQuoteSaveBar
+            quoteKind={quoteKind}
+            total={model.previewTotal}
+            trips={quoteConfig.trips}
+            movingEstimate={movingEstimate}
+            driverRental={quoteConfig.billingMode === 'driver-rental'}
+          />
+        )}
       </form>
     </div>
   );

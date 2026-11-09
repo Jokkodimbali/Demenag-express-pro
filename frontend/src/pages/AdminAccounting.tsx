@@ -7,12 +7,13 @@ import { accountingText } from '../content/accounting';
 import { AccountingFinanceSections } from '../components/AccountingFinanceSections';
 import { ReferenceAccountingOverview } from '../components/ReferenceAccountingOverview';
 import { ReferenceMonthlyCharges } from '../components/ReferenceMonthlyCharges';
-import { money } from '../domain/format';
+import { money } from '../application/presentation/format';
 import { routes } from '../routing/routes';
 
 export function AdminAccounting() {
   const [downloadError, setDownloadError] = useState('');
-  const { exportAccounting, catalogue } = useApp();
+  const { api, exportAccounting, catalogue } = useApp();
+  const completeClaude = api.completeClaude;
   const {
     month,
     setMonth,
@@ -119,6 +120,7 @@ export function AdminAccounting() {
               revenueCount: entries.filter((entry) => entry.type === 'revenu').length,
               chargeCount: entries.filter((entry) => entry.type === 'charge').length,
             }}
+            completeClaude={completeClaude}
           />
           <AccountingFinanceSections
             config={financeConfiguration}

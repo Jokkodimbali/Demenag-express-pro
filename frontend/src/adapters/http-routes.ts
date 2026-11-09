@@ -6,8 +6,18 @@ export const httpRoutes = {
   adminProfile: '/admin/profile',
   accounting: '/admin/accounting',
   accountingConfiguration: '/admin/accounting/configuration',
+  claude: {
+    base: '/admin/claude',
+    key: '/admin/claude/key',
+    model: '/admin/claude/model',
+    test: '/admin/claude/test',
+    completion: '/admin/claude/completion',
+  },
   drivers: '/admin/drivers',
   catalogue: '/catalogue',
+  inventoryIllustration: (key: string) => `/inventory-illustrations/${encodeURIComponent(key)}`,
+  adminQuoteDraft: '/admin/quote-draft',
+  googleMapsKey: '/admin/google-maps-key',
   tollPoints: '/toll-points',
   authentication: {
     current: '/auth/me',

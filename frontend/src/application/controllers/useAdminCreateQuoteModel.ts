@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useBookingForm } from '../../application/useBookingForm';
 import { blankDraft, useApp } from '../../application/context';
@@ -6,35 +6,32 @@ import { useBookingCommands } from '../../application/controllers/useBookingComm
 import {
   readAdminQuoteDraft,
   saveAdminQuoteDraft,
+  clearAdminQuoteDraft,
   type AdminQuoteConfig,
 } from '../../application/admin-quote-draft-storage';
 import {
   referenceInventoryNote,
   referenceMovingEstimateNote,
 } from '../../domain/reference-inventory-note';
-import { referenceTierLabels, today } from '../../domain/format';
-import {
-  assemblyUnitPrice,
-  labourUnitPrice,
-  labourUnitPriceOverrideFromQuote,
-} from '../../domain/labour-price';
-import { inventoryAssemblyLines, inventoryAssemblyOptions } from '../../domain/inventory-assembly';
-import { googleTrafficDuration, readGoogleMapsKey } from '../../application/google-maps-traffic';
+import { referenceTierLabels } from '../../application/presentation/format';
+import { today } from '../../domain/date';
+import { labourUnitPrice, labourUnitPriceOverrideFromQuote } from '../../domain/labour-price';
+import { useAdminQuoteTraffic } from './useAdminQuoteTraffic';
 import type { Booking, Options, Price, Quote } from '../../domain/model';
 import { bookingInventorySnapshot, estimateMovingWork } from '../../domain/moving-estimate';
 import { defaultClientQuestions } from '../../domain/questionnaire';
 import { quoteNotificationUrl } from '../../application/services/quote-notification';
 import { whatsappNumber, whatsappUrl } from '../../application/services/whatsapp';
-import { whatsappPaymentLine } from '../../application/services/whatsapp-templates';
-
-const trafficDuration = (minutes: number) => {
-  const rounded = Math.max(5, Math.round(minutes / 5) * 5);
-  const hours = Math.floor(rounded / 60);
-  const remaining = rounded % 60;
-  return hours
-    ? `${hours} h${remaining ? ` ${String(remaining).padStart(2, '0')}` : ''}`
-    : `${remaining} min`;
-};
+import {
+  quoteConditionsText,
+  whatsappPaymentLine,
+} from '../../application/services/whatsapp-templates';
+import { createAdminQuotePreview } from '../../application/services/admin-quote-preview';
+import {
+  cheaperCompatibleVehicle,
+  vehicleFitWarnings,
+} from '../../application/services/quote-vehicle-fit';
+import { fitConfirmationCopy } from '../../application/services/quote-fit-confirmation';
 
 export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const location = useLocation();
@@ -44,7 +41,14 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       initialClient?: { name: string; phone: string; address: string };
     } | null
   )?.initialClient;
+  const calendarAppointment = (
+    location.state as { calendarAppointment?: { date: string; time: string } } | null
+  )?.calendarAppointment;
+  const resetQuoteToken = (location.state as { resetQuote?: string } | null)?.resetQuote;
   const editingReservation = new URLSearchParams(location.search).has('modifier');
+  const resetAdminQuote = Boolean(
+    resetQuoteToken && !editingReservation && !initialClient && !calendarAppointment,
+  );
   const startNewRequest = Boolean(
     publicRequest &&
     !editingReservation &&
@@ -53,6 +57,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const requestInitialized = useRef(false);
   const restoredDraft = useRef(false);
   const skipInitialSave = useRef(false);
+  const draftSaveQueue = useRef(Promise.resolve());
   const [quoteConfig, setQuoteConfig] = useState<AdminQuoteConfig>({
     trips: 1,
     calcMode: 'auto',
@@ -65,9 +70,18 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     discountReason: '',
     customPrice: null,
     labourUnitPriceOverride: null,
+    billingMode: 'complete',
+    menuIncluded: false,
+    overtimeMinutes: 0,
+    rentalKit: null,
   });
+  const [simulationNeeds, setSimulationNeeds] = useState<{
+    blankets: number;
+    straps: number;
+  } | null>(null);
   const [questionnaireOpen, setQuestionnaireOpen] = useState(false);
   const [quoteKind, setQuoteKind] = useState<Quote['kind']>('provisional');
+  const [resetVersion, setResetVersion] = useState(0);
   const [pdfError, setPdfError] = useState('');
   const [stageError, setStageError] = useState('');
   const [reminderNotice, setReminderNotice] = useState('');
@@ -79,22 +93,13 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     tolls: false,
     options: false,
   });
-  const [googleMapsKey] = useState(readGoogleMapsKey);
-  const [traffic, setTraffic] = useState<{
-    minutes: number;
-    freeMinutes: number;
-    fetchedAt: number;
-    future: boolean;
-  } | null>(null);
-  const [trafficBusy, setTrafficBusy] = useState(false);
-  const [trafficError, setTrafficError] = useState(false);
-  const trafficRequest = useRef(0);
-  const { exportQuote, catalogue: appCatalogue, user } = useApp();
+  const { exportQuote, catalogue: appCatalogue, user, api, requestConfirmation } = useApp();
   const bookingCommands = useBookingCommands();
   const state = useBookingForm({
     mode: publicRequest && user?.role !== 'admin' ? 'booking' : 'admin-quote',
     quoteConfig,
     quoteKind,
+    getRentalKit: () => rentalKit,
     onQuoteSaved: (booking) => {
       if (!sendWhatsAppAfterSave.current) return;
       sendWhatsAppAfterSave.current = false;
@@ -162,6 +167,55 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     editLoading,
     editError,
   } = state;
+  const route = draft.route ?? undefined;
+  const {
+    googleMapsKey,
+    traffic,
+    trafficBusy,
+    trafficError,
+    trafficDuration,
+    refreshTraffic,
+    trafficDelay,
+    trafficColor,
+  } = useAdminQuoteTraffic({
+    enabled: user?.role === 'admin' && !publicRequest,
+    route,
+    date: draft.date,
+    timeSlot: draft.timeSlot,
+  });
+  useEffect(() => {
+    if (!resetAdminQuote) return;
+    void clearAdminQuoteDraft(api);
+    setDraft(blankDraft(appCatalogue ?? undefined));
+    setQuoteConfig({
+      trips: 1,
+      calcMode: 'auto',
+      legMinutes: 0,
+      trafficOff: false,
+      heatOff: false,
+      heatRest: 0,
+      discount: 0,
+      discountType: 'fcfa',
+      discountReason: '',
+      customPrice: null,
+      labourUnitPriceOverride: null,
+      billingMode: 'complete',
+      menuIncluded: false,
+      overtimeMinutes: 0,
+      rentalKit: null,
+    });
+    setTollLines([]);
+    setQuoteKind('provisional');
+    setQuestionnaireOpen(false);
+    setSimulationNeeds(null);
+    setStageError('');
+    setPdfError('');
+    setReminderNotice('');
+    setOpenQuoteSections({ client: false, route: false, tolls: false, options: false });
+    setResetVersion((current) => current + 1);
+    window.scrollTo({ top: 0 });
+    navigate(location.pathname, { replace: true, state: null });
+  }, [api, appCatalogue, location.pathname, navigate, resetAdminQuote, setDraft, setTollLines]);
   useEffect(() => {
     if (!startNewRequest || requestInitialized.current) return;
     requestInitialized.current = true;
@@ -183,6 +237,10 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       discountReason: '',
       customPrice: null,
       labourUnitPriceOverride: null,
+      billingMode: 'complete',
+      menuIncluded: false,
+      overtimeMinutes: 0,
+      rentalKit: null,
     });
     navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
   }, [location.pathname, location.search, navigate, setDraft, startNewRequest, user]);
@@ -203,24 +261,37 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       : draft.questionnaireAnswers['key-ready']?.startsWith('Oui')
         ? ('oui' as const)
         : (draft.inventory.ready ?? ('' as const)),
-    stairs: draft.questionnaireAnswers['key-stairs']?.startsWith('Non')
-      ? ('non' as const)
-      : draft.questionnaireAnswers['key-stairs']?.startsWith('Oui')
-        ? ('oui' as const)
-        : draft.questionnaireAnswers['key-stairs']?.startsWith('À vérifier')
-          ? ('verif' as const)
-          : (draft.inventory.stairs ?? ('' as const)),
+    stairs: draft.questionnaireAnswers['key-stairs']?.startsWith('Non, par le balcon')
+      ? ('balcon' as const)
+      : draft.questionnaireAnswers['key-stairs']?.startsWith('Non')
+        ? ('non' as const)
+        : draft.questionnaireAnswers['key-stairs']?.startsWith('Oui')
+          ? ('oui' as const)
+          : draft.questionnaireAnswers['key-stairs']?.startsWith('À vérifier')
+            ? ('verif' as const)
+            : (draft.inventory.stairs ?? ('' as const)),
   };
   useEffect(() => {
-    const saved = editingReservation || publicRequest ? null : readAdminQuoteDraft();
-    if (saved) {
-      setDraft(saved.draft);
-      setQuoteConfig(saved.quoteConfig);
-      setTollLines(saved.tollLines);
+    if (editingReservation || publicRequest || resetAdminQuote || user?.role !== 'admin') {
+      restoredDraft.current = true;
+      skipInitialSave.current = true;
+      return;
     }
-    restoredDraft.current = true;
-    skipInitialSave.current = true;
-  }, [editingReservation, publicRequest, setDraft, setTollLines]);
+    let active = true;
+    void readAdminQuoteDraft(api).then((saved) => {
+      if (!active) return;
+      if (saved) {
+        setDraft(saved.draft);
+        setQuoteConfig(saved.quoteConfig);
+        setTollLines(saved.tollLines);
+      }
+      restoredDraft.current = true;
+      skipInitialSave.current = true;
+    });
+    return () => {
+      active = false;
+    };
+  }, [api, editingReservation, publicRequest, resetAdminQuote, setDraft, setTollLines, user?.role]);
 
   useEffect(() => {
     if (!initialClient) return;
@@ -234,13 +305,30 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
   }, [initialClient, location.pathname, location.search, navigate, setDraft]);
   useEffect(() => {
+    if (!calendarAppointment) return;
+    setDraft((current) => ({
+      ...current,
+      date: calendarAppointment.date,
+      month: calendarAppointment.date.slice(0, 7),
+      timeSlot: calendarAppointment.time,
+      noDate: false,
+    }));
+    setOpenQuoteSections((current) => ({ ...current, client: true }));
+    navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
+  }, [calendarAppointment, location.pathname, location.search, navigate, setDraft]);
+  useEffect(() => {
     if (!restoredDraft.current) return;
     if (skipInitialSave.current) {
       skipInitialSave.current = false;
       return;
     }
-    if (!publicRequest) saveAdminQuoteDraft({ draft, quoteConfig, tollLines });
-  }, [draft, publicRequest, quoteConfig, tollLines]);
+    if (publicRequest || user?.role !== 'admin') return;
+    const timeout = window.setTimeout(() => {
+      const value = { draft, quoteConfig, tollLines };
+      draftSaveQueue.current = draftSaveQueue.current.then(() => saveAdminQuoteDraft(api, value));
+    }, 350);
+    return () => window.clearTimeout(timeout);
+  }, [api, draft, publicRequest, quoteConfig, tollLines, user?.role]);
 
   useEffect(() => {
     if (!publicRequest || !user) return;
@@ -276,6 +364,10 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
             )?.unitPrice ?? null)
           : null,
       labourUnitPriceOverride: labourOverride,
+      billingMode: quote?.billingMode ?? 'complete',
+      menuIncluded: quote?.menuIncluded ?? false,
+      overtimeMinutes: quote?.overtimeMinutes ?? 0,
+      rentalKit: quote?.rentalKit ?? null,
     });
     setTollLines(
       (quote?.tolls ?? []).map((line) => ({
@@ -291,71 +383,10 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     draft.fromAddress,
     draft.toAddress,
   );
-  const route = draft.route;
-  const refreshTraffic = useCallback(async () => {
-    if (!googleMapsKey || !route) return;
-    const request = ++trafficRequest.current;
-    const timeMatch = /^(\d{1,2}):(\d{2})$/u.exec(draft.timeSlot);
-    const departure =
-      draft.date && timeMatch
-        ? new Date(`${draft.date}T${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}:00`)
-        : undefined;
-    const future = Boolean(departure && departure.getTime() > Date.now() + 60000);
-    setTrafficBusy(true);
-    setTrafficError(false);
-    try {
-      const result = await googleTrafficDuration(route.from, route.to, googleMapsKey, departure);
-      if (request === trafficRequest.current) {
-        setTraffic(
-          result
-            ? {
-                minutes: result.minutes,
-                freeMinutes: result.freeMinutes,
-                fetchedAt: result.fetchedAt,
-                future,
-              }
-            : null,
-        );
-        setTrafficError(!result);
-      }
-    } catch {
-      if (request === trafficRequest.current) {
-        setTraffic(null);
-        setTrafficError(true);
-      }
-    } finally {
-      if (request === trafficRequest.current) setTrafficBusy(false);
-    }
-  }, [draft.date, draft.timeSlot, googleMapsKey, route]);
-  useEffect(() => {
-    if (!googleMapsKey || !route) {
-      trafficRequest.current++;
-      setTraffic(null);
-      setTrafficBusy(false);
-      setTrafficError(false);
-      return;
-    }
-    setTraffic(null);
-    void refreshTraffic();
-    const interval = window.setInterval(() => void refreshTraffic(), 300000);
-    return () => {
-      window.clearInterval(interval);
-    };
-  }, [googleMapsKey, route, refreshTraffic]);
   const pricingRoute =
     draft.route && draft.distanceKmOverride != null
       ? { ...draft.route, distanceKm: draft.distanceKmOverride }
       : draft.route;
-  const trafficDelay = traffic ? traffic.minutes - traffic.freeMinutes : 0;
-  const trafficColor = !googleMapsKey
-    ? '#6B737B'
-    : !traffic
-      ? '#AEB4BB'
-      : trafficDelay > 15
-        ? '#FF5A5F'
-        : trafficDelay > 5
-          ? '#FFD23F'
-          : '#3DDC84';
   const labourPrice = catalogue
     ? labourUnitPrice(catalogue.settings, {
         fromFloor: draft.inventory.fromFloor,
@@ -385,6 +416,24 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const movingEstimateVolume = movingEstimate?.volume ?? 0;
   const movingEstimateCrew = movingEstimate?.crew ?? 0;
   const movingEstimateTrips = movingEstimate?.trips ?? 0;
+  const cheaperVehicle = selected
+    ? cheaperCompatibleVehicle({
+        inventory: estimateInventory,
+        current: selected,
+        vehicles: catalogue?.vehicles ?? [],
+        route: pricingRoute
+          ? { distanceKm: pricingRoute.distanceKm, durationMinutes: pricingRoute.durationMinutes }
+          : null,
+        date: draft.date,
+        month: draft.month,
+        fromAddress: draft.fromAddress,
+        toAddress: draft.toAddress,
+        startTime: draft.timeSlot,
+        hasToll: tollLines.some((line) => line.quantity * line.unitPrice > 0),
+        settings: catalogue?.settings,
+        estimate: movingEstimate,
+      })
+    : null;
   const readyAnswer = draft.questionnaireAnswers['key-ready'];
   const stairsAnswer = draft.questionnaireAnswers['key-stairs'];
   const inventoryEstimateKey = JSON.stringify({
@@ -460,108 +509,49 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       .map(([id, label]) => `${label} : ${draft.questionnaireAnswers[id].trim()}`),
   ].join('\n');
   const totalTolls = tollLines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
-  const quoteDate = draft.date ? draft.date.split('-').reverse().join('/') : '—';
+  const quoteDate = draft.date
+    ? draft.date.split('-').reverse().join('/')
+    : draft.month
+      ? new Date(`${draft.month}-01T12:00:00Z`).toLocaleDateString('fr-FR', {
+          month: 'long',
+          year: 'numeric',
+          timeZone: 'Africa/Dakar',
+        })
+      : '—';
   const businessPhone = catalogue?.settings.businessPhone ?? '';
   const businessPhoneDigits = businessPhone.replace(/\D/g, '');
   const displayBusinessPhone = /^221\d{9}$/u.test(businessPhoneDigits)
     ? `+221 ${businessPhoneDigits.slice(3, 5)} ${businessPhoneDigits.slice(5, 8)} ${businessPhoneDigits.slice(8, 10)} ${businessPhoneDigits.slice(10)}`
     : businessPhone;
+  const preview = createAdminQuotePreview({
+    draft,
+    estimateInventory,
+    config: quoteConfig,
+    vehicle: selected ?? null,
+    estimate: movingEstimate,
+    settings: catalogue?.settings,
+    price,
+    extras,
+    labourPrice,
+    simulationNeeds,
+  });
+  const {
+    tier: previewTier,
+    rentalKit,
+    rentalOvertimeAmount,
+    manoeuvreOvertime,
+    previewLines,
+    subtotal: previewSubtotal,
+    discount: previewDiscount,
+    discountLabel: previewDiscountLabel,
+    total: previewTotal,
+  } = preview;
   const bounds = catalogue?.settings.distanceBounds ?? [15, 25, 35];
   const tiers = referenceTierLabels(bounds);
   const effectiveDistance = draft.distanceKmOverride ?? draft.route?.distanceKm;
-  const previewTier = !draft.route
-    ? 0
-    : effectiveDistance! < bounds[0]
-      ? 0
-      : effectiveDistance! <= bounds[1]
-        ? 1
-        : effectiveDistance! <= bounds[2]
-          ? 2
-          : 3;
-  const previewTransportUnit =
-    previewTier === 3 ? (quoteConfig.customPrice ?? 0) : (selected?.prices[previewTier] ?? 0);
-  const transportPreviewLine = selected
-    ? {
-        label: `Transport ${selected.shortName || selected.name} · ${(tiers[previewTier] ?? 'Moins de 15 km').toLowerCase()} (aller-retour)`,
-        quantity: quoteConfig.trips,
-        unitPrice: previewTransportUnit,
-        total: previewTransportUnit * quoteConfig.trips,
-      }
-    : null;
-  const fallbackServiceLines = extras
-    .filter(([key]) => draft.options[key] > 0)
-    .map(([key, label]) => ({
-      label,
-      quantity: draft.options[key],
-      unitPrice:
-        key === 'labour'
-          ? quoteConfig.labourUnitPriceOverride || labourPrice
-          : catalogue
-            ? assemblyUnitPrice(
-                catalogue.settings,
-                key === 'desk' ? 'bureau' : key === 'wardrobe' ? 'armoire' : 'lit',
-              )
-            : 0,
-      total:
-        draft.options[key] *
-        (key === 'labour'
-          ? quoteConfig.labourUnitPriceOverride || labourPrice
-          : catalogue
-            ? assemblyUnitPrice(
-                catalogue.settings,
-                key === 'desk' ? 'bureau' : key === 'wardrobe' ? 'armoire' : 'lit',
-              )
-            : 0),
-    }));
-  const rawPreviewLines = [
-    ...(transportPreviewLine ? [transportPreviewLine] : []),
-    ...(price?.lines ?? fallbackServiceLines)
-      .filter((line) => !line.label.startsWith('Transport '))
-      .map((line) =>
-        line.label.startsWith('Manœuvre') && quoteConfig.labourUnitPriceOverride
-          ? {
-              ...line,
-              unitPrice: quoteConfig.labourUnitPriceOverride,
-              total: line.quantity * quoteConfig.labourUnitPriceOverride,
-            }
-          : line,
-      ),
-  ];
-  const inventoryMenuLines = catalogue
-    ? inventoryAssemblyLines(draft.inventory, catalogue.settings)
-    : [];
-  const inventoryMenuOptions = inventoryAssemblyOptions(draft.inventory);
-  const previewLines = inventoryMenuLines.length
-    ? [
-        ...rawPreviewLines.filter((line) => !line.label.startsWith('Menuisier ·')),
-        ...extras
-          .filter(([key]) => key !== 'labour')
-          .map(([key, label]) => {
-            const inventoryCount = inventoryMenuOptions[key];
-            const quantity = Math.max(0, draft.options[key] - inventoryCount);
-            const unitPrice = catalogue
-              ? assemblyUnitPrice(
-                  catalogue.settings,
-                  key === 'desk' ? 'bureau' : key === 'wardrobe' ? 'armoire' : 'lit',
-                )
-              : 0;
-            return { label, quantity, unitPrice, total: quantity * unitPrice };
-          })
-          .filter((line) => line.quantity > 0),
-        ...inventoryMenuLines.map((line) => ({
-          ...line,
-          total: line.quantity * line.unitPrice,
-        })),
-      ]
-    : rawPreviewLines;
-  const previewSubtotal = previewLines.reduce((sum, line) => sum + line.total, 0);
-  const previewDiscount =
-    quoteConfig.discountType === 'pct'
-      ? Math.round((previewSubtotal * Math.min(100, quoteConfig.discount)) / 100)
-      : Math.min(previewSubtotal, quoteConfig.discount);
-  const previewDiscountLabel = `Remise${quoteConfig.discountType === 'pct' && quoteConfig.discount ? ` (${Math.min(100, quoteConfig.discount)} %)` : ''}${quoteConfig.discountReason.trim() ? ` · ${quoteConfig.discountReason.trim()}` : ''}`;
-  const previewTotal =
-    previewTier === 3 && !quoteConfig.customPrice ? null : previewSubtotal - previewDiscount;
+  const availableMenuLines = preview.availableMenuLines;
+  const menuIncluded = preview.menuIncluded;
+  const inventoryMenuOptions = preview.menuOptions;
   const savedQuote = editingBooking?.quotes.filter((quote) => quote.kind === quoteKind).at(-1);
   const canSendQuoteWhatsApp = Boolean(
     whatsappNumber(draft.customerPhone, catalogue?.settings.whatsappCountryCode ?? '221').length >=
@@ -601,10 +591,12 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       })
     : '';
   const reminderPayment = whatsappPaymentLine(catalogue?.settings);
+  const reminderConditions = quoteConditionsText(estimateInventory, quoteConfig.billingMode);
+  const balconyPrice = Math.max(0, Math.round(Number(estimateInventory.balcPx) || 0));
   const reminderHref = editingBooking
     ? whatsappUrl(
         draft.customerPhone,
-        `Bonjour ${draft.customerName}, petit rappel de Demenag Express : votre déménagement (${editingBooking.reference}) est prévu ${reminderWhen}, le ${reminderDateLabel}${draft.timeSlot && draft.timeSlot !== 'À définir' ? ` à ${draft.timeSlot}` : ''}.\n${draft.fromAddress ? `Départ : ${draft.fromAddress}\n` : ''}${draft.toAddress ? `Arrivée : ${draft.toAddress}\n` : ''}Merci de préparer vos affaires pour le chargement.${reminderPayment ? `\n${reminderPayment}` : ''}\nPour toute question, contactez-nous au ${catalogue?.settings.whatsappPhone || catalogue?.settings.businessPhone || ''}. À bientôt !`,
+        `Bonjour ${draft.customerName}, petit rappel de Demenag Express : votre déménagement (${editingBooking.reference}) est prévu ${reminderWhen}, le ${reminderDateLabel}${draft.timeSlot && draft.timeSlot !== 'À définir' ? ` à ${draft.timeSlot}` : ''}.\n${draft.fromAddress ? `Départ : ${draft.fromAddress}\n` : ''}${draft.toAddress ? `Arrivée : ${draft.toAddress}\n` : ''}${reminderConditions || 'Merci de préparer vos affaires pour le chargement.'}${reminderPayment ? `\n${reminderPayment}` : ''}\nPour toute question, contactez-nous au ${catalogue?.settings.whatsappPhone || catalogue?.settings.businessPhone || ''}. À bientôt !`,
         catalogue?.settings,
       )
     : '';
@@ -612,6 +604,16 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     if (!canSendQuoteWhatsApp) {
       setStageError('Numéro WhatsApp du client invalide.');
       setOpenQuoteSections((current) => ({ ...current, client: true }));
+      return;
+    }
+    if (quoteKind === 'final' && estimateInventory.stairs === 'balcon' && balconyPrice <= 0) {
+      setStageError('Passage par le balcon : fixez le supplément avant le devis final.');
+      return;
+    }
+    if (quoteKind === 'final' && previewTier === 3 && !(Number(quoteConfig.customPrice) > 0)) {
+      setStageError(
+        `Distance au-delà de ${bounds[2]} km : fixez le prix par aller-retour avant le devis final.`,
+      );
       return;
     }
     if (quoteKind === 'final' && (!draft.date || draft.noDate)) {
@@ -660,11 +662,18 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
           visibleInventoryText,
           estimateText,
           questionnaireText,
+          quoteConditionsText(estimateInventory, quoteConfig.billingMode),
           draft.notes,
         ]
           .filter(Boolean)
           .join('\n'),
         options: draft.options,
+        billingMode: quoteConfig.billingMode,
+        menuIncluded: quoteConfig.billingMode === 'driver-rental' && quoteConfig.menuIncluded,
+        rentalKit: quoteConfig.billingMode === 'driver-rental' ? rentalKit : [],
+        overtimeMinutes:
+          quoteConfig.billingMode === 'driver-rental' ? quoteConfig.overtimeMinutes : 0,
+        providedCrew: movingEstimate?.crew ?? draft.options.labour,
         tolls: tollLines.map((line) => ({
           tollPointId: line.id,
           label: line.label,
@@ -711,7 +720,8 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         status: quoteKind === 'final' ? 'completed' : (editingBooking?.status ?? 'pending'),
         pricingSettings: pdfSettings,
         inventorySnapshot:
-          visibleInventoryText && movingEstimate
+          movingEstimate &&
+          (visibleInventoryText || estimateInventory.ready || estimateInventory.stairs)
             ? bookingInventorySnapshot(estimateInventory, movingEstimate)
             : undefined,
         estimate: currentPrice,
@@ -757,6 +767,28 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     setQuoteConfig((current) => ({ ...current, calcMode: 'manual' }));
   };
 
+  async function confirmVehicleFit() {
+    const warnings =
+      quoteConfig.calcMode === 'manual' || !selected || !catalogue
+        ? []
+        : vehicleFitWarnings(estimateInventory, selected, catalogue.settings);
+    if (!warnings.length) return true;
+    const copy = fitConfirmationCopy(warnings);
+    const confirmed = await requestConfirmation({
+      titleId: 'admin-quote-vehicle-fit-confirmation',
+      eyebrow: 'Vérification du véhicule',
+      title: copy.title,
+      description: copy.description,
+      confirmLabel: 'Enregistrer quand même',
+    });
+    if (!confirmed && whatsappWindow.current) {
+      whatsappWindow.current.close();
+      whatsappWindow.current = null;
+      sendWhatsAppAfterSave.current = false;
+    }
+    return confirmed;
+  }
+
   function toggleQuoteSection(section: keyof typeof openQuoteSections) {
     setOpenQuoteSections((current) => ({ ...current, [section]: !current[section] }));
   }
@@ -767,6 +799,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     initialClient,
     editingReservation,
     startNewRequest,
+    resetVersion,
     requestInitialized,
     restoredDraft,
     skipInitialSave,
@@ -788,12 +821,8 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     setOpenQuoteSections,
     googleMapsKey,
     traffic,
-    setTraffic,
     trafficBusy,
-    setTrafficBusy,
     trafficError,
-    setTrafficError,
-    trafficRequest,
     exportQuote,
     appCatalogue,
     user,
@@ -833,6 +862,8 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     trafficColor,
     labourPrice,
     movingEstimate,
+    cheaperVehicle,
+    confirmVehicleFit,
     selectedVehicleId,
     movingEstimateVolume,
     movingEstimateCrew,
@@ -854,13 +885,13 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     tiers,
     effectiveDistance,
     previewTier,
-    previewTransportUnit,
-    transportPreviewLine,
-    fallbackServiceLines,
-    rawPreviewLines,
-    inventoryMenuLines,
-    inventoryMenuOptions,
+    availableMenuLines,
+    menuIncluded,
     previewLines,
+    rentalKit,
+    setSimulationNeeds,
+    rentalOvertimeAmount,
+    manoeuvreOvertimeLine: manoeuvreOvertime,
     previewSubtotal,
     previewDiscount,
     previewDiscountLabel,

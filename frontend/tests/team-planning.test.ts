@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Booking } from '../src/domain/model';
-import { mergeTeamChanges } from '../src/application/services/team-planning';
+import {
+  mergeTeamChanges,
+  needsOf,
+  normalizeCrewLead,
+  slotKey,
+  teamOf,
+} from '../src/application/services/team-planning';
 import { queueTeamSave, type CrewUpdateInput } from '../src/application/services/team-save-queue';
 
 function booking(values: Partial<Booking> = {}) {
@@ -103,4 +109,78 @@ test('les sauvegardes concurrentes utilisent des versions successives de la rés
   assert.deepEqual(versions, [1, 2]);
   assert.deepEqual(stored.crew?.chauffeur, ['driver-a', 'driver-b']);
   assert.equal(stored.version, 3);
+});
+
+test('les besoins d’équipe suivent les effectifs et meubles du dernier devis', () => {
+  const current = booking({
+    options: { labour: 2, bed: 0, wardrobe: 0, desk: 0 },
+    quotes: [
+      {
+        id: 'quote-1',
+        reference: 'DEV-1',
+        kind: 'provisional',
+        createdAt: '2026-11-01T10:00:00.000Z',
+        price: {} as Booking['estimate'],
+        notes: '',
+        options: { labour: 3, bed: 1, wardrobe: 0, desk: 0 },
+        providedCrew: 4,
+      },
+    ],
+  });
+
+  assert.deepEqual(needsOf(current), { chauffeur: 1, menuisier: 1, manoeuvre: 4 });
+});
+
+test('sans devis, les besoins d’équipe utilisent les options de réservation', () => {
+  const current = booking({
+    options: { labour: 0, bed: 0, wardrobe: 1, desk: 0 },
+    quotes: [],
+  });
+
+  assert.deepEqual(needsOf(current), { chauffeur: 1, menuisier: 1, manoeuvre: 0 });
+});
+
+test('la location avec chauffeur ne demande pas de manœuvre ni de menuisier', () => {
+  const current = booking({
+    options: { labour: 4, bed: 2, wardrobe: 1, desk: 0 },
+    crew: {
+      chauffeur: ['driver-a'],
+      menuisier: ['carpenter-a'],
+      manoeuvre: ['mover-a'],
+      chef: 'driver-a',
+    },
+    quotes: [{ billingMode: 'driver-rental', providedCrew: 4 }] as Booking['quotes'],
+  });
+  assert.deepEqual(needsOf(current), { chauffeur: 1, menuisier: 0, manoeuvre: 0 });
+  assert.deepEqual(teamOf(current), {
+    chauffeur: ['driver-a'],
+    menuisier: [],
+    manoeuvre: [],
+    chef: 'driver-a',
+  });
+});
+
+test('la composition automatique choisit le chef selon la priorité de la référence', () => {
+  const crew = {
+    chauffeur: ['chauffeur-1'],
+    menuisier: ['menuisier-1'],
+    manoeuvre: ['manoeuvre-1'],
+    chef: 'supprime-de-lequipe',
+  };
+
+  assert.equal(normalizeCrewLead(crew).chef, 'chauffeur-1');
+  assert.equal(normalizeCrewLead({ ...crew, chauffeur: [], chef: '' }).chef, 'manoeuvre-1');
+  assert.equal(
+    normalizeCrewLead({ ...crew, chauffeur: [], manoeuvre: [], chef: '' }).chef,
+    'menuisier-1',
+  );
+  assert.equal(normalizeCrewLead({ ...crew, chef: 'menuisier-1' }).chef, 'menuisier-1');
+});
+
+test('la détection du créneau reprend les préfixes reconnus par la référence', () => {
+  assert.equal(slotKey('Après-midi'), 'aprem');
+  assert.equal(slotKey('aprem'), 'aprem');
+  assert.equal(slotKey('apres-midi'), 'aprem');
+  assert.equal(slotKey('Matin'), 'matin');
+  assert.equal(slotKey('Journée'), 'journee');
 });

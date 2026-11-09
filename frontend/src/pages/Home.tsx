@@ -1,7 +1,7 @@
 import { uiText } from '../content/reference-ui-text';
 import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../application/context';
-import { money, tierLabels } from '../domain/format';
+import { money, tierLabels } from '../application/presentation/format';
 import { routes } from '../routing/routes';
 
 export function Home() {

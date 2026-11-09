@@ -1,10 +1,8 @@
 import { uiText } from '../../content/reference-ui-text';
-import { useEffect, useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import type { Draft } from '../../application/booking-draft';
-import {
-  readInventoryIllustration,
-  saveInventoryIllustration,
-} from '../../application/inventory-illustrations';
+import { useInventoryIllustrations } from '../../application/controllers/useInventoryIllustrations';
+import { useApp } from '../../application/context';
 import {
   estimatedInventoryItemVolume,
   inventoryDismantleFactor,
@@ -224,8 +222,7 @@ export function InventoryHoverCard({
   imageScope?: string;
   historicalMaximum?: number;
 }) {
-  const [images, setImages] = useState<Record<string, string>>({});
-  const [uploadError, setUploadError] = useState('');
+  const { user } = useApp();
   const formatOptions = item.hasFormat ? inventoryFormats : [];
   const displayLabel = item.label.charAt(0).toLocaleUpperCase('fr-FR') + item.label.slice(1);
   const sizeLabel = item.sizeLabel;
@@ -251,87 +248,54 @@ export function InventoryHoverCard({
   const scope = imageScope ?? item.key;
   const hasVariants = formatOptions.length > 0 || sizeOptions.length > 0;
   const defaultImageKey = `${scope}:default`;
-  useEffect(() => {
-    const imageKeys = [
-      ...(item.hasFormat
-        ? inventoryFormats.map((option) => `${scope}:format:${option.value}`)
-        : []),
-      ...(item.sizeLabel
-        ? [Math.max(minimumSize, Math.min(size - 1, maximumSize - 2))]
-            .flatMap((first) => [first, first + 1, first + 2])
-            .filter((value) => value <= maximumSize)
-            .map((value) => `${scope}:size:${value}`)
-        : []),
-      ...(!hasVariants ? [defaultImageKey] : []),
-    ];
-    let active = true;
-    void Promise.all(
-      imageKeys.map(async (key) => [key, await readInventoryIllustration(key)] as const),
-    )
-      .then((entries) => {
-        if (active)
-          setImages(
-            Object.fromEntries(entries.filter((entry) => entry[1])) as Record<string, string>,
-          );
-      })
-      .catch(() => {
-        if (active) setUploadError("Les images enregistrées n'ont pas pu être chargées.");
-      });
-    return () => {
-      active = false;
-    };
-  }, [
-    scope,
-    item.key,
-    item.hasFormat,
-    item.sizeLabel,
-    size,
-    minimumSize,
-    maximumSize,
-    hasVariants,
-    defaultImageKey,
-  ]);
+  const imageKeys = [
+    ...(item.hasFormat ? inventoryFormats.map((option) => `${scope}:format:${option.value}`) : []),
+    ...(item.sizeLabel
+      ? [Math.max(minimumSize, Math.min(size - 1, maximumSize - 2))]
+          .flatMap((first) => [first, first + 1, first + 2])
+          .filter((value) => value <= maximumSize)
+          .map((value) => `${scope}:size:${value}`)
+      : []),
+    ...(!hasVariants ? [defaultImageKey] : []),
+  ];
+  const {
+    images,
+    error: uploadError,
+    upload,
+  } = useInventoryIllustrations(imageKeys, user?.role === 'admin');
 
-  const upload = async (key: string, file: File | undefined) => {
-    if (!file) return;
-    setUploadError('');
-    try {
-      const image = await saveInventoryIllustration(key, file);
-      setImages((current) => ({ ...current, [key]: image }));
-    } catch (error) {
-      setUploadError(
-        error instanceof Error ? error.message : "L'image n'a pas pu être enregistrée.",
-      );
-    }
-  };
-
-  const illustration = (key: string, label: string) => (
-    <label
-      className={`inventory-hover-image-upload${key === defaultImageKey ? ' inventory-hover-default-image' : ''}`}
-      title={images[key] ? 'Remplacer cette image' : 'Choisir et enregistrer une image'}
-      onClick={(event) => event.stopPropagation()}
-    >
-      {images[key] ? (
+  const illustration = (key: string, label: string) =>
+    user?.role !== 'admin' ? (
+      images[key] ? (
         <img src={images[key]} alt={`Illustration ${label}`} />
-      ) : (
-        <svg viewBox="0 0 24 24" role="img" aria-label={uiText['ajouterUneIllustration']}>
-          <rect x="4" y="4" width="16" height="16" rx="2" />
-          <circle cx="9" cy="9" r="1.5" />
-          <path d="m5 18 5-5 3 3 2-2 4 4" />
-        </svg>
-      )}
-      <span>{images[key] ? 'Remplacer' : 'Ajouter une image'}</span>
-      <input
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        aria-label={`${images[key] ? 'Remplacer' : 'Ajouter'} l’illustration ${label}`}
-        onChange={(event) => {
-          void upload(key, event.currentTarget.files?.[0]);
-          event.currentTarget.value = '';
-        }}
-      />
-    </label>
-  );
+      ) : null
+    ) : (
+      <label
+        className={`inventory-hover-image-upload${key === defaultImageKey ? ' inventory-hover-default-image' : ''}`}
+        title={images[key] ? 'Remplacer cette image' : 'Choisir et enregistrer une image'}
+        onClick={(event) => event.stopPropagation()}
+      >
+        {images[key] ? (
+          <img src={images[key]} alt={`Illustration ${label}`} />
+        ) : (
+          <svg viewBox="0 0 24 24" role="img" aria-label={uiText['ajouterUneIllustration']}>
+            <rect x="4" y="4" width="16" height="16" rx="2" />
+            <circle cx="9" cy="9" r="1.5" />
+            <path d="m5 18 5-5 3 3 2-2 4 4" />
+          </svg>
+        )}
+        <span>{images[key] ? 'Remplacer' : 'Ajouter une image'}</span>
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          aria-label={`${images[key] ? 'Remplacer' : 'Ajouter'} l’illustration ${label}`}
+          onChange={(event) => {
+            void upload(key, event.currentTarget.files?.[0]);
+            event.currentTarget.value = '';
+          }}
+        />
+      </label>
+    );
 
   return (
     <div className="inventory-hover-card" role="tooltip">

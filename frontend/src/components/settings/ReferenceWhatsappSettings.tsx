@@ -10,6 +10,7 @@ import {
   whatsappPaymentLine,
 } from '../../application/services/whatsapp-templates';
 import { visibleUiText } from '../../content/visible-ui-text';
+import { sanitizePhoneInput } from '../../domain/phone-number';
 const modes = [
   ['api', 'WhatsApp (application mobile / Web, recommandé)'],
   ['wame', 'wa.me (lien universel)'],
@@ -25,6 +26,12 @@ function localNumber(value: string, countryCode: string) {
 }
 
 export function ReferenceWhatsappSettings({ catalogue }: { catalogue: Catalogue }) {
+  const [contactFirst, setContactFirst] = useState(
+    catalogue.settings.contactFirstTemplate ?? '{ref} {prenom}',
+  );
+  const [contactLast, setContactLast] = useState(
+    catalogue.settings.contactLastTemplate ?? '{nom} · {date}',
+  );
   const [countryCode, setCountryCode] = useState(catalogue.settings.whatsappCountryCode ?? '221');
   const [businessNumber, setBusinessNumber] = useState(() =>
     localNumber(
@@ -83,7 +90,7 @@ export function ReferenceWhatsappSettings({ catalogue }: { catalogue: Catalogue 
             pattern="[1-9][0-9]{0,3}"
             maxLength={4}
             value={countryCode}
-            onChange={(event) => setCountryCode(event.target.value)}
+            onChange={(event) => setCountryCode(event.target.value.replace(/\D/g, ''))}
             placeholder={uiText['221']}
             required
           />
@@ -95,11 +102,58 @@ export function ReferenceWhatsappSettings({ catalogue }: { catalogue: Catalogue 
             type="tel"
             maxLength={30}
             value={businessNumber}
-            onChange={(event) => setBusinessNumber(event.target.value)}
-            placeholder={uiText['775105104']}
+            onChange={(event) => setBusinessNumber(sanitizePhoneInput(event.target.value))}
+            placeholder={visibleUiText.text179}
             required
           />
         </label>
+        <div className="reference-settings-contact-format">
+          <div className="reference-settings-section-heading">
+            <strong>{visibleUiText.text188}</strong>
+            <button
+              type="button"
+              onClick={(event) => {
+                const form = event.currentTarget.form;
+                setContactFirst('{ref} {prenom}');
+                setContactLast('{nom} · {date}');
+                window.setTimeout(() => form?.requestSubmit(), 0);
+              }}
+            >
+              {visibleUiText.text189}
+            </button>
+          </div>
+          <div className="reference-settings-contact-fields">
+            <label>
+              <span>{visibleUiText.text190}</span>
+              <input
+                name="contactFirstTemplate"
+                maxLength={200}
+                value={contactFirst}
+                onChange={(event) => setContactFirst(event.target.value)}
+              />
+            </label>
+            <label>
+              <span>{visibleUiText.text186}</span>
+              <input
+                name="contactLastTemplate"
+                maxLength={200}
+                value={contactLast}
+                onChange={(event) => setContactLast(event.target.value)}
+              />
+            </label>
+          </div>
+          <small>
+            {visibleUiText.text191}
+            {'{ref}'} {'{prenom}'} {'{nom}'} {'{client}'} {'{date}'} {'{vehicule}'} {'{quartier}'}
+          </small>
+          <span>
+            {visibleUiText.text192}{' '}
+            <strong>
+              {contactFirst.replace('{ref}', 'DEM-4861').replace('{prenom}', 'Moussa')}{' '}
+              {contactLast.replace('{nom}', 'Diop').replace('{date}', '06/11')}
+            </strong>
+          </span>
+        </div>
         <label>
           <span>{uiText['ouvrirAVEC']}</span>
           <select

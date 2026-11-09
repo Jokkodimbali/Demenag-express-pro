@@ -1,10 +1,10 @@
 import { uiText } from '../content/reference-ui-text';
 import 'leaflet/dist/leaflet.css';
 import { Expand, LocateFixed, Search, X } from 'lucide-react';
-import { useRouteMap } from '../application/controllers/useRouteMap';
+import { useRouteMap } from './maps/useRouteMap';
 import { useApp } from '../application/context';
 import { messages } from '../content/fr';
-import { referenceTierLabels } from '../domain/format';
+import { referenceTierLabels } from '../application/presentation/format';
 import type { TollExtraLine } from '../domain/toll-selection';
 const EMPTY_TOLL_LINES: TollExtraLine[] = [];
 export default function RouteMap({

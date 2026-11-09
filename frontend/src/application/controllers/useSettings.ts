@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../context';
 import { errorMessage } from '../error-message';
 import { catalogueFromForm } from '../validation/forms';
+import type { Catalogue, Settings } from '../../domain/model';
+import { defaultAccountingFinanceConfiguration } from '../../domain/accounting-forecast';
+import { resetAccountingChargesToReference, resetCatalogueTariffsToReference } from '../../domain/reference-tariff-defaults';
 export function useSettings() {
   const { api, catalogue, setCatalogue } = useApp();
   const [busy, setBusy] = useState(false),
@@ -88,5 +91,69 @@ export function useSettings() {
     setError('');
     await flushPending(e.currentTarget);
   }
-  return { catalogue, busy, error, saved, submit, onChange, onBlur };
+  async function updateSettings(patch: Partial<Settings>) {
+    await flushPending();
+    const persist = async () => {
+      const current = catalogueRef.current;
+      if (!current) return;
+      const updated = await api.updateCatalogue({
+        ...current,
+        settings: { ...current.settings, ...patch },
+      });
+      catalogueRef.current = updated;
+      setCatalogue(updated);
+    };
+    saveQueue.current = saveQueue.current.then(persist, persist);
+    return saveQueue.current;
+  }
+
+  async function replaceCatalogue(transform: (current: Catalogue) => Catalogue) {
+    await flushPending();
+    let succeeded = false;
+    const persist = async () => {
+      const current = catalogueRef.current;
+      if (!current) return;
+      if (mounted.current) {
+        setBusy(true);
+        setSaved(false);
+        setError('');
+      }
+      try {
+        const updated = await api.updateCatalogue(transform(current));
+        catalogueRef.current = updated;
+        setCatalogue(updated);
+        succeeded = true;
+        if (mounted.current) setSaved(true);
+      } catch (cause) {
+        if (mounted.current) setError(errorMessage(cause));
+      } finally {
+        if (mounted.current) setBusy(false);
+      }
+    };
+    saveQueue.current = saveQueue.current.then(persist, persist);
+    await saveQueue.current;
+    return succeeded;
+  }
+  async function resetReferenceDefaults() {
+    const updated = await replaceCatalogue(resetCatalogueTariffsToReference);
+    if (!updated) return false;
+    const currentFinance = {
+      ...defaultAccountingFinanceConfiguration(),
+      ...(await api.accountingConfiguration()),
+    };
+    await api.saveAccountingConfiguration(resetAccountingChargesToReference(currentFinance));
+    return true;
+  }
+  return {
+    catalogue,
+    busy,
+    error,
+    saved,
+    submit,
+    onChange,
+    onBlur,
+    updateSettings,
+    replaceCatalogue,
+    resetReferenceDefaults,
+  };
 }

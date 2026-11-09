@@ -136,6 +136,13 @@ export function simulationInput(
     n: string;
     gl: string;
     v: number;
+    dims?: number[];
+    kg?: number;
+    like?: string;
+    up?: boolean;
+    frag?: boolean;
+    notop?: boolean;
+    hkind?: string;
   }[] = [];
   const add = (
     key: string,
@@ -173,9 +180,33 @@ export function simulationInput(
   inventory.variants.forEach((entry) =>
     add(entry.itemKey, entry.quantity, entry.size, entry.format, entry.dismantle),
   );
-  inventory.custom.forEach((entry) =>
-    add('custom', entry.quantity, 1, entry.format, !!entry.dismantle, entry.label),
-  );
+  inventory.custom.forEach((entry) => {
+    add('custom', entry.quantity, 1, entry.format, !!entry.dismantle, entry.label);
+    const line = lines.at(-1);
+    if (!line) return;
+    const dimensions = [entry.cL, entry.cW, entry.cH].map(Number);
+    if (dimensions.every((value) => value > 0)) line.dims = dimensions.map((value) => value / 100);
+    if (line.dims) {
+      line.v = line.dims.reduce((volume, value) => volume * value, 1) * (entry.dismantle ? 0.8 : 1);
+    } else if (entry.like) {
+      const likeKey = entry.like;
+      const likeDefinition = inventoryItems.find((item) => item.key === likeKey);
+      line.v = estimatedInventoryItemVolume(
+        likeKey,
+        likeDefinition?.defaultSize ?? 1,
+        Boolean(entry.dismantle),
+        entry.format,
+      );
+    }
+    if (entry.kg && entry.kg > 0) line.kg = entry.kg;
+    if (entry.like) {
+      line.like = itemKeys[entry.like] ?? entry.like;
+      line.hkind = line.like;
+    }
+    line.up = Boolean(entry.up);
+    line.frag = Boolean(entry.frag);
+    line.notop = Boolean(entry.notop);
+  });
   return {
     veh: {
       L: dimension(vehicle.length),

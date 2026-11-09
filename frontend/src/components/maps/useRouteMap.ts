@@ -2,14 +2,15 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { liveTrafficTileUrl, mapConfiguration } from '../../config/maps';
-import { addReferenceTollMarkers, addTollMarkers } from '../../components/maps/toll-markers';
-import { addRouteLine } from '../../components/maps/route-line';
+import { addReferenceTollMarkers, addTollMarkers } from './toll-markers';
+import { addRouteLine } from './route-line';
 import { messages } from '../../content/fr';
 import type { Point, TollPoint } from '../../domain/model';
 import { tollLine, type TollExtraLine } from '../../domain/toll-selection';
 import { tollsOnRoute } from '../../domain/tolls-on-route';
-import { useApp } from '../context';
-import { errorMessage } from '../error-message';
+import { useRouteMapCommands } from '../../application/controllers/useRouteMapCommands';
+import { useApp } from '../../application/context';
+import { errorMessage } from '../../application/error-message';
 type Side = 'from' | 'to';
 const EMPTY_TOLL_LINES: TollExtraLine[] = [];
 const pin = (side: Side) =>
@@ -24,7 +25,8 @@ export function useRouteMap(
   onTollToggle?: (line: TollExtraLine, selected: boolean) => void,
   referenceQuoteMap = false,
 ) {
-  const { api, draft, setDraft, tollPoints } = useApp();
+  const { draft, setDraft, tollPoints } = useApp();
+  const { searchAddresses, reverseGeocode, calculateRoute: loadRoute } = useRouteMapCommands();
   const [active, setActive] = useState<Side>('from'),
     [full, setFull] = useState(false),
     [error, setError] = useState(''),
@@ -77,8 +79,7 @@ export function useRouteMap(
       route: null,
     }));
     if (!label) {
-      void api
-        .reverse(point)
+      void reverseGeocode(point)
         .then(({ label: address }) => {
           if (requestId === addressRequests.current[side]) {
             setDraft((d) => ({ ...d, [side + 'Address']: address }));
@@ -95,7 +96,7 @@ export function useRouteMap(
       setError('');
       setDraft((d) => ({ ...d, route: null, distanceKmOverride: null }));
       try {
-        const result = await api.route(from, to);
+        const result = await loadRoute(from, to);
         if (id === routeRequest.current) setDraft((d) => ({ ...d, route: result }));
       } catch (e) {
         if (id === routeRequest.current) setError(errorMessage(e));
@@ -103,7 +104,7 @@ export function useRouteMap(
         if (id === routeRequest.current) setBusy(false);
       }
     },
-    [api, setDraft],
+    [loadRoute, setDraft],
   );
   useLayoutEffect(() => {
     if (!host.current) return;
@@ -284,7 +285,7 @@ export function useRouteMap(
     setSearching(side);
     setError('');
     try {
-      const items = await api.search(q);
+      const items = await searchAddresses(q);
       if (id === searchRequest.current) {
         setResults({ side, items });
         if (!items.length) setError(messages.aucuneAdresseTrouveePlacezLePointSurLa);
@@ -302,7 +303,7 @@ export function useRouteMap(
     setSearching(side);
     setError('');
     try {
-      const items = await api.search(query);
+      const items = await searchAddresses(query);
       if (id !== searchRequest.current) return;
       if (items.length) setPointRef.current(side, items[0].point, query);
       else setError(messages.aucuneAdresseTrouveePlacezLePointSurLa);

@@ -4,6 +4,10 @@ import {
   inventoryAssemblyLines,
   subtractInventoryAssemblyOptions,
 } from '../../domain/inventory-assembly';
+import {
+  referenceLowDemandDiscount,
+  referenceTransportLines,
+} from '../../domain/reference-pricing';
 
 export type QuoteExtraLine = { label: string; quantity: number; unitPrice: number };
 
@@ -23,6 +27,8 @@ export function quoteTotal(
     discountType?: 'fcfa' | 'pct';
     options: Options;
     kind?: 'provisional' | 'final';
+    billingMode?: 'complete' | 'standard' | 'driver-rental';
+    menuIncluded?: boolean;
   },
   extras: QuoteExtraLine[],
 ) {
@@ -35,24 +41,49 @@ export function quoteTotal(
     draft.options,
     booking.inventorySnapshot?.sourceInventory,
   );
+  const mode = draft.billingMode ?? 'complete';
+  const billableOptions =
+    mode === 'driver-rental'
+      ? {
+          ...options,
+          labour: 0,
+          ...(draft.menuIncluded ? {} : { desk: 0, wardrobe: 0, bed: 0 }),
+        }
+      : mode === 'standard'
+        ? { ...options, desk: 0, wardrobe: 0, bed: 0 }
+        : options;
   const optionTotal =
-    options.labour * labourUnitPrice(settings, booking.workAccess) +
-    options.desk * assemblyUnitPrice(settings, 'bureau') +
-    options.wardrobe * assemblyUnitPrice(settings, 'armoire') +
-    options.bed * assemblyUnitPrice(settings, 'lit');
-  const inventoryLines = inventoryAssemblyLines(
-    booking.inventorySnapshot?.sourceInventory,
-    settings,
-  );
+    billableOptions.labour * labourUnitPrice(settings, booking.workAccess) +
+    billableOptions.desk * assemblyUnitPrice(settings, 'bureau') +
+    billableOptions.wardrobe * assemblyUnitPrice(settings, 'armoire') +
+    billableOptions.bed * assemblyUnitPrice(settings, 'lit');
+  const inventoryLines =
+    mode === 'complete' || (mode === 'driver-rental' && draft.menuIncluded)
+      ? inventoryAssemblyLines(booking.inventorySnapshot?.sourceInventory, settings)
+      : [];
   const extrasTotal = extras.reduce((sum, line) => {
-    if (!line.label.trim() || line.quantity < 1 || line.unitPrice < 1) return sum;
+    const halfHourCharge = line.label.startsWith('Manœuvres · heures au-delà');
+    if (!line.label.trim() || line.quantity < (halfHourCharge ? 0.5 : 1) || line.unitPrice < 1)
+      return sum;
     return sum + line.quantity * line.unitPrice;
   }, 0);
   const inventoryTotal = inventoryLines.reduce(
     (sum, line) => sum + line.quantity * line.unitPrice,
     0,
   );
-  const subtotal = transportUnit * draft.trips + optionTotal + inventoryTotal + extrasTotal;
+  const transportLines = referenceTransportLines(
+    'Transport',
+    transportUnit,
+    draft.trips,
+    settings.movingLaborPlanning?.followingTripDiscountPercent ?? 100,
+  );
+  const transportTotal = transportLines.reduce((sum, line) => sum + line.total, 0);
+  const lowDemandDiscount = referenceLowDemandDiscount(
+    transportTotal,
+    booking.date,
+    settings.movingLaborPlanning?.lowDemandDiscountPercent ?? 0,
+  );
+  const subtotal = transportTotal - lowDemandDiscount + optionTotal + inventoryTotal + extrasTotal;
   const discount =
     draft.discountType === 'pct'
       ? Math.round((subtotal * Math.min(100, draft.discount)) / 100)

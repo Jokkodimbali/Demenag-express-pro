@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ChevronDown, Plus, Trash2 } from 'lucide-react';
 import type { AccountingFinanceConfiguration } from '../domain/model';
 import type { FinanceMonth } from '../domain/accounting-forecast';
-import { money } from '../domain/format';
+import { money } from '../application/presentation/format';
 import { accountingFinanceText as text } from '../content/accounting-finance';
 
 type Props = {

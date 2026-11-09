@@ -142,11 +142,28 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
     markAllNotificationsRead: () => request(`${httpRoutes.notifications}/read-all`, 'PATCH'),
     announceDrivers: (title, message) => request(httpRoutes.announce, 'POST', { title, message }),
     catalogue: () => sharePendingRead(httpRoutes.catalogue, () => request(httpRoutes.catalogue)),
+    inventoryIllustration: async (key) =>
+      (await request<{ image: string | null }>(httpRoutes.inventoryIllustration(key))).image,
+    saveInventoryIllustration: (key, image) =>
+      request(httpRoutes.inventoryIllustration(key), 'PUT', { image }),
+    adminQuoteDraft: async () =>
+      (await request<{ draft: unknown | null }>(httpRoutes.adminQuoteDraft)).draft,
+    saveAdminQuoteDraft: (draft) => request(httpRoutes.adminQuoteDraft, 'PUT', { draft }),
+    clearAdminQuoteDraft: () => request(httpRoutes.adminQuoteDraft, 'DELETE'),
+    googleMapsApiKey: async () => (await request<{ key: string }>(httpRoutes.googleMapsKey)).key,
+    updateGoogleMapsApiKey: (key) => request(httpRoutes.googleMapsKey, 'PUT', { key }),
     tollPoints: () => sharePendingRead(httpRoutes.tollPoints, () => request(httpRoutes.tollPoints)),
     createTollPoint: (input) => request(httpRoutes.tollPoints, 'POST', input),
     updateTollPoint: (id, input) => request(`${httpRoutes.tollPoints}/${id}`, 'PUT', input),
     deleteTollPoint: (id) => request(`${httpRoutes.tollPoints}/${id}`, 'DELETE'),
     updateCatalogue: (value) => request(httpRoutes.catalogue, 'PUT', value),
+    claudeStatus: () => request(httpRoutes.claude.base),
+    connectClaudeKey: (key) => request(httpRoutes.claude.key, 'PUT', { key }),
+    selectClaudeModel: (model) => request(httpRoutes.claude.model, 'PUT', { model }),
+    testClaude: () => request(httpRoutes.claude.test, 'POST'),
+    disconnectClaude: () => request(httpRoutes.claude.base, 'DELETE'),
+    completeClaude: async (input) =>
+      (await request<{ text: string }>(httpRoutes.claude.completion, 'POST', input)).text,
     deleteVehicle: (id) =>
       request(`${httpRoutes.catalogue}/vehicles/${encodeURIComponent(id)}`, 'DELETE'),
     me: () =>
@@ -206,11 +223,20 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
     route: (from, to) => request(httpRoutes.maps.route, 'POST', { from, to }),
     search: (query) => request(`${httpRoutes.maps.search}?q=${encodeURIComponent(query)}`),
     reverse: (point) => request(`${httpRoutes.maps.reverse}?lat=${point[0]}&lon=${point[1]}`),
-    estimate: (vehicleId, routeId, options, signal, workAccess, trips, distanceKmOverride) =>
+    estimate: (
+      vehicleId,
+      routeId,
+      options,
+      signal,
+      workAccess,
+      trips,
+      distanceKmOverride,
+      workDate,
+    ) =>
       request(
         distanceKmOverride == null ? httpRoutes.estimates : httpRoutes.adminEstimates,
         'POST',
-        { vehicleId, routeId, options, workAccess, trips, distanceKmOverride },
+        { vehicleId, routeId, options, workAccess, trips, distanceKmOverride, workDate },
         signal,
       ),
   };

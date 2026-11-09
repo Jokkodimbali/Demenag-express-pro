@@ -438,8 +438,13 @@
   color: #d5d9de;
   font-size: 14px;
 }
+.teams-job-highlight {
+  outline: 2px solid #f6d73c;
+  outline-offset: 2px;
+}
 .teams-job {
   display: flex;
+  transition: outline-color 200ms ease;
   min-width: 0;
   flex-direction: column;
   gap: 12px;

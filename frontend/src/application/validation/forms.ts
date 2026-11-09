@@ -10,13 +10,20 @@ import type {
 import { messages } from '../../content/fr';
 import { vehicleCapacity } from '../../domain/vehicle-capacity';
 import { createLabourPriceMatrix } from '../../domain/labour-price';
-import { referenceInventoryKey } from '../../domain/inventory-assembly';
+import { referenceInventoryAliases, referenceInventoryKey } from '../../domain/inventory-assembly';
+import { referenceAssemblyPriceDefaults } from '../../../../shared/reference-tariff-defaults.js';
 import { normalizePaymentQr } from '../services/payment-qr';
 
 const role = (value: FormDataEntryValue | null): User['role'] =>
   value === 'admin' ? 'admin' : 'client';
 const integer = (value: FormDataEntryValue | null) => Number(value);
 const tuple = (values: number[]): [number, number, number] => [values[0], values[1], values[2]];
+const normalizeBusinessPhone = (value: string) => {
+  let digits = value.replace(/\D/gu, '');
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  if (digits.startsWith('221') && digits.length === 12) return `+${digits}`;
+  return digits.length === 9 ? `+221${digits}` : value.trim();
+};
 
 export function questionnaireFromForm(data: FormData, existing: ClientQuestion[]) {
   const rawCount = data.get('questionnaire.count');
@@ -55,6 +62,8 @@ export function quoteFromForm(
   extraLines: QuoteInput['extraLines'],
   options: NonNullable<QuoteInput['options']>,
   tolls: NonNullable<QuoteInput['tolls']> = [],
+  billingMode: NonNullable<QuoteInput['billingMode']> = 'complete',
+  menuIncluded = false,
 ): QuoteInput {
   return {
     kind: data.get('kind') === 'final' ? 'final' : 'provisional',
@@ -68,6 +77,8 @@ export function quoteFromForm(
     tolls,
     options,
     version,
+    billingMode,
+    menuIncluded,
   };
 }
 
@@ -129,16 +140,10 @@ async function imageValue(value: FormDataEntryValue | null, fallback: string) {
 }
 
 export async function catalogueFromForm(data: FormData, catalogue: Catalogue): Promise<Catalogue> {
+  const numberField = (name: string, fallback: number) =>
+    data.has(name) ? Number(data.get(name)) : fallback;
   const montageP = { ...(catalogue.settings.montageP ?? {}) };
-  for (const [legacyKey, canonicalKey] of Object.entries({
-    'table-manger': 'tablem',
-    bibliotheque: 'biblio',
-    congelateur: 'congel',
-    'machine-laver': 'mal',
-    'micro-ondes': 'micro',
-    climatiseur: 'clim',
-    ventilateur: 'ventilo',
-  })) {
+  for (const [legacyKey, canonicalKey] of Object.entries(referenceInventoryAliases)) {
     if (montageP[legacyKey] && !montageP[canonicalKey])
       montageP[canonicalKey] = montageP[legacyKey];
     delete montageP[legacyKey];
@@ -167,13 +172,30 @@ export async function catalogueFromForm(data: FormData, catalogue: Catalogue): P
       montageP[key] = { ...current, [baseOrigin]: integer(value) };
     }
   }
-  const labourPrice = integer(data.get('labourPrice'));
-  const labourFloorPrice = integer(data.get('labourFloorPrice'));
-  const labourLiftPrice = integer(data.get('labourLiftPrice'));
+  const assemblyPrice = numberField('assembly', catalogue.settings.assemblyPrice);
+  for (const [key, configured] of Object.entries(montageP)) {
+    if (key in referenceAssemblyPriceDefaults || !configured || typeof configured !== 'object')
+      continue;
+    const fields = Object.keys(configured);
+    if (
+      fields.every((field) => field === 'local' || field === 'import') &&
+      configured.local === assemblyPrice &&
+      configured.import === Math.round(assemblyPrice * 1.5)
+    )
+      delete montageP[key];
+  }
+  const labourPrice = numberField('labourPrice', catalogue.settings.labourPrice);
+  const labourFloorPrice = numberField(
+    'labourFloorPrice',
+    catalogue.settings.labourFloorPrice ?? 500,
+  );
+  const labourLiftPrice = numberField('labourLiftPrice', catalogue.settings.labourLiftPrice ?? 500);
   const whatsappCountryCode = String(
     data.get('w.cc') ?? catalogue.settings.whatsappCountryCode ?? '221',
   ).replace(/\D/g, '');
-  let whatsappLocalNumber = String(data.get('w.biz') ?? '').replace(/\D/g, '');
+  let whatsappLocalNumber = String(
+    data.get('w.biz') ?? catalogue.settings.whatsappPhone ?? '',
+  ).replace(/\D/g, '');
   if (whatsappLocalNumber.startsWith('00')) whatsappLocalNumber = whatsappLocalNumber.slice(2);
   const normalizedWhatsAppNumber = whatsappLocalNumber.replace(/^0+/, '');
   const whatsappDigits =
@@ -182,18 +204,140 @@ export async function catalogueFromForm(data: FormData, catalogue: Catalogue): P
       : normalizedWhatsAppNumber;
   const movingLaborPlanning = {
     ...catalogue.settings.movingLaborPlanning,
-    maxHandlingHours: Number(data.get('movingLaborPlanning.maxHandlingHours')),
-    maxDayHours: Number(data.get('movingLaborPlanning.maxDayHours')),
-    defaultStartHour: integer(data.get('movingLaborPlanning.defaultStartHour')),
-    maxMoversPerVehicle: integer(data.get('movingLaborPlanning.maxMoversPerVehicle')),
-    cubicMetersPerHourPerMover: Number(data.get('movingLaborPlanning.cubicMetersPerHourPerMover')),
-    pauseMinutes: integer(data.get('movingLaborPlanning.pauseMinutes')),
-    heat: integer(data.get('movingLaborPlanning.heat')),
-    wbgtAdj: Number(data.get('movingLaborPlanning.wbgtAdj')),
-    blanketLengthCm: integer(data.get('movingLaborPlanning.blanketLengthCm')),
-    blanketWidthCm: integer(data.get('movingLaborPlanning.blanketWidthCm')),
-    blanketStock: integer(data.get('movingLaborPlanning.blanketStock')),
+    maxHandlingHours: numberField(
+      'movingLaborPlanning.maxHandlingHours',
+      catalogue.settings.movingLaborPlanning?.maxHandlingHours ?? 3,
+    ),
+    maxDayHours: numberField(
+      'movingLaborPlanning.maxDayHours',
+      catalogue.settings.movingLaborPlanning?.maxDayHours ?? 8,
+    ),
+    defaultStartHour: numberField(
+      'movingLaborPlanning.defaultStartHour',
+      catalogue.settings.movingLaborPlanning?.defaultStartHour ?? 8,
+    ),
+    maxMoversPerVehicle: numberField(
+      'movingLaborPlanning.maxMoversPerVehicle',
+      catalogue.settings.movingLaborPlanning?.maxMoversPerVehicle ?? 6,
+    ),
+    cubicMetersPerHourPerMover: numberField(
+      'movingLaborPlanning.cubicMetersPerHourPerMover',
+      catalogue.settings.movingLaborPlanning?.cubicMetersPerHourPerMover ?? 2.7,
+    ),
+    pauseMinutes: numberField(
+      'movingLaborPlanning.pauseMinutes',
+      catalogue.settings.movingLaborPlanning?.pauseMinutes ?? 30,
+    ),
+    teamVolumePerMover: numberField(
+      'movingLaborPlanning.teamVolumePerMover',
+      catalogue.settings.movingLaborPlanning?.teamVolumePerMover ?? 6,
+    ),
+    tripSetupMinutes: numberField(
+      'movingLaborPlanning.tripSetupMinutes',
+      catalogue.settings.movingLaborPlanning?.tripSetupMinutes ?? 15,
+    ),
+    handlingCalibration: numberField(
+      'movingLaborPlanning.handlingCalibration',
+      catalogue.settings.movingLaborPlanning?.handlingCalibration ?? 1,
+    ),
+    carryDistanceMeters: numberField(
+      'movingLaborPlanning.carryDistanceMeters',
+      catalogue.settings.movingLaborPlanning?.carryDistanceMeters ?? 15,
+    ),
+    heat: numberField(
+      'movingLaborPlanning.heat',
+      catalogue.settings.movingLaborPlanning?.heat ?? 1,
+    ),
+    wbgtAdj: numberField(
+      'movingLaborPlanning.wbgtAdj',
+      catalogue.settings.movingLaborPlanning?.wbgtAdj ?? 0,
+    ),
+    maxTotalHours: numberField(
+      'movingLaborPlanning.maxTotalHours',
+      catalogue.settings.movingLaborPlanning?.maxTotalHours ?? 12,
+    ),
+    metabolicReference: numberField(
+      'movingLaborPlanning.metabolicReference',
+      catalogue.settings.movingLaborPlanning?.metabolicReference ?? 200,
+    ),
+    effortGround: numberField(
+      'movingLaborPlanning.effortGround',
+      catalogue.settings.movingLaborPlanning?.effortGround ?? 200,
+    ),
+    effortLift: numberField(
+      'movingLaborPlanning.effortLift',
+      catalogue.settings.movingLaborPlanning?.effortLift ?? 210,
+    ),
+    effortStairs: numberField(
+      'movingLaborPlanning.effortStairs',
+      catalogue.settings.movingLaborPlanning?.effortStairs ?? 230,
+    ),
+    effortPerFloor: numberField(
+      'movingLaborPlanning.effortPerFloor',
+      catalogue.settings.movingLaborPlanning?.effortPerFloor ?? 12,
+    ),
+    effortMaximum: numberField(
+      'movingLaborPlanning.effortMaximum',
+      catalogue.settings.movingLaborPlanning?.effortMaximum ?? 290,
+    ),
+    followingTripDiscountPercent: numberField(
+      'movingLaborPlanning.followingTripDiscountPercent',
+      catalogue.settings.movingLaborPlanning?.followingTripDiscountPercent ?? 60,
+    ),
+    lowDemandDiscountPercent: numberField(
+      'movingLaborPlanning.lowDemandDiscountPercent',
+      catalogue.settings.movingLaborPlanning?.lowDemandDiscountPercent ?? 10,
+    ),
+    manoeuvreOvertimeThresholdHours: numberField(
+      'movingLaborPlanning.manoeuvreOvertimeThresholdHours',
+      catalogue.settings.movingLaborPlanning?.manoeuvreOvertimeThresholdHours ?? 8,
+    ),
+    manoeuvreOvertimeHourlyRate: numberField(
+      'movingLaborPlanning.manoeuvreOvertimeHourlyRate',
+      catalogue.settings.movingLaborPlanning?.manoeuvreOvertimeHourlyRate ?? 0,
+    ),
+    blanketLengthCm: numberField(
+      'movingLaborPlanning.blanketLengthCm',
+      catalogue.settings.movingLaborPlanning?.blanketLengthCm ?? 204,
+    ),
+    blanketWidthCm: numberField(
+      'movingLaborPlanning.blanketWidthCm',
+      catalogue.settings.movingLaborPlanning?.blanketWidthCm ?? 184,
+    ),
+    blanketStock: numberField(
+      'movingLaborPlanning.blanketStock',
+      catalogue.settings.movingLaborPlanning?.blanketStock ?? 20,
+    ),
   };
+  const kitCount = Number(data.get('rentalKitConfiguration.count'));
+  const rentalKitConfiguration =
+    Number.isInteger(kitCount) && kitCount >= 0 && kitCount <= 100
+      ? await Promise.all(
+          Array.from({ length: kitCount }, async (_, index) => {
+            const field = (name: string) =>
+              String(data.get(`rentalKitConfiguration.${index}.${name}`) ?? '');
+            const current = catalogue.settings.rentalKitConfiguration?.find(
+              (item) => item.id === field('id'),
+            );
+            const image =
+              data.get(`rentalKitConfiguration.${index}.removeImage`) === 'on'
+                ? ''
+                : await dataUrl(
+                    data.get(`rentalKitConfiguration.${index}.imageFile`),
+                    field('image') || current?.image || '',
+                  );
+            return {
+              id: field('id'),
+              label: field('label').trim(),
+              rule: field('rule') as NonNullable<
+                Settings['rentalKitConfiguration']
+              >[number]['rule'],
+              quantity: Math.max(0, integer(data.get(`rentalKitConfiguration.${index}.quantity`))),
+              image,
+            };
+          }),
+        ).then((items) => items.filter((item) => item.label))
+      : (catalogue.settings.rentalKitConfiguration ?? []);
   const labourMatrix = createLabourPriceMatrix({
     ...catalogue.settings,
     labourPrice,
@@ -204,7 +348,9 @@ export async function catalogueFromForm(data: FormData, catalogue: Catalogue): P
     ...catalogue,
     vehicles: catalogue.vehicles.map((vehicle) => ({
       ...vehicle,
-      prices: tuple([0, 1, 2].map((index) => integer(data.get(`${vehicle.id}-${index}`)))),
+      prices: tuple(
+        [0, 1, 2].map((index) => numberField(`${vehicle.id}-${index}`, vehicle.prices[index])),
+      ),
     })),
     settings: {
       ...catalogue.settings,
@@ -213,7 +359,7 @@ export async function catalogueFromForm(data: FormData, catalogue: Catalogue): P
       labourFloorPrice,
       labourLiftPrice,
       labourMatrix,
-      assemblyPrice: integer(data.get('assembly')),
+      assemblyPrice,
       montageP,
       movingLaborPlanning,
       questionnaire: questionnaireFromForm(data, catalogue.settings.questionnaire ?? []),
@@ -228,8 +374,60 @@ export async function catalogueFromForm(data: FormData, catalogue: Catalogue): P
       whatsappProvisionalTemplate: String(
         data.get('w.tplP') ?? catalogue.settings.whatsappProvisionalTemplate ?? '',
       ),
-      paymentWave: data.get('paymentWave') === 'on',
-      paymentCash: data.get('paymentCash') === 'on',
+      contactFirstTemplate: String(
+        data.get('contactFirstTemplate') ??
+          catalogue.settings.contactFirstTemplate ??
+          '{ref} {prenom}',
+      ),
+      contactLastTemplate: String(
+        data.get('contactLastTemplate') ??
+          catalogue.settings.contactLastTemplate ??
+          '{nom} · {date}',
+      ),
+      businessEmail: String(data.get('businessEmail') ?? catalogue.settings.businessEmail ?? ''),
+      businessAddress: String(
+        data.get('businessAddress') ?? catalogue.settings.businessAddress ?? '',
+      ).trim(),
+      businessPhone: normalizeBusinessPhone(
+        String(data.get('businessPhone') ?? catalogue.settings.businessPhone ?? ''),
+      ),
+      businessNinea: String(data.get('businessNinea') ?? catalogue.settings.businessNinea ?? ''),
+      businessRccm: String(data.get('businessRccm') ?? catalogue.settings.businessRccm ?? ''),
+      quoteValidityDays: Math.max(
+        0,
+        integer(
+          data.get('quoteValidityDays') ?? String(catalogue.settings.quoteValidityDays ?? 15),
+        ),
+      ),
+      bookingDepositPercent: Math.max(
+        0,
+        Math.min(
+          100,
+          integer(
+            data.get('bookingDepositPercent') ??
+              String(catalogue.settings.bookingDepositPercent ?? 0),
+          ),
+        ),
+      ),
+      quoteTerms: String(data.get('quoteTerms') ?? catalogue.settings.quoteTerms ?? ''),
+      quoteTermsEnabled:
+        data.getAll('quoteTermsEnabled').length === 0
+          ? (catalogue.settings.quoteTermsEnabled ?? true)
+          : data.getAll('quoteTermsEnabled').includes('on'),
+      rentalOvertimeHourlyRate: Math.max(
+        0,
+        integer(
+          data.get('rentalOvertimeHourlyRate') ??
+            String(catalogue.settings.rentalOvertimeHourlyRate ?? 10000),
+        ),
+      ),
+      rentalKitConfiguration,
+      paymentWave: data.has('paymentWaveConfigured')
+        ? data.get('paymentWave') === 'on'
+        : catalogue.settings.paymentWave,
+      paymentCash: data.has('paymentCashConfigured')
+        ? data.get('paymentCash') === 'on'
+        : catalogue.settings.paymentCash,
       paymentQr: await (async () => {
         const file = data.get('paymentQr');
         if (file instanceof File && file.size > 0) return normalizePaymentQr(file);

@@ -131,6 +131,23 @@ export type ClientQuestionAnswer = {
   question: string;
   answer: string;
 };
+export type CustomInventoryType = {
+  k: string;
+  n: string;
+  p?: string;
+  sec: string;
+  like?: string;
+  L?: number | '';
+  W?: number | '';
+  H?: number | '';
+  kg?: number | '';
+  menuPriceLocal?: number | '';
+  menuPriceImport?: number | '';
+  dm?: boolean;
+  up?: boolean;
+  frag?: boolean;
+  notop?: boolean;
+};
 export type Settings = BookingRules & {
   distanceBounds: [number, number, number];
   labourPrice: number;
@@ -155,8 +172,19 @@ export type Settings = BookingRules & {
   whatsappMode?: 'api' | 'wame' | 'web' | 'app';
   whatsappQuoteTemplate?: string;
   whatsappProvisionalTemplate?: string;
+  contactFirstTemplate?: string;
+  contactLastTemplate?: string;
   businessName: string;
   businessAddress: string;
+  businessEmail?: string;
+  businessNinea?: string;
+  businessRccm?: string;
+  quoteValidityDays?: number;
+  bookingDepositPercent?: number;
+  quoteTerms?: string;
+  quoteTermsEnabled?: boolean;
+  rentalOvertimeHourlyRate?: number;
+  rentalKitConfiguration?: RentalKitConfigurationItem[];
   invoiceFooter: string;
   tiktokUrl: string | null;
   facebookUrl: string | null;
@@ -169,6 +197,8 @@ export type Settings = BookingRules & {
   paymentQr?: string | null;
   questionnaire?: ClientQuestion[];
   movingLaborPlanning?: MovingLaborPlanningSettings;
+  customInventoryTypes?: CustomInventoryType[];
+  hiddenInventoryKeys?: string[];
 };
 export type MovingLaborPlanningSettings = {
   maxHandlingHours: number;
@@ -177,11 +207,26 @@ export type MovingLaborPlanningSettings = {
   maxMoversPerVehicle: number;
   cubicMetersPerHourPerMover: number;
   pauseMinutes: number;
+  teamVolumePerMover?: number;
+  tripSetupMinutes?: number;
+  handlingCalibration?: number;
+  carryDistanceMeters?: number;
   heat?: number;
   wbgtAdj?: number;
   blanketLengthCm?: number;
   blanketWidthCm?: number;
   blanketStock?: number;
+  maxTotalHours?: number;
+  metabolicReference?: number;
+  effortGround?: number;
+  effortLift?: number;
+  effortStairs?: number;
+  effortPerFloor?: number;
+  effortMaximum?: number;
+  followingTripDiscountPercent?: number;
+  lowDemandDiscountPercent?: number;
+  manoeuvreOvertimeThresholdHours?: number;
+  manoeuvreOvertimeHourlyRate?: number;
 };
 export type LabourMatrixScenario = 'none' | 'from' | 'to' | 'both';
 export type LabourPriceMatrix = Record<LabourMatrixScenario, number[][]>;
@@ -294,14 +339,29 @@ export type BookingInventorySource = {
   }[];
   flags: Record<string, boolean>;
   ready?: 'oui' | 'non' | '';
-  stairs?: 'oui' | 'non' | 'verif' | '';
+  stairs?: 'oui' | 'non' | 'balcon' | 'verif' | '';
+  balcPx?: number;
+  blanketLengthCm?: number;
+  blanketWidthCm?: number;
   custom: {
     id: string;
+    typeKey?: string;
     label: string;
     quantity: number;
     format?: 'small' | 'medium' | 'large';
     dismantle?: boolean;
     origin?: 'local' | 'import';
+    cL?: number;
+    cW?: number;
+    cH?: number;
+    kg?: number;
+    mp?: number;
+    menuPriceLocal?: number;
+    menuPriceImport?: number;
+    like?: string;
+    up?: boolean;
+    frag?: boolean;
+    notop?: boolean;
   }[];
   crew?: number;
 };
@@ -315,7 +375,8 @@ export type BookingInventorySnapshot = {
   fromLift: boolean;
   toLift: boolean;
   ready: 'oui' | 'non' | '';
-  stairs: 'oui' | 'non' | 'verif' | '';
+  stairs: 'oui' | 'non' | 'balcon' | 'verif' | '';
+  balcPx?: number;
   flags: string[];
   items: InventorySnapshotItem[];
   itemCount: number;
@@ -325,6 +386,8 @@ export type BookingInventorySnapshot = {
   estimatedTrips: number;
   moverCount: number;
   carpenterCount: number;
+  totalWeightKg?: number;
+  maxItemWeightKg?: number;
   loadingMinutes: number;
   unloadingMinutes: number;
   packingMinutes: number;
@@ -360,6 +423,21 @@ export type Quote = {
     carpenters: number;
     carpenterAmount: number;
   };
+  billingMode?: 'complete' | 'standard' | 'driver-rental';
+  menuIncluded?: boolean;
+  rentalKit?: RentalKitItem[];
+  overtimeMinutes?: number;
+  providedCrew?: number;
+};
+export type RentalKitItem = { id: string; label: string; quantity: number; image?: string };
+export type RentalKitRule =
+  'vehicle' | 'one' | 'blankets' | 'liftingStraps' | 'gloves' | 'tieDownStraps' | 'fixed';
+export type RentalKitConfigurationItem = {
+  id: string;
+  label: string;
+  rule: RentalKitRule;
+  quantity?: number;
+  image?: string;
 };
 export type QuotePricingSettings = Pick<
   Settings,
@@ -371,6 +449,7 @@ export type QuotePricingSettings = Pick<
   | 'labourLiftPrice'
   | 'assemblyPrice'
   | 'montageP'
+  | 'movingLaborPlanning'
 >;
 export type QuotePricingInput = {
   settings: QuotePricingSettings;
@@ -382,6 +461,10 @@ export type QuotePricingInput = {
   options: Options;
   labourUnitPriceOverride: number | null;
   extraLines: Array<{ label: string; quantity: number; unitPrice: number }>;
+  billingMode?: 'complete' | 'standard' | 'driver-rental';
+  menuIncluded?: boolean;
+  overtimeMinutes?: number;
+  rentalOvertimeHourlyRate?: number;
 };
 export type QuoteTollLine = {
   tollPointId: string;
@@ -474,4 +557,9 @@ export type QuoteInput = {
   }>;
   options?: Options;
   version: number;
+  billingMode?: 'complete' | 'standard' | 'driver-rental';
+  menuIncluded?: boolean;
+  rentalKit?: RentalKitItem[];
+  overtimeMinutes?: number;
+  providedCrew?: number;
 };

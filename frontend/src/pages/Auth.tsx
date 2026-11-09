@@ -4,6 +4,7 @@ import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useAuthentication } from '../application/controllers/useAuthentication';
 import { messages } from '../content/fr';
 import { visibleUiText } from '../content/visible-ui-text';
+import { sanitizePhoneInput } from '../domain/phone-number';
 export function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [registerPassword, setRegisterPassword] = useState('');
@@ -114,8 +115,15 @@ export function Auth() {
             minLength={resetMode || register ? 9 : 3}
             maxLength={resetMode || register ? 25 : 254}
             placeholder={
-              resetMode || register ? uiText['221771234567'] : 'Téléphone ou email admin'
+              resetMode || register
+                ? '+221 77 123 45 67 ou +33 6 12 34 56 78'
+                : 'Téléphone international ou email admin'
             }
+            onChange={(event) => {
+              if (resetMode || register) {
+                event.currentTarget.value = sanitizePhoneInput(event.currentTarget.value);
+              }
+            }}
           />
           <p className="caption">
             {register || resetMode

@@ -1,64 +1,30 @@
 import {
+  customItemVolume,
+  dwellingVolumes,
+  formatTime,
+  inventoryWeight,
+  inventoryVolumes,
+  itemVolume,
+  roundFive,
+  startMinutes,
+  vehicleCapacity,
+} from './moving-estimate-inventory';
+export {
+  estimatedInventoryItemVolume,
+  inventoryDismantleFactor,
+} from './moving-estimate-inventory';
+import {
   inventoryFormatHint,
   inventoryFormats,
   inventoryItems,
   inventoryFlags,
   type Inventory,
-  type InventoryFormat,
 } from './inventory';
 import type { BookingInventorySnapshot, MovingLaborPlanningSettings } from './model';
 import type { Route, Vehicle } from './model';
 import { referenceTravelMinutes } from './reference-traffic';
 import { vehicleDimensionWarnings } from './vehicle-dimensions';
 
-const itemVolumes: Record<string, number> = {
-  salon: 0.6,
-  'table-basse': 0.4,
-  'meuble-tv': 0.6,
-  television: 0.25,
-  'table-manger': 0.17,
-  chaise: 0.25,
-  buffet: 1.5,
-  bibliotheque: 1.2,
-  vitrine: 1.2,
-  tapis: 0.15,
-  lit: 0.5,
-  matelas: 0.25,
-  armoire: 0.8,
-  coiffeuse: 0.6,
-  commode: 0.7,
-  chevet: 0.2,
-  bureau: 0.9,
-  frigo: 1,
-  congelateur: 0.9,
-  cuisiniere: 0.6,
-  'machine-laver': 0.5,
-  'micro-ondes': 0.1,
-  climatiseur: 0.4,
-  ventilateur: 0.15,
-  gaz: 0.08,
-  carton: 0.07,
-  sac: 0.1,
-  velo: 0.5,
-  pot: 0.15,
-};
-const dwellingVolumes: Record<string, number> = {
-  Studio: 1.5,
-  F2: 2.5,
-  F3: 3.5,
-  F4: 5,
-  'F5 et plus': 6.5,
-  Villa: 9,
-};
-const dismantleFactors: Record<string, number> = {
-  lit: 0.6,
-  armoire: 0.6,
-  'table-manger': 0.6,
-  bureau: 0.7,
-};
-const formatIndexes: Record<InventoryFormat, number> = { small: 0, medium: 1, large: 2 };
-const genericFormatFactors = [0.6, 1, 1.6];
-const numberFrom = (value: string) => Number.parseFloat(value.replace(',', '.')) || 0;
 export const defaultMovingLaborPlanning: MovingLaborPlanningSettings = {
   maxHandlingHours: 3,
   maxDayHours: 8,
@@ -66,284 +32,32 @@ export const defaultMovingLaborPlanning: MovingLaborPlanningSettings = {
   maxMoversPerVehicle: 6,
   cubicMetersPerHourPerMover: 2.7,
   pauseMinutes: 30,
+  teamVolumePerMover: 6,
+  tripSetupMinutes: 15,
+  handlingCalibration: 1,
+  carryDistanceMeters: 15,
   heat: 1,
   wbgtAdj: 0,
+  maxTotalHours: 12,
+  metabolicReference: 200,
+  effortGround: 200,
+  effortLift: 210,
+  effortStairs: 230,
+  effortPerFloor: 12,
+  effortMaximum: 290,
+  followingTripDiscountPercent: 60,
+  lowDemandDiscountPercent: 10,
+  manoeuvreOvertimeThresholdHours: 8,
+  manoeuvreOvertimeHourlyRate: 0,
 };
 
-export function inventoryDismantleFactor(key: string): number {
-  return key === 'climatiseur' ? 1 : (dismantleFactors[key] ?? 0.8);
-}
-
-export function estimatedInventoryItemVolume(
-  key: string,
-  size: number,
-  dismantle: boolean,
-  format: InventoryFormat = 'medium',
-) {
-  if (key === 'custom') return [0.3, 0.5, 0.8][formatIndexes[format]] * (dismantle ? 0.8 : 1);
-  const base = itemVolumes[key] ?? 0.5;
-  const definition = inventoryItems.find((item) => item.key === key);
-  const volume = definition?.sizeLabel
-    ? base * Math.max(1, size)
-    : definition?.hasFormat
-      ? (definition.volumeByFormat?.[formatIndexes[format]] ??
-        base * (genericFormatFactors[formatIndexes[format]] ?? 1))
-      : base;
-  const nonStackable = key === 'salon' ? 1.25 : 1;
-  return volume * nonStackable * (dismantle ? inventoryDismantleFactor(key) : 1);
-}
-
-const itemVolume = estimatedInventoryItemVolume;
-
-const referenceWeights: Record<
-  string,
-  number | number[] | 'sofa' | 'mattress' | 'bed' | 'wardrobe' | 'table'
-> = {
-  salon: 'sofa',
-  matelas: 'mattress',
-  lit: 'bed',
-  armoire: 'wardrobe',
-  'table-manger': 'table',
-  frigo: [30, 65, 110],
-  congelateur: [35, 50, 70],
-  cuisiniere: [8, 45, 60],
-  'machine-laver': [55, 70, 80],
-  'micro-ondes': 12,
-  climatiseur: [30, 40, 55],
-  ventilateur: 5,
-  gaz: 15,
-  velo: 15,
-  pot: [8, 20, 40],
-  television: [8, 15, 25],
-  'table-basse': 20,
-  'meuble-tv': 35,
-  chaise: 6,
-  buffet: [40, 60, 90],
-  bibliotheque: 45,
-  vitrine: 50,
-  tapis: 10,
-  coiffeuse: 35,
-  commode: 45,
-  chevet: 12,
-  bureau: 40,
-  carton: [12, 15, 18],
-  sac: [8, 12, 18],
-  custom: 25,
+export type PlanningStep = {
+  time: string;
+  title: string;
+  detail: string;
+  minutes: number;
+  kind?: string;
 };
-
-function referenceLineWeight(
-  key: string,
-  size: number,
-  format: InventoryFormat,
-  dismantle: boolean,
-) {
-  const raw = referenceWeights[key] ?? 25;
-  const index = formatIndexes[format];
-  if (raw === 'sofa') {
-    const groups: Record<number, number[]> = {
-      1: [1],
-      2: [2],
-      3: [3],
-      4: [2, 2],
-      5: [3, 2],
-      6: [3, 2, 1],
-      7: [3, 2, 1, 1],
-      8: [3, 3, 1, 1],
-      9: [3, 3, 2, 1],
-      10: [3, 3, 2, 2],
-    };
-    const pieces = groups[Math.min(10, Math.max(1, size || 5))] ?? [3, 2];
-    return {
-      total: pieces.reduce((sum, part) => sum + 20 + part * 12, 0),
-      max: 20 + Math.max(...pieces) * 12,
-    };
-  }
-  if (raw === 'mattress') {
-    const kg = 10 + 8 * (size || 2);
-    return { total: kg, max: kg };
-  }
-  if (raw === 'bed') {
-    const kg = 30 + 10 * (size || 2);
-    return { total: kg, max: dismantle ? Math.round(kg * 0.4) : kg };
-  }
-  if (raw === 'wardrobe') {
-    const groups: Record<number, number[]> = {
-      1: [1],
-      2: [2],
-      3: [3],
-      4: [2, 2],
-      5: [3, 2],
-      6: [3, 3],
-      7: [3, 2, 2],
-      8: [3, 3, 2],
-    };
-    const parts = groups[Math.min(8, Math.max(1, size || 3))] ?? [3];
-    return {
-      total: parts.reduce((sum, part) => sum + 30 + 25 * part, 0),
-      max: dismantle ? 30 : 30 + 25 * Math.max(...parts),
-    };
-  }
-  if (raw === 'table') {
-    const kg = 25 + 3 * (size || 6);
-    return { total: kg, max: dismantle ? Math.round(kg * 0.6) : kg };
-  }
-  const weight = Array.isArray(raw) ? raw[index] : Number(raw);
-  return { total: weight, max: weight };
-}
-
-function inventoryWeight(inventory: Inventory, annexVolume: number) {
-  let total = 0;
-  let max = 0;
-  let largestHandlingCrew = 1;
-  const stairAccess =
-    (inventory.fromFloor > 0 && !inventory.fromLift) ||
-    (inventory.toFloor > 0 && !inventory.toLift);
-  const needs = (key: string, maxKg: number, dismantle: boolean, format: InventoryFormat) => {
-    const itemCount = Math.min(4, Math.max(1, Math.ceil(maxKg / 25)));
-    const kind = ['frigo', 'congelateur', 'machine-laver', 'cuisiniere', 'climatiseur'].includes(
-      key,
-    )
-      ? 'appliance'
-      : ['armoire', 'buffet', 'bibliotheque', 'commode'].includes(key)
-        ? 'case'
-        : ['vitrine', 'coiffeuse'].includes(key)
-          ? 'glass'
-          : key === 'salon'
-            ? 'sofa'
-            : key === 'matelas'
-              ? 'mattress'
-              : ['lit', 'table-manger', 'bureau'].includes(key)
-                ? 'table'
-                : key === 'television'
-                  ? 'tv'
-                  : ['carton', 'sac', 'gaz'].includes(key)
-                    ? 'single'
-                    : key === 'tapis'
-                      ? 'roll'
-                      : 'other';
-    let count = itemCount;
-    if (kind === 'appliance' || kind === 'glass' || kind === 'sofa') count = Math.max(2, count);
-    if (kind === 'case' && !dismantle) count = Math.max(2, count);
-    if (kind === 'mattress') count = sizeForHandling(key, inventory) >= 2 ? 2 : 1;
-    if (kind === 'table') count = dismantle ? Math.max(1, count) : Math.max(2, count);
-    if (kind === 'tv') count = maxKg > 15 || format === 'large' ? 2 : 1;
-    if (kind === 'single') count = 1;
-    if (kind === 'roll') count = maxKg > 25 ? 2 : 1;
-    if (stairAccess && maxKg > 33 && ['appliance', 'case'].includes(kind))
-      count = Math.min(4, count + 1);
-    largestHandlingCrew = Math.max(largestHandlingCrew, count);
-  };
-  const consume = (
-    key: string,
-    quantity: number,
-    size: number,
-    format: InventoryFormat,
-    dismantle: boolean,
-  ) => {
-    if (quantity <= 0) return;
-    const weight = referenceLineWeight(key, size, format, dismantle);
-    total += weight.total * quantity;
-    max = Math.max(max, weight.max);
-    needs(key, weight.max, dismantle, format);
-  };
-  Object.entries(inventory.entries).forEach(([key, item]) =>
-    consume(key, item.quantity, item.size, item.format ?? 'medium', item.dismantle),
-  );
-  inventory.variants.forEach((item) =>
-    consume(item.itemKey, item.quantity, item.size, item.format ?? 'medium', item.dismantle),
-  );
-  inventory.custom.forEach((item) =>
-    consume('custom', item.quantity, 0, item.format ?? 'medium', Boolean(item.dismantle)),
-  );
-  total += Math.round(annexVolume * 110);
-  return { total: Math.round(total), max, largestHandlingCrew };
-}
-
-function sizeForHandling(key: string, inventory: Inventory) {
-  const main = inventory.entries[key]?.size ?? 0;
-  return Math.max(
-    main,
-    ...inventory.variants.filter((item) => item.itemKey === key).map((item) => item.size),
-    0,
-  );
-}
-
-function vehicleCapacity(vehicle: Vehicle): number {
-  return numberFrom(vehicle.volume) || 10;
-}
-
-type VolumeGroups = {
-  light: number;
-  furniture: number;
-  bulky: number;
-  heavy: number;
-  boxes: number;
-};
-function inventoryVolumes(inventory: Inventory): VolumeGroups {
-  const groups: VolumeGroups = { light: 0, furniture: 0, bulky: 0, heavy: 0, boxes: 0 };
-  const add = (
-    key: string,
-    size: number,
-    quantity: number,
-    dismantle: boolean,
-    format?: InventoryFormat,
-  ) => {
-    const volume = itemVolume(key, size, dismantle, format) * quantity;
-    if (['carton', 'sac'].includes(key)) groups.boxes += volume;
-    if (
-      ['carton', 'sac', 'pot', 'tapis', 'micro-ondes', 'ventilateur', 'gaz', 'chevet'].includes(key)
-    )
-      groups.light += volume;
-    else if (['salon', 'matelas'].includes(key)) groups.bulky += volume;
-    else if (
-      [
-        'frigo',
-        'congelateur',
-        'cuisiniere',
-        'machine-laver',
-        'buffet',
-        'vitrine',
-        'armoire',
-      ].includes(key) &&
-      !dismantle
-    )
-      groups.heavy += volume;
-    else groups.furniture += volume;
-  };
-  Object.entries(inventory.entries).forEach(([key, entry]) => {
-    if (entry.quantity) add(key, entry.size, entry.quantity, entry.dismantle, entry.format);
-  });
-  inventory.variants.forEach((variant) => {
-    if (variant.quantity)
-      add(variant.itemKey, variant.size, variant.quantity, variant.dismantle, variant.format);
-  });
-  inventory.custom.forEach((item) => {
-    groups.furniture +=
-      itemVolume('custom', 1, Boolean(item.dismantle), item.format ?? 'medium') * item.quantity;
-  });
-  const homeVolume =
-    inventory.annexOn === false ? 0 : (dwellingVolumes[inventory.dwellingType] ?? 0);
-  groups.light += Math.max(0, homeVolume - groups.boxes);
-  return groups;
-}
-
-function formatTime(minutes: number): string {
-  const rounded = Math.round(minutes / 5) * 5;
-  return `${String(Math.floor(rounded / 60) % 24).padStart(2, '0')}:${String(rounded % 60).padStart(
-    2,
-    '0',
-  )}`;
-}
-function startMinutes(value: string, defaultHour = 8): number {
-  const match = /(?:^|\D)(\d{1,2})[:h](\d{2})?/iu.exec(value);
-  if (!match) return defaultHour * 60;
-  return Number(match[1]) * 60 + Number(match[2] ?? 0);
-}
-function roundFive(minutes: number): number {
-  return Math.max(5, Math.round(minutes / 5) * 5);
-}
-
-export type PlanningStep = { time: string; title: string; detail: string; minutes: number };
 export type HeatRecovery = {
   wbgt: number;
   reference: number;
@@ -390,6 +104,12 @@ export type MovingEstimate = {
   crew: number;
   recommendedCrew: number;
   carpenterCount: number;
+  totalWeightKg: number;
+  fromIsoDistanceMeters: number;
+  toIsoDistanceMeters: number;
+  fromIsoLimitKg: number;
+  toIsoLimitKg: number;
+  maxItemWeightKg: number;
   dismantleFromMinutes: number;
   dismantleToMinutes: number;
   loadingMinutes: number;
@@ -407,6 +127,15 @@ export type MovingEstimate = {
   endTime: string;
   endLate: boolean;
   planning: PlanningStep[];
+  fatigueEffort: {
+    percentage: number;
+    carrying: number;
+    travel: number;
+    other: number;
+    from: number;
+    to: number;
+  };
+  heatPenalty: number;
   heat: HeatRecovery | null;
   warnings: string[];
   vehicleWarnings: string[];
@@ -444,28 +173,30 @@ export function estimateMovingWork(
   const labor = { ...defaultMovingLaborPlanning, ...options.laborPlanning };
   const parallelVehicles = options.parallelVehicles ?? 1;
   const categoryRates = {
-    light: { rate: 1.4, stairs: 0.1, lift: 0.03 },
-    furniture: { rate: 1, stairs: 0.15, lift: 0.05 },
-    bulky: { rate: 1.2, stairs: 0.2, lift: 0.15 },
-    heavy: { rate: 0.72, stairs: 0.25, lift: 0.08 },
+    light: { r: 1.4, st: 0.1, lift: 0.03 },
+    furn: { r: 1, st: 0.15, lift: 0.05 },
+    bulky: { r: 1.2, st: 0.2, lift: 0.15 },
+    heavy: { r: 0.72, st: 0.25, lift: 0.08 },
   } as const;
-  const handlingFactor = (inventory.flags.acces ? 1.2 : 1) * (inventory.flags.fragile ? 1.1 : 1);
+  const categoryVolumes = {
+    light: groups.light,
+    furn: groups.furniture,
+    bulky: groups.bulky,
+    heavy: groups.heavy,
+  };
+  const accessFactor = inventory.flags.acces ? 1.2 : 1;
+  const fragileFactor = inventory.flags.fragile ? 1.1 : 1;
   const siteHours = (floor: number, lift: boolean, unloading = false) =>
-    (Object.keys(categoryRates) as Array<keyof typeof categoryRates>).reduce((sum, category) => {
-      const rate = categoryRates[category];
-      const floorFactor =
-        floor <= 0
-          ? 1
-          : lift
-            ? 1.05 + rate.lift * floor
-            : 1 + rate.stairs * floor * (inventory.flags.escalier ? 1.4 : 1);
-      const unloadFactor = unloading ? 1.2 : 1;
-      return (
-        sum +
-        (groups[category] / (labor.cubicMetersPerHourPerMover * rate.rate * unloadFactor)) *
-          floorFactor *
-          handlingFactor
-      );
+    Object.keys(categoryRates).reduce((sum, category) => {
+      const key = category as keyof typeof categoryRates;
+      const config = categoryRates[key];
+      const rate = labor.cubicMetersPerHourPerMover * config.r * (unloading ? 1.2 : 1);
+      const floorFactor = !(floor > 0)
+        ? 1
+        : lift
+          ? 1.05 + config.lift * floor
+          : 1 + config.st * floor * (inventory.flags.escalier ? 1.4 : 1);
+      return sum + (categoryVolumes[key] / rate) * floorFactor * accessFactor * fragileFactor;
     }, 0);
   const dismantlingBySide = { from: 0, to: 0 };
   const dismantlingMinutes: Record<string, [number, number]> = {
@@ -544,17 +275,18 @@ export function estimateMovingWork(
       : distance <= 20
         ? 10000 - ((distance - 1) * 4000) / 19
         : (6000 * 20) / distance;
-  const isoSiteLimit = (floor: number, lift: boolean) => {
-    const distance = Math.round(15 * (inventory.flags.acces ? 2 : 1) + (lift ? 2 : 15) * floor);
-    return Math.round(isoLimit(distance));
+  const isoSite = (floor: number, lift: boolean) => {
+    const distance = Math.round(
+      (Number(labor.carryDistanceMeters) || 15) * (inventory.flags.acces ? 2 : 1) +
+        (lift ? 2 : 15) * floor,
+    );
+    return { distance, limit: Math.round(isoLimit(distance)) };
   };
+  const fromIso = isoSite(inventory.fromFloor, inventory.fromLift);
+  const toIso = isoSite(inventory.toFloor, inventory.toLift);
   const isoCrew = Math.max(
     1,
-    Math.ceil(
-      weight.total / isoSiteLimit(inventory.fromFloor, inventory.fromLift) +
-        weight.total / isoSiteLimit(inventory.toFloor, inventory.toLift) -
-        0.05,
-    ),
+    Math.ceil(weight.total / fromIso.limit + weight.total / toIso.limit - 0.05),
   );
   const stairFloors = Math.max(
     inventory.fromLift ? 0 : inventory.fromFloor,
@@ -566,10 +298,23 @@ export function estimateMovingWork(
       : Math.max(inventory.fromFloor, inventory.toFloor) >= 4
         ? 1
         : 0;
+  const teamVolumePerMover = Math.max(1, Number(labor.teamVolumePerMover) || 6);
   const volumeCrew =
-    Math.max(Math.ceil(volume / 6), Math.ceil(weight.total / Math.max(100, 6 * 110))) + stairExtra;
+    Math.max(
+      Math.ceil(volume / teamVolumePerMover),
+      Math.ceil(weight.total / Math.max(100, teamVolumePerMover * 110)),
+    ) + stairExtra;
+  const stairsRequireCarryHelp =
+    (inventory.fromFloor >= 2 && !inventory.fromLift) ||
+    (inventory.toFloor >= 2 && !inventory.toLift);
+  const carryCrew = Math.min(
+    4,
+    (weight.max <= 25 ? 1 : weight.max <= 100 ? 2 : 3) +
+      (stairsRequireCarryHelp && weight.max > 33 ? 1 : 0),
+  );
   const minimumCrew = Math.max(
     stairsRequireExtra ? 3 : 2,
+    carryCrew,
     Math.min(labor.maxMoversPerVehicle, Math.max(volumeCrew, isoCrew)),
     weight.largestHandlingCrew,
     2 * parallelVehicles,
@@ -584,14 +329,22 @@ export function estimateMovingWork(
           : 3.5 + 0.4 * (perVehicle - 4);
     return parallelVehicles * referenceEfficiency;
   };
-  const loadingBase = siteHours(inventory.fromFloor, inventory.fromLift) * densityFactor;
+  const loadingBase =
+    siteHours(inventory.fromFloor, inventory.fromLift) *
+    densityFactor *
+    (inventory.stairs === 'balcon' ? 1.2 : 1);
   const unloadingBase = siteHours(inventory.toFloor, inventory.toLift, true) * densityFactor;
-  const tripOverheadHours = (15 / 60) * Math.ceil(requestedTrips / parallelVehicles);
+  const tripOverheadHours =
+    (Math.max(0, Number(labor.tripSetupMinutes) || 0) / 60) *
+    Math.ceil(requestedTrips / parallelVehicles);
+  const handlingCalibration = Math.max(0.5, Number(labor.handlingCalibration) || 1);
   const loadingWithCrew = (crew: number, carpenter: number) =>
-    Math.max(loadingBase / efficiency(crew), carpenter ? dismantlingBySide.from / carpenter : 0) +
+    Math.max(loadingBase / efficiency(crew), carpenter ? dismantlingBySide.from / carpenter : 0) *
+      handlingCalibration +
     tripOverheadHours;
   const unloadingWithCrew = (crew: number, carpenter: number) =>
-    Math.max(unloadingBase / efficiency(crew), carpenter ? dismantlingBySide.to / carpenter : 0) +
+    Math.max(unloadingBase / efficiency(crew), carpenter ? dismantlingBySide.to / carpenter : 0) *
+      handlingCalibration +
     tripOverheadHours;
   let recommendedCrew = minimumCrew;
   let recommendedCarpenters =
@@ -637,8 +390,10 @@ export function estimateMovingWork(
   const legLoaded = routeMinutes ? 10 + routeMinutes : 0;
   const legEmpty = routeMinutes ? 10 + routeMinutes * 0.85 : 0;
   const journeyCount = Math.ceil(requestedTrips / parallelVehicles);
-  const loadingMinutes = roundFive((loadingHours * 60) / journeyCount) * journeyCount;
-  const unloadingMinutes = roundFive((unloadingHours * 60) / journeyCount) * journeyCount;
+  // Keep raw totals for summaries. The reference rounds each trip segment
+  // separately when it builds the schedule below.
+  const loadingMinutes = loadingHours * 60;
+  const unloadingMinutes = unloadingHours * 60;
   const packingOnPreviousDay = packingMinutes > 90;
   const driveMinutes = journeyCount * legLoaded + Math.max(0, journeyCount - 1) * legEmpty;
   const startAt = startMinutes(options.startTime ?? '', labor.defaultStartHour);
@@ -722,6 +477,25 @@ export function estimateMovingWork(
     options.heatOff,
     options.heatRest,
   );
+  const heatWithoutPauses = options.heatOff
+    ? heatRecovery(
+        options.date ?? '',
+        options.month ?? '',
+        Math.max(
+          inventory.fromLift ? 0 : inventory.fromFloor,
+          inventory.toLift ? 0 : inventory.toFloor,
+        ) >= 2
+          ? 4
+          : 3,
+        labor,
+        false,
+        options.heatRest,
+      )
+    : null;
+  const heatPenalty =
+    heatWithoutPauses && heatWithoutPauses.work < 150
+      ? 100 + Math.round(Math.max(0, heatWithoutPauses.wbgt - heatWithoutPauses.reference) * 10)
+      : 0;
   const restRule = heat ?? { work: 150, rest: 15, wbgt: 0, reference: 0, manual: false };
   const planning: PlanningStep[] = [];
   let cursor = startAt;
@@ -738,6 +512,7 @@ export function estimateMovingWork(
           title: 'Pause déjeuner',
           detail: 'Repas, eau, repos de l’équipe',
           minutes: 45,
+          kind: 'pause',
         });
         cursor += 45;
         workSinceRest = 0;
@@ -750,6 +525,7 @@ export function estimateMovingWork(
           title: 'Pause dîner',
           detail: 'Repas et repos de l’équipe',
           minutes: 30,
+          kind: 'pause',
         });
         cursor += 30;
         workSinceRest = 0;
@@ -765,6 +541,7 @@ export function estimateMovingWork(
               ? `${heat.rest} min à l’ombre et eau après ${heat.work} min de portage (ISO 7243 : WBGT ${String(heat.wbgt).replace('.', ',')} °C, référence ${heat.reference} °C)`
               : '15 min toutes les 2 h 30 de portage, hydratation',
           minutes: restRule.rest,
+          kind: 'pause',
         });
         cursor += restRule.rest;
         workSinceRest = 0;
@@ -791,6 +568,7 @@ export function estimateMovingWork(
         title: `${segment.title}${part ? ' (suite)' : ''}`,
         detail: segment.detail,
         minutes: chunk,
+        kind: segment.kind,
       });
       cursor += chunk;
       remaining -= chunk;
@@ -805,6 +583,77 @@ export function estimateMovingWork(
     cursor += step.minutes;
   });
   const totalMinutes = planning.reduce((sum, step) => sum + step.minutes, 0);
+  const effortAt = (floor: number, lift: boolean) =>
+    floor <= 0
+      ? (labor.effortGround ?? 200)
+      : lift
+        ? (labor.effortLift ?? 210)
+        : Math.min(
+            labor.effortMaximum ?? 290,
+            (labor.effortStairs ?? 230) + (labor.effortPerFloor ?? 12) * floor,
+          );
+  const effortFrom = effortAt(inventory.fromFloor, inventory.fromLift);
+  const effortTo = effortAt(inventory.toFloor, inventory.toLift);
+  const fatigueWork = planning.reduce(
+    (sum, step) =>
+      sum +
+      (step.kind === 'load'
+        ? step.minutes * effortFrom
+        : step.kind === 'unload'
+          ? step.minutes * effortTo
+          : step.kind === 'drive' || step.kind === 'back'
+            ? step.minutes * 100
+            : step.kind === 'pause' || step.kind === 'night'
+              ? 0
+              : step.minutes * 150),
+    0,
+  );
+  const effortReference = 480 * (labor.metabolicReference ?? 200);
+  const fatigueEffort = {
+    percentage: Math.round((fatigueWork / effortReference) * 100),
+    carrying: Math.round(
+      (planning.reduce(
+        (sum, step) =>
+          sum +
+          (step.kind === 'load'
+            ? step.minutes * effortFrom
+            : step.kind === 'unload'
+              ? step.minutes * effortTo
+              : 0),
+        0,
+      ) /
+        effortReference) *
+        100,
+    ),
+    travel: Math.round(
+      (planning.reduce(
+        (sum, step) =>
+          sum + (step.kind === 'drive' || step.kind === 'back' ? step.minutes * 100 : 0),
+        0,
+      ) /
+        effortReference) *
+        100,
+    ),
+    other: Math.round(
+      (planning.reduce(
+        (sum, step) =>
+          sum +
+          (step.kind !== 'load' &&
+          step.kind !== 'unload' &&
+          step.kind !== 'drive' &&
+          step.kind !== 'back' &&
+          step.kind !== 'pause' &&
+          step.kind !== 'night'
+            ? step.minutes * 150
+            : 0),
+        0,
+      ) /
+        effortReference) *
+        100,
+    ),
+    from: effortFrom,
+    to: effortTo,
+  };
   const endAt = cursor;
   const warnings: string[] = [];
   const dimensionsWarnings = vehicleDimensionWarnings(inventory, vehicle);
@@ -830,6 +679,10 @@ export function estimateMovingWork(
     warnings.push(
       `La durée dépasse ${labor.maxDayHours} h : prévoir un départ plus tôt, un véhicule supplémentaire ou deux jours.`,
     );
+  if (totalMinutes > (labor.maxTotalHours ?? 12) * 60)
+    warnings.push(
+      `La durée dépasse ${labor.maxTotalHours ?? 12} h : prévoir une relève, deux véhicules ou deux jours.`,
+    );
   if (endAt > 19 * 60)
     warnings.push('Fin après 19 h : commencer plus tôt ou répartir sur 2 jours.');
   if (routeMinutes <= 0)
@@ -851,6 +704,12 @@ export function estimateMovingWork(
     crew,
     recommendedCrew,
     carpenterCount,
+    totalWeightKg: weight.total,
+    fromIsoDistanceMeters: fromIso.distance,
+    toIsoDistanceMeters: toIso.distance,
+    fromIsoLimitKg: fromIso.limit,
+    toIsoLimitKg: toIso.limit,
+    maxItemWeightKg: weight.max,
     dismantleFromMinutes: recommendedCarpenters
       ? (dismantlingBySide.from / recommendedCarpenters) * 60
       : 0,
@@ -872,6 +731,8 @@ export function estimateMovingWork(
     endTime: formatTime(endAt),
     endLate: endAt > 19 * 60,
     planning,
+    fatigueEffort,
+    heatPenalty,
     heat,
     warnings,
     vehicleWarnings: dimensionsWarnings,
@@ -915,13 +776,12 @@ export function bookingInventorySnapshot(
   const customItems = inventory.custom
     .filter((item) => item.quantity > 0)
     .map((item) => {
-      const format = item.format ?? 'medium';
       return {
         section: 'Autres objets',
         label: item.label.charAt(0).toLocaleUpperCase('fr-FR') + item.label.slice(1),
         quantity: item.quantity,
         details: item.dismantle ? 'démontage et montage' : '—',
-        volumeM3: itemVolume('custom', 1, Boolean(item.dismantle), format) * item.quantity,
+        volumeM3: customItemVolume(item) * item.quantity,
       };
     });
   const allItems = [...items, ...customItems];
@@ -955,6 +815,7 @@ export function bookingInventorySnapshot(
     toLift: inventory.toLift,
     ready: inventory.ready ?? '',
     stairs: inventory.stairs ?? '',
+    balcPx: inventory.balcPx,
     flags: inventoryFlags.filter((flag) => inventory.flags[flag.key]).map((flag) => flag.label),
     items: allItems,
     itemCount: allItems.reduce((sum, item) => sum + item.quantity, 0),
@@ -964,6 +825,8 @@ export function bookingInventorySnapshot(
     estimatedTrips: estimate.trips,
     moverCount: estimate.crew,
     carpenterCount: estimate.carpenterCount,
+    totalWeightKg: estimate.totalWeightKg,
+    maxItemWeightKg: estimate.maxItemWeightKg,
     loadingMinutes: estimate.loadingMinutes,
     unloadingMinutes: estimate.unloadingMinutes,
     packingMinutes: estimate.packingMinutes,

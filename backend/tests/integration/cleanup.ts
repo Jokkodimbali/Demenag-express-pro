@@ -23,6 +23,7 @@ export async function restoreConfiguration(
       grillePrixManoeuvre: jsonInput(original.settings.grillePrixManoeuvre),
       grillePrixMontage: jsonInput(original.settings.grillePrixMontage),
       planificationManoeuvre: jsonInput(original.settings.planificationManoeuvre),
+      materielLocation: jsonInput(original.settings.materielLocation),
     },
   });
   await db.$transaction(

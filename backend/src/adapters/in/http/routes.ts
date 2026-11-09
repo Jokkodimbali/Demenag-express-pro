@@ -2,6 +2,9 @@ export const apiRoutes = {
   health: '/api/health',
   ready: '/api/ready',
   catalogue: '/api/catalogue',
+  inventoryIllustration: '/api/inventory-illustrations/:key',
+  adminQuoteDraft: '/api/admin/quote-draft',
+  googleMapsKey: '/api/admin/google-maps-key',
   tollPoints: '/api/toll-points',
   auth: {
     register: '/api/auth/register',
@@ -16,6 +19,13 @@ export const apiRoutes = {
   clientBookingRequest: '/api/bookings/:id/client-request',
   estimates: '/api/estimates',
   adminEstimates: '/api/admin/estimates',
+  claude: {
+    base: '/api/admin/claude',
+    key: '/api/admin/claude/key',
+    model: '/api/admin/claude/model',
+    test: '/api/admin/claude/test',
+    completion: '/api/admin/claude/completion',
+  },
   maps: {
     base: '/api/maps',
     route: '/api/maps/route',

@@ -1,7 +1,7 @@
 import { uiText } from '../../content/reference-ui-text';
 import { Link } from 'react-router-dom';
 import type { Booking, Settings } from '../../domain/model';
-import { money } from '../../domain/format';
+import { money } from '../../application/presentation/format';
 import { routes } from '../../routing/routes';
 import { whatsappUrl } from '../../application/services/whatsapp';
 import { bookingConfirmationMessage } from '../../application/services/whatsapp-templates';

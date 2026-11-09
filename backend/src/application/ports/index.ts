@@ -79,11 +79,37 @@ export interface SessionRepository {
 export interface CatalogueRepository {
   get(): Promise<Catalogue>;
   update(vehicles: Vehicle[], settings: Settings): Promise<void>;
+  googleMapsApiKey(): Promise<string>;
+  updateGoogleMapsApiKey(value: string): Promise<void>;
+  inventoryIllustration(key: string): Promise<string | null>;
+  saveInventoryIllustration(key: string, image: string): Promise<void>;
+  adminQuoteDraft(userId: string): Promise<unknown | null>;
+  saveAdminQuoteDraft(userId: string, draft: unknown): Promise<void>;
+  clearAdminQuoteDraft(userId: string): Promise<void>;
   removeVehicle(id: string): Promise<void>;
   listTollPoints(): Promise<TollPoint[]>;
   createTollPoint(input: TollPointInput): Promise<TollPoint>;
   updateTollPoint(id: string, input: TollPointInput): Promise<TollPoint>;
   deleteTollPoint(id: string): Promise<void>;
+}
+export type ClaudeModel = { id: string; name: string };
+export type ClaudeConfiguration = {
+  model: string;
+  models: ClaudeModel[];
+};
+export type ClaudeMessage = { role: 'user' | 'assistant'; content: string };
+export type ClaudeCompletionInput = {
+  system?: string;
+  prompt?: string;
+  messages?: ClaudeMessage[];
+  maxTokens?: number;
+};
+export interface ClaudeConfigurationRepository {
+  find(): Promise<ClaudeConfiguration | null>;
+  apiKey(): Promise<string | null>;
+  saveKey(key: string, value: ClaudeConfiguration): Promise<void>;
+  updateModel(model: string): Promise<void>;
+  remove(): Promise<void>;
 }
 export interface BookingRepository {
   list(userId?: string, vehicleId?: string, includeTripPhotos?: boolean): Promise<Booking[]>;

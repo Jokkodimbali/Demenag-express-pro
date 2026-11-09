@@ -1,11 +1,12 @@
 import { requireValue } from './errors.js';
 import { messages } from './messages/fr.js';
 import type { Options, Price, QuotePricingSettings, Vehicle, WorkAccess } from './model.js';
+import { referenceLowDemandDiscount, referenceTransportLines } from './reference-pricing.js';
 
 const MAX_DATABASE_INTEGER = 2_147_483_647;
 
 const accessLabel = (floor: number, lift: boolean) =>
-  `${floor === 0 ? 'RDC' : floor === 1 ? '1er étage' : `${floor}e étage`}${floor > 0 ? (lift ? ' avec ascenseur' : ' sans ascenseur') : ''}`;
+  `${floor === 0 ? 'RDC' : floor === 1 ? '1er' : `${floor}e`}${floor > 0 ? (lift ? ' avec asc.' : ' sans asc.') : ''}`;
 
 export function assemblyUnitPrice(
   settings: QuotePricingSettings,
@@ -31,7 +32,7 @@ export function assemblyUnitPrice(
                   ? 'ventilateur'
                   : key;
   const configured = settings.montageP?.[key] ?? settings.montageP?.[legacyKey];
-  if (!configured)
+  if (configured == null)
     return origin === 'import' ? Math.round(settings.assemblyPrice * 1.5) : settings.assemblyPrice;
   if (typeof configured === 'number')
     return origin === 'import' ? Math.round(configured * 1.5) : configured;
@@ -76,6 +77,7 @@ export function calculatePrice(
   labourUnitPriceOverride?: number | null,
   discountType: 'fcfa' | 'pct' = 'fcfa',
   discountReason = '',
+  workDate?: string | null,
 ): Price {
   requireValue(
     Number.isInteger(trips) && trips >= 1 && trips <= settings.maxTrips,
@@ -111,14 +113,27 @@ export function calculatePrice(
     `${secondBound} – ${thirdBound} km`,
     `plus de ${thirdBound} km`,
   ][tier];
-  const lines = [
-    {
-      label: `Transport ${vehicle.shortName || vehicle.name} · ${transportTier} (aller-retour)`,
-      quantity: trips,
-      unitPrice: transport,
-      total: transport * trips,
-    },
-  ];
+  const transportLabel = `Transport ${vehicle.name || vehicle.shortName || ''} · ${transportTier}${tier === 3 ? (transport > 0 ? ', prix fixé' : ', prix à fixer') : ''}`;
+  const lines = referenceTransportLines(
+    transportLabel,
+    transport,
+    trips,
+    settings.movingLaborPlanning?.followingTripDiscountPercent ?? 100,
+  );
+  const transportTotal = lines.reduce((sum, line) => sum + line.total, 0);
+  const lowDemandDiscount = referenceLowDemandDiscount(
+    transportTotal,
+    workDate,
+    settings.movingLaborPlanning?.lowDemandDiscountPercent ?? 0,
+  );
+  if (lowDemandDiscount > 0)
+    lines.push({
+      label: `Remise jour creux (−${settings.movingLaborPlanning?.lowDemandDiscountPercent ?? 0} % sur le transport)`,
+      quantity: 1,
+      unitPrice: -lowDemandDiscount,
+      total: -lowDemandDiscount,
+    });
+  if (lines.length === 1 && lines[0]) lines[0].label += ' (aller-retour)';
   const accessDescription = workAccess
     ? ` (${accessLabel(workAccess.fromFloor, workAccess.fromLift)} → ${accessLabel(workAccess.toFloor, workAccess.toLift)})`
     : '';
@@ -138,17 +153,20 @@ export function calculatePrice(
   for (const line of extraLines) {
     requireValue(
       line.label.trim().length >= 2 &&
-        Number.isInteger(line.quantity) &&
-        line.quantity >= 1 &&
+        (Number.isInteger(line.quantity) ||
+          (line.label.startsWith('Manœuvres · heures au-delà') &&
+            line.quantity >= 0.5 &&
+            (line.quantity * 2) % 1 === 0)) &&
+        line.quantity >= 0.5 &&
         Number.isInteger(line.unitPrice) &&
-        line.unitPrice >= 0,
+        (line.unitPrice >= 0 || line.label.startsWith('Remise jour creux')),
       messages.chargeSupplementaireInvalide,
     );
     lines.push({
       label: line.label.trim(),
       quantity: line.quantity,
       unitPrice: line.unitPrice,
-      total: line.quantity * line.unitPrice,
+      total: Math.round(line.quantity * line.unitPrice),
     });
   }
   requireValue(

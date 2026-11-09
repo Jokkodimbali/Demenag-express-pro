@@ -116,7 +116,7 @@ test('Le tarif par manœuvre ajoute les étages sans ascenseur et le forfait asc
     access,
   );
   assert.equal(price.lines[1].unitPrice, 7500);
-  assert.match(price.lines[1].label, /2e étage sans ascenseur → 1er étage avec ascenseur/);
+  assert.match(price.lines[1].label, /2e sans asc\. → 1er avec asc\./);
 });
 test('Le prix par manœuvre saisi sur le devis remplace la grille admin', () => {
   const price = calculatePrice(
@@ -316,12 +316,14 @@ test('Les tarifs importés reprennent le local configuré ou le forfait majoré 
     assemblyUnitPrice({ ...settings, montageP: { armoire: 10000 } }, 'armoire', 'import'),
     15000,
   );
+  assert.equal(assemblyUnitPrice({ ...settings, montageP: { armoire: 0 } }, 'armoire'), 0);
 });
-test('La date passée et la date invalide sont refusées, l’heure reste libre', () => {
+test('Les dates passées, dates impossibles et heures invalides sont refusées', () => {
   const now = new Date('2026-10-15T10:00:00Z');
-  assert.throws(() => validateDate('2026-10-14', now, settings));
-  assert.throws(() => validateDate('2026-02-30', now, settings));
-  assert.doesNotThrow(() => validateDate('2026-10-15', now, settings));
+  assert.throws(() => validateDate('2026-10-14', now, settings, '08:00'));
+  assert.throws(() => validateDate('2026-02-30', now, settings, '08:00'));
+  assert.throws(() => validateDate('2026-10-15', now, settings, '25:00'));
+  assert.doesNotThrow(() => validateDate('2026-10-15', now, settings, '13:00'));
 });
 test('Les statuts respectent le rôle et la clôture', () => {
   assert.doesNotThrow(() => transition('pending', 'confirmed', 'admin'));
@@ -336,6 +338,9 @@ test('Le téléphone est normalisé sans tronquer les numéros invalides', () =>
   assert.equal(normalizePhone('77 123 45 67'), '+221771234567');
   assert.equal(normalizePhone('+221 77 123 45 67'), '+221771234567');
   assert.equal(normalizePhone('00221 77 123 45 67'), '+221771234567');
+  assert.equal(normalizePhone('+33 6 12 34 56 78'), '+33612345678');
+  assert.equal(normalizePhone('+1 (202) 555-0123'), '+12025550123');
+  assert.throws(() => normalizePhone('+33 6 AB 34 56 78'));
   assert.throws(() => normalizePhone('1234567771234567'));
 });
 test('L’inscription autorise les clients et employés préenregistrés, jamais un admin public', () => {
@@ -447,6 +452,14 @@ test('Les bornes et limites choisies par l’administration pilotent le calcul',
 });
 test('La date reste dans l’horizon configuré, indépendamment des horaires disponibles', () => {
   const now = new Date('2026-10-15T10:00:00Z');
-  assert.throws(() => validateDate('2026-10-18', now, { ...settings, maxAdvanceDays: 2 }));
-  assert.doesNotThrow(() => validateDate('2026-10-16', now, { ...settings, maxAdvanceDays: 2 }));
+  assert.throws(() => validateDate('2026-10-18', now, { ...settings, maxAdvanceDays: 2 }, '08:00'));
+  assert.doesNotThrow(() =>
+    validateDate('2026-10-16', now, { ...settings, maxAdvanceDays: 2 }, '08:00'),
+  );
+});
+test('Le délai minimum de réservation s’applique à la date et à l’heure choisies', () => {
+  const now = new Date('2026-10-15T10:00:00Z');
+  const rules = { ...settings, minNoticeHours: 24 };
+  assert.throws(() => validateDate('2026-10-16', now, rules, '08:00'));
+  assert.doesNotThrow(() => validateDate('2026-10-16', now, rules, '10:00'));
 });

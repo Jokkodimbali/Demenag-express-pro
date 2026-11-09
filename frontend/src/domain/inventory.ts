@@ -74,7 +74,7 @@ export const inventoryItems: InventoryItem[] = [
       label: 'Chaise',
       plural: 'Chaises',
       hasFormat: true,
-      volumeByFormat: [0.05, 0.25, 0.4],
+      volumeByFormat: [0.12, 0.25, 0.4],
     },
     {
       key: 'buffet',
@@ -339,14 +339,31 @@ export type Inventory = {
   }[];
   flags: Record<string, boolean>;
   ready?: 'oui' | 'non' | '';
-  stairs?: 'oui' | 'non' | 'verif' | '';
+  stairs?: 'oui' | 'non' | 'balcon' | 'verif' | '';
+  balcPx?: number;
+  /** Snapshot of the blanket dimensions used by this quote, in centimetres. */
+  blanketLengthCm?: number;
+  blanketWidthCm?: number;
   custom: {
     id: string;
+    typeKey?: string;
     label: string;
     quantity: number;
     format?: InventoryFormat;
     dismantle?: boolean;
     origin?: 'local' | 'import';
+    /** Optional user-entered dimensions in centimetres. */
+    cL?: number;
+    cW?: number;
+    cH?: number;
+    kg?: number;
+    mp?: number;
+    menuPriceLocal?: number;
+    menuPriceImport?: number;
+    like?: string;
+    up?: boolean;
+    frag?: boolean;
+    notop?: boolean;
   }[];
   crew?: number;
 };
@@ -385,7 +402,16 @@ export function inventoryNote(inventory: Inventory): string {
         const format =
           inventoryFormats.find((option) => option.value === (item.format ?? 'medium'))?.label ??
           'Moyen';
-        return `${item.quantity} ${item.label} · ${format.toLowerCase()} format${item.dismantle ? ' · démontage/montage' : ''}`;
+        const dimensions = [item.cL, item.cW, item.cH].every((value) => Number(value) > 0)
+          ? ` · ${item.cL} × ${item.cW} × ${item.cH} cm`
+          : '';
+        const weight = item.kg && item.kg > 0 ? ` · ${item.kg} kg` : '';
+        const constraints = [
+          item.up ? 'toujours debout' : '',
+          item.frag ? 'fragile' : '',
+          item.notop ? 'ne rien poser dessus' : '',
+        ].filter(Boolean);
+        return `${item.quantity} ${item.label} · ${format.toLowerCase()} format${dimensions}${weight}${item.like ? ` · comme ${inventoryItems.find((definition) => definition.key === item.like)?.label ?? item.like}` : ''}${constraints.length ? ` · ${constraints.join(', ')}` : ''}${item.dismantle ? ' · démontage/montage' : ''}`;
       }),
   );
   const flags = inventoryFlags
@@ -409,9 +435,13 @@ export function inventoryNote(inventory: Inventory): string {
       ? ['Tout le matériel passe dans les escaliers.']
       : inventory.stairs === 'non'
         ? ['Certains objets ne passent pas dans les escaliers.']
-        : inventory.stairs === 'verif'
-          ? ['Passage des escaliers à vérifier.']
-          : []),
+        : inventory.stairs === 'balcon'
+          ? [
+              `Passage par le balcon${inventory.balcPx ? ` · supplément ${inventory.balcPx} FCFA` : ''}.`,
+            ]
+          : inventory.stairs === 'verif'
+            ? ['Passage des escaliers à vérifier.']
+            : []),
     ...selected.map((line) => `- ${line}`),
     ...(flags.length ? [`À noter : ${flags.join(', ')}`] : []),
   ].join('\n');

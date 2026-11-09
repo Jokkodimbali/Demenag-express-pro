@@ -1,3 +1,4 @@
+import { visibleUiText } from '../content/visible-ui-text';
 import { uiText } from '../content/reference-ui-text';
 import { KeyRound, Pencil, Truck, UserRoundPlus } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
@@ -9,6 +10,7 @@ import { Pagination } from '../components/Pagination';
 import { pageSizes } from '../config/pagination';
 import { messages } from '../content/fr';
 import { routes } from '../routing/routes';
+import { sanitizePhoneInput } from '../domain/phone-number';
 export function Users() {
   const {
     actor,
@@ -146,8 +148,14 @@ export function Users() {
               id="account-phone"
               name="phone"
               type="tel"
+              inputMode="tel"
+              maxLength={30}
+              placeholder={visibleUiText.text123}
               required
               defaultValue={editing === 'new' ? '' : editing.phone}
+              onChange={(event) => {
+                event.currentTarget.value = sanitizePhoneInput(event.currentTarget.value);
+              }}
             />
             <label htmlFor="account-role">{messages.role}</label>
             <select

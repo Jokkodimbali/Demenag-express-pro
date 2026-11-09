@@ -2,6 +2,142 @@
   color: #fff;
   position: relative;
 }
+.admin-quote-step-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding-top: 6px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.admin-quote-step-number {
+  display: flex;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #f6d73c;
+  color: #1e2023;
+  font-size: 14px;
+  letter-spacing: 0;
+}
+.admin-quote-step-heading i {
+  flex: 1;
+  height: 1px;
+  background: #3b4046;
+}
+.admin-quote-vehicle-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.admin-quote-vehicle-label {
+  color: #aeb4bb;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+.admin-quote-vehicle-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: 10px;
+}
+.admin-quote-vehicle-choices button {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 2px solid #3b4046;
+  border-radius: 14px;
+  background: #1e2023;
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+.admin-quote-vehicle-choices button.active {
+  border-color: #f6d73c;
+  background: #333025;
+}
+.admin-quote-vehicle-choices-compact {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.admin-quote-vehicle-choices-compact button {
+  min-height: 42px;
+  justify-content: center;
+  padding: 8px 4px;
+  border-width: 1.5px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+}
+.admin-quote-vehicle-choices img {
+  width: 76px;
+  max-width: 40%;
+  height: 54px;
+  object-fit: contain;
+}
+.admin-quote-vehicle-choices button > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+.admin-quote-vehicle-choices strong {
+  font-size: 15px;
+}
+.admin-quote-vehicle-choices small {
+  color: #aeb4bb;
+  font-size: 13px;
+}
+.admin-quote-vehicle-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #3b4046;
+  border-radius: 14px;
+  background: #1e2023;
+}
+.admin-quote-vehicle-detail > strong {
+  color: #f6d73c;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+}
+.admin-quote-vehicle-detail .reference-vehicle-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.admin-quote-vehicle-detail .reference-vehicle-facts span {
+  padding: 5px 9px;
+  border-radius: 8px;
+  background: #30343a;
+  font-size: 12px;
+}
+.admin-quote-vehicle-detail .reference-vehicle-facts .volume {
+  background: #f6d73c;
+  color: #1e2023;
+  font-weight: 800;
+}
+.admin-quote-vehicle-rates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  color: #aeb4bb;
+  font-size: 12px;
+}
+.admin-quote-vehicle-rates strong {
+  color: #fff;
+}
 .reference-request-page {
   width: 100%;
   max-width: 1320px;
@@ -151,6 +287,41 @@
   color: #1e2023;
   font-size: 16px;
   box-shadow: 0 6px 20px #0007;
+}
+.admin-quote-save-bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1300;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  min-height: 72px;
+  padding: 10px clamp(18px, 3vw, 32px);
+  border-top: 1px solid #3b4046;
+  background: rgb(30 32 35 / 96%);
+  backdrop-filter: blur(10px);
+}
+.admin-quote-save-bar > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.admin-quote-save-bar small {
+  color: #aeb4bb;
+  font-size: 11px;
+  font-weight: 700;
+}
+.admin-quote-save-bar strong {
+  color: #f6d73c;
+  font-size: 19px;
+  font-weight: 900;
+}
+.admin-quote-save-bar .admin-quote-submit {
+  position: absolute;
+  right: clamp(18px, 3vw, 32px);
+  bottom: 10px;
 }
 .reference-toll-point-host {
   border: 0;
@@ -345,500 +516,120 @@
   min-width: 0;
   white-space: normal;
 }
-.admin-quote-page .call-inventory .inventory-dwelling-type .inventory-check input {
-  width: 22px;
-  height: 22px;
-  flex: 0 0 22px;
-}
-.admin-quote-page .call-inventory .inventory-dwelling-type .inventory-check span {
-  color: #d5d9de;
-  font-size: 14px;
-  font-weight: 700;
-}
-.admin-quote-page .call-inventory .inventory-dwelling-type .inventory-check small {
-  display: block;
-  margin-top: 2px;
-  color: #aeb4bb;
-  font-size: 12px;
-  font-weight: 400;
-}
-.admin-quote-page .call-inventory .inventory-section > summary {
+.admin-quote-cheaper-vehicle {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  min-height: 44px;
-  padding: 10px 4px;
-  border-bottom: 1px solid #30343a;
-  font-size: 15px;
-  font-weight: 800;
-  list-style: none;
-  cursor: pointer;
-}
-.admin-quote-page .call-inventory .inventory-section > summary::-webkit-details-marker {
-  display: none;
-}
-.admin-quote-page .call-inventory .inventory-section > summary::before {
-  content: '⌄';
-  color: #f6d73c;
-  font-size: 22px;
-  line-height: 1;
-  transform: rotate(-90deg);
-}
-.admin-quote-page .call-inventory .inventory-section[open] > summary::before {
-  transform: none;
-}
-.admin-quote-page .call-inventory .inventory-section > summary > span:first-child {
-  flex: 1;
-}
-.admin-quote-page .call-inventory .inventory-section-count {
-  color: #f6d73c;
-  font-size: 13px;
-  font-weight: 700;
-}
-.admin-quote-page .call-inventory .inventory-custom-section-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  min-height: 44px;
-  padding: 10px 4px;
-  border: 0;
-  border-bottom: 1px solid #30343a;
-  background: transparent;
-  color: #fff;
-  font-size: 15px;
-  font-weight: 800;
-  cursor: pointer;
-}
-.admin-quote-page .call-inventory .inventory-custom-section-toggle::before {
-  content: '⌄';
-  color: #f6d73c;
-  font-size: 22px;
-  line-height: 1;
-  transform: rotate(-90deg);
-}
-.admin-quote-page .call-inventory .inventory-custom-section-toggle[aria-expanded='true']::before {
-  transform: none;
-}
-.admin-quote-page .call-inventory .inventory-custom-section-toggle span:first-child {
-  flex: 1;
-  margin-left: 10px;
-  text-align: left;
-}
-.admin-quote-page .call-inventory .inventory-custom-section-toggle span:last-child {
-  color: #f6d73c;
-  font-size: 13px;
-  font-weight: 700;
-}
-.admin-quote-page .call-inventory .inventory-custom-items.is-closed {
-  display: none;
-}
-.admin-quote-page .call-inventory .inventory-hover-card {
-  width: min(250px, 78vw);
-  padding: 0;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  border: 1.5px solid #3ddc84;
   border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 6px 18px #0006;
+  background: #1e3a2a;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
 }
-.admin-quote-page .call-inventory .inventory-hover-default-image {
-  height: 70px;
-  min-height: 70px;
+.admin-quote-cheaper-vehicle button {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 9px;
+  background: #3ddc84;
+  color: #1e2023;
+  font-weight: 800;
+  cursor: pointer;
 }
-.admin-quote-page .call-inventory .inventory-hover-body {
+.admin-quote-calculation-details {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #3b4046;
+  border-radius: 12px;
+  background: #272a2e;
+}
+.admin-quote-calculation-details > summary {
+  min-height: 36px;
+  color: #d5d9de;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 36px;
+  cursor: pointer;
+}
+.admin-quote-calculation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr));
+  gap: 6px;
+}
+.admin-quote-calculation-grid > div {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid #3b4046;
+  border-radius: 10px;
+  background: #1e2023;
+}
+.admin-quote-calculation-grid > div.final {
+  border-color: #f6d73c;
+}
+.admin-quote-calculation-grid > div > span {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 7px;
+  background: #30343a;
+  color: #f6d73c;
+  font-size: 12px;
+  font-weight: 800;
+}
+.admin-quote-calculation-grid > div > div,
+.admin-quote-calculation-grid > div > div > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+.admin-quote-calculation-grid > div > div > div {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.admin-quote-calculation-grid small {
+  color: #aeb4bb;
+  font-size: 12px;
+  font-weight: 700;
+}
+.admin-quote-calculation-grid strong {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: right;
+}
+.admin-quote-calculation-grid p {
+  margin: 0;
+  color: #d5d9de;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.admin-quote-calculation-rules-title {
+  margin-top: 4px;
+  color: #aeb4bb;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+.admin-quote-calculation-details ul {
   display: flex;
   flex-direction: column;
   gap: 5px;
-  padding: 8px 9px 9px;
-}
-.admin-quote-page .call-inventory .inventory-hover-title {
-  align-items: baseline;
   margin: 0;
-  font-size: 12.5px;
-  line-height: 1.3;
-}
-.admin-quote-page .call-inventory .inventory-hover-title small {
-  font-size: 10px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-.admin-quote-page .call-inventory .inventory-hover-variants {
-  gap: 4px;
-}
-.admin-quote-page .call-inventory .inventory-hover-variants > button,
-.admin-quote-page .call-inventory .inventory-hover-variants > div {
-  border-width: 1.5px;
-}
-.admin-quote-page .call-inventory .inventory-hover-image-upload {
-  min-height: 56px;
-}
-.admin-quote-page .call-inventory .inventory-hover-image-upload > img {
-  height: 56px;
-}
-.admin-quote-page .call-inventory .inventory-hover-detail {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 3px 6px;
-  border-radius: 5px;
-  font-size: 11px;
-}
-.admin-quote-page .call-inventory .inventory-hover-detail strong {
-  font-weight: 700;
-}
-.admin-quote-page .call-inventory .inventory-hover-detail span {
-  color: #3b4046;
-  text-align: right;
-}
-.admin-quote-page .call-inventory .inventory-hover-selection {
-  flex-direction: row;
-  margin: 0;
-  padding: 4px 6px;
-  border-radius: 5px;
-  font-size: 10px;
-}
-.admin-quote-page .call-inventory .inventory-hover-body > p {
-  margin: 1px;
-  color: #5a6168;
-  font-size: 10.5px;
-  line-height: 1.4;
-}
-.admin-quote-page .call-inventory .inventory-list {
-  padding: 0;
-}
-.admin-quote-page .call-inventory .inventory-row {
-  min-height: 52px;
-  padding: 6px 8px;
-  border: 0;
-  border-radius: 10px;
-}
-.admin-quote-page .call-inventory .inventory-row.selected {
-  background: #30343a;
-}
-.admin-quote-page .call-inventory .inventory-dismantle > span {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  color: #d5d9de;
-  font-size: 13px;
-  font-weight: 600;
-}
-.admin-quote-page .call-inventory .inventory-dismantle small {
+  padding-left: 18px;
   color: #aeb4bb;
-  font-size: 11px;
-  font-weight: 400;
-}
-.admin-quote-page .call-inventory .inventory-variant {
-  padding-left: 16px;
-}
-.admin-quote-page .call-inventory .inventory-flags {
-  gap: 8px;
-  margin: 0;
-}
-.admin-quote-page .call-inventory .inventory-flag {
-  padding: 9px 14px;
-  border: 1.5px solid #3b4046;
-  border-radius: 999px;
-  background: transparent;
-  color: #d5d9de;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-}
-.admin-quote-page .call-inventory .inventory-flag.active {
-  border-color: #f6d73c;
-  background: #f6d73c;
-  color: #1e2023;
-}
-.admin-quote-page .call-inventory .inventory-note-preview {
-  padding: 12px 14px;
-  border: 1px dashed #4a5057;
-  border-radius: 12px;
-  background: #1e2023;
-  color: #d5d9de;
-  font-size: 14px;
-  line-height: 1.6;
-  white-space: pre-wrap;
-}
-.admin-quote-page .call-inventory .inventory-heading {
-  min-height: 40px;
-  gap: 12px;
-}
-.admin-quote-page .call-inventory .inventory-heading > div > strong {
-  letter-spacing: 0.12em;
-}
-.admin-quote-page .reference-call-inventory .inventory-item-name {
-  cursor: pointer;
-}
-.admin-quote-page .call-inventory .inventory-custom {
-  flex-wrap: nowrap;
-  margin-top: 0;
-}
-.admin-quote-page .call-inventory .inventory-custom label {
-  flex: 1 1 0;
-  min-width: 0;
-  margin: 0;
-}
-.admin-quote-page .call-inventory .inventory-custom input {
-  min-height: 0;
-  height: 44px;
-  margin-top: 0;
-  padding: 12px;
-  border-radius: 10px;
-  font-size: 16px;
-  font-weight: 400;
-}
-.admin-quote-page .call-inventory .inventory-custom > button {
-  flex: 0 0 auto;
-  min-height: 44px;
-  padding: 0 16px;
-  border: 1.5px solid #4a5057;
-  border-radius: 10px;
-  background: transparent;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 700;
-}
-.admin-quote-page .call-inventory .inventory-access-card .inventory-check {
-  margin: 0;
-  color: #d5d9de;
-  font-size: 14px;
-  font-weight: 400;
-}
-.admin-quote-page .call-inventory .inventory-access-card .inventory-check input {
-  appearance: none;
-  width: 22px;
-  height: 22px;
-  margin: 0;
-  border: 1.5px solid #4a5057;
-  border-radius: 6px;
-  background: transparent;
-}
-.admin-quote-page .call-inventory .inventory-access-card .inventory-check input:checked {
-  border-color: #f6d73c;
-  background: #f6d73c;
-}
-.admin-quote-page .call-inventory .inventory-access-card .inventory-check input:checked::after {
-  display: block;
-  color: #1e2023;
-  content: '✓';
-  font-size: 15px;
-  font-weight: 800;
-  line-height: 19px;
-  text-align: center;
-}
-.admin-quote-page .call-inventory .inventory-footer > button {
-  min-height: 44px;
-  padding: 0 16px;
-  border: 1.5px solid #3b4046;
-  border-radius: 10px;
-  background: transparent;
-  color: #aeb4bb;
-  font-size: 14px;
-  font-weight: 700;
-}
-.admin-quote-page .call-inventory .inventory-footer {
-  margin-top: 0;
-}
-.admin-quote-page .call-inventory .inventory-item-name {
-  cursor: pointer;
-}
-.admin-quote-page .call-inventory .inventory-size-stepper button {
-  width: 32px;
-  height: 32px;
-}
-.admin-quote-page .call-inventory .inventory-size-stepper output {
-  min-width: 78px;
-}
-.admin-quote-page .call-inventory .inventory-format-selector button {
-  min-height: 32px;
-  padding-inline: 10px;
-  font-size: 13px;
-  font-weight: 800;
-}
-.admin-quote-page .call-inventory .inventory-quantity {
-  gap: 6px;
-}
-.admin-quote-page .call-inventory .inventory-quantity button {
-  width: 40px;
-  height: 40px;
-  border-radius: 9px;
-}
-.admin-quote-page .call-inventory .inventory-quantity output {
-  min-width: 26px;
-}
-.admin-quote-page .call-inventory .inventory-variant-add {
-  min-height: 40px;
-}
-.admin-quote-page .moving-estimate-checks {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 8px 10px;
-  border-radius: 9px;
-  background: #272a2e;
-  color: #f6d73c;
-  font-size: 12.5px;
-  line-height: 1.4;
-}
-.admin-workspace:has(.admin-quote-page) {
-  width: 100%;
-  max-width: 1320px;
-  margin-inline: auto;
-  padding: clamp(20px, 5vw, 40px) 14px 64px;
-}
-.admin-workspace:has(.admin-quote-page) .admin-reference-heading {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 14px;
-}
-.admin-workspace:has(.admin-quote-page) .admin-reference-heading > div {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.admin-workspace:has(.admin-quote-page) .admin-reference-heading h1 {
-  margin: 0;
-}
-.admin-workspace:has(.admin-quote-page) .admin-tabs {
-  align-self: flex-start;
-  width: max-content;
-  margin-bottom: 0;
-  border-radius: 14px;
-  background: #272a2e;
-  border: 1px solid #3b4046;
-  padding: 5px;
-}
-.admin-workspace:has(.admin-quote-page) .admin-tabs a {
-  border-radius: 10px;
-}
-.admin-quote-layout {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr));
-  gap: clamp(14px, 4vw, 24px);
-  align-items: start;
-}
-.admin-quote-fields {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  min-width: 0;
-}
-.admin-quote-card,
-.admin-quote-fields > .call-inventory {
-  background: #272a2e;
-  border: 1px solid #3b4046;
-  border-radius: clamp(14px, 3vw, 20px);
-  padding: clamp(14px, 4vw, 22px);
-  min-width: 0;
-}
-.admin-quote-services {
-  padding: 6px 22px 18px;
-}
-.admin-quote-card > h3,
-.admin-quote-card-head h3 {
-  color: #f6d73c;
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  margin: 0 0 14px;
-}
-.admin-quote-section-toggle {
-  display: flex;
-  width: 100%;
-  min-width: 0;
-  min-height: 40px;
-  align-items: center;
-  gap: 10px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: #f6d73c;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-align: left;
-  cursor: pointer;
-}
-.admin-quote-section-toggle span {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-.admin-quote-section-toggle svg {
-  flex: 0 0 auto;
-  transition: transform 0.2s ease;
-}
-.admin-quote-section-toggle[aria-expanded='false'] svg {
-  transform: rotate(-90deg);
-}
-.admin-quote-section-toggle[aria-expanded='true'] {
-  margin-bottom: 12px;
-}
-.admin-quote-card-head .admin-quote-section-toggle {
-  flex: 1 1 auto;
-  width: auto;
-  margin-bottom: 0;
-}
-.admin-quote-card-head .admin-quote-section-toggle + strong {
-  flex: 0 0 auto;
-}
-.admin-quote-card-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-.admin-quote-card-head strong {
-  font-size: 15px;
-}
-.admin-quote-card .muted {
-  margin: 0 0 10px;
-  font-size: 13px;
-  line-height: 1.5;
-}
-.admin-quote-card label {
-  display: block;
-  min-width: 0;
   font-size: 12px;
-  font-weight: 700;
-}
-.admin-quote-card input,
-.admin-quote-card textarea,
-.admin-quote-card select {
-  width: 100%;
-  margin-top: 5px;
-  background: #1e2023;
-  border: 1px solid #3b4046;
-  border-radius: 10px;
-  color: #fff;
-  padding: 12px;
-  font: inherit;
-  font-size: 15px;
-}
-.admin-quote-card input:focus-visible,
-.admin-quote-card textarea:focus-visible,
-.admin-quote-card select:focus-visible {
-  outline: 2px solid #f6d73c;
-  outline-offset: 1px;
-}
-.admin-quote-identity {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
-  align-items: start;
-  gap: 10px;
-}
-.admin-quote-client-name {
-  position: relative;
-  min-width: 0;
-}
-.admin-quote-date-control {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 6px;
-}
-.admin-quote-date-control > input {
-  color-scheme: dark;
+  line-height: 1.5;
 }

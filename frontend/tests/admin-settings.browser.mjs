@@ -79,6 +79,49 @@ try {
   const settingsPage = page.locator('.reference-settings-page');
   await expect(settingsPage).toBeVisible({ timeout: 20000 });
   const form = page.locator('.settings-form');
+  const referenceBlocks = [
+    form.locator('.reference-company-fields'),
+    form.locator('.reference-rental-kit-card'),
+    form.locator('.reference-claude-settings'),
+    form.locator('.reference-quote-terms'),
+    form.locator('.reference-settings-fixed-fields'),
+    form.locator('.reference-settings-kicker').first(),
+    form.locator('.reference-settings-scenarios'),
+    form.locator('.reference-settings-google-maps'),
+    form.locator('.reference-settings-whatsapp'),
+  ];
+  for (const block of referenceBlocks) await expect(block).toBeVisible();
+  const blockPositions = await Promise.all(
+    referenceBlocks.map((block) =>
+      block.evaluate((element) => element.getBoundingClientRect().top),
+    ),
+  );
+  expect(blockPositions).toEqual([...blockPositions].sort((left, right) => left - right));
+  await expect(form.locator('.reference-company-fields input').first()).toHaveCSS(
+    'font-size',
+    '15px',
+  );
+  await expect(form.locator('.reference-company-fields input').first()).toHaveCSS(
+    'font-weight',
+    '400',
+  );
+  await expect(form.locator('.reference-settings-google-maps input')).toHaveCSS(
+    'font-size',
+    '15px',
+  );
+  await expect(form.locator('.reference-rental-kit-title-row').first()).toHaveCSS(
+    'flex-wrap',
+    'nowrap',
+  );
+  const publicCatalogue = await page.evaluate(async () => {
+    const response = await fetch('/api/catalogue');
+    return response.json();
+  });
+  expect(publicCatalogue.settings).not.toHaveProperty('googleMapsApiKey');
+  const forbiddenMapsKey = await data.clients.first
+    .get('/api/admin/google-maps-key')
+    .set(integrationHeader);
+  expect(forbiddenMapsKey.status).toBe(401);
   const field = (name) => form.locator(`[name="${name}"]`);
   const persistBlur = async (input, value) => {
     const save = page.waitForResponse(
@@ -303,15 +346,53 @@ try {
 
   const googleMapsInput = form.locator('.reference-settings-google-maps input');
   const googleTestKey = `settings-test-${data.prefix.replace(/\W/gu, '')}`;
+  const saveMapsKey = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/api/admin/google-maps-key') &&
+      response.request().method() === 'PUT',
+  );
   await googleMapsInput.fill(googleTestKey);
   await googleMapsInput.blur();
-  await expect
-    .poll(() => page.evaluate(() => localStorage.getItem('demenag-express-google-maps-key')))
-    .toBe(googleTestKey);
+  expect((await saveMapsKey).status()).toBe(204);
+  await expect.poll(async () => (await settingsRow()).cleApiGoogleMaps).toBe(googleTestKey);
   await page.reload();
   await expect(settingsPage).toBeVisible();
   await expect(form.locator('.reference-settings-google-maps input')).toHaveValue(googleTestKey);
-  await page.evaluate(() => localStorage.removeItem('demenag-express-google-maps-key'));
+  const adminMapsKey = await page.evaluate(async () => {
+    const response = await fetch('/api/admin/google-maps-key');
+    return response.json();
+  });
+  expect(adminMapsKey.key).toBe(googleTestKey);
+
+  const termsInput = field('quoteTerms');
+  const termsMarker = `Clause de vérification ${data.prefix}`;
+  await persistBlur(termsInput, termsMarker);
+  await expect.poll(async () => (await settingsRow()).conditionsDevis).toBe(termsMarker);
+  const termsToggle = form.locator('input[type="checkbox"][name="quoteTermsEnabled"]');
+  const toggleSave = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/api/catalogue') && response.request().method() === 'PUT',
+  );
+  await termsToggle.uncheck();
+  expect((await toggleSave).status()).toBe(200);
+  await expect.poll(async () => (await settingsRow()).conditionsDevisActives).toBe(false);
+  await page.reload();
+  await expect(termsToggle).not.toBeChecked();
+  await termsToggle.check();
+  await expect.poll(async () => (await settingsRow()).conditionsDevisActives).toBe(true);
+
+  const rentalLabel = form.locator('[name="rentalKitConfiguration.0.label"]');
+  const updatedRentalLabel = `Matériel test ${data.prefix}`;
+  await persistBlur(rentalLabel, updatedRentalLabel);
+  await expect
+    .poll(async () => (await settingsRow()).materielLocation)
+    .toEqual(expect.arrayContaining([expect.objectContaining({ label: updatedRentalLabel })]));
+
+  const businessEmail = form.locator('[name="businessEmail"]');
+  await persistBlur(businessEmail, `settings-${data.prefix}@example.test`);
+  await expect
+    .poll(async () => (await settingsRow()).emailEntreprise)
+    .toBe(`settings-${data.prefix}@example.test`);
 
   const whatsappNumber = form.locator('[name="w.biz"]');
   await persistBlur(form.locator('[name="w.cc"]'), '221');
@@ -549,7 +630,7 @@ try {
   expect((await settingsRow()).tarifManoeuvre).toBe(1234);
   expect(pageErrors).toEqual([]);
   console.log(
-    'Paramètres admin : accès admin, refus non-admin, tarifs véhicule, matrice de manœuvres et 4 scénarios, matrice montage par origine/taille, planification et valeurs par défaut, couvertures, questionnaire pliable/édition/ordre/ajout/suppression, dimensions, ajout/édition/suppression véhicule avec garde chauffeur, paiement et QR, WhatsApp, clé Maps, sauvegarde DB, rechargement, responsive et validation API vérifiés.',
+    'Paramètres admin : accès et refus non-admin, ordre et style des nouveautés de référence, identité PDF, conditions activables et persistées, matériel fourni, tarifs véhicule, matrices, planification, questionnaire pliable, dimensions, véhicules, paiement, WhatsApp, clé Maps séparée du catalogue public et sauvegardée en base, rechargement, responsive et validation API vérifiés.',
   );
 } finally {
   await page.waitForTimeout(1000).catch(() => {});

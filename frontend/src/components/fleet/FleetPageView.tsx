@@ -1,3 +1,4 @@
+import { visibleUiText } from '../../content/visible-ui-text';
 import { uiText } from '../../content/reference-ui-text';
 import type { useAdminFleetPageModel } from '../../application/controllers/useAdminFleetPageModel';
 import { FleetMapPanel } from './FleetMapPanel';
@@ -21,14 +22,14 @@ export function FleetPageView({ model }: { model: Model }) {
       {whatsappBriefQueue.length > 0 && (
         <aside className="teams-whatsapp-queue" role="status">
           <span>
-            {whatsappBriefQueue.length} autre(s) conversation(s) WhatsApp à ouvrir. Ouvrez-les une
-            par une pour que le téléphone puisse lancer l’application.
+            {whatsappBriefQueue.length} {visibleUiText.text176}
           </span>
           <button type="button" onClick={() => void openNextWhatsAppBrief()}>
-            Ouvrir pour {whatsappBriefQueue[0]?.member.name}
+            {visibleUiText.text177}
+            {whatsappBriefQueue[0]?.member.name}
           </button>
           <button type="button" onClick={cancelWhatsAppBriefs}>
-            Annuler les suivants
+            {visibleUiText.text178}
           </button>
         </aside>
       )}

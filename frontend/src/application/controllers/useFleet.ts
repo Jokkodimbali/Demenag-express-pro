@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { today } from '../../domain/format';
+import { today } from '../../domain/date';
 import type { Booking, Driver, Vehicle } from '../../domain/model';
 import { useApp } from '../context';
 import { errorMessage } from '../error-message';

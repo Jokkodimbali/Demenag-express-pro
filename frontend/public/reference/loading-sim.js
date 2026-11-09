@@ -92,10 +92,12 @@
         });
         flush(q, lv); return;
       }
-      var c = C[k] || C.custom;
+      var lk = k === 'custom' && l.like ? l.like : k, SHM = { salon: 'sofa', lit: 'bed', armoire: 'armoire', tablem: 'table', matelas: 'mattress' }, PKM = { salon: 'sofa3', lit: 'bed', tablem: 'table', matelas: '' };
+      var c = C[lk] && !C[lk].stack ? C[lk] : (C[k] || C.custom);
+      if (k === 'custom') { var cd = l.dims && l.dims.length === 3 ? l.dims.slice() : dimOf(c, g); push({ k: k, label: cap(n), def: defOf('', n), dims: cd, o: l.up ? 'up' : c.o, kg: +l.kg || kgOf(c, g), c: l.frag ? 'fragile' : c.c, top: l.notop ? 0 : c.top, hv: c.hv, grp: c.grp || 3, tip: [l.up ? 'toujours debout' : '', l.frag ? 'fragile' : '', l.notop ? 'rien posé dessus' : ''].filter(Boolean).join(', ') || c.tip, end: c.end, shape: SHM[lk] || (C[lk] ? lk : 'custom'), protK: lk in PKM ? PKM[lk] : lk, hk: lk, hkind: l.hkind || '', frag: !!l.frag, sz: g }); flush(q, lv); return; }
       if (c.stack) { pools.push({ k: k, g: g, n: q, dims: lv > 0 ? fitVol(dimOf(c, g), lv) : dimOf(c, g), kg: kgOf(c, g), name: k === 'carton' ? 'carton' : 'sac', max: c.stack }); return; }
       var gl = l.gl ? ' (' + l.gl + ')' : '';
-      push({ k: k, label: cap(n) + gl + (l.dm && k === 'bureau' ? ' (démonté)' : ''), def: defOf(c.ar, n), dims: dimOf(c, g), o: k === 'bureau' && l.dm ? 'edge' : c.o, kg: kgOf(c, g), c: c.c, top: c.top, hv: c.hv, grp: c.grp, tip: c.tip, end: c.end, shape: k === 'bureau' && l.dm ? 'panels' : k, sz: g });
+      push({ k: k, label: cap(n) + gl + (l.dm && k === 'bureau' ? ' (démonté)' : ''), def: defOf(c.ar, n), dims: dimOf(c, g), o: k === 'bureau' && l.dm ? 'edge' : c.o, kg: +l.kgU || kgOf(c, g), hkind: l.hkind || '', c: c.c, top: c.top, hv: c.hv, grp: c.grp, tip: c.tip, end: c.end, shape: k === 'bureau' && l.dm ? 'panels' : k, sz: g });
       flush(q, lv);
     });
     var ax = +input.annex || 0;
@@ -240,7 +242,7 @@
   }
 
   var BLK = { L: 2.04, W: 1.84 }, BLK_A = BLK.L * BLK.W, BLK_OV = 1.15;
-  function blkNeed(mode, dx, dy, dz, A) { A = A > 0.05 ? A : BLK_A;
+  function blkNeed(mode, dx, dy, dz, A, Lb) { A = A > 0.05 ? A : BLK_A;
     var big = Math.max(dx, dz), sm = Math.min(dx, dz), a;
     if (mode === 'full') a = dx * dz + 2 * (dx * dy + dz * dy);
     else if (mode === 'front') a = big * dy + 2 * sm * dy;
@@ -249,7 +251,8 @@
     else if (mode === 'fold') a = 2 * big * dy;
     else if (mode === 'between') a = Math.max(dx * dy, dz * dy, dx * dz);
     else a = Math.max(dx * dy, dz * dy);
-    return { n: Math.max(1, Math.ceil(a * BLK_OV / A - 0.05)), a: a };
+    var n0 = Math.max(1, Math.ceil(a * BLK_OV / A - 0.05)), lg = Lb > 0 && mode !== 'face' && mode !== 'between' && Math.max(dx, dy, dz) > Lb + 0.02;
+    return { n: n0 + (lg ? 1 : 0), a: a, long: lg };
   }
   var PROT = {
     tv: [1, 'fold', 'écran enveloppé dans une serviette pliée en deux, côté écran contre la paroi'], vitrine: [1, 'front', 'serviettes sur toutes les vitres, portes fermées'], coiffeuse: [1, 'fold', 'miroir enveloppé dans une serviette pliée en deux'],
@@ -260,7 +263,7 @@
     micro: [4, 'full', 'enveloppé dans une serviette'], clim: [4, 'front', 'serviette sur la grille et les raccords'], chevet: [4, 'full', 'enveloppée'], bed: [4, 'face', 'serviette sur la tête de lit'], custom: [4, 'full', 'enveloppé'],
     chaise: [5, 'face', 'serviette entre les chaises voisines'], velo: [5, 'face', 'serviette entre le vélo et les meubles voisins']
   };
-  function protOf(u) { if (u.stackOf) return null; var k = u.sofa ? 'sofa' + (u.seats || 1) : u.shape === 'panels' ? 'panels' : u.shape === 'bed' ? 'bed' : u.shape === 'table' ? 'table' : u.k; return PROT[k] || null; }
+  function protOf(u) { if (u.stackOf) return null; var k = u.sofa ? 'sofa' + (u.seats || 1) : u.shape === 'panels' ? 'panels' : u.shape === 'bed' ? 'bed' : u.shape === 'table' ? 'table' : (u.protK && PROT[u.protK] ? u.protK : u.k); var r = PROT[k] || null; if (u.frag) r = r ? [Math.min(r[0], 1), r[1], r[2] + ', objet fragile'] : [1, 'full', 'enveloppé entièrement, objet fragile']; return r; }
   function describe(bin, V, ti) {
     var items = bin.boxes.filter(function (b) { return !b.arch; }), nT = Math.max(1, Math.round(V.L / 0.65)), T = V.L / nT;
     items.forEach(function (b) {
@@ -280,13 +283,14 @@
       var where = b.y < E ? 'au sol' : b.on && b.on.arch ? 'sur le passage de roue' : b.on && b.on.u ? 'sur ' + b.on.u.def : 'en hauteur';
       b.txt = cap(orientTxt(b)) + ', ' + side + ', ' + where + '.';
       b.tip = b.u.tip || ''; if ((b.u.hv || b.u.grp === 1) && b.y < E && b.x > V.L * 0.45) b.tip = (b.tip ? b.tip + ' ; ' : '') + 'lourd placé vers les portes pour gagner un aller-retour : sanglé fermement à la paroi';
-      var pr = protOf(b.u), bn = pr ? blkNeed(pr[1], b.dx, b.dy, b.dz, (+V.blkL || 0) * (+V.blkW || 0)) : null; b.pPrio = pr ? pr[0] : 9; b.need = bn ? bn.n : 0; b.blkA = bn ? bn.a : 0; b.how = pr ? pr[2] : ''; b.prot = 0;
+      var pr = protOf(b.u), bn = pr ? blkNeed(pr[1], b.dx, b.dy, b.dz, (+V.blkL || 0) * (+V.blkW || 0), Math.max(+V.blkL || 0, +V.blkW || 0)) : null; b.blkMode = pr ? pr[1] : ''; b.blkLong = bn ? bn.long : false; b.pPrio = pr ? pr[0] : 9; b.need = bn ? bn.n : 0; b.blkA = bn ? bn.a : 0; b.how = pr ? pr[2] : ''; b.prot = 0;
       kg += b.kg; vol += b.dx * b.dy * b.dz;
       var lf = Math.max(0, Math.min(1, (V.W / 2 - b.z) / b.dz)); kL += b.kg * lf; kF += b.kg * Math.max(0, Math.min(1, (V.L / 2 - b.x) / b.dx));
     });
     var left = Math.max(0, +V.stock || 0), byP = seq.filter(function (b) { return b.need > 0; }).sort(function (a, b) { return a.pPrio - b.pPrio || b.dx * b.dy * b.dz - a.dx * a.dy * a.dz; });
     byP.forEach(function (b) { var g = Math.min(b.need, left); b.prot = g; left -= g; });
-    seq.forEach(function (b) { b.protTxt = b.need ? (b.prot ? 'Couvert par ' + b.prot + ' serviette' + (b.prot > 1 ? 's' : '') + ' : ' + b.how + (b.prot < b.need ? ' (il en faudrait ' + b.need + ')' : '') : 'Sans serviette (stock épuisé) : caler contre un matelas ou des cartons') : ''; });
+    seq.forEach(function (b) { var ML = { full: 'entier', front: 'façade et côtés', top3: 'dessus et façade', top: 'dessus', fold: 'plié en deux', between: 'entre deux pièces', face: 'une face' }, det = ' (' + (ML[b.blkMode] || 'couvert') + ' · ' + (b.blkA || 0).toFixed(2).replace('.', ',') + ' m²' + (b.blkLong ? ' · +1 car plus long que la serviette' : '') + ')';
+      b.protTxt = b.need ? (b.prot ? 'Couvert par ' + b.prot + ' serviette' + (b.prot > 1 ? 's' : '') + ' : ' + b.how + det + (b.prot < b.need ? ' (il en faudrait ' + b.need + ')' : '') : 'Sans serviette (stock épuisé) : caler contre un matelas ou des cartons') : ''; });
     var walls = [];
     seq.forEach(function (b) { var w = walls[walls.length - 1]; if (!w || w.n !== b.wall) { w = { n: b.wall, steps: [] }; walls.push(w); } w.steps.push(b); });
     walls.forEach(function (w, i) { w.title = 'Mur ' + w.n + (w.n === 1 ? ' · contre la cabine' : '') + (i === walls.length - 1 && walls.length > 1 ? ' · côté portes, déchargé en premier' : ''); });
@@ -607,8 +611,8 @@
   }
   var ROLEC = { chef: 0xF6D73C, chauffeur: 0x3B82F6, man: 0xFF8A3D, menu: 0x9B6BFF };
   var APPK = { frigo: 1, congel: 1, mal: 1, cuisiniere: 1, clim: 1 }, CASEK = { armoire: 1, buffet: 1, biblio: 1, commode: 1, vitrine: 1, coiffeuse: 1 };
-  function handOf(b) { var u = b.u || {}, kg = b.kg || 0, n = kg <= 25 ? 1 : kg <= 50 ? 2 : kg <= 75 ? 3 : 4, tool = '';
-    if (APPK[u.k]) { n = Math.max(2, n); tool = 'diable'; } else if (CASEK[u.k] && u.shape !== 'panels') { n = Math.max(2, n); tool = 'sangles'; } else if (u.sofa) { n = Math.max(2, n); tool = 'sangles'; }
+  function handOf(b) { var u = b.u || {}, kg = b.kg || 0, KK = u.hk || u.k, n = kg <= 25 ? 1 : kg <= 50 ? 2 : kg <= 75 ? 3 : 4, tool = '';
+    if (APPK[KK] || u.hkind === 'app') { n = Math.max(2, n); tool = 'diable'; } else if ((CASEK[KK] || u.hkind === 'case') && u.shape !== 'panels') { n = Math.max(2, n); tool = 'sangles'; } else if (u.sofa) { n = Math.max(2, n); tool = 'sangles'; }
     else if (u.k === 'matelas') { n = (u.dims && u.dims[1] > 1) ? 2 : 1; } else if (u.stackOf && u.stackOf >= 3) { tool = 'diable'; }
     if (Math.max(b.dx, b.dy, b.dz) > 1.8) n = Math.max(2, n); return { n: Math.min(4, n), tool: tool }; }
   function ordFl(f) { return f === 0 ? 'RDC' : f === 1 ? '1er' : f + 'e'; }
@@ -749,7 +753,7 @@
     if (x1 < 0) return cv.toDataURL('image/jpeg', q || 0.88);
     var pad = Math.round(Math.max(x1 - x0, y1 - y0) * 0.03); x0 = Math.max(0, x0 - pad); y0 = Math.max(0, y0 - pad); x1 = Math.min(w, x1 + pad); y1 = Math.min(hgt, y1 + pad);
     var bw = x1 - x0, bh = y1 - y0, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2; if (bw / bh > aspect) bh = bw / aspect; else bw = bh * aspect;
-    var out = document.createElement('canvas'), OW = 1100; out.width = OW; out.height = Math.round(OW / aspect); var o = out.getContext('2d'); o.fillStyle = '#' + ('00000' + bg.toString(16)).slice(-6); o.fillRect(0, 0, out.width, out.height);
+    var out = document.createElement('canvas'), OW = 820; out.width = OW; out.height = Math.round(OW / aspect); var o = out.getContext('2d'); o.fillStyle = '#' + ('00000' + bg.toString(16)).slice(-6); o.fillRect(0, 0, out.width, out.height);
     o.drawImage(c2, cx - bw / 2, cy - bh / 2, bw, bh, 0, 0, out.width, out.height); return out.toDataURL('image/jpeg', q || 0.88);
   }
   function stepShots(P, ti, opt, key) {
@@ -757,7 +761,7 @@
     if (!window.THREE || !P || !P.trips[ti]) return null; opt = opt || {};
     var el = document.createElement('div'); el.style.cssText = 'position:fixed;left:-12000px;top:0;width:1400px;height:1100px'; document.body.appendChild(el);
     var v = new View(el, {}), out = [];
-    if (v.ok) { v.ghost = false; v.hlLast = true; v.r.setClearColor(opt.bg != null ? opt.bg : 0x1E2023, 1); v.size(); v.load(P.trips[ti], P, opt); v.setView('iso'); var n = P.trips[ti].boxes.length; for (var i = 1; i <= n; i++) { v._step = i; var bi = P.trips[ti].boxes[i - 1]; if (bi) v.focus(bi); v.paint(); v.r.render(v.scene, v.cam); out.push(opt.aspect ? cropShot(v.r.domElement, opt.aspect, opt.bg != null ? opt.bg : 0x1E2023, 0.88) : v.snap(0.85)); } v.dispose(); }
+    if (v.ok) { v.ghost = false; v.hlLast = true; v.r.setClearColor(opt.bg != null ? opt.bg : 0x1E2023, 1); v.size(); v.load(P.trips[ti], P, opt); v.setView('iso'); var n = P.trips[ti].boxes.length; for (var i = 1; i <= n; i++) { v._step = i; var bi = P.trips[ti].boxes[i - 1]; if (bi) v.focus(bi); v.paint(); v.r.render(v.scene, v.cam); out.push(opt.aspect ? cropShot(v.r.domElement, opt.aspect, opt.bg != null ? opt.bg : 0x1E2023, 0.8) : v.snap(0.85)); } v.dispose(); }
     el.remove(); if (key) { var ks = Object.keys(SHOTS); if (ks.length > 12) delete SHOTS[ks[0]]; SHOTS[key] = out; } return out;
   }
   function view(el, opts) {

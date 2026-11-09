@@ -1,17 +1,28 @@
+import { visibleUiText } from '../content/visible-ui-text';
 import { useApp } from '../application/context';
 import { liveBookingPrice } from '../application/services/live-booking-price';
 import { uiText } from '../content/reference-ui-text';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { money } from '../domain/format';
+import { money } from '../application/presentation/format';
+import { isUndatedBookingForMonth } from '../domain/calendar';
 import type { Booking } from '../domain/model';
-import type { Vehicle } from '../../../shared/contracts.js';
+import type { Driver, Vehicle } from '../../../shared/contracts.js';
 
 type View = 'day' | 'week' | 'month';
 type CalendarProps = {
   bookings: Booking[];
   vehicles: Vehicle[];
+  employees: Driver[];
   onSelect: (booking: Booking) => void;
+  onCreateAtDay: (date: string, time: string) => void;
+  onOpenTeam: (booking: Booking) => void;
+  onExportWeek: (
+    bookings: Booking[],
+    employees: Driver[],
+    anchor: string,
+    filtersApplied: boolean,
+  ) => Promise<void>;
 };
 type CalendarEvent = {
   booking: Booking;
@@ -122,6 +133,16 @@ function vehicleTag(name: string) {
   return name.match(/sprinter|trafic|master/i)?.[0] ?? name;
 }
 
+function vehicleColor(name: string) {
+  const normalized = name.toLocaleLowerCase('fr-FR');
+  if (normalized.includes('sprinter')) return '#3B82F6';
+  if (normalized.includes('master')) return '#F59E0B';
+  if (normalized.includes('trafic')) return '#A855F7';
+  let hash = 0;
+  for (const character of name) hash = (hash * 31 + character.charCodeAt(0)) % 360;
+  return `hsl(${hash},70%,60%)`;
+}
+
 function periodTitle(view: View, day: string, month: Date) {
   if (view === 'day')
     return dateLabel(day, { weekday: 'long', day: 'numeric', month: 'long' }).replace(/^./u, (c) =>
@@ -136,7 +157,15 @@ function periodTitle(view: View, day: string, month: Date) {
     .replace(/^./u, (character) => character.toUpperCase());
 }
 
-export function ReferenceCalendar({ bookings, vehicles, onSelect }: CalendarProps) {
+export function ReferenceCalendar({
+  bookings,
+  vehicles,
+  employees,
+  onSelect,
+  onCreateAtDay,
+  onOpenTeam,
+  onExportWeek,
+}: CalendarProps) {
   const { catalogue } = useApp();
   const amount = (booking: Booking) => {
     const total = liveBookingPrice(booking, catalogue).total;
@@ -150,8 +179,26 @@ export function ReferenceCalendar({ bookings, vehicles, onSelect }: CalendarProp
   const [verticalZoom, setVerticalZoom] = useState(2);
   const [horizontalZoom, setHorizontalZoom] = useState(2);
   const [selectedDay, setSelectedDay] = useState(dakarToday);
+  const [vehicleFilter, setVehicleFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [employeeFilter, setEmployeeFilter] = useState('');
+  const [exportError, setExportError] = useState('');
   const today = dakarToday();
   const timelineAnchor = gridAnchor ?? selectedDay ?? today;
+  const filteredBookings = bookings.filter((booking) => {
+    if (vehicleFilter && booking.vehicle.id !== vehicleFilter) return false;
+    if (statusFilter === 'final' && booking.status !== 'completed') return false;
+    if (statusFilter === 'provisional' && booking.status === 'completed') return false;
+    if (employeeFilter) {
+      const crew = [
+        ...(booking.crew?.chauffeur ?? (booking.driverId ? [booking.driverId] : [])),
+        ...(booking.crew?.menuisier ?? []),
+        ...(booking.crew?.manoeuvre ?? []),
+      ];
+      if (!crew.includes(employeeFilter)) return false;
+    }
+    return true;
+  });
   const monthDate = atNoon(monthCursor);
   const month = new Date(monthDate.getUTCFullYear(), monthDate.getUTCMonth(), 1);
   const days = useMemo(() => {
@@ -171,22 +218,19 @@ export function ReferenceCalendar({ bookings, vehicles, onSelect }: CalendarProp
       return iso(day);
     });
   }, [monthDate, timelineAnchor, view]);
-  const periodBookings = bookings.filter((booking) => {
+  const periodBookings = filteredBookings.filter((booking) => {
     if (!booking.date || booking.status === 'cancelled') return false;
     if (view === 'month') return booking.date.slice(0, 7) === monthCursor.slice(0, 7);
     return days.includes(booking.date);
   });
-  const countBookings = bookings.filter((booking) => {
+  const countBookings = filteredBookings.filter((booking) => {
     if (!booking.date || booking.status === 'cancelled') return false;
     if (view === 'month') return booking.date.slice(0, 7) === monthCursor.slice(0, 7);
     return days.includes(booking.date);
   });
   const visibleBookings = periodBookings;
-  const undated = bookings.filter(
-    (booking) =>
-      !booking.date &&
-      booking.status !== 'cancelled' &&
-      booking.createdAt.slice(0, 7) === monthCursor.slice(0, 7),
+  const undated = filteredBookings.filter((booking) =>
+    isUndatedBookingForMonth(booking, monthCursor.slice(0, 7)),
   );
   const totals = visibleBookings.reduce(
     (result, booking) => {
@@ -197,10 +241,10 @@ export function ReferenceCalendar({ bookings, vehicles, onSelect }: CalendarProp
     },
     { provisional: 0, final: 0 },
   );
-  const selected = bookings.filter(
+  const selected = filteredBookings.filter(
     (booking) => booking.date === selectedDay && booking.status !== 'cancelled',
   );
-  const timedBookings = bookings
+  const timedBookings = filteredBookings
     .filter(
       (booking) =>
         booking.status !== 'cancelled' &&
@@ -268,7 +312,7 @@ export function ReferenceCalendar({ bookings, vehicles, onSelect }: CalendarProp
   }
 
   function getDayEvents(day: string) {
-    const events: CalendarEvent[] = bookings
+    const events: CalendarEvent[] = filteredBookings
       .filter(
         (booking) =>
           booking.status !== 'cancelled' &&
@@ -351,6 +395,94 @@ export function ReferenceCalendar({ bookings, vehicles, onSelect }: CalendarProp
           </button>
         </header>
         <div className="reference-calendar-toolbar">
+          <label className="reference-calendar-date">
+            <span className="visually-hidden">{visibleUiText.text143}</span>
+            <input
+              type="date"
+              value={timelineAnchor}
+              title={visibleUiText.text143}
+              onChange={(event) => {
+                const next = event.currentTarget.value;
+                if (next) setCurrentDay(next);
+              }}
+            />
+          </label>
+          <button
+            type="button"
+            className="reference-calendar-export"
+            onClick={() => {
+              setExportError('');
+              void onExportWeek(
+                filteredBookings,
+                employees,
+                timelineAnchor,
+                Boolean(vehicleFilter || statusFilter || employeeFilter),
+              ).catch(() => setExportError('Le PDF de la semaine n’a pas pu être généré.'));
+            }}
+          >
+            {visibleUiText.text144}
+          </button>
+        </div>
+        <div className="reference-calendar-filters">
+          <label>
+            <span className="visually-hidden">{visibleUiText.text145}</span>
+            <select
+              value={vehicleFilter}
+              onChange={(event) => setVehicleFilter(event.currentTarget.value)}
+            >
+              <option value="">{visibleUiText.text146}</option>
+              {vehicles.map((vehicle) => (
+                <option key={vehicle.id} value={vehicle.id}>
+                  {vehicle.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span className="visually-hidden">{visibleUiText.text147}</span>
+            <select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.currentTarget.value)}
+            >
+              <option value="">{visibleUiText.text148}</option>
+              <option value="provisional">{visibleUiText.text133}</option>
+              <option value="final">{visibleUiText.text134}</option>
+            </select>
+          </label>
+          <label>
+            <span className="visually-hidden">{visibleUiText.text149}</span>
+            <select
+              value={employeeFilter}
+              onChange={(event) => setEmployeeFilter(event.currentTarget.value)}
+            >
+              <option value="">{visibleUiText.text150}</option>
+              {employees.map((employee) => (
+                <option key={employee.id} value={employee.id}>
+                  {employee.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          {(vehicleFilter || statusFilter || employeeFilter) && (
+            <button
+              type="button"
+              className="reference-calendar-clear-filters"
+              onClick={() => {
+                setVehicleFilter('');
+                setStatusFilter('');
+                setEmployeeFilter('');
+              }}
+            >
+              {visibleUiText.text151}
+            </button>
+          )}
+        </div>
+        {exportError && (
+          <p className="reference-calendar-export-error" role="alert">
+            {exportError}
+          </p>
+        )}
+        <div className="reference-calendar-toolbar">
           <div className="reference-calendar-views">
             {(['day', 'week', 'month'] as const).map((value) => (
               <button
@@ -407,6 +539,12 @@ export function ReferenceCalendar({ bookings, vehicles, onSelect }: CalendarProp
           <span>
             <i className="final" /> {uiText['final2']}
           </span>
+          {vehicles.map((vehicle) => (
+            <span key={vehicle.id}>
+              <i style={{ backgroundColor: vehicleColor(vehicle.id) }} />
+              {vehicleTag(vehicle.shortName || vehicle.name)}
+            </span>
+          ))}
           <strong>
             {countBookings.length} {uiText['rdv']}{' '}
             {view === 'month' ? 'ce mois' : view === 'week' ? 'cette semaine' : 'ce jour'}
@@ -469,7 +607,7 @@ export function ReferenceCalendar({ bookings, vehicles, onSelect }: CalendarProp
               </strong>
             ))}
             {days.map((day) => {
-              const dayBookings = bookings.filter(
+              const dayBookings = filteredBookings.filter(
                 (booking) => booking.date === day && booking.status !== 'cancelled',
               );
               const sameMonth = day.slice(0, 7) === monthCursor.slice(0, 7);
@@ -559,9 +697,35 @@ export function ReferenceCalendar({ bookings, vehicles, onSelect }: CalendarProp
             >
               <div className="reference-time-grid-corner" />
               {days.map((day) => {
-                const dayBookings = bookings.filter(
+                const dayBookings = filteredBookings.filter(
                   (booking) => booking.date === day && booking.status !== 'cancelled',
                 );
+                const dayEvents = getDayEvents(day);
+                const hoursByVehicle = new Map<string, number>();
+                dayEvents.forEach(({ booking, range }) => {
+                  hoursByVehicle.set(
+                    booking.vehicle.id,
+                    (hoursByVehicle.get(booking.vehicle.id) ?? 0) + range.duration / 60,
+                  );
+                });
+                const moverCount = dayEvents
+                  .filter((event) => !event.continuation)
+                  .reduce(
+                    (sum, { booking }) =>
+                      sum + (booking.quotes.at(-1)?.options?.labour ?? booking.options.labour),
+                    0,
+                  );
+                const occupancy = [
+                  ...[...hoursByVehicle].map(([vehicleId, hours]) => {
+                    const vehicle = vehicles.find((item) => item.id === vehicleId);
+                    return `${vehicleTag(vehicle?.shortName || vehicle?.name || vehicleId)} ${(
+                      Math.round(hours * 10) / 10
+                    )
+                      .toString()
+                      .replace('.', ',')} h`;
+                  }),
+                  ...(moverCount ? [`${moverCount} manœuvres`] : []),
+                ].join(' · ');
                 const dayTotals = dayBookings.reduce(
                   (sum, booking) => {
                     const value = amount(booking);
@@ -583,6 +747,9 @@ export function ReferenceCalendar({ bookings, vehicles, onSelect }: CalendarProp
                   >
                     <span>{weekLabels[(atNoon(day).getUTCDay() + 6) % 7]}</span>
                     <strong>{Number(day.slice(-2))}</strong>
+                    {occupancy && (
+                      <small className="reference-time-grid-occupancy">{occupancy}</small>
+                    )}
                     {dayBookings.length > 0 && (
                       <>
                         <i>
@@ -624,7 +791,21 @@ export function ReferenceCalendar({ bookings, vehicles, onSelect }: CalendarProp
                   className={`reference-time-grid-column ${day === today ? 'today' : ''}`}
                   key={day}
                   style={{ height: `${dayHeight * rowHeight}px` }}
-                  onClick={() => setSelectedDay(day)}
+                  onClick={(event) => {
+                    setSelectedDay(day);
+                    if ((event.target as HTMLElement).closest('[data-calendar-event]')) return;
+                    const bounds = event.currentTarget.getBoundingClientRect();
+                    const minuteOfDay =
+                      Math.round(
+                        (gridStart * 60 + ((event.clientY - bounds.top) / rowHeight) * 60) / 15,
+                      ) * 15;
+                    const hour = Math.floor(minuteOfDay / 60) % 24;
+                    const minute = minuteOfDay % 60;
+                    onCreateAtDay(
+                      day,
+                      `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
+                    );
+                  }}
                 >
                   {Array.from({ length: dayHeight + 1 }, (_, index) => gridStart + index).map(
                     (hour) => (
@@ -653,47 +834,68 @@ export function ReferenceCalendar({ bookings, vehicles, onSelect }: CalendarProp
                         (vehicleLane / vehicleCount + lane / vehicleCount / laneCount) * 100;
                       const quote = quoteKind(booking);
                       return (
-                        <button
-                          type="button"
+                        <div
+                          data-calendar-event
                           key={`${booking.id}-${vehicleLane}-${lane}`}
-                          className={`reference-time-event ${quote} ${range.estimated ? 'estimated' : ''}`}
+                          className="reference-time-event-shell"
                           style={{
                             top: `${top}px`,
                             height: `${height}px`,
                             left: `calc(${left}% + 2px)`,
                             width: `calc(${laneWidth}% - 4px)`,
-                            backgroundColor: quote === 'final' ? '#0e3a22' : '#3a3420',
-                            borderLeftColor: range.estimated ? 'rgba(255,255,255,.35)' : '#fff',
-                          }}
-                          title={`${booking.reference} · ${booking.customerName} · ${range.label}${range.estimated ? ' (créneau, durée estimée)' : ' (durée calculée)'}`}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onSelect(booking);
                           }}
                         >
-                          {booking.vehicle.image && <img src={booking.vehicle.image} alt="" />}
-                          <span>{range.label}</span>
-                          <strong>
-                            {booking.reference.replace(/^DEM-/u, '')} ·{' '}
-                            {booking.customerName.split(' ')[0]}
-                          </strong>
-                          <span>
-                            {quote === 'final' ? 'Final · ' : 'Provisoire · '}
-                            {money(totalsForBooking.final ?? totalsForBooking.provisional ?? 0)}
-                          </span>
-                          {height >= 64 && (
-                            <>
-                              <small>
-                                {vehicleTag(booking.vehicle.name)} ·{' '}
-                                {formatDuration(range.duration)}
-                                {range.estimated ? ' (estimé)' : ''}
-                              </small>
-                              <small>
-                                {booking.fromAddress} → {booking.toAddress}
-                              </small>
-                            </>
+                          <button
+                            type="button"
+                            className={`reference-time-event ${quote} ${range.estimated ? 'estimated' : ''}`}
+                            style={{
+                              backgroundColor: quote === 'final' ? '#0e3a22' : '#3a3420',
+                              borderLeftColor: range.estimated
+                                ? 'rgba(255,255,255,.35)'
+                                : vehicleColor(booking.vehicle.id),
+                            }}
+                            title={`${booking.reference} · ${booking.customerName} · ${range.label}${range.estimated ? ' (créneau, durée estimée)' : ' (durée calculée)'}`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              onSelect(booking);
+                            }}
+                          >
+                            {booking.vehicle.image && <img src={booking.vehicle.image} alt="" />}
+                            <span>{range.label}</span>
+                            <strong>
+                              {booking.reference.replace(/^DEM-/u, '')} ·{' '}
+                              {booking.customerName.split(' ')[0]}
+                            </strong>
+                            <span>
+                              {quote === 'final' ? 'Final · ' : 'Provisoire · '}
+                              {money(totalsForBooking.final ?? totalsForBooking.provisional ?? 0)}
+                            </span>
+                            {height >= 64 && (
+                              <>
+                                <small>
+                                  {vehicleTag(booking.vehicle.name)} ·{' '}
+                                  {formatDuration(range.duration)}
+                                  {range.estimated ? ' (estimé)' : ''}
+                                </small>
+                                <small>
+                                  {booking.fromAddress} → {booking.toAddress}
+                                </small>
+                              </>
+                            )}
+                          </button>
+                          {height >= 100 && (
+                            <button
+                              type="button"
+                              className="reference-time-event-team"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                onOpenTeam(booking);
+                              }}
+                            >
+                              {visibleUiText.text152}
+                            </button>
                           )}
-                        </button>
+                        </div>
                       );
                     },
                   )}
@@ -712,6 +914,13 @@ export function ReferenceCalendar({ bookings, vehicles, onSelect }: CalendarProp
             year: 'numeric',
           }).replace(/^./u, (c) => c.toUpperCase())}
         </strong>
+        <button
+          type="button"
+          className="reference-calendar-create"
+          onClick={() => onCreateAtDay(selectedDay, '08:00')}
+        >
+          {visibleUiText.text153}
+        </button>
         {selected.length === 0 ? (
           <span>{uiText['aucunRendezVousCeJour']}</span>
         ) : (

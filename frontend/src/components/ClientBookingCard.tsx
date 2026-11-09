@@ -3,7 +3,7 @@ import { uiText } from '../content/reference-ui-text';
 import { useApp } from '../application/context';
 import { useBookingCard } from '../application/controllers/useBookingCard';
 import { whatsappPaymentLine } from '../application/services/whatsapp-templates';
-import { money, referenceTierLabels } from '../domain/format';
+import { money, referenceTierLabels } from '../application/presentation/format';
 import type { Booking } from '../domain/model';
 import { routes } from '../routing/routes';
 import { BookingRouteMap } from './BookingRouteMap';

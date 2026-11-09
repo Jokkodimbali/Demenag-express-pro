@@ -118,4 +118,188 @@ export const visibleUiText = {
   text111: 'Marquer comme posé : ',
   text112: 'Question posée',
   text113: 'Cochez une fois la question posée',
+  text114: '6',
+  text115: 'ENVOI DU DEVIS · ',
+  text116: 'Rechercher : nom, téléphone, n° DEM, adresse',
+  text117: 'Rechercher une réservation',
+  text118: 'Résultats de recherche',
+  text119: 'Aucun résultat.',
+  text120: '+ Nouveau devis',
+  text121: 'À traiter · ',
+  text122: 'Tout marquer comme vu',
+  text123: '+221 77 123 45 67 ou +33 6 12 34 56 78',
+  text124: 'Réglages du devis',
+  text125: 'RÉGLAGES DU DEVIS',
+  text126: 'Facturation',
+  text127: 'Mode de facturation',
+  text128: 'Déménagement complet',
+  text129: 'Location avec chauffeur',
+  text130: 'Calcul',
+  text131: 'Étape',
+  text132: 'Étape du devis',
+  text133: 'Provisoire',
+  text134: 'Final',
+  text135: 'Matériel',
+  text136: 'État de préparation du matériel',
+  text137: 'Passage',
+  text138: 'Passage par les escaliers ou le balcon',
+  text139: 'Supplément passage par le balcon (FCFA)',
+  text140: 'Embouteillages',
+  text141: 'Prise en compte des embouteillages',
+  text142: 'Récupération liée à la chaleur',
+  text143: 'Aller à une date',
+  text144: 'PDF de la semaine',
+  text145: 'Filtrer par véhicule',
+  text146: 'Tous les véhicules',
+  text147: 'Filtrer par statut',
+  text148: 'Provisoire et final',
+  text149: 'Filtrer par employé',
+  text150: 'Tous les employés',
+  text151: 'Effacer les filtres',
+  text152: 'Équipe →',
+  text153: '+ Nouveau RDV ce jour',
+  text154: 'Conditions de chargement',
+  text155: 'CONDITIONS DE CHARGEMENT · AFFICHÉES SUR LE DEVIS',
+  text156: 'Le matériel sera-t-il prêt à être chargé ?',
+  text157: 'Le temps d’emballage est ajouté au planning. Pensez à prévoir cartons et film.',
+  text158: 'Tout passe-t-il par l’escalier ?',
+  text159: 'Le passage par le balcon entraîne un supplément fixé par Demenag Express après étude.',
+  text160: 'Demandez la largeur de l’escalier et des portes, ou une photo.',
+  text161: 'Décrire cet objet pour les calculs et le chargement',
+  text162: 'Objet ressemblant à',
+  text163: 'Objet générique',
+  text164: '(cm)',
+  text165: 'Poids (kg)',
+  text166: 'Prix menuisier spécifique (FCFA)',
+  text167:
+    'Les dimensions et le poids saisis remplacent les valeurs génériques dans le volume, la manutention et la simulation 3D.',
+  text168: 'Objets personnalisés du catalogue',
+  text169: 'Fermer le questionnaire',
+  text170: 'Le supplément de passage par le balcon sera précisé dans le devis.',
+  text171: 'Étape ',
+  text172: 'Serviettes de ce devis :',
+  text173: 'cm',
+  text174: 'Paramètres actuels : ',
+  text175: 'Choisir un créneau',
+  text176:
+    'autre(s) conversation(s) WhatsApp à ouvrir. Ouvrez-les une par une pour que le téléphone puisse lancer l’application.',
+  text177: 'Ouvrir pour ',
+  text178: 'Annuler les suivants',
+  text179: '+221 77 510 51 04 ou +33 6 12 34 56 78',
+  text180: 'Catalogue de l’inventaire',
+  text181:
+    'Ajoutez des types d’objets et leurs mesures. Les fiches de devis gardent les valeurs enregistrées au moment de leur création.',
+  text182: '+ Nouveau type',
+  text183: 'Types d’origine (',
+  text184: 'Type personnalisé ',
+  text185: 'Retirer',
+  text186: 'Nom',
+  text187: 'Ressemble à',
+  text188: 'NOM DU CONTACT CLIENT DANS LE TÉLÉPHONE',
+  text189: 'Par défaut',
+  text190: 'Prénom',
+  text191: 'Champs : ',
+  text192: 'Exemple :',
+  text193: 'Grille tarifaire client',
+  text194: 'Une page simple à envoyer aux clients : transport par véhicule et distance, manœuvres et étages, démontage local/importé, location avec chauffeur, bon à savoir et contact.',
+  text195: 'Télécharger la grille',
+  text196: 'Envoyer…',
+  pricingAgentDownload: 'Télécharger le PDF',
+  text197: 'Guide tarifaire pour agent IA',
+  text198:
+    'PDF complet généré à partir de vos tarifs actuels : formules, véhicules, transport par tranche, manœuvres et étages, menuisier local/importé par taille, péages, location et dépassement, exemples chiffrés, réponses types et données structurées. À donner à votre agent IA pour qu’il réponde aux clients.',
+  text199: 'Aller aux paramètres',
+  text200: 'Aller à :',
+  text201:
+    'Les sauvegardes et la remise à zéro des données sont dans l’onglet Données.',
+  text202: 'Location avec chauffeur · dépassement du planning (par heure)',
+  text203: 'Contact',
+  text204: 'Exporter tous les contacts',
+  text205: 'Allers-retours',
+  text206: 'Fin prévue',
+  text207: 'TOTAL',
+  text208: 'TOTAL ESTIMÉ',
+  text209: 'Sur devis',
+  text210: 'Manœuvres (client)',
+  text211: 'Manœuvres',
+  text212: 'Formule du devis',
+  text213: 'Choisir la formule tarifaire',
+  text214: 'Complète',
+  text215: 'Standard',
+  text216: 'Menuisier (location)',
+  text217: 'Inclus',
+  text218: 'Non inclus',
+  text221: 'Moins cher avec',
+  text222: 'Prendre ce véhicule',
+  text230: 'aller-retour',
+  text234: 'VOS INFORMATIONS',
+  text235: 'NOUVEAU DEVIS · CLIENT EN AGENCE',
+  text240: 'Détail du calcul',
+  text241: 'RÈGLES APPLIQUÉES',
+  pricingResetHeading: 'Prix et charges par défaut',
+  pricingResetDescription:
+    'Transport, manœuvres, menuisier (prix client et paie), dépassement, vidange, assurance, dette. Les devis enregistrés gardent leurs prix.',
+  pricingResetButton: 'Réinitialiser par défaut',
+  pricingResetButtonBusy: 'Réinitialisation…',
+  pricingResetConfirmEyebrow: 'Prix et charges',
+  pricingResetConfirmTitle: 'Réinitialiser les prix et les charges ?',
+  pricingResetConfirmDescription:
+    'Remet les valeurs par défaut : transport par véhicule (Trafic 15 000, Sprinter 28 000, Master 25 000 sous 15 km), manœuvre 6 500 FCFA (+500 par étage), grille menuisier client, allers-retours suivants à 60 %, jours creux −10 %, dépassement 10 000 FCFA/h ; paie manœuvre 5 000 FCFA, grille de paie menuisier, vidange, assurance, véhicules, dette et objectif. Les salaires, employés, péages et devis déjà enregistrés ne changent pas.',
+  pricingResetConfirmLabel: 'Réinitialiser',
+  pricingResetSuccess: 'Prix et charges remis par défaut. Les devis déjà enregistrés gardent leurs prix.',
+  pricingManoeuvreIncludedHours: 'Heures comprises dans le prix d’un manœuvre',
+  pricingManoeuvreOvertimeHourly: 'Au-delà, prix par heure et par manœuvre (0 = désactivé)',
+  pricingAutomaticDiscounts: 'REMISES AUTOMATIQUES',
+  pricingFollowingTrips: 'Allers-retours suivants, en % du 1er (100 = pas de dégressif)',
+  pricingLowDemand: 'Remise jour creux sur le transport (lundi à jeudi, du 6 au 24 du mois)',
+  pricingAssemblyReset: 'Revenir à la grille par défaut',
+  calculationRows: [
+    'Inventaire',
+    'Volume',
+    'Allers-retours',
+    'Poids',
+    'Manœuvres',
+    'Manutention',
+    'Trajet',
+    'Planning',
+    'Fatigue',
+    'Prix',
+  ],
 } as const;
+
+export function quoteCalculationRules(settings?: {
+  movingLaborPlanning?: {
+    cubicMetersPerHourPerMover?: number;
+    teamVolumePerMover?: number;
+    handlingCalibration?: number;
+    tripSetupMinutes?: number;
+    maxMoversPerVehicle?: number;
+    pauseMinutes?: number;
+    maxHandlingHours?: number;
+    maxDayHours?: number;
+    defaultStartHour?: number;
+  };
+}) {
+  const labor = settings?.movingLaborPlanning;
+  const volumePerMover = labor?.teamVolumePerMover || 6;
+  const rate = labor?.cubicMetersPerHourPerMover || 2.7;
+  const setup = labor?.tripSetupMinutes ?? 15;
+  const calibration = labor?.handlingCalibration || 1;
+  const pause = labor?.pauseMinutes ?? 30;
+  const maxHandling = labor?.maxHandlingHours ?? 3;
+  const maxDay = labor?.maxDayHours ?? 8;
+  const start = labor?.defaultStartHour ?? 8;
+  const maxMovers = labor?.maxMoversPerVehicle ?? 6;
+  const cadence = (volume: number) => (rate * volume).toFixed(1).replace('.', ',');
+  return [
+    `Cadence par manœuvre et par heure au rez-de-chaussée : cartons et sacs ≈ ${cadence(1.4)} m³, meubles ≈ ${cadence(1)} m³, canapés et matelas ≈ ${cadence(1.2)} m³, objets lourds (frigo, armoire montée, buffet…) ≈ ${cadence(0.72)} m³. Déchargement 20 % plus rapide.`,
+    "Étages sans ascenseur : de +10 % (cartons) à +25 % (objets lourds) par étage, 40 % de plus si escalier étroit. Avec ascenseur : +5 % d'attente puis +3 % à +15 % par étage, les canapés passant souvent par l'escalier.",
+    'Accès camion difficile (portage long) : +20 %. Objets fragiles : +10 %.',
+    `Équipe : 2 manœuvres minimum, 3 si un objet lourd passe 2 étages ou plus sans ascenseur. Base : 1 manœuvre par ${volumePerMover} m³ ou par ${volumePerMover * 110} kg, et au moins le nombre de porteurs de l’objet le plus lourd (2 au-delà de 30 kg, 3 au-delà de 70 kg, 4 au-delà de 110 kg, +1 dans un escalier sans ascenseur). Cadence ajustée au poids par m³ (référence 110 kg/m³), +1 manœuvre par tranche de 2 étages sans ascenseur (chaîne dans l’escalier), +1 au-delà du 4e étage avec ascenseur. Le 3e et le 4e comptent pour 75 %, les suivants pour 40 % car ils se gênent. Temps multiplié par le coefficient de calage ×${String(calibration).replace('.', ',')} et ${setup} min de mise en place par voyage et par adresse. Maximum ${maxMovers} par véhicule.`,
+    "Menuisier : démontage au départ et remontage à l'arrivée, en parallèle des manœuvres.",
+    "Emballage : ≈ 0,45 h par m³ de cartons et petits objets, 0,1 h par m³ de meubles. Fait la veille s'il dépasse 1 h 30.",
+    'Trajet : itinéraire majoré pour un utilitaire chargé et la circulation, +5 % pour Master et Sprinter, +10 min de stationnement par trajet, retour à vide 15 % plus rapide.',
+    `Temps fixes : 15 min d'arrivée et de protection, 10 min de vérification finale. Pause de ${pause} min si la journée dépasse 5 h.`,
+    `Plafonds : chargement + déchargement ≤ ${maxHandling} h, journée ≤ ${maxDay} h, début à ${start} h si le créneau n’est pas précisé. Modifiables dans Paramètres.`,
+  ];
+}

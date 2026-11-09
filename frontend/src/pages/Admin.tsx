@@ -10,7 +10,7 @@ import { BookingCard } from '../components/BookingCard';
 import { ConfirmationDialog } from '../components/ConfirmationDialog';
 import { useApp } from '../application/context';
 import { messages } from '../content/fr';
-import { money } from '../domain/format';
+import { money } from '../application/presentation/format';
 import type { Booking } from '../domain/model';
 import { bookingReminder } from '../application/services/booking-reminder';
 import { usePagination } from '../application/usePagination';
@@ -476,6 +476,18 @@ export function Admin() {
                         {reminder.lastSent && <small>{reminder.lastSent}</small>}
                         <button
                           type="button"
+                          className="admin-reservation-team"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            navigate(
+                              `${routes.administrationFleet}?date=${encodeURIComponent(booking.date ?? dakarToday())}&booking=${encodeURIComponent(booking.id)}`,
+                            );
+                          }}
+                        >
+                          {visibleUiText.text152}
+                        </button>
+                        <button
+                          type="button"
                           className="admin-reservation-delete"
                           onClick={(event) => {
                             event.stopPropagation();
@@ -571,6 +583,18 @@ export function Admin() {
                         </small>
                       )}
                       {reminder.lastSent && <small>{reminder.lastSent}</small>}
+                      <button
+                        type="button"
+                        className="admin-reservation-team"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          navigate(
+                            `${routes.administrationFleet}?date=${encodeURIComponent(booking.date ?? dakarToday())}&booking=${encodeURIComponent(booking.id)}`,
+                          );
+                        }}
+                      >
+                        {visibleUiText.text152}
+                      </button>
                       <button
                         type="button"
                         className="admin-reservation-delete"

@@ -82,25 +82,163 @@
   color: #aeb4bb;
   font-size: 11.5px;
 }
-.admin-quote-calculation {
+.admin-quote-reference-settings {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 16px;
+  grid-column: 1 / -1;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  margin-bottom: 0;
+  padding: 12px 14px;
   border: 1px solid #3b4046;
   border-radius: 16px;
   background: #272a2e;
-  color: #fff;
 }
-.admin-quote-calculation-description {
+.admin-quote-billing-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  padding: 4px;
+  border-radius: 12px;
+  background: #1e2023;
+}
+.admin-quote-billing.admin-quote-card,
+.admin-quote-team-calculation.admin-quote-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.admin-quote-billing.admin-quote-card > h3,
+.admin-quote-team-calculation.admin-quote-card > h3 {
+  margin: 0;
+  color: #aeb4bb;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+}
+.admin-quote-billing-options button {
+  min-height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #d5d9de;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.admin-quote-billing-options button.active {
+  background: #f6d73c;
+  color: #1e2023;
+}
+.admin-quote-rental-details {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #1e2023;
+}
+.admin-quote-rental-details > p {
+  margin: 0;
   color: #d5d9de;
   font-size: 12.5px;
   line-height: 1.45;
 }
-.admin-quote-calculation-values {
+.admin-quote-team-calculation > p {
+  margin: -4px 0 0;
+  color: #d5d9de;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.admin-quote-calc-mode {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 11px;
+  background: #1e2023;
+}
+.admin-quote-calc-mode button {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #d5d9de;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.admin-quote-calc-mode button.selected {
+  background: #f6d73c;
+  color: #1e2023;
+}
+.admin-quote-team-values {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
   gap: 8px;
+}
+.admin-quote-team-advice {
+  color: #f6d73c;
+  font-size: 12px;
+}
+.admin-quote-reference-settings > strong {
+  flex: 0 0 100%;
+  color: #aeb4bb;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+.admin-quote-reference-setting {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+.admin-quote-reference-setting > span {
+  color: #aeb4bb;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.admin-quote-reference-setting > div {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding: 3px;
+  border-radius: 11px;
+  background: #1e2023;
+}
+.admin-quote-reference-setting button {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #d5d9de;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.admin-quote-reference-setting input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #3b3e43;
+  border-radius: 9px;
+  background: #1e2023;
+  color: #f4f5f6;
+  font: inherit;
+  font-size: 14px;
+}
+.admin-quote-reference-setting button.active {
+  background: #f6d73c;
+  color: #1e2023;
+}
+.admin-quote-reference-setting button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 .admin-quote-calculation-value {
   display: flex;
@@ -122,9 +260,9 @@
   gap: 8px;
 }
 .admin-quote-calculation-value button {
-  width: 38px;
-  height: 38px;
-  flex: 0 0 38px;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
   border: 1px solid #3b4046;
   border-radius: 9px;
   background: #1e2023;
@@ -147,10 +285,6 @@
   color: #f6d73c;
   font-size: 18px;
   white-space: nowrap;
-}
-.admin-quote-calculation-advice {
-  color: #f6d73c;
-  font-size: 12px;
 }
 .admin-quote-traffic button.selected {
   border-color: #f6d73c;
@@ -292,4 +426,247 @@
   gap: 12px;
   color: #d5d9de;
   font-size: 12px;
+}
+.admin-quote-rental-heading,
+.admin-quote-rental-overtime {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.admin-quote-rental-heading strong {
+  flex: 1;
+  color: #aeb4bb;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+.admin-quote-rental-heading button {
+  border: 0;
+  background: transparent;
+  color: #f6d73c;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.admin-quote-rental-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  gap: 8px;
+}
+.admin-quote-rental-summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.admin-quote-rental-summary span {
+  color: #aeb4bb;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.admin-quote-rental-summary strong {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+}
+.admin-quote-rental-summary > div:first-child strong {
+  font-size: 17px;
+}
+.admin-quote-rental-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 54px;
+  padding: 5px 0;
+  border-bottom: 1px solid #30343a;
+  color: #fff;
+  font-size: 13px;
+}
+.admin-quote-rental-item > span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.admin-quote-rental-item button,
+.admin-quote-rental-overtime button {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 8px;
+  border: 1px solid #3b4046;
+  border-radius: 8px;
+  background: #272a2e;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+.admin-quote-rental-item button:disabled,
+.admin-quote-rental-overtime button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.admin-quote-rental-item > strong {
+  min-width: 22px;
+  color: #f6d73c;
+  text-align: center;
+}
+.admin-quote-rental-add {
+  display: flex;
+  gap: 8px;
+}
+.admin-quote-rental-add input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 11px;
+  border: 1px solid #3b4046;
+  border-radius: 9px;
+  background: #272a2e;
+  color: #fff;
+}
+.admin-quote-rental-add button {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 9px;
+  background: #f6d73c;
+  color: #1e2023;
+  font-weight: 800;
+  cursor: pointer;
+}
+.admin-quote-rental-overtime > span {
+  flex: 1 0 100%;
+  color: #aeb4bb;
+  font-size: 12px;
+}
+.admin-quote-rental-overtime {
+  padding-top: 10px;
+  border-top: 1px solid #30343a;
+}
+.admin-quote-rental-overtime > b {
+  min-width: 70px;
+  color: #f6d73c;
+  font-size: 18px;
+  text-align: center;
+}
+.admin-quote-rental-overtime > button:nth-of-type(2) {
+  border-color: #f6d73c;
+  background: #f6d73c;
+  color: #1e2023;
+}
+.admin-quote-rental-overtime > button:nth-of-type(3) {
+  min-width: 0;
+  border-color: #4a5057;
+  background: transparent;
+  font-size: 12.5px;
+}
+.admin-quote-rental-overtime > strong:last-child {
+  margin-left: auto;
+  color: #fff;
+  font-size: 13.5px;
+}
+.admin-quote-rental-overtime > strong {
+  color: #f6d73c;
+  white-space: nowrap;
+}
+.admin-quote-rental-overtime > strong:first-child {
+  flex: 1 0 100%;
+  padding: 9px 11px;
+  border-radius: 10px;
+  background: #f6d73c;
+  color: #1e2023;
+  font-size: 12.5px;
+  line-height: 1.45;
+  white-space: normal;
+}
+.admin-quote-page .inventory-custom-entry {
+  min-width: 0;
+}
+.admin-quote-page .inventory-custom-details {
+  margin: 0 0 10px 10px;
+  padding: 10px 12px;
+  border: 1px solid #42474d;
+  border-radius: 10px;
+  background: #24272b;
+  color: #e6e8eb;
+}
+.admin-quote-page .inventory-custom-details summary {
+  min-height: 44px;
+  color: #f6d73c;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.admin-quote-page .inventory-custom-details > label,
+.admin-quote-page .inventory-custom-dimensions > label {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+  margin: 8px 0;
+  color: #d5d9de;
+  font-size: 12px;
+}
+.admin-quote-page .inventory-custom-details select,
+.admin-quote-page .inventory-custom-details input[type='number'] {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 7px 9px;
+  border: 1px solid #51575f;
+  border-radius: 8px;
+  background: #1c1f22;
+  color: #fff;
+  font-size: 14px;
+}
+.admin-quote-page .inventory-custom-dimensions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.admin-quote-page .inventory-custom-constraints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 8px 0;
+}
+.admin-quote-page .inventory-custom-constraints label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #e6e8eb;
+  font-size: 12px;
+}
+.admin-quote-page .inventory-custom-details > small {
+  display: block;
+  color: #aeb4bb;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.loading-simulation-blanket-size {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px;
+  border: 1px solid #454a50;
+  border-radius: 10px;
+  background: #24272b;
+}
+.loading-simulation-blanket-size > span,
+.loading-simulation-blanket-size > small {
+  color: #d5d9de;
+  font-size: 12px;
+}
+.loading-simulation-blanket-size > button {
+  margin-left: auto;
+}
+@media (max-width: 760px) {
+  .admin-quote-page .inventory-custom-dimensions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .loading-simulation-blanket-size > button {
+    width: 100%;
+    margin-left: 0;
+  }
 }

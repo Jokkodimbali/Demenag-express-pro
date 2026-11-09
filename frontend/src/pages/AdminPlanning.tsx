@@ -4,13 +4,21 @@ import { useApp } from '../application/context';
 import { ReferenceCalendar } from '../components/ReferenceCalendar';
 import { messages } from '../content/fr';
 import { routes } from '../routing/routes';
+import { useCalendarEmployees } from '../application/controllers/useCalendarEmployees';
 
 export function AdminPlanning() {
   const { bookings, loading, error } = useAdministration();
-  const { catalogue } = useApp();
+  const { catalogue, exportPlanningWeek } = useApp();
   const navigate = useNavigate();
+  const employees = useCalendarEmployees();
   const select = (booking: (typeof bookings)[number]) =>
     navigate(`${routes.administrationCreateQuote}?modifier=${encodeURIComponent(booking.id)}`);
+  const createAtDay = (date: string, time: string) =>
+    navigate(routes.administrationCreateQuote, { state: { calendarAppointment: { date, time } } });
+  const openTeam = (booking: (typeof bookings)[number]) =>
+    navigate(
+      `${routes.administrationFleet}?date=${encodeURIComponent(booking.date ?? '')}&booking=${encodeURIComponent(booking.id)}`,
+    );
   return (
     <div>
       {error ? (
@@ -24,7 +32,11 @@ export function AdminPlanning() {
         <ReferenceCalendar
           bookings={bookings}
           vehicles={catalogue?.vehicles ?? []}
+          employees={employees}
           onSelect={select}
+          onCreateAtDay={createAtDay}
+          onOpenTeam={openTeam}
+          onExportWeek={exportPlanningWeek}
         />
       )}
     </div>

@@ -1,11 +1,13 @@
 import { Warehouse } from 'lucide-react';
-import { money } from '../domain/format';
+import { money } from '../application/presentation/format';
 import { whatsappNumber } from '../application/services/whatsapp';
 import { uiText } from '../content/reference-ui-text';
 import type { useAdminCreateQuoteModel } from '../application/controllers/useAdminCreateQuoteModel';
 import type { Catalogue, Vehicle } from '../domain/model';
 import type { ReactNode } from 'react';
 import { visibleUiText } from '../content/visible-ui-text';
+import { adminQuoteVehicleText as quoteText } from '../content/admin-quote-vehicle';
+import { AdminQuoteCalculationDetails } from './AdminQuoteCalculationDetails';
 
 type Model = ReturnType<typeof useAdminCreateQuoteModel>;
 
@@ -30,9 +32,6 @@ export function AdminCreateQuoteAside({
     effectiveDistance,
     previewLines,
     quoteConfig,
-    setQuoteConfig,
-    setDraft,
-    movingEstimate,
     previewDiscountLabel,
     previewDiscount,
     previewTotal,
@@ -42,8 +41,6 @@ export function AdminCreateQuoteAside({
     estimateText,
     questionnaireText,
     editingBooking,
-    canCreateFinal,
-    setQuoteKind,
     setStageError,
     submitting,
     estimating,
@@ -69,6 +66,11 @@ export function AdminCreateQuoteAside({
   } = model;
   return (
     <aside className="admin-quote-aside">
+      <div className="admin-quote-step-heading" data-step="6">
+        <span className="admin-quote-step-number">{visibleUiText.text114}</span>
+        <span>{quoteText.stepReview}</span>
+        <i aria-hidden="true" />
+      </div>
       <div className="admin-quote-paper" aria-label={uiText['apercuDuDevisEnDirect']}>
         <header>
           <div className="admin-quote-brand">
@@ -83,7 +85,7 @@ export function AdminCreateQuoteAside({
           </div>
           <div className="admin-quote-paper-title">
             <strong>{quoteKind === 'final' ? 'DEVIS FINAL' : 'DEVIS PROVISOIRE'}</strong>
-            <span>{uiText['brouillon']}</span>
+            <span>{editingReservation ? uiText['brouillon'] : 'Nouvelle réservation'}</span>
           </div>
         </header>
         <div className="admin-quote-stripe">
@@ -212,170 +214,25 @@ export function AdminCreateQuoteAside({
         </p>
       </div>
       {!publicRequest && (
-        <section className="admin-quote-calculation" aria-label={visibleUiText.text1}>
-          <span className="admin-quote-stage-label">{visibleUiText.text2}</span>
-          <div className="admin-quote-stage-switch" role="group" aria-label={visibleUiText.text3}>
-            <button
-              type="button"
-              aria-pressed={quoteConfig.calcMode === 'auto'}
-              className={quoteConfig.calcMode === 'auto' ? 'active provisional' : ''}
-              onClick={() => {
-                setQuoteConfig((current) => ({ ...current, calcMode: 'auto', legMinutes: 0 }));
-                setDraft((current) => ({
-                  ...current,
-                  inventory: { ...current.inventory, crew: 0 },
-                }));
-              }}
-            >
-              {visibleUiText.text4}
-            </button>
-            <button
-              type="button"
-              aria-pressed={quoteConfig.calcMode === 'manual'}
-              className={quoteConfig.calcMode === 'manual' ? 'active provisional' : ''}
-              onClick={() => {
-                const crew = movingEstimate?.crew || draft.options.labour || 2;
-                setQuoteConfig((current) => ({
-                  ...current,
-                  calcMode: 'manual',
-                  legMinutes: Math.max(0, Math.round((movingEstimate?.travelLegMinutes ?? 0) - 10)),
-                }));
-                setDraft((current) => ({
-                  ...current,
-                  options: { ...current.options, labour: crew },
-                  inventory: { ...current.inventory, crew },
-                }));
-              }}
-            >
-              {visibleUiText.text5}
-            </button>
-          </div>
-          <span className="admin-quote-calculation-description">
-            {quoteConfig.calcMode === 'manual'
-              ? 'Vous fixez manœuvres, allers-retours et durée de trajet. L’inventaire ne les modifie plus. Le véhicule reste libre.'
-              : 'L’inventaire calcule les allers-retours et conseille le nombre de manœuvres. Le véhicule reste libre.'}
-          </span>
-          {quoteConfig.calcMode === 'manual' && (
-            <div className="admin-quote-calculation-values">
-              {[
-                {
-                  label: 'Manœuvres',
-                  value: draft.options.labour,
-                  min: 1,
-                  max: catalogue.settings.maxOptions,
-                  change: (delta: number) =>
-                    setDraft((current) => {
-                      const crew = Math.max(
-                        1,
-                        Math.min(catalogue.settings.maxOptions, current.options.labour + delta),
-                      );
-                      return {
-                        ...current,
-                        options: { ...current.options, labour: crew },
-                        inventory: { ...current.inventory, crew },
-                      };
-                    }),
-                },
-                {
-                  label: 'Allers-retours',
-                  value: quoteConfig.trips,
-                  min: 1,
-                  max: Math.min(30, catalogue.settings.maxTrips),
-                  change: (delta: number) =>
-                    setQuoteConfig((current) => ({
-                      ...current,
-                      trips: Math.max(
-                        1,
-                        Math.min(30, catalogue.settings.maxTrips, current.trips + delta),
-                      ),
-                    })),
-                },
-                ...(draft.route
-                  ? [
-                      {
-                        label: 'Trajet (aller)',
-                        value: quoteConfig.legMinutes,
-                        min: 5,
-                        max: 600,
-                        change: (delta: number) =>
-                          setQuoteConfig((current) => ({
-                            ...current,
-                            legMinutes: Math.max(
-                              5,
-                              Math.min(600, (current.legMinutes || 10) + delta * 5),
-                            ),
-                          })),
-                      },
-                    ]
-                  : []),
-              ].map((field) => (
-                <div className="admin-quote-calculation-value" key={field.label}>
-                  <span>{field.label}</span>
-                  <div>
-                    <button
-                      type="button"
-                      aria-label={`Réduire ${field.label}`}
-                      disabled={field.value <= field.min}
-                      onClick={() => field.change(-1)}
-                    >
-                      −
-                    </button>
-                    <strong>
-                      {field.value}
-                      {field.label === 'Trajet (aller)' ? ' min' : ''}
-                    </strong>
-                    <button
-                      type="button"
-                      aria-label={`Augmenter ${field.label}`}
-                      disabled={field.value >= field.max}
-                      onClick={() => field.change(1)}
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          {quoteConfig.calcMode === 'manual' && movingEstimate && (
-            <span className="admin-quote-calculation-advice">
-              {visibleUiText.text6}
-              {movingEstimate.recommendedCrew} {visibleUiText.text7} {movingEstimate.trips}{' '}
-              {visibleUiText.text8}
-            </span>
-          )}
-        </section>
+        <AdminQuoteCalculationDetails
+          estimate={model.movingEstimate}
+          inventoryCount={model.inventoryCount}
+          vehicle={selected}
+          trips={quoteConfig.trips}
+          total={previewTotal}
+          lineCount={previewLines.length}
+          discount={previewDiscount}
+          hasTolls={totalTolls > 0}
+          manual={quoteConfig.calcMode === 'manual'}
+          settings={catalogue.settings}
+        />
       )}
       {!publicRequest && (
         <section className="admin-quote-stage" aria-label={uiText['etapeActuelleDuDevis']}>
-          <span className="admin-quote-stage-label">{uiText['etapeACTUELLE']}</span>
-          <div className="admin-quote-stage-switch" role="group" aria-label={uiText['typeDeDevis']}>
-            <button
-              type="button"
-              aria-pressed={quoteKind === 'provisional'}
-              className={quoteKind === 'provisional' ? 'active provisional' : ''}
-              onClick={() => setQuoteKind('provisional')}
-            >
-              {uiText['provisoire']}
-            </button>
-            <button
-              type="button"
-              aria-pressed={quoteKind === 'final'}
-              className={quoteKind === 'final' ? 'active final' : ''}
-              disabled={Boolean(editingBooking?.quotes.some((quote) => quote.kind === 'final'))}
-              title={
-                canCreateFinal
-                  ? undefined
-                  : 'Une date est nécessaire pour enregistrer un devis final.'
-              }
-              onClick={() => {
-                setQuoteKind('final');
-                setStageError('');
-              }}
-            >
-              {uiText['final']}
-            </button>
-          </div>
+          <span className="admin-quote-stage-label">
+            {visibleUiText.text115}
+            {quoteKind === 'final' ? 'FINAL' : 'PROVISOIRE'}
+          </span>
           {quoteKind === 'final' && (
             <span className="admin-quote-stage-instruction">
               {uiText['indiquezLeNombreReelDAllersRetoursPuisEnregistrez']}
@@ -516,7 +373,7 @@ export function AdminCreateQuoteAside({
         </p>
       )}
       <button
-        className={`button primary admin-quote-submit${publicRequest ? ' reference-request-submit' : ''}`}
+        className={`button primary admin-quote-submit${publicRequest ? ' reference-request-submit' : ' admin-quote-save-bar-submit'}`}
         disabled={
           submitting ||
           estimating ||
@@ -538,7 +395,6 @@ export function AdminCreateQuoteAside({
               ? 'Enregistrer les modifications'
               : 'Enregistrer'}
       </button>
-      {simulation}
       {!publicRequest && (
         <button
           type="button"
@@ -548,6 +404,7 @@ export function AdminCreateQuoteAside({
           {`Télécharger le PDF ${quoteKind === 'final' ? 'final' : 'provisoire'}`}
         </button>
       )}
+      {simulation}
     </aside>
   );
 }

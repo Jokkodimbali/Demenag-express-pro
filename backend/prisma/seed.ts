@@ -2,6 +2,7 @@ import { toVehicle, toSettings } from '../src/adapters/out/prisma/mapping.js';
 import '../src/config/env.js';
 import { readEnv } from '../src/config/env.js';
 import { createPrisma } from '../src/adapters/out/prisma/client.js';
+import { createReferenceLabourPriceMatrix, referenceAssemblyPriceDefaults, referenceVehiclePrices } from '../../shared/reference-tariff-defaults.js';
 const db = createPrisma(readEnv().DATABASE_URL);
 const vehicles = [
   {
@@ -14,7 +15,7 @@ const vehicles = [
     wheelWidth: '1,35 m',
     image: '/assets/sprinter-profil.png',
     interior: '/assets/sprinter-interieur.png',
-    prices: [30000, 37000, 44000],
+    prices: [...referenceVehiclePrices.sprinter],
   },
   {
     id: 'trafic',
@@ -26,7 +27,7 @@ const vehicles = [
     wheelWidth: '1,27 m',
     image: '/assets/trafic-profil.png',
     interior: '/assets/trafic-interieur.png',
-    prices: [20000, 25000, 30000],
+    prices: [...referenceVehiclePrices.trafic],
   },
   {
     id: 'master',
@@ -38,7 +39,7 @@ const vehicles = [
     wheelWidth: '1,38 m',
     image: '/assets/master-profil.png',
     interior: '/assets/master-interieur.png',
-    prices: [25000, 31000, 37000],
+    prices: [...referenceVehiclePrices.master],
   },
 ];
 try {
@@ -56,8 +57,13 @@ try {
       create: {
         id: 'main',
         ...toSettings({
-          labourPrice: 6000,
-          assemblyPrice: 15000,
+          labourPrice: 6500,
+          labourFloorPrice: 500,
+          labourLiftPrice: 500,
+          labourMatrix: createReferenceLabourPriceMatrix(),
+          assemblyPrice: 7500,
+          montageP: referenceAssemblyPriceDefaults,
+          rentalOvertimeHourlyRate: 10000,
           businessPhone: '+221775105104',
           whatsappPhone: '+221775105104',
           businessName: 'Demenag Express',

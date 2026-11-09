@@ -73,6 +73,79 @@ test('le démontage d’un objet personnalisé réduit son volume comme dans la 
   assert.equal(dismantled.volume, 0.4);
 });
 
+test('le passage par le balcon augmente le temps de chargement de 20 % et reste figé au devis', () => {
+  const inventory = blankInventory();
+  inventory.entries.salon = { quantity: 1, size: 5, dismantle: false };
+  const laborPlanning = { tripSetupMinutes: 0 };
+  const stairs = estimateMovingWork(inventory, vehicle, null, {
+    trips: 1,
+    crew: 2,
+    laborPlanning,
+  });
+  inventory.stairs = 'balcon';
+  inventory.balcPx = 25000;
+  const balcony = estimateMovingWork(inventory, vehicle, null, {
+    trips: 1,
+    crew: 2,
+    laborPlanning,
+  });
+  const snapshot = bookingInventorySnapshot(inventory, balcony);
+
+  assert.ok(Math.abs(balcony.loadingMinutes / stairs.loadingMinutes - 1.2) < 0.000001);
+  assert.equal(snapshot.stairs, 'balcon');
+  assert.equal(snapshot.balcPx, 25000);
+  assert.equal(snapshot.sourceInventory?.balcPx, 25000);
+});
+
+test('un objet libre décrit utilise ses dimensions et son poids dans les totaux figés', () => {
+  const inventory = blankInventory();
+  inventory.blanketLengthCm = 210;
+  inventory.blanketWidthCm = 180;
+  inventory.custom = [
+    {
+      id: 'aquarium',
+      label: 'aquarium',
+      quantity: 1,
+      cL: 100,
+      cW: 50,
+      cH: 50,
+      kg: 70,
+      up: true,
+      frag: true,
+      notop: true,
+    },
+  ];
+
+  const estimate = estimateMovingWork(inventory, vehicle, null, { trips: 1 });
+  const snapshot = bookingInventorySnapshot(inventory, estimate);
+
+  assert.equal(snapshot.items[0]?.volumeM3, 0.25);
+  assert.equal(snapshot.totalWeightKg, 70);
+  assert.equal(snapshot.maxItemWeightKg, 70);
+  assert.equal(snapshot.sourceInventory?.blanketLengthCm, 210);
+  assert.equal(snapshot.sourceInventory?.blanketWidthCm, 180);
+  assert.equal(snapshot.sourceInventory?.custom[0]?.frag, true);
+});
+
+test('le poids saisi remplace le poids du meuble modèle de l’objet personnalisé', () => {
+  const inventory = blankInventory();
+  inventory.custom = [
+    {
+      id: 'custom-sofa',
+      label: 'Canapé ancien',
+      quantity: 1,
+      format: 'large',
+      like: 'salon',
+      kg: 70,
+    },
+  ];
+
+  const estimate = estimateMovingWork(inventory, vehicle, null, { trips: 1 });
+
+  assert.equal(estimate.totalWeightKg, 70);
+  assert.equal(estimate.maxItemWeightKg, 70);
+});
+
 test('la recommandation ne rajoute pas de menuisiers quand la manutention reste limitante', () => {
   const inventory = blankInventory();
   inventory.entries.carton = {
@@ -228,8 +301,70 @@ test('deux véhicules en parallèle reprennent la solution proposée par la réf
   assert.equal(single.trips, 6);
   assert.equal(single.totalMinutes, 785);
   assert.equal(parallel.crew, 12);
-  assert.equal(Math.round(parallel.handlingMinutes / 5) * 5, 315);
+  assert.equal(Math.round(parallel.handlingMinutes / 5) * 5, 305);
   assert.equal(Math.round(parallel.rawTotalMinutes / 5) * 5, 410);
+});
+
+test('le scénario de référence conserve ses volumes, son équipe et ses durées', () => {
+  const inventory = blankInventory();
+  inventory.dwellingType = 'F3';
+  inventory.annexOn = true;
+  inventory.fromFloor = 3;
+  inventory.toFloor = 1;
+  inventory.toLift = true;
+  inventory.flags = { acces: true, fragile: true, escalier: true, emballage: true };
+  for (const [key, quantity, size, dismantle] of [
+    ['salon', 1, 5, false],
+    ['armoire', 1, 3, true],
+    ['frigo', 1, 1, false],
+    ['carton', 12, 1, false],
+    ['lit', 1, 2, true],
+    ['matelas', 1, 2, false],
+  ] as const)
+    inventory.entries[key] = { quantity, size, format: 'medium', dismantle };
+
+  const estimate = estimateMovingWork(
+    inventory,
+    vehicle,
+    { distanceKm: 20, durationMinutes: 0 },
+    {
+      startTime: '08:00',
+      date: '2026-11-10',
+      month: '2026-11',
+      fromAddress: 'Ouakam, Dakar',
+      toAddress: 'Almadies, Dakar',
+    },
+  );
+
+  assert.equal(estimate.volume, 10.79);
+  assert.equal(estimate.capacity, 13.9);
+  assert.equal(estimate.trips, 2);
+  assert.equal(estimate.crew, 6);
+  assert.equal(estimate.carpenterCount, 2);
+  assert.ok(Math.abs(estimate.handlingMinutes - 206.170947) < 0.001);
+  assert.equal(estimate.totalMinutes, 525);
+  assert.equal(estimate.endTime, '16:45');
+  assert.equal(estimate.totalWeightKg, 819);
+  assert.equal(estimate.maxItemWeightKg, 65);
+
+  const manualEstimate = estimateMovingWork(
+    inventory,
+    vehicle,
+    { distanceKm: 20, durationMinutes: 0 },
+    {
+      startTime: '08:00',
+      date: '2026-11-10',
+      month: '2026-11',
+      fromAddress: 'Ouakam, Dakar',
+      toAddress: 'Almadies, Dakar',
+      crew: 4,
+    },
+  );
+  assert.equal(manualEstimate.crew, 4);
+  assert.equal(manualEstimate.recommendedCrew, 6);
+  assert.ok(Math.abs(manualEstimate.handlingMinutes - 239.581449) < 0.001);
+  assert.equal(manualEstimate.totalMinutes, 590);
+  assert.equal(manualEstimate.endTime, '17:50');
 });
 
 test('le choix manuel est conservé et reste comparé à la recommandation automatique', () => {

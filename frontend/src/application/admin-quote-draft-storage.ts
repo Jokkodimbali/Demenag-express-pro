@@ -1,4 +1,5 @@
 import type { Draft } from './booking-draft';
+import type { RentalKitItem } from '../domain/model';
 
 export type AdminQuoteConfig = {
   trips: number;
@@ -12,6 +13,10 @@ export type AdminQuoteConfig = {
   discountReason: string;
   customPrice: number | null;
   labourUnitPriceOverride: number | null;
+  billingMode: 'complete' | 'standard' | 'driver-rental';
+  menuIncluded: boolean;
+  overtimeMinutes: number;
+  rentalKit: RentalKitItem[] | null;
 };
 
 export type AdminQuoteDraft = {
@@ -20,17 +25,28 @@ export type AdminQuoteDraft = {
   tollLines: { id: string; label: string; quantity: number; unitPrice: number }[];
 };
 
-const STORAGE_KEY = 'demenag-admin-quote-draft-v1';
+type AdminQuoteDraftApi = {
+  adminQuoteDraft(): Promise<unknown | null>;
+  saveAdminQuoteDraft(draft: unknown): Promise<void>;
+  clearAdminQuoteDraft(): Promise<void>;
+};
+const persistenceQueues = new WeakMap<AdminQuoteDraftApi, Promise<void>>();
 
-export function readAdminQuoteDraft(): AdminQuoteDraft | null {
+function enqueuePersistence(api: AdminQuoteDraftApi, operation: () => Promise<void>) {
+  const next = (persistenceQueues.get(api) ?? Promise.resolve()).then(operation, operation);
+  persistenceQueues.set(
+    api,
+    next.catch(() => undefined),
+  );
+  return next;
+}
+
+export async function readAdminQuoteDraft(
+  api: AdminQuoteDraftApi,
+): Promise<AdminQuoteDraft | null> {
   try {
-    const value = sessionStorage.getItem(STORAGE_KEY);
-    if (!value) return null;
-    const parsed: unknown = JSON.parse(value);
-    if (!isAdminQuoteDraft(parsed)) {
-      sessionStorage.removeItem(STORAGE_KEY);
-      return null;
-    }
+    const parsed = await api.adminQuoteDraft();
+    if (!parsed || !isAdminQuoteDraft(parsed)) return null;
     return {
       ...parsed,
       quoteConfig: {
@@ -43,6 +59,17 @@ export function readAdminQuoteDraft(): AdminQuoteDraft | null {
         labourUnitPriceOverride: parsed.quoteConfig.labourUnitPriceOverride ?? null,
         discountType: parsed.quoteConfig.discountType ?? 'fcfa',
         discountReason: parsed.quoteConfig.discountReason ?? '',
+        billingMode: ['complete', 'standard', 'driver-rental'].includes(
+          parsed.quoteConfig.billingMode,
+        )
+          ? parsed.quoteConfig.billingMode
+          : 'complete',
+        menuIncluded: parsed.quoteConfig.menuIncluded === true,
+        overtimeMinutes: Math.max(0, Number(parsed.quoteConfig.overtimeMinutes) || 0),
+        rentalKit:
+          parsed.quoteConfig.rentalKit === null || Array.isArray(parsed.quoteConfig.rentalKit)
+            ? parsed.quoteConfig.rentalKit
+            : null,
       },
       draft: {
         ...parsed.draft,
@@ -73,20 +100,19 @@ export function readAdminQuoteDraft(): AdminQuoteDraft | null {
   }
 }
 
-export function saveAdminQuoteDraft(value: AdminQuoteDraft): void {
-  try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(value));
-  } catch {
-    // Un stockage indisponible ne doit pas empêcher la création du devis.
-  }
+export function saveAdminQuoteDraft(
+  api: AdminQuoteDraftApi,
+  value: AdminQuoteDraft,
+): Promise<void> {
+  return enqueuePersistence(api, () => api.saveAdminQuoteDraft(value)).catch(() => {
+    // Le formulaire reste utilisable si le serveur est momentanément indisponible.
+  });
 }
 
-export function clearAdminQuoteDraft(): void {
-  try {
-    sessionStorage.removeItem(STORAGE_KEY);
-  } catch {
-    // Le formulaire reste utilisable si le stockage de session est bloqué.
-  }
+export function clearAdminQuoteDraft(api: AdminQuoteDraftApi): Promise<void> {
+  return enqueuePersistence(api, () => api.clearAdminQuoteDraft()).catch(() => {
+    // La création du devis enregistré reste prioritaire sur le nettoyage du brouillon.
+  });
 }
 
 function isAdminQuoteDraft(value: unknown): value is AdminQuoteDraft {
@@ -141,6 +167,21 @@ function isAdminQuoteDraft(value: unknown): value is AdminQuoteDraft {
     (config.labourUnitPriceOverride === undefined ||
       config.labourUnitPriceOverride === null ||
       (Number.isInteger(config.labourUnitPriceOverride) && config.labourUnitPriceOverride > 0)) &&
+    (config.billingMode === undefined ||
+      ['complete', 'standard', 'driver-rental'].includes(config.billingMode)) &&
+    (config.menuIncluded === undefined || typeof config.menuIncluded === 'boolean') &&
+    (config.overtimeMinutes === undefined ||
+      (Number.isInteger(config.overtimeMinutes) && config.overtimeMinutes >= 0)) &&
+    (config.rentalKit === undefined ||
+      config.rentalKit === null ||
+      (Array.isArray(config.rentalKit) &&
+        config.rentalKit.every(
+          (item) =>
+            typeof item.id === 'string' &&
+            typeof item.label === 'string' &&
+            Number.isInteger(item.quantity) &&
+            item.quantity >= 0,
+        ))) &&
     Array.isArray(saved.tollLines) &&
     saved.tollLines.every(
       (line) =>

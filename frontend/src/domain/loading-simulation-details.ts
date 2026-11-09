@@ -347,11 +347,19 @@ export function fatigueAdvice(
   crew: number,
   estimate?: MovingEstimate | null,
 ) {
-  const from = isoSite(inventory.fromFloor, inventory.fromLift, true);
-  const to = isoSite(inventory.toFloor, inventory.toLift, false);
+  const access = Boolean(inventory.flags.acces);
+  const fromFallback = isoSite(inventory.fromFloor, inventory.fromLift, access);
+  const toFallback = isoSite(inventory.toFloor, inventory.toLift, access);
+  const from = estimate
+    ? { distance: estimate.fromIsoDistanceMeters, limit: estimate.fromIsoLimitKg }
+    : fromFallback;
+  const to = estimate
+    ? { distance: estimate.toIsoDistanceMeters, limit: estimate.toIsoLimitKg }
+    : toFallback;
   const kg =
+    estimate?.totalWeightKg ??
     lines.reduce((sum, line) => sum + simulationLineWeight(line).total * line.q, 0) +
-    Math.round(referenceAnnexVolume(inventory) * 110);
+      Math.round(referenceAnnexVolume(inventory) * 110);
   const classLevel =
     Math.max(
       inventory.fromLift ? 0 : inventory.fromFloor,
@@ -360,10 +368,21 @@ export function fatigueAdvice(
       ? 4
       : 3;
   const heat = estimate?.heat;
+  const effort = estimate?.fatigueEffort;
   const heatFactor = heat ? 1 + Math.max(0, heat.wbgt - heat.reference) * 0.08 : 1;
   const scoreFor = (people: number) =>
-    Math.round(((kg / from.limit + kg / to.limit) / people) * heatFactor * 100);
-  const score = scoreFor(Math.max(1, crew));
+    Math.round(((kg / from.limit + kg / to.limit) / people) * 100 * heatFactor);
+  const effectiveCrew = Math.max(1, crew);
+  const heavy25 = lines
+    .filter((line) => simulationLineWeight(line).max > 25 && simulationLineWeight(line).max <= 33)
+    .reduce((sum, line) => sum + line.q, 0);
+  const heavy33 = lines
+    .filter((line) => simulationLineWeight(line).max > 33)
+    .reduce((sum, line) => sum + line.q, 0);
+  const handlingScore = Math.round(scoreFor(effectiveCrew) * (1 + heavy25 * 0.02 + heavy33 * 0.04));
+  const effortScore = effort?.percentage ?? 0;
+  const heatScore = estimate?.heatPenalty ?? 0;
+  const score = Math.max(effortScore, handlingScore, heatScore);
   const level =
     score < 50
       ? ['Faible', '#3DDC84']
@@ -372,12 +391,8 @@ export function fatigueAdvice(
         : score < 100
           ? ['Élevée', '#FF9F5A']
           : ['Excessive', '#FF5A5F'];
-  const over25 = lines
-    .filter((line) => simulationLineWeight(line).max > 25)
-    .reduce((sum, line) => sum + line.q, 0);
-  const over33 = lines
-    .filter((line) => simulationLineWeight(line).max > 33)
-    .reduce((sum, line) => sum + line.q, 0);
+  const over33 = heavy33;
+  const over25 = heavy25;
   let recommended = crew;
   while (recommended < 12 && scoreFor(recommended) >= 80) recommended++;
   const recommendations: string[] = [];
@@ -410,10 +425,36 @@ export function fatigueAdvice(
     score,
     level: level[0],
     color: level[1],
+    gauges: [
+      {
+        label: 'Effort physique · ISO 8996',
+        score: effortScore,
+        detail: `Portage ${effort?.carrying ?? 0} % · trajets ${effort?.travel ?? 0} % · autres étapes ${effort?.other ?? 0} %`,
+      },
+      {
+        label: 'Manutention · ISO 11228-1',
+        score: handlingScore,
+        detail: `≈ ${number((kg * 2) / effectiveCrew)} kg portés par manœuvre`,
+      },
+      {
+        label: 'Chaleur · ISO 7243',
+        score: heatScore,
+        detail: heatScore
+          ? 'Pauses chaleur désactivées alors que la chaleur dépasse la référence'
+          : heat
+            ? `${heat.rest} min de repos après ${heat.work} min de portage`
+            : 'Chaleur sous la référence',
+      },
+    ],
     recommendations,
     rows: [
       ['Poids total à porter', `≈ ${number(kg)} kg`],
-      ['Masse portée par manœuvre', `≈ ${number((kg * 2) / crew)} kg`],
+      [
+        'Durée totale prévue',
+        estimate ? `${number(estimate.totalMinutes / 60)} h` : 'Non calculée',
+      ],
+      ['Effort départ · arrivée', `${effort?.from ?? 200} · ${effort?.to ?? 200} W/m²`],
+      ['Masse portée par manœuvre', `≈ ${number((kg * 2) / effectiveCrew)} kg`],
       [
         'Limite ISO 11228-1 au départ',
         `${number(from.limit)} kg / jour (${from.distance} m équivalents)`,

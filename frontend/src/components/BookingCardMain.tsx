@@ -1,7 +1,7 @@
 import { CalendarDays, MapPin } from 'lucide-react';
 import { uiText } from '../content/reference-ui-text';
 import { messages } from '../content/fr';
-import { dateLabel, money } from '../domain/format';
+import { dateLabel, money } from '../application/presentation/format';
 import type { Booking, Price, Quote } from '../domain/model';
 import type { Dispatch, SetStateAction } from 'react';
 

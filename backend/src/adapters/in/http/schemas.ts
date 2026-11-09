@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { messages } from '../../../domain/messages/fr.js';
+import { phoneNumberSchema } from './validation/phone.js';
 const imageSchema = z
   .string()
   .max(7_000_000)
@@ -60,16 +61,31 @@ const inventorySnapshotSchema = z.object({
         .max(500),
       flags: z.record(z.string().max(100), z.boolean()),
       ready: z.enum(['oui', 'non', '']).optional(),
-      stairs: z.enum(['oui', 'non', 'verif', '']).optional(),
+      stairs: z.enum(['oui', 'non', 'balcon', 'verif', '']).optional(),
+      balcPx: z.number().int().min(0).max(10000000).optional(),
+      blanketLengthCm: z.number().finite().min(1).max(1000).optional(),
+      blanketWidthCm: z.number().finite().min(1).max(1000).optional(),
       custom: z
         .array(
           z.object({
             id: z.string().max(100),
+            typeKey: z.string().max(100).optional(),
             label: z.string().max(120),
             quantity: z.number().int().min(0).max(999),
             format: z.enum(['small', 'medium', 'large']).optional(),
             dismantle: z.boolean().optional(),
             origin: z.enum(['local', 'import']).optional(),
+            cL: z.number().finite().min(0).max(100000).optional(),
+            cW: z.number().finite().min(0).max(100000).optional(),
+            cH: z.number().finite().min(0).max(100000).optional(),
+            kg: z.number().finite().min(0).max(100000).optional(),
+            mp: z.number().int().min(0).max(10000000).optional(),
+            menuPriceLocal: z.number().int().min(0).max(10000000).optional(),
+            menuPriceImport: z.number().int().min(0).max(10000000).optional(),
+            like: z.string().max(100).optional(),
+            up: z.boolean().optional(),
+            frag: z.boolean().optional(),
+            notop: z.boolean().optional(),
           }),
         )
         .max(500),
@@ -84,7 +100,8 @@ const inventorySnapshotSchema = z.object({
   fromLift: z.boolean(),
   toLift: z.boolean(),
   ready: z.enum(['oui', 'non', '']),
-  stairs: z.enum(['oui', 'non', 'verif', '']),
+  stairs: z.enum(['oui', 'non', 'balcon', 'verif', '']),
+  balcPx: z.number().int().min(0).max(10000000).optional(),
   flags: z.array(z.string().trim().min(1).max(120)).max(30),
   items: z
     .array(
@@ -104,6 +121,8 @@ const inventorySnapshotSchema = z.object({
   estimatedTrips: z.number().int().min(0).max(10000),
   moverCount: z.number().int().min(0).max(100),
   carpenterCount: z.number().int().min(0).max(100),
+  totalWeightKg: z.number().finite().min(0).max(100000).optional(),
+  maxItemWeightKg: z.number().finite().min(0).max(100000).optional(),
   loadingMinutes: z.number().finite().min(0).max(100000),
   unloadingMinutes: z.number().finite().min(0).max(100000),
   packingMinutes: z.number().finite().min(0).max(100000),
@@ -164,6 +183,7 @@ export const estimateSchema = z.object({
   options: optionsSchema,
   trips: z.number().int().min(1).max(20).optional(),
   workAccess: workAccessSchema.optional(),
+  workDate: z.iso.date().nullable().optional(),
 });
 export const adminEstimateSchema = estimateSchema.extend({
   distanceKmOverride: z.number().min(0).max(100000),
@@ -172,7 +192,7 @@ export const bookingSchema = estimateSchema
   .extend({
     distanceKmOverride: z.number().min(0).max(100000).nullable().optional(),
     customerName: z.string().trim().min(2).max(100),
-    customerPhone: z.string().trim().min(9).max(25),
+    customerPhone: phoneNumberSchema,
     source: z
       .enum([
         '',
@@ -250,7 +270,7 @@ export const workPlanReviewSchema = z.object({
 });
 const loginFields = z.object({
   identifier: z.string().trim().min(3).max(254).optional(),
-  phone: z.string().trim().min(9).max(25).optional(),
+  phone: phoneNumberSchema.optional(),
   password: z.string().max(128).optional(),
 });
 export const loginSchema = loginFields.refine((input) => Boolean(input.identifier || input.phone), {
@@ -260,7 +280,7 @@ export const loginSchema = loginFields.refine((input) => Boolean(input.identifie
 export const registerSchema = z
   .object({
     role: z.literal('client').default('client'),
-    phone: z.string().trim().min(9).max(25),
+    phone: phoneNumberSchema,
     name: z.string().trim().min(2).max(100).optional(),
     password: z.string().max(128).optional(),
   })
@@ -318,7 +338,7 @@ export const quoteSchema = z.object({
     .array(
       z.object({
         label: z.string().trim().min(2).max(100),
-        quantity: z.number().int().min(1).max(100),
+        quantity: z.number().min(0.5).multipleOf(0.5).max(100),
         unitPrice: z.number().int().positive().max(10000000),
       }),
     )
@@ -336,6 +356,21 @@ export const quoteSchema = z.object({
     .default([]),
   options: optionsSchema.optional(),
   version: z.number().int().positive(),
+  billingMode: z.enum(['complete', 'standard', 'driver-rental']).default('complete'),
+  menuIncluded: z.boolean().default(false),
+  rentalKit: z
+    .array(
+      z.object({
+        id: z.string().trim().min(1).max(80),
+        label: z.string().trim().min(1).max(200),
+        quantity: z.number().int().min(0).max(10000),
+        image: z.string().max(2000).optional(),
+      }),
+    )
+    .max(100)
+    .default([]),
+  overtimeMinutes: z.number().int().min(0).max(100000).default(0),
+  providedCrew: z.number().int().min(0).max(100).default(0),
 });
 export const driverAvailabilitySchema = z
   .array(
@@ -352,7 +387,7 @@ export const driverAvailabilitySchema = z
   );
 export const driverSchema = z.object({
   name: z.string().trim().min(2).max(100),
-  phone: z.string().trim().min(9).max(25),
+  phone: phoneNumberSchema,
   photo: imageSchema.nullable(),
   active: z.boolean(),
   vehicleId: z.string().min(1).max(30).nullable(),
@@ -418,7 +453,7 @@ export const breakdownSchema = z.object({
 });
 export const adminProfileSchema = z.object({
   name: z.string().trim().min(2).max(100),
-  phone: z.string().trim().min(9).max(25),
+  phone: phoneNumberSchema,
   email: z
     .union([z.literal(''), z.email()])
     .nullable()
@@ -513,8 +548,23 @@ export const catalogueSchema = z.object({
         maxMoversPerVehicle: z.number().int().min(2).max(20),
         cubicMetersPerHourPerMover: z.number().min(0.1).max(50),
         pauseMinutes: z.number().int().min(0).max(180),
+        teamVolumePerMover: z.number().min(1).max(100).default(6),
+        tripSetupMinutes: z.number().int().min(0).max(180).default(15),
+        handlingCalibration: z.number().min(0.5).max(5).default(1),
+        carryDistanceMeters: z.number().int().min(1).max(200).default(15),
         heat: z.number().int().min(0).max(1).optional(),
         wbgtAdj: z.number().min(-10).max(10).optional(),
+        maxTotalHours: z.number().min(1).max(48).default(12),
+        metabolicReference: z.number().min(50).max(1000).default(200),
+        effortGround: z.number().min(50).max(1000).default(200),
+        effortLift: z.number().min(50).max(1000).default(210),
+        effortStairs: z.number().min(50).max(1000).default(230),
+        effortPerFloor: z.number().min(0).max(200).default(12),
+        effortMaximum: z.number().min(50).max(1500).default(290),
+        followingTripDiscountPercent: z.number().int().min(10).max(100).default(60),
+        lowDemandDiscountPercent: z.number().int().min(0).max(50).default(10),
+        manoeuvreOvertimeThresholdHours: z.number().min(1).max(24).default(8),
+        manoeuvreOvertimeHourlyRate: z.number().int().min(0).max(10000000).default(0),
         blanketLengthCm: z.number().int().min(50).max(400).optional(),
         blanketWidthCm: z.number().int().min(50).max(400).optional(),
         blanketStock: z.number().int().min(0).optional(),
@@ -526,8 +576,23 @@ export const catalogueSchema = z.object({
         maxMoversPerVehicle: 6,
         cubicMetersPerHourPerMover: 2.7,
         pauseMinutes: 30,
+        teamVolumePerMover: 6,
+        tripSetupMinutes: 15,
+        handlingCalibration: 1,
+        carryDistanceMeters: 15,
         heat: 1,
         wbgtAdj: 0,
+        maxTotalHours: 12,
+        metabolicReference: 200,
+        effortGround: 200,
+        effortLift: 210,
+        effortStairs: 230,
+        effortPerFloor: 12,
+        effortMaximum: 290,
+        followingTripDiscountPercent: 60,
+        lowDemandDiscountPercent: 10,
+        manoeuvreOvertimeThresholdHours: 8,
+        manoeuvreOvertimeHourlyRate: 0,
       }),
     assemblyPrice: z.number().int().min(0).max(1000000),
     montageP: z
@@ -553,8 +618,8 @@ export const catalogueSchema = z.object({
         ]),
       )
       .default({}),
-    businessPhone: z.string().regex(/^\+221[0-9]{9}$/),
-    whatsappPhone: z.string().regex(/^\+[1-9][0-9]{7,14}$/),
+    businessPhone: z.union([z.literal(''), phoneNumberSchema]).default(''),
+    whatsappPhone: phoneNumberSchema,
     whatsappCountryCode: z
       .string()
       .regex(/^[1-9][0-9]{0,3}$/)
@@ -576,8 +641,38 @@ export const catalogueSchema = z.object({
       .default(
         'Bonjour {nom},\n\nMerci pour votre demande. Voici votre devis provisoire Demenag Express n° {num} :\n- Date : {date}{heure}\n- Trajet : {trajet}\n- Véhicule : {vehicule}, {voyages}\n- Montant estimé : {total}\n\nCe montant est une estimation établie d’après votre inventaire. Il sera confirmé par le devis final.\nJe vous envoie le PDF du devis juste après ce message.\n\nPour confirmer ou modifier votre demande, répondez simplement ici.',
       ),
+    contactFirstTemplate: z.string().max(200).default('{ref} {prenom}'),
+    contactLastTemplate: z.string().max(200).default('{nom} · {date}'),
     businessName: z.string().trim().min(2).max(100),
-    businessAddress: z.string().trim().min(2).max(300),
+    businessAddress: z.string().trim().max(300).default(''),
+    businessEmail: z.string().trim().max(200).default(''),
+    businessNinea: z.string().trim().max(100).default(''),
+    businessRccm: z.string().trim().max(100).default(''),
+    quoteValidityDays: z.number().int().min(0).max(365).default(15),
+    bookingDepositPercent: z.number().int().min(0).max(100).default(0),
+    quoteTerms: z.string().max(10000).default(''),
+    quoteTermsEnabled: z.boolean().default(true),
+    rentalOvertimeHourlyRate: z.number().int().min(0).max(10000000).default(10000),
+    rentalKitConfiguration: z
+      .array(
+        z.object({
+          id: z.string().trim().min(1).max(80),
+          label: z.string().trim().min(1).max(200),
+          rule: z.enum([
+            'vehicle',
+            'one',
+            'blankets',
+            'liftingStraps',
+            'gloves',
+            'tieDownStraps',
+            'fixed',
+          ]),
+          quantity: z.number().int().min(0).max(10000).optional(),
+          image: z.string().max(3000000).optional(),
+        }),
+      )
+      .max(100)
+      .default([]),
     invoiceFooter: z.string().trim().min(2).max(500),
     tiktokUrl: socialUrlSchema,
     facebookUrl: socialUrlSchema,
@@ -595,6 +690,29 @@ export const catalogueSchema = z.object({
         (questions) => new Set(questions.map((question) => question.id)).size === questions.length,
       )
       .default([]),
+    customInventoryTypes: z
+      .array(
+        z.object({
+          k: z.string().regex(/^u[a-z0-9-]{1,40}$/),
+          n: z.string().trim().min(1).max(100),
+          p: z.string().trim().max(120).optional(),
+          sec: z.string().trim().min(1).max(80),
+          like: z.string().max(100).optional(),
+          L: z.number().finite().min(0).max(100000).or(z.literal('')).optional(),
+          W: z.number().finite().min(0).max(100000).or(z.literal('')).optional(),
+          H: z.number().finite().min(0).max(100000).or(z.literal('')).optional(),
+          kg: z.number().finite().min(0).max(100000).or(z.literal('')).optional(),
+          menuPriceLocal: z.number().int().min(0).max(10000000).or(z.literal('')).optional(),
+          menuPriceImport: z.number().int().min(0).max(10000000).or(z.literal('')).optional(),
+          dm: z.boolean().optional(),
+          up: z.boolean().optional(),
+          frag: z.boolean().optional(),
+          notop: z.boolean().optional(),
+        }),
+      )
+      .max(100)
+      .optional(),
+    hiddenInventoryKeys: z.array(z.string().max(100)).max(100).optional(),
   }),
 });
 

@@ -11,7 +11,7 @@ import { normalizedClientPhone } from '../application/services/client-summary';
 import { ScheduleOptions } from '../components/booking/ScheduleOptions';
 import { VehicleSelector } from '../components/booking/VehicleSelector';
 import { messages } from '../content/fr';
-import { money } from '../domain/format';
+import { money } from '../application/presentation/format';
 import { routes } from '../routing/routes';
 import { bookingInventorySnapshot, estimateMovingWork } from '../domain/moving-estimate';
 import type { VehicleTransition } from '../domain/vehicle-transition';
@@ -61,6 +61,9 @@ export function BookingPage() {
     estimateError,
     submitError,
     submitting,
+    fieldErrors,
+    validateSchedule,
+    clearFieldError,
     done,
     tiers,
     selected,
@@ -150,6 +153,7 @@ export function BookingPage() {
           ) : catalogue && selected ? (
             <form
               id="booking-form"
+              noValidate
               onSubmit={submitBooking}
               className="booking-layout"
               data-mobile-step={mobileBookingStep}
@@ -285,6 +289,8 @@ export function BookingPage() {
                     setDraft={setDraft}
                     extras={extras}
                     option={option}
+                    fieldErrors={fieldErrors}
+                    clearFieldError={clearFieldError}
                     referenceMode={Boolean(editingBooking)}
                   />
                 </div>
@@ -299,6 +305,8 @@ export function BookingPage() {
                         : null
                     }
                     recognizingClient={recognizingClient}
+                    fieldErrors={fieldErrors}
+                    clearFieldError={clearFieldError}
                     referenceMode={Boolean(editingBooking)}
                   />
                 </div>
@@ -350,22 +358,8 @@ export function BookingPage() {
                   return;
                 }
                 if (mobileBookingStep === 3) {
-                  if (!draft.date) {
-                    setMobileBookingError('Choisissez une date.');
-                    return;
-                  }
-                  const dateInput = document.getElementById(
-                    'booking-date',
-                  ) as HTMLInputElement | null;
-                  const timeInput = document.getElementById(
-                    'booking-slot',
-                  ) as HTMLInputElement | null;
-                  if (dateInput && !dateInput.checkValidity()) {
-                    dateInput.reportValidity();
-                    return;
-                  }
-                  if (timeInput && !timeInput.checkValidity()) {
-                    timeInput.reportValidity();
+                  if (!validateSchedule()) {
+                    setMobileBookingError('');
                     return;
                   }
                 }

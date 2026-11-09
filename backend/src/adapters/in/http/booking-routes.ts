@@ -42,7 +42,17 @@ export function registerBookingRoutes(
   };
   app.post(apiRoutes.estimates, async (req, res) => {
     const p = estimateSchema.parse(req.body);
-    res.json(await deps.moving.estimate(p.vehicleId, p.routeId, p.options, p.workAccess, p.trips));
+    res.json(
+      await deps.moving.estimate(
+        p.vehicleId,
+        p.routeId,
+        p.options,
+        p.workAccess,
+        p.trips,
+        undefined,
+        p.workDate,
+      ),
+    );
   });
   app.post(`${apiRoutes.adminEstimates}`, authenticate, admin, async (req, res) => {
     const p = adminEstimateSchema.parse(req.body);
@@ -54,6 +64,7 @@ export function registerBookingRoutes(
         p.workAccess,
         p.trips,
         p.distanceKmOverride,
+        p.workDate,
       ),
     );
   });

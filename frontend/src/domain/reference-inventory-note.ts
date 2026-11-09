@@ -112,17 +112,32 @@ export function referenceInventoryNote(
     }
   }
   for (const item of inventory.custom) {
-    addItem(
-      item.label,
-      item.label,
-      'custom',
-      item.quantity,
-      1,
-      undefined,
-      item.format,
-      item.origin,
-      Boolean(item.dismantle),
-      false,
+    if (item.quantity <= 0) continue;
+    const dimensions = [item.cL, item.cW, item.cH].map(Number);
+    const hasDimensions = dimensions.every((value) => value > 0);
+    const like = inventoryItems.find((definition) => definition.key === item.like);
+    const volume = hasDimensions
+      ? ((dimensions[0]! * dimensions[1]! * dimensions[2]!) / 1_000_000) *
+        (item.dismantle ? 0.8 : 1)
+      : like
+        ? estimatedInventoryItemVolume(
+            like.key,
+            like.defaultSize ?? 1,
+            Boolean(item.dismantle),
+            item.format,
+          )
+        : estimatedInventoryItemVolume('custom', 1, Boolean(item.dismantle), item.format);
+    const facts = [
+      hasDimensions ? `${dimensions.join(' × ')} cm` : '',
+      item.kg && item.kg > 0 ? `${item.kg} kg` : '',
+      like ? `comme ${like.label.toLowerCase()}` : '',
+      item.up ? 'toujours debout' : '',
+      item.frag ? 'fragile' : '',
+      item.notop ? 'ne rien poser dessus' : '',
+      item.dismantle ? 'démontage et montage' : '',
+    ].filter(Boolean);
+    lines.push(
+      `- ${item.quantity} ${item.quantity > 1 ? item.label.toLowerCase() : item.label.toLowerCase()}${facts.length ? ` (${facts.join(', ')})` : ''} : ≈ ${volumeLabel(volume * item.quantity)} m³`,
     );
   }
 
@@ -142,6 +157,10 @@ export function referenceInventoryNote(
     notes.push(
       'certains objets ne passent pas dans les escaliers (démontage, fenêtre ou monte-meuble)',
     );
+  if (inventory.stairs === 'balcon') {
+    notes.push('passage par le balcon');
+    if (inventory.balcPx) notes.push(`supplément balcon : ${inventory.balcPx} FCFA`);
+  }
   if (inventory.stairs === 'verif') notes.push('passage des escaliers à vérifier');
   if (notes.length) lines.push(`À noter : ${notes.join(', ')}.`);
   return lines.join('\n');
@@ -164,7 +183,7 @@ export function referenceMovingEstimateNote(
   const trips = estimate.trips;
   const first = `Estimation : volume ≈ ${estimate.volume.toFixed(1).replace('.', ',')} m³, soit ${trips} aller${trips > 1 ? 's' : ''}-retour${trips > 1 ? 's' : ''} en ${vehicle}.`;
   const labour =
-    `Main-d'œuvre : ${estimate.crew} manœuvres` +
+    `Main-d'œuvre : ${estimate.crew} manœuvres (≈ ${estimate.totalWeightKg} kg, objet le plus lourd ≈ ${estimate.maxItemWeightKg} kg)` +
     (estimate.carpenterCount
       ? ` + ${estimate.carpenterCount} menuisier${estimate.carpenterCount > 1 ? 's' : ''}`
       : '') +
@@ -174,9 +193,7 @@ export function referenceMovingEstimateNote(
     (estimate.packingMinutes > 90
       ? ` · emballage la veille ≈ ${referenceDuration(estimate.packingMinutes)}`
       : '') +
-    (estimate.minimumDays > 1
-      ? ` · dépasse ${maxDayHours} h : prévoir ${estimate.minimumDays} jours ou un véhicule de plus`
-      : '') +
+    (estimate.totalMinutes > maxDayHours * 60 + 1 ? ` · journée de plus de ${maxDayHours} h` : '') +
     '.';
   return `${first}\n${labour}`;
 }

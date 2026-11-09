@@ -10,13 +10,21 @@ import {
 import type { Catalogue, TollPoint, User } from '../domain/model';
 import { blankDraft, type Draft } from './booking-draft';
 import { errorMessage } from './error-message';
-import type { AccountingDocumentExporter, ApplicationApi, QuoteExporter } from './ports';
+import type {
+  AccountingDocumentExporter,
+  ApplicationApi,
+  PlanningWeekExporter,
+  QuoteExporter,
+  TariffDocumentExporter,
+} from './ports';
 export { blankDraft } from './booking-draft';
 export type { Draft } from './booking-draft';
 type AppContextValue = {
   api: ApplicationApi;
   exportQuote: QuoteExporter;
   exportAccounting: AccountingDocumentExporter;
+  exportPlanningWeek: PlanningWeekExporter;
+  exportTariffDocument: TariffDocumentExporter;
   user: User | null;
   setUser: (value: User | null) => void;
   authLoading: boolean;
@@ -45,11 +53,15 @@ export function AppProvider({
   api,
   exportQuote,
   exportAccounting,
+  exportPlanningWeek,
+  exportTariffDocument,
   children,
 }: {
   api: ApplicationApi;
   exportQuote: QuoteExporter;
   exportAccounting: AccountingDocumentExporter;
+  exportPlanningWeek: PlanningWeekExporter;
+  exportTariffDocument: TariffDocumentExporter;
   children: ReactNode;
 }) {
   const [user, setUser] = useState<User | null>(null),
@@ -135,6 +147,8 @@ export function AppProvider({
         api,
         exportQuote,
         exportAccounting,
+        exportPlanningWeek,
+        exportTariffDocument,
         user,
         setUser,
         authLoading,

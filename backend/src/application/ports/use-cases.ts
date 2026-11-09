@@ -26,6 +26,18 @@ import type {
   VehicleInspectionInput,
   VehicleReportRecord,
 } from './index.js';
+import type { ClaudeCompletionInput, ClaudeModel } from './index.js';
+export interface ClaudeUseCases {
+  status(actor: User): Promise<{ connected: boolean; model: string; models: ClaudeModel[] }>;
+  connect(
+    actor: User,
+    key: string,
+  ): Promise<{ connected: boolean; model: string; models: ClaudeModel[] }>;
+  selectModel(actor: User, model: string): Promise<{ model: string; models: ClaudeModel[] }>;
+  test(actor: User): Promise<{ response: string }>;
+  disconnect(actor: User): Promise<void>;
+  complete(actor: User, input: ClaudeCompletionInput): Promise<string>;
+}
 export interface AccountingUseCases {
   list(actor: User, month?: string): Promise<AccountingEntry[]>;
   create(actor: User, input: ManualAccountingInput): Promise<AccountingEntry>;
@@ -53,6 +65,7 @@ export interface MovingUseCases {
     workAccess?: WorkAccess,
     trips?: number,
     distanceKmOverride?: number,
+    workDate?: string | null,
   ): Promise<Price>;
   create(user: User, input: BookingInput): Promise<Booking>;
   updateClientRequest(
@@ -136,6 +149,13 @@ export interface AdministrationUseCases {
 export interface CatalogueUseCases {
   get(): Promise<Catalogue>;
   update(actor: User, vehicles: Vehicle[], settings: Settings): Promise<void>;
+  googleMapsApiKey(actor: User): Promise<string>;
+  updateGoogleMapsApiKey(actor: User, value: string): Promise<void>;
+  inventoryIllustration(key: string): Promise<string | null>;
+  saveInventoryIllustration(actor: User, key: string, image: string): Promise<void>;
+  adminQuoteDraft(actor: User): Promise<unknown | null>;
+  saveAdminQuoteDraft(actor: User, draft: unknown): Promise<void>;
+  clearAdminQuoteDraft(actor: User): Promise<void>;
   removeVehicle(actor: User, id: string): Promise<void>;
   listTollPoints(): Promise<TollPoint[]>;
   createTollPoint(actor: User, input: TollPointInput): Promise<TollPoint>;

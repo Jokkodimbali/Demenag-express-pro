@@ -52,7 +52,8 @@ export const messages = {
     'Conflit : ce numéro existe déjà ou ce véhicule est déjà réservé sur ce créneau.',
   vousNePouvezPasRetirerVotrePropreAcces:
     'Vous ne pouvez pas retirer votre propre accès administrateur.',
-  saisissezUnNumeroMobileSenegalaisValide: 'Saisissez un numéro mobile sénégalais valide.',
+  saisissezUnNumeroInternationalValide:
+    'Saisissez un numéro valide avec son indicatif international, par exemple +221 77 123 45 67.',
   unCompteUtiliseDejaCeNumero: 'Un compte utilise déjà ce numéro.',
   telephoneOuMotDePasseIncorrect: 'Téléphone ou mot de passe incorrect.',
   motDePasseActuelIncorrect: 'Mot de passe actuel incorrect.',
@@ -73,6 +74,9 @@ export const messages = {
   dateInvalide: 'Date invalide.',
   choisissezUneDateAVenir: 'Choisissez une date à venir.',
   maximumAdvanceNotice: (days: string | number) => `Réservez au maximum ${days} jours à l’avance.`,
+  minimumAdvanceNotice: (hours: string | number) =>
+    `Choisissez une date et une heure avec au moins ${hours} heures de préavis.`,
+  heureReservationPassee: 'Choisissez une heure qui n’est pas déjà passée.',
   creneauInvalide: 'Créneau invalide.',
   leDelaiMinimumAvantReservationNEstPas: 'Le délai minimum avant réservation n’est pas respecté.',
   ceCreneauADejaCommence: 'Ce créneau a déjà commencé.',

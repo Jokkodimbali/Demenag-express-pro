@@ -50,6 +50,36 @@ export interface CatalogueRepository {
   catalogue(): Promise<Catalogue>;
   updateCatalogue(value: Catalogue): Promise<Catalogue>;
   deleteVehicle(id: string): Promise<void>;
+  inventoryIllustration(key: string): Promise<string | null>;
+  saveInventoryIllustration(key: string, image: string): Promise<void>;
+  adminQuoteDraft(): Promise<unknown | null>;
+  saveAdminQuoteDraft(draft: unknown): Promise<void>;
+  clearAdminQuoteDraft(): Promise<void>;
+}
+export interface GoogleMapsSettingsRepository {
+  googleMapsApiKey(): Promise<string>;
+  updateGoogleMapsApiKey(value: string): Promise<void>;
+}
+export type ClaudeModel = { id: string; name: string };
+export type ClaudeSettingsStatus = {
+  connected: boolean;
+  model: string;
+  models: ClaudeModel[];
+  keyHint?: string;
+};
+export type ClaudeCompletionInput = {
+  system?: string;
+  prompt?: string;
+  messages?: { role: 'user' | 'assistant'; content: string }[];
+  maxTokens?: number;
+};
+export interface ClaudeRepository {
+  claudeStatus(): Promise<ClaudeSettingsStatus>;
+  connectClaudeKey(key: string): Promise<ClaudeSettingsStatus>;
+  selectClaudeModel(model: string): Promise<{ model: string; models: ClaudeModel[] }>;
+  testClaude(): Promise<{ response: string }>;
+  disconnectClaude(): Promise<void>;
+  completeClaude(input: ClaudeCompletionInput): Promise<string>;
 }
 export interface TollPointRepository {
   tollPoints(): Promise<TollPoint[]>;
@@ -208,6 +238,7 @@ export interface PricingRepository {
     workAccess?: import('../domain/model').WorkAccess,
     trips?: number,
     distanceKmOverride?: number | null,
+    workDate?: string | null,
   ): Promise<Price>;
 }
 export interface NotificationRepository {
@@ -223,6 +254,7 @@ export interface ApplicationApi
     AdminProfileRepository,
     ClientDirectoryRepository,
     CatalogueRepository,
+    GoogleMapsSettingsRepository,
     TollPointRepository,
     AuthRepository,
     BookingRepository,
@@ -230,7 +262,8 @@ export interface ApplicationApi
     MapsRepository,
     PricingRepository,
     NotificationRepository,
-    AccountingRepository {}
+    AccountingRepository,
+    ClaudeRepository {}
 export type QuoteExporter = (
   booking: Booking,
   quote: Quote | undefined,
@@ -244,4 +277,16 @@ export type AccountingDocumentExporter = (
   months: FinanceMonth[],
   entries: AccountingEntry[],
   endMonth: string,
+) => Promise<void>;
+export type PlanningWeekExporter = (
+  bookings: Booking[],
+  drivers: Driver[],
+  anchor: string,
+  filtersApplied?: boolean,
+) => Promise<void>;
+export type TariffDocumentExporter = (
+  catalogue: Catalogue,
+  kind: 'client' | 'agent',
+  share: boolean,
+  tollPoints: TollPoint[],
 ) => Promise<void>;

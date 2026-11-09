@@ -10,8 +10,11 @@ import { registerVehicleReportRoutes } from './vehicle-report-routes.js';
 import type { Dependencies } from './dependencies.js';
 import { registerErrorHandler } from './error-handler.js';
 import { registerMapRoutes } from './map-routes.js';
+import { registerClaudeRoutes } from './claude-routes.js';
 import { registerSecurityMiddleware } from './security-middleware.js';
 import { apiRoutes } from './routes.js';
+import { z } from 'zod';
+const inventoryImageKey = z.string().regex(/^[a-z0-9:_-]{1,150}$/u);
 export function createApp(deps: Dependencies) {
   const app = express();
   registerSecurityMiddleware(app, deps);
@@ -26,11 +29,19 @@ export function createApp(deps: Dependencies) {
     }
   });
   app.get(apiRoutes.catalogue, async (_req, res) => res.json(await deps.catalogue.get()));
+  app.get(apiRoutes.inventoryIllustration, async (req, res) => {
+    const key = inventoryImageKey.parse(req.params.key);
+    res.json({ image: await deps.catalogue.inventoryIllustration(key) });
+  });
+  app.get(apiRoutes.adminQuoteDraft, access.authenticate, access.admin, async (_req, res) => {
+    res.json({ draft: await deps.catalogue.adminQuoteDraft(getActor(res)) });
+  });
   app.get(apiRoutes.tollPoints, async (_req, res) =>
     res.json(await deps.catalogue.listTollPoints()),
   );
   registerAuthRoutes(app, deps, access);
   registerMapRoutes(app, deps);
+  registerClaudeRoutes(app, deps, access);
   app.get('/api/notifications/stream', access.authenticate, (req, res) => {
     const actor = getActor(res);
     res.writeHead(200, {

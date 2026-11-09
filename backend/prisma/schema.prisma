@@ -44,6 +44,7 @@ model Utilisateur {
   reservations                      Reservation[]
   profilChauffeur                   Chauffeur?
   notifications                     Notification[]
+  brouillonDevisAdmin                BrouillonDevisAdmin?
 
   @@map("users")
   @@schema("demenag")
@@ -165,8 +166,20 @@ model ParametreApplication {
   modeWhatsapp                  String  @default("api") @map("whatsapp_mode")
   modeleDevisWhatsapp           String  @default("Bonjour {nom},\n\nVoici votre devis final Demenag Express n° {num} :\n- Date : {date}{heure}\n- Trajet : {trajet}\n- Véhicule : {vehicule}, {voyages}\n- Montant total : {total}\n\nCe montant est définitif.\nJe vous envoie le PDF du devis final juste après ce message.\n\nMerci pour votre confiance.") @map("whatsapp_quote_template")
   modeleDevisProvisoireWhatsapp String  @default("Bonjour {nom},\n\nMerci pour votre demande. Voici votre devis provisoire Demenag Express n° {num} :\n- Date : {date}{heure}\n- Trajet : {trajet}\n- Véhicule : {vehicule}, {voyages}\n- Montant estimé : {total}\n\nCe montant est une estimation établie d’après votre inventaire. Il sera confirmé par le devis final.\nJe vous envoie le PDF du devis juste après ce message.\n\nPour confirmer ou modifier votre demande, répondez simplement ici.") @map("whatsapp_provisional_template")
+  modelePrenomContactWhatsapp     String  @default("{ref} {prenom}") @map("contact_first_template")
+  modeleNomContactWhatsapp        String  @default("{nom} · {date}") @map("contact_last_template")
   nomEntreprise                 String  @default("Demenag Express") @map("business_name")
   adresseEntreprise             String  @default("Dakar, Sénégal") @map("business_address")
+  emailEntreprise               String  @default("") @map("business_email")
+  nineaEntreprise               String  @default("") @map("business_ninea")
+  rccmEntreprise                String  @default("") @map("business_rccm")
+  validiteDevisJours            Int     @default(15) @map("quote_validity_days")
+  acompteReservationPct         Int     @default(0) @map("booking_deposit_percent")
+  conditionsDevis               String  @default("Validité : ce devis est valable 30 jours à compter de sa date d’émission.\nRéservation : la date est réservée dès l’acceptation du devis par le client (signature ou confirmation écrite, WhatsApp compris).\nPaiement : le montant est réglé à la fin du déménagement, selon le mode de paiement indiqué sur le devis.\nReport ou annulation : toute demande de report ou d’annulation doit être signalée au moins 48 heures avant la date prévue.\nPréparation : le client veille à ce que ses affaires soient prêtes à charger à l’arrivée de l’équipe et à garantir l’accès (stationnement, ascenseur, clés).\nInventaire : le prix est établi d’après l’inventaire déclaré. Tout objet ou volume supplémentaire, ou tout dépassement du temps prévu, peut entraîner un ajustement du devis final.\nObjets de valeur : bijoux, argent, documents et objets précieux restent sous la garde du client.\nRéserves : toute réserve sur l’état des biens doit être signalée à l’équipe avant son départ. Les cartons fermés par le client voyagent sous sa responsabilité.\nLocation avec chauffeur : les manœuvres sont fournis et encadrés par le client. Demenag Express répond du véhicule, du chauffeur et du matériel fourni.") @map("quote_terms")
+  conditionsDevisActives         Boolean @default(true) @map("quote_terms_enabled")
+  cleApiGoogleMaps               String  @default("") @map("google_maps_api_key")
+  tarifHeureLocation            Int     @default(10000) @map("rental_overtime_hourly_rate")
+  materielLocation              Json    @default("[]") @map("rental_kit_configuration")
   piedFacture                   String  @default("Merci pour votre confiance.") @map("invoice_footer")
   tiktokUrl                     String? @map("tiktok_url")
   facebookUrl                   String? @map("facebook_url")
@@ -190,6 +203,37 @@ model ParametreApplication {
   questionnaire             Json    @default("[]") @map("client_questionnaire")
 
   @@map("settings")
+  @@schema("demenag")
+}
+
+model IllustrationInventaire {
+  cle       String   @id @db.VarChar(150) @map("key")
+  image     String   @db.Text
+  modifieLe DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("inventory_illustrations")
+  @@schema("demenag")
+}
+
+model BrouillonDevisAdmin {
+  utilisateurId String      @id @db.Uuid @map("user_id")
+  utilisateur   Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  donnees       Json        @map("data")
+  modifieLe     DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("admin_quote_drafts")
+  @@schema("demenag")
+}
+
+model ConfigurationClaude {
+  id               String @id @default("main")
+  cleChiffree      String @map("encrypted_key")
+  vecteur          String @map("iv")
+  etiquette        String @map("auth_tag")
+  modele           String @default("") @map("model")
+  modeles          Json   @default("[]") @map("models")
+
+  @@map("claude_configuration")
   @@schema("demenag")
 }
 

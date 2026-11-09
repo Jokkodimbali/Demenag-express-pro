@@ -2,6 +2,9 @@ import type { BookingInventorySource, Options, Settings } from './model.js';
 import { assemblyUnitPrice } from './pricing.js';
 
 const aliases: Record<string, string> = {
+  'table-basse': 'tbasse',
+  'meuble-tv': 'meubletv',
+  television: 'tv',
   'table-manger': 'tablem',
   bibliotheque: 'biblio',
   congelateur: 'congel',
@@ -108,14 +111,10 @@ export function inventoryAssemblyLines(
       );
   }
   for (const item of inventory.custom) {
-    if (item.dismantle)
-      append(
-        'custom',
-        item.label.trim() || 'autre objet',
-        item.quantity,
-        1,
-        item.origin ?? 'local',
-      );
+    if (item.dismantle) {
+      const origin = item.origin ?? 'local';
+      append('custom', item.label.trim() || 'autre objet', item.quantity, 1, origin);
+    }
   }
   return [...grouped.values()];
 }

@@ -7,3 +7,4 @@ export { PrismaSessions } from './sessions.js';
 export { PrismaUsers } from './users.js';
 export { PrismaVehicleReports } from './vehicle-reports.js';
 export { PrismaNotifications } from './notifications.js';
+export { PrismaClaudeConfiguration } from './claude-configuration.js';

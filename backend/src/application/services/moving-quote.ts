@@ -46,24 +46,34 @@ export async function createQuote(
     'Un devis final existe déjà pour cette réservation.',
   );
   requireValue(booking.status !== 'cancelled', messages.cetteReservationEstCloturee);
+  const sourceInventory = booking.inventorySnapshot?.sourceInventory;
   if (input.kind === 'final') {
     requireValue(
       Boolean(booking.date),
       'Un devis sans date reste provisoire. Choisissez une date pour passer en final.',
+    );
+    requireValue(
+      sourceInventory?.stairs !== 'balcon' || Number(sourceInventory.balcPx) > 0,
+      'Passage par le balcon : fixez le supplément avant le devis final.',
     );
   }
   const catalogue = await catalogueRepository.get();
   const vehicle =
     catalogue.vehicles.find((item) => item.id === booking.vehicle.id) ?? booking.vehicle;
   const requestedOptions = input.options ?? booking.options;
-  const inventoryLines = inventoryAssemblyLines(
-    booking.inventorySnapshot?.sourceInventory,
-    catalogue.settings,
-  );
-  const options = subtractInventoryAssemblyOptions(
-    requestedOptions,
-    booking.inventorySnapshot?.sourceInventory,
-  );
+  const billingMode = input.billingMode ?? 'complete';
+  const options = subtractInventoryAssemblyOptions(requestedOptions, sourceInventory);
+  const menuIncluded = input.menuIncluded ?? false;
+  const inventoryLines =
+    billingMode === 'complete' || (billingMode === 'driver-rental' && menuIncluded)
+      ? inventoryAssemblyLines(sourceInventory, catalogue.settings)
+      : [];
+  const pricingOptions =
+    billingMode === 'driver-rental'
+      ? { ...options, labour: 0, ...(menuIncluded ? {} : { desk: 0, wardrobe: 0, bed: 0 }) }
+      : billingMode === 'standard'
+        ? { ...options, desk: 0, wardrobe: 0, bed: 0 }
+        : options;
   const quoteSettings =
     input.kind === 'final'
       ? { ...catalogue.settings, maxTrips: Math.max(catalogue.settings.maxTrips, input.trips) }
@@ -87,23 +97,56 @@ export async function createQuote(
     };
   });
   // Les prix du transport sont ceux du véhicule au moment de la réservation.
+  const overtimeMinutes =
+    billingMode === 'driver-rental' ? Math.max(0, Math.round(input.overtimeMinutes ?? 0)) : 0;
+  const overtimeCharge = Math.round(
+    (overtimeMinutes * (catalogue.settings.rentalOvertimeHourlyRate ?? 10000)) / 60,
+  );
+  const rentalOvertimeHourlyRate = catalogue.settings.rentalOvertimeHourlyRate ?? 10000;
+  const additionalLines = [
+    ...inventoryLines,
+    ...input.extraLines,
+    ...(sourceInventory?.stairs === 'balcon'
+      ? [
+          {
+            label: `Supplément passage par le balcon${Number(sourceInventory.balcPx) > 0 ? '' : ' (à fixer)'}`,
+            quantity: 1,
+            unitPrice: Math.max(0, Math.round(Number(sourceInventory.balcPx) || 0)),
+          },
+        ]
+      : []),
+    ...(overtimeCharge > 0
+      ? [
+          {
+            label: `Dépassement du planning prévisionnel (${overtimeMinutes} min, ${rentalOvertimeHourlyRate} FCFA par heure)`,
+            quantity: 1,
+            unitPrice: overtimeCharge,
+          },
+        ]
+      : []),
+  ];
   const price = calculatePrice(
     vehicle,
     quoteSettings,
     booking.distanceKm,
-    options,
+    pricingOptions,
     input.trips,
     input.customPrice,
     input.discount,
-    [...inventoryLines, ...input.extraLines],
+    additionalLines,
     booking.workAccess,
     input.labourUnitPriceOverride,
     input.discountType,
     input.discountReason,
+    booking.date,
   );
   requireValue(
     input.kind !== 'final' || price.total !== null,
     messages.renseignezLeTarifDuTransportAvantDeFinaliser,
+  );
+  requireValue(
+    input.kind !== 'final' || price.tier !== 3 || Number(input.customPrice) > 0,
+    `Distance au-delà de ${catalogue.settings.distanceBounds[2]} km : fixez le prix par aller-retour avant le devis final.`,
   );
   const quoteId = ids.next();
   const accountingConfiguration =
@@ -115,8 +158,13 @@ export async function createQuote(
     createdAt: clock.now().toISOString(),
     price,
     notes: input.notes,
-    options,
+    options: pricingOptions,
     tolls,
+    billingMode,
+    menuIncluded,
+    rentalKit: input.rentalKit ?? [],
+    overtimeMinutes,
+    providedCrew: Math.max(0, Math.round(input.providedCrew ?? options.labour)),
     pricingInput: {
       settings: {
         distanceBounds: quoteSettings.distanceBounds,
@@ -127,15 +175,20 @@ export async function createQuote(
         labourLiftPrice: quoteSettings.labourLiftPrice,
         assemblyPrice: quoteSettings.assemblyPrice,
         montageP: quoteSettings.montageP,
+        movingLaborPlanning: quoteSettings.movingLaborPlanning,
       },
       trips: input.trips,
       customPrice: input.customPrice,
       discount: input.discount,
       discountType: input.discountType ?? 'fcfa',
       discountReason: input.discountReason ?? '',
-      options,
+      options: pricingOptions,
       labourUnitPriceOverride: input.labourUnitPriceOverride ?? null,
-      extraLines: [...inventoryLines, ...input.extraLines],
+      extraLines: additionalLines,
+      billingMode,
+      menuIncluded,
+      overtimeMinutes,
+      rentalOvertimeHourlyRate,
     },
     ...(input.kind === 'final'
       ? { accountingCosts: captureAccountingCosts(booking, price, accountingConfiguration) }

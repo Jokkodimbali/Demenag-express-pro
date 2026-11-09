@@ -141,9 +141,30 @@ try {
     .fill(integrationPassword);
   await page.getByRole('button', { name: 'Se connecter', exact: true }).click();
   await expect(page.getByRole('table', { name: /réservations/i })).toBeVisible({ timeout: 20000 });
+  const todoButton = page.getByRole('button', { name: /À traiter ·/ });
+  await todoButton.click();
+  const todoPanel = page.locator('#admin-todo-panel');
+  await expect(todoPanel).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(todoPanel).toBeVisible();
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    const bounds = await todoPanel.boundingBox();
+    expect(bounds).not.toBeNull();
+    expect(bounds.x).toBeGreaterThanOrEqual(0);
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
+  }
+  await page.keyboard.press('Escape');
+  await expect(todoPanel).toBeHidden();
+  await expect(todoButton).toHaveAttribute('aria-expanded', 'false');
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto(`${baseUrl}/admin/planning`);
   const calendar = page.locator('.reference-calendar-page');
   await expect(calendar).toBeVisible({ timeout: 20000 });
+  await expect(calendar.locator('.reference-calendar-legend')).toContainText('Sprinter');
   await expect(
     calendar.locator('.reference-month-booking').filter({ hasText: displayedReference(cancelled) }),
   ).toHaveCount(0);
@@ -184,9 +205,20 @@ try {
   await expect(timedEvents.filter({ hasText: displayedReference(first) })).toHaveCount(1);
   await expect(timedEvents.filter({ hasText: displayedReference(overlap) })).toHaveCount(1);
   await expect(timedEvents.filter({ hasText: displayedReference(cancelled) })).toHaveCount(0);
+  await calendar
+    .locator('.reference-time-event-shell')
+    .filter({ hasText: displayedReference(first) })
+    .getByRole('button', { name: 'Équipe →' })
+    .click();
+  await expect(page).toHaveURL(new RegExp(`/admin/flotte\\?date=${tomorrow}&booking=${first.id}`));
+  await page.goBack();
+  await expect(calendar).toBeVisible();
+  await calendar.locator('input[type="date"]').fill(tomorrow);
+  await calendar.getByRole('button', { name: 'Jour', exact: true }).click();
+  const timelineEvents = calendar.locator('.reference-time-event');
   const overlapWidths = await Promise.all(
     [displayedReference(first), displayedReference(overlap)].map((reference) =>
-      timedEvents
+      timelineEvents
         .filter({ hasText: reference })
         .evaluate((element) => Number.parseFloat(getComputedStyle(element).width)),
     ),
