@@ -31,7 +31,7 @@ export function assemblyUnitPrice(
                   ? 'ventilateur'
                   : key;
   const configured = settings.montageP?.[key] ?? settings.montageP?.[legacyKey];
-  if (!configured)
+  if (configured == null)
     return origin === 'import' ? Math.round(settings.assemblyPrice * 1.5) : settings.assemblyPrice;
   if (typeof configured === 'number')
     return origin === 'import' ? Math.round(configured * 1.5) : configured;

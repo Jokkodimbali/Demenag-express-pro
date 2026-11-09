@@ -17,6 +17,8 @@ import { AdminQuoteVehicleBilling } from '../components/AdminQuoteVehicleBilling
 import { AdminQuoteSettings } from '../components/AdminQuoteSettings';
 import { LoadingSimulation } from '../components/booking/LoadingSimulation';
 import { adminQuoteVehicleText as quoteText } from '../content/admin-quote-vehicle';
+import { quoteConditionsText } from '../application/services/whatsapp-templates';
+import { normalizePhoneNumber, sanitizePhoneInput } from '../domain/phone-number';
 
 const RouteMap = lazy(() => import('../components/RouteMap'));
 
@@ -162,10 +164,10 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
       <form
         id="admin-quote-form"
         onSubmit={(event) => {
-          if (draft.customerPhone.replace(/\D/g, '').length < 9) {
+          if (!normalizePhoneNumber(draft.customerPhone)) {
             event.preventDefault();
             setOpenQuoteSections((current) => ({ ...current, client: true }));
-            setStageError('Indiquez votre numéro de téléphone (9 chiffres).');
+            setStageError('Saisissez un numéro valide avec son indicatif international.');
             return;
           }
           if (publicRequest && !draft.date) {
@@ -204,7 +206,14 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
           setStageError('');
           void submit(
             event,
-            [visibleInventoryText, estimateText, questionnaireText].filter(Boolean).join('\n'),
+            [
+              visibleInventoryText,
+              estimateText,
+              questionnaireText,
+              quoteConditionsText(estimateInventory, quoteConfig.billingMode),
+            ]
+              .filter(Boolean)
+              .join('\n'),
             (movingEstimate?.planning ?? []).map((step, index) => ({
               id: `plan-${index + 1}`,
               time: step.time,
@@ -212,7 +221,8 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
               detail: step.detail,
               minutes: step.minutes,
             })),
-            visibleInventoryText && movingEstimate
+            movingEstimate &&
+              (visibleInventoryText || estimateInventory.ready || estimateInventory.stairs)
               ? bookingInventorySnapshot(estimateInventory, movingEstimate)
               : null,
             movingEstimate?.volume
@@ -333,12 +343,16 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                     <input
                       required
                       type="tel"
+                      inputMode="tel"
                       maxLength={25}
                       value={draft.customerPhone}
                       onChange={(event) =>
-                        setDraft((current) => ({ ...current, customerPhone: event.target.value }))
+                        setDraft((current) => ({
+                          ...current,
+                          customerPhone: sanitizePhoneInput(event.target.value),
+                        }))
                       }
-                      placeholder={uiText['telephone']}
+                      placeholder="+221 77 123 45 67 ou +33 6 12 34 56 78"
                       aria-label={uiText['telephone']}
                     />
                   </div>

@@ -5,6 +5,7 @@ import { messages } from '../../content/fr';
 import { whatsappUrl } from '../../application/services/whatsapp';
 import type { useAdminFleetPageModel } from '../../application/controllers/useAdminFleetPageModel';
 import { visibleUiText } from '../../content/visible-ui-text';
+import { sanitizePhoneInput } from '../../domain/phone-number';
 type Model = ReturnType<typeof useAdminFleetPageModel>;
 export function FleetEmployeesPanel({ model }: { model: Model }) {
   const {
@@ -84,11 +85,16 @@ export function FleetEmployeesPanel({ model }: { model: Model }) {
             }
           />
           <input
-            placeholder={uiText['telephone771234567']}
+            type="tel"
+            placeholder="+221 77 123 45 67 ou +33 6 12 34 56 78"
             inputMode="tel"
+            maxLength={30}
             value={newEmployee.phone}
             onChange={(event) =>
-              setNewEmployee((value) => ({ ...value, phone: event.target.value }))
+              setNewEmployee((value) => ({
+                ...value,
+                phone: sanitizePhoneInput(event.target.value),
+              }))
             }
           />
           <input
@@ -359,15 +365,20 @@ export function FleetEmployeesPanel({ model }: { model: Model }) {
               <div className="teams-employee-details">
                 <div className="teams-contact-row">
                   <input
+                    type="tel"
                     inputMode="tel"
+                    maxLength={30}
                     placeholder={uiText['telephone']}
                     defaultValue={employee.phone}
+                    onChange={(event) => {
+                      event.currentTarget.value = sanitizePhoneInput(event.currentTarget.value);
+                    }}
                     onBlur={(event) =>
                       event.target.value !== employee.phone &&
                       void applyMemberPatch(employee, { phone: event.target.value })
                     }
                   />
-                  <a href={`tel:${employee.phone.replace(/\D/g, '')}`}>{uiText['appeler']}</a>
+                  <a href={`tel:${employee.phone.replace(/[^\d+]/g, '')}`}>{uiText['appeler']}</a>
                   <span>
                     {weekLoad(employee.id, selectedDay)} {uiText['demenagement']}
                     {weekLoad(employee.id, selectedDay) > 1 ? 's' : ''} {uiText['cetteSemaine']}

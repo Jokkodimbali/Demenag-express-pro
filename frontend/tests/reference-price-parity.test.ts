@@ -261,6 +261,44 @@ test('objet personnalisé : le prix interne ne modifie pas le prix client', () =
   assert.equal(ref.total, 75000);
 });
 
+test('un tarif de menuiserie configuré à zéro reste nul comme dans la référence', () => {
+  const reference = new ReferenceComponent();
+  reference.state = {
+    data: {
+      tarifs: { ...tariffs, montageP: { armoire: 0 } },
+      peages: [],
+    },
+  };
+  const ref = reference.calc({
+    vehicle: 'sprinter',
+    km: 10,
+    trips: 1,
+    man: 0,
+    remise: 0,
+    inv: {
+      fEt: 0,
+      fAsc: false,
+      tEt: 0,
+      tAsc: false,
+      lines: [{ k: 'armoire', q: 1, s: 3, g: 'm', dm: true }],
+    },
+  });
+  const inventory = blankInventory();
+  inventory.entries.armoire = {
+    quantity: 1,
+    size: 3,
+    format: 'medium',
+    dismantle: true,
+  };
+  const zeroPriceSettings = { ...settings, montageP: { armoire: 0 } };
+  const frontend = frontendAssemblyLines(inventory, zeroPriceSettings);
+  const backend = backendAssemblyLines(inventory, zeroPriceSettings);
+
+  assert.equal(ref.lines[1]?.pu, 0);
+  assert.equal(frontend[0]?.unitPrice, 0);
+  assert.equal(backend[0]?.unitPrice, 0);
+});
+
 test('un poids personnalisé saisi correspond au calcul de poids de la référence', () => {
   const reference = new ReferenceComponent();
   reference.state = { data: { tarifs: tariffs, peages: [] } };

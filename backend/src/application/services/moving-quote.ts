@@ -97,12 +97,12 @@ export async function createQuote(
   const additionalLines = [
     ...inventoryLines,
     ...input.extraLines,
-    ...(sourceInventory?.stairs === 'balcon' && Number(sourceInventory.balcPx) > 0
+    ...(sourceInventory?.stairs === 'balcon'
       ? [
           {
-            label: 'Supplément passage par le balcon',
+            label: `Supplément passage par le balcon${Number(sourceInventory.balcPx) > 0 ? '' : ' (à fixer)'}`,
             quantity: 1,
-            unitPrice: Math.round(Number(sourceInventory.balcPx)),
+            unitPrice: Math.max(0, Math.round(Number(sourceInventory.balcPx) || 0)),
           },
         ]
       : []),

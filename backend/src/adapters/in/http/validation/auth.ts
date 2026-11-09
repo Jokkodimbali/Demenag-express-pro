@@ -1,9 +1,10 @@
 import { z } from 'zod';
+import { phoneNumberSchema } from './phone.js';
 const passwordStrengthMessage =
   'Mot de passe trop faible : 8 caractères minimum, avec au moins une lettre et un chiffre.';
 const loginFields = z.object({
   identifier: z.string().trim().min(3).max(254).optional(),
-  phone: z.string().trim().min(9).max(25).optional(),
+  phone: phoneNumberSchema.optional(),
   password: z.string().max(128).optional(),
 });
 export const loginSchema = loginFields.refine((input) => Boolean(input.identifier || input.phone), {
@@ -13,7 +14,7 @@ export const loginSchema = loginFields.refine((input) => Boolean(input.identifie
 export const registerSchema = z
   .object({
     role: z.literal('client').default('client'),
-    phone: z.string().trim().min(9).max(25),
+    phone: phoneNumberSchema,
     name: z.string().trim().min(2).max(100).optional(),
     password: z.string().max(128).optional(),
   })
@@ -32,7 +33,7 @@ export const passwordSchema = z.object({
   oldPassword: z.string().min(1).max(128),
   newPassword: z.string().min(10).max(128),
 });
-export const passwordResetRequestSchema = z.object({ phone: z.string().min(1).max(25) });
+export const passwordResetRequestSchema = z.object({ phone: phoneNumberSchema });
 export const adminPasswordResetSchema = z
   .object({
     password: z.string().min(10).max(128),

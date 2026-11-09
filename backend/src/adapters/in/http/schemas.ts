@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { messages } from '../../../domain/messages/fr.js';
+import { phoneNumberSchema } from './validation/phone.js';
 const imageSchema = z
   .string()
   .max(7_000_000)
@@ -190,7 +191,7 @@ export const bookingSchema = estimateSchema
   .extend({
     distanceKmOverride: z.number().min(0).max(100000).nullable().optional(),
     customerName: z.string().trim().min(2).max(100),
-    customerPhone: z.string().trim().min(9).max(25),
+    customerPhone: phoneNumberSchema,
     source: z
       .enum([
         '',
@@ -268,7 +269,7 @@ export const workPlanReviewSchema = z.object({
 });
 const loginFields = z.object({
   identifier: z.string().trim().min(3).max(254).optional(),
-  phone: z.string().trim().min(9).max(25).optional(),
+  phone: phoneNumberSchema.optional(),
   password: z.string().max(128).optional(),
 });
 export const loginSchema = loginFields.refine((input) => Boolean(input.identifier || input.phone), {
@@ -278,7 +279,7 @@ export const loginSchema = loginFields.refine((input) => Boolean(input.identifie
 export const registerSchema = z
   .object({
     role: z.literal('client').default('client'),
-    phone: z.string().trim().min(9).max(25),
+    phone: phoneNumberSchema,
     name: z.string().trim().min(2).max(100).optional(),
     password: z.string().max(128).optional(),
   })
@@ -384,7 +385,7 @@ export const driverAvailabilitySchema = z
   );
 export const driverSchema = z.object({
   name: z.string().trim().min(2).max(100),
-  phone: z.string().trim().min(9).max(25),
+  phone: phoneNumberSchema,
   photo: imageSchema.nullable(),
   active: z.boolean(),
   vehicleId: z.string().min(1).max(30).nullable(),
@@ -450,7 +451,7 @@ export const breakdownSchema = z.object({
 });
 export const adminProfileSchema = z.object({
   name: z.string().trim().min(2).max(100),
-  phone: z.string().trim().min(9).max(25),
+  phone: phoneNumberSchema,
   email: z
     .union([z.literal(''), z.email()])
     .nullable()
@@ -593,8 +594,8 @@ export const catalogueSchema = z.object({
         ]),
       )
       .default({}),
-    businessPhone: z.string().trim().max(30).default(''),
-    whatsappPhone: z.string().regex(/^\+[1-9][0-9]{7,14}$/),
+    businessPhone: z.union([z.literal(''), phoneNumberSchema]).default(''),
+    whatsappPhone: phoneNumberSchema,
     whatsappCountryCode: z
       .string()
       .regex(/^[1-9][0-9]{0,3}$/)

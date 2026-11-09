@@ -572,7 +572,15 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       .map(([id, label]) => `${label} : ${draft.questionnaireAnswers[id].trim()}`),
   ].join('\n');
   const totalTolls = tollLines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
-  const quoteDate = draft.date ? draft.date.split('-').reverse().join('/') : '—';
+  const quoteDate = draft.date
+    ? draft.date.split('-').reverse().join('/')
+    : draft.month
+      ? new Date(`${draft.month}-01T12:00:00Z`).toLocaleDateString('fr-FR', {
+          month: 'long',
+          year: 'numeric',
+          timeZone: 'Africa/Dakar',
+        })
+      : '—';
   const businessPhone = catalogue?.settings.businessPhone ?? '';
   const businessPhoneDigits = businessPhone.replace(/\D/g, '');
   const displayBusinessPhone = /^221\d{9}$/u.test(businessPhoneDigits)
@@ -694,7 +702,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     ...(estimateInventory.stairs === 'balcon'
       ? [
           {
-            label: 'Supplément passage par le balcon',
+            label: `Supplément passage par le balcon${balconyPrice > 0 ? '' : ' (à fixer)'}`,
             quantity: 1,
             unitPrice: balconyPrice,
             total: balconyPrice,
@@ -828,6 +836,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
           visibleInventoryText,
           estimateText,
           questionnaireText,
+          quoteConditionsText(estimateInventory, quoteConfig.billingMode),
           draft.notes,
         ]
           .filter(Boolean)
@@ -884,7 +893,8 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         status: quoteKind === 'final' ? 'completed' : (editingBooking?.status ?? 'pending'),
         pricingSettings: pdfSettings,
         inventorySnapshot:
-          visibleInventoryText && movingEstimate
+          movingEstimate &&
+          (visibleInventoryText || estimateInventory.ready || estimateInventory.stairs)
             ? bookingInventorySnapshot(estimateInventory, movingEstimate)
             : undefined,
         estimate: currentPrice,

@@ -157,3 +157,42 @@ test('le PDF reprend les coordonnées et applique l’activation des conditions 
   );
   assert.doesNotMatch(disabledText, new RegExp(clause));
 });
+
+test('le PDF reprend les conditions de chargement exactes, y compris le supplément balcon', async () => {
+  const quote: Quote = {
+    id: 'quote-loading-conditions-test',
+    reference: 'DV-2026-CONDITIONS',
+    kind: 'provisional',
+    createdAt: '2026-11-03T00:00:00.000Z',
+    notes: [
+      'CONDITIONS DE CHARGEMENT',
+      '- Matériel : tout doit être emballé et prêt à charger à l’arrivée de l’équipe.',
+      '- Passage : par le balcon (supplément de 25 000 FCFA inclus).',
+      'Ces conditions doivent être respectées le jour du déménagement. Sinon, le déménagement n’aura pas lieu.',
+    ].join('\n'),
+    price: booking.estimate,
+    tolls: [],
+  };
+  const text = await extractPdfText(await downloadQuote(booking, quote, settings));
+  assert.match(text, /CONDITIONS DE CHARGEMENT/);
+  assert.match(text, /Matériel : tout doit être emballé et prêt à charger à l'arrivée de l'équipe/);
+  assert.match(text, /Passage : par le balcon/);
+  assert.match(text, /25 000 FCFA inclus/);
+  assert.match(text, /Sinon, le déménagement n'aura pas lieu/);
+});
+
+test('le PDF conserve le mois demandé lorsque la réservation est sans date précise', async () => {
+  const quote: Quote = {
+    id: 'quote-no-date-month-test',
+    reference: 'DV-2026-MONTH',
+    kind: 'provisional',
+    createdAt: '2026-11-03T00:00:00.000Z',
+    notes: '',
+    price: booking.estimate,
+    tolls: [],
+  };
+  const text = await extractPdfText(
+    await downloadQuote({ ...booking, date: null, month: '2026-12' }, quote, settings),
+  );
+  assert.match(text, /décembre 2026/);
+});

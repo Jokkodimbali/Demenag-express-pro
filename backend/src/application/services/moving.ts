@@ -1,4 +1,4 @@
-import { transition, validateDate } from '../../domain/booking.js';
+import { isAvailableBookingSlot, transition, validateDate } from '../../domain/booking.js';
 import { AppError, requireValue } from '../../domain/errors.js';
 import { messages } from '../../domain/messages/fr.js';
 import type {
@@ -36,6 +36,7 @@ import type { MovingUseCases } from '../ports/use-cases.js';
 import { createQuote } from './moving-quote.js';
 import { addressChangeForUpdate } from './moving-address-change.js';
 import { createRouteTicket } from './moving-routing.js';
+import { normalizePhone } from './auth.js';
 import {
   deleteBooking,
   listTrashedBookings,
@@ -138,7 +139,15 @@ export class MovingService implements MovingUseCases {
         settings.bookingsEnabled !== false,
         messages.lesReservationsSontTemporairementFermees,
       );
-    if (input.date) validateDate(input.date, this.clock.now(), settings);
+    if (user.role === 'client') requireValue(Boolean(input.date), 'Choisissez une date.');
+    if (input.date) {
+      validateDate(input.date, this.clock.now(), settings, input.timeSlot);
+      if (user.role === 'client')
+        requireValue(
+          isAvailableBookingSlot(input.timeSlot, settings),
+          'Ce créneau n’est plus disponible. Choisissez un autre horaire.',
+        );
+    }
     const id = this.ids.next();
     const provisionalQuote =
       user.role === 'client'
@@ -161,7 +170,7 @@ export class MovingService implements MovingUseCases {
         reference: `DEM-${this.clock.now().getUTCFullYear()}-${id.slice(0, 8).toUpperCase()}`,
         userId: user.id,
         customerName: input.customerName,
-        phone: input.customerPhone,
+        phone: normalizePhone(input.customerPhone),
         source: user.role === 'admin' ? (input.source ?? '') : '',
         vehicle,
         fromAddress: input.fromAddress,
@@ -221,6 +230,7 @@ export class MovingService implements MovingUseCases {
       !booking.driverId || input.vehicleId === booking.vehicle.id,
       'Le véhicule ne peut plus être changé après l’affectation d’un chauffeur.',
     );
+    requireValue(Boolean(input.date), 'Choisissez une date.');
     const { route, vehicle, estimate, settings } = await this.priceInput(
       input.vehicleId,
       input.routeId,
@@ -228,8 +238,13 @@ export class MovingService implements MovingUseCases {
       input.workAccess,
       input.trips ?? 1,
     );
-    if (input.date && input.date !== booking.date)
-      validateDate(input.date, this.clock.now(), settings);
+    if (input.date) validateDate(input.date, this.clock.now(), settings, input.timeSlot);
+    if (input.timeSlot !== booking.timeSlot) {
+      requireValue(
+        isAvailableBookingSlot(input.timeSlot, settings),
+        'Ce créneau n’est plus disponible. Choisissez un autre horaire.',
+      );
+    }
     const provisional = booking.quotes.filter((quote) => quote.kind === 'provisional').at(-1);
     const nextQuote = {
       id: provisional?.id ?? this.ids.next(),
@@ -247,7 +262,7 @@ export class MovingService implements MovingUseCases {
         ...booking,
         status: booking.status === 'cancelled' ? 'pending' : booking.status,
         customerName: input.customerName,
-        phone: input.customerPhone,
+        phone: normalizePhone(input.customerPhone),
         source: booking.source ?? '',
         vehicle,
         from: route.from,
@@ -285,7 +300,12 @@ export class MovingService implements MovingUseCases {
       input.distanceKmOverride,
     );
     if (input.date && input.date !== booking.date)
-      validateDate(input.date, this.clock.now(), { ...settings, maxAdvanceDays: 730 });
+      validateDate(
+        input.date,
+        this.clock.now(),
+        { ...settings, maxAdvanceDays: 730 },
+        input.timeSlot,
+      );
     const crewAddressChange = addressChangeForUpdate(
       booking,
       input.fromAddress,
@@ -298,7 +318,7 @@ export class MovingService implements MovingUseCases {
       {
         ...booking,
         customerName: input.customerName,
-        phone: input.customerPhone,
+        phone: normalizePhone(input.customerPhone),
         source: input.source ?? booking.source ?? '',
         vehicle,
         from: route.from,
@@ -438,10 +458,15 @@ export class MovingService implements MovingUseCases {
         booking.date,
         'Ajoutez une date de rendez-vous avant de confirmer la réservation.',
       );
-      validateDate(booking.date, this.clock.now(), {
-        ...settings,
-        maxAdvanceDays: 730,
-      });
+      validateDate(
+        booking.date,
+        this.clock.now(),
+        {
+          ...settings,
+          maxAdvanceDays: 730,
+        },
+        booking.timeSlot,
+      );
     }
     const updated = await this.bookings.update({ ...booking, status: next }, version);
     if (user.role === 'admin' && next === 'confirmed' && booking.driverId) {
@@ -623,7 +648,14 @@ export class MovingService implements MovingUseCases {
       'Le rendez-vous ne peut plus être modifié après la clôture ou la création du devis final.',
     );
     const { settings } = await this.catalogue.get();
-    if (date) validateDate(date, this.clock.now(), { ...settings, maxAdvanceDays: 730 });
+    if (date) {
+      validateDate(date, this.clock.now(), { ...settings, maxAdvanceDays: 730 }, timeSlot);
+      if (user.role === 'client')
+        requireValue(
+          isAvailableBookingSlot(timeSlot, settings),
+          'Ce créneau n’est plus disponible. Choisissez un autre horaire.',
+        );
+    }
     const workPlan = booking.workPlan ?? [];
     const firstTime = workPlan[0]?.time;
     const startMinutes = (value: string) => {

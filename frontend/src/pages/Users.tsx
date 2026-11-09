@@ -9,6 +9,7 @@ import { Pagination } from '../components/Pagination';
 import { pageSizes } from '../config/pagination';
 import { messages } from '../content/fr';
 import { routes } from '../routing/routes';
+import { sanitizePhoneInput } from '../domain/phone-number';
 export function Users() {
   const {
     actor,
@@ -146,8 +147,14 @@ export function Users() {
               id="account-phone"
               name="phone"
               type="tel"
+              inputMode="tel"
+              maxLength={30}
+              placeholder="+221 77 123 45 67 ou +33 6 12 34 56 78"
               required
               defaultValue={editing === 'new' ? '' : editing.phone}
+              onChange={(event) => {
+                event.currentTarget.value = sanitizePhoneInput(event.currentTarget.value);
+              }}
             />
             <label htmlFor="account-role">{messages.role}</label>
             <select

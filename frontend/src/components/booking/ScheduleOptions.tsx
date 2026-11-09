@@ -6,6 +6,7 @@ import { money, today } from '../../domain/format';
 import { assemblyUnitPrice } from '../../domain/labour-price';
 import type { Catalogue } from '../../domain/model';
 import { TollRateSelector } from '../TollRateSelector';
+import type { BookingField, BookingFieldErrors } from '../../domain/booking-validation';
 
 export function ScheduleOptions({
   catalogue,
@@ -16,6 +17,8 @@ export function ScheduleOptions({
   administrativeQuote = false,
   tollLines = [],
   setTollLines,
+  fieldErrors = {},
+  clearFieldError = () => {},
   referenceMode = false,
 }: Pick<BookingViewState, 'catalogue' | 'draft' | 'setDraft' | 'extras' | 'option'> & {
   catalogue: Catalogue;
@@ -24,8 +27,24 @@ export function ScheduleOptions({
   setTollLines?: React.Dispatch<
     React.SetStateAction<{ id: string; label: string; quantity: number; unitPrice: number }[]>
   >;
+  fieldErrors?: BookingFieldErrors;
+  clearFieldError?: (field: BookingField) => void;
   referenceMode?: boolean;
 }) {
+  const bookingSlots = catalogue.settings.enabledSlots.length
+    ? catalogue.settings.enabledSlots
+    : [{ label: 'Matin (8h – 12h)', startHour: 8 }];
+  const slotOptions = bookingSlots.map((slot) => ({
+    value: `${String(slot.startHour).padStart(2, '0')}:00`,
+    label: slot.label,
+  }));
+  if (
+    referenceMode &&
+    draft.timeSlot &&
+    !slotOptions.some((slot) => slot.value === draft.timeSlot)
+  ) {
+    slotOptions.unshift({ value: draft.timeSlot, label: `Heure enregistrée · ${draft.timeSlot}` });
+  }
   return (
     <section className="panel">
       {!referenceMode && (
@@ -46,6 +65,8 @@ export function ScheduleOptions({
           <input
             id="booking-date"
             type="date"
+            aria-invalid={Boolean(fieldErrors.date)}
+            aria-describedby={fieldErrors.date ? 'booking-date-error' : undefined}
             min={referenceMode ? undefined : today()}
             max={
               referenceMode
@@ -55,18 +76,52 @@ export function ScheduleOptions({
                     .slice(0, 10)
             }
             value={draft.date}
-            onChange={(e) => setDraft((d) => ({ ...d, date: e.target.value }))}
+            onChange={(e) => {
+              clearFieldError('date');
+              clearFieldError('timeSlot');
+              setDraft((d) => ({ ...d, date: e.target.value }));
+            }}
           />
+          {fieldErrors.date && (
+            <p className="booking-validation-error" id="booking-date-error" role="alert">
+              {fieldErrors.date}
+            </p>
+          )}
         </div>
         <div>
           <label htmlFor="booking-slot">{uiText['heureSouhaitee']}</label>
-          <input
-            id="booking-slot"
-            type="time"
-            step="60"
-            value={draft.timeSlot}
-            onChange={(e) => setDraft((d) => ({ ...d, timeSlot: e.target.value }))}
-          />
+          {!administrativeQuote ? (
+            <select
+              id="booking-slot"
+              aria-invalid={Boolean(fieldErrors.timeSlot)}
+              aria-describedby={fieldErrors.timeSlot ? 'booking-slot-error' : undefined}
+              value={draft.timeSlot}
+              onChange={(e) => {
+                clearFieldError('timeSlot');
+                setDraft((d) => ({ ...d, timeSlot: e.target.value }));
+              }}
+            >
+              <option value="">Choisir un créneau</option>
+              {slotOptions.map((slot) => (
+                <option key={slot.value} value={slot.value}>
+                  {slot.label}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              id="booking-slot"
+              type="time"
+              step="60"
+              value={draft.timeSlot}
+              onChange={(e) => setDraft((d) => ({ ...d, timeSlot: e.target.value }))}
+            />
+          )}
+          {fieldErrors.timeSlot && (
+            <p className="booking-validation-error" id="booking-slot-error" role="alert">
+              {fieldErrors.timeSlot}
+            </p>
+          )}
           {!referenceMode && (
             <small className="muted">
               {uiText['choisissezLHeureQuiVousConvientLEquipeConfirmeraLeRend']}

@@ -1,5 +1,6 @@
 import type { Catalogue } from '../../domain/model';
 import { referenceSettingsText as text } from '../../content/reference-settings-text';
+import { sanitizePhoneInput } from '../../domain/phone-number';
 
 export function CompanyQuoteSettings({ catalogue }: { catalogue: Catalogue }) {
   return (
@@ -19,9 +20,14 @@ export function CompanyQuoteSettings({ catalogue }: { catalogue: Catalogue }) {
           <span>{text.phone}</span>
           <input
             name="businessPhone"
-            type="text"
+            type="tel"
+            inputMode="tel"
+            maxLength={30}
             defaultValue={catalogue.settings.businessPhone}
-            placeholder={text.phonePlaceholder}
+            placeholder="+221 77 510 51 04 ou +33 6 12 34 56 78"
+            onChange={(event) => {
+              event.currentTarget.value = sanitizePhoneInput(event.currentTarget.value);
+            }}
           />
         </label>
         <label>

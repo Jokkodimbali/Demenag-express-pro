@@ -50,6 +50,18 @@
   gap: 6px;
   align-items: center;
 }
+.booking-validation-error {
+  margin: 6px 0 0;
+  color: #ff9da3;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+.booking-section input[aria-invalid='true'],
+.booking-section select[aria-invalid='true'] {
+  border-color: #ff727b;
+  box-shadow: 0 0 0 2px rgb(255 114 123 / 18%);
+}
 .hero-points svg {
   color: var(--yellow);
 }

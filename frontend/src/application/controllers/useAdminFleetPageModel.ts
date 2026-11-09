@@ -7,6 +7,7 @@ import { messages } from '../../content/fr';
 import { useAdminFleet } from '../../application/controllers/useAdminFleet';
 import { errorMessage } from '../../application/error-message';
 import { whatsappUrl } from '../../application/services/whatsapp';
+import { normalizePhoneNumber } from '../../domain/phone-number';
 import { queueTeamSave } from '../../application/services/team-save-queue';
 import type { Booking, Driver, Point } from '../../domain/model';
 import {
@@ -479,7 +480,8 @@ export function useAdminFleetPageModel() {
     const name = newEmployee.name.trim();
     const phone = newEmployee.phone.trim();
     if (!name) return setPageError('Indiquez le nom.');
-    if (phone.replace(/\D/g, '').length < 9) return setPageError('Indiquez le téléphone.');
+    if (!normalizePhoneNumber(phone))
+      return setPageError('Saisissez un numéro valide avec son indicatif international.');
     setPageError('');
     setCreatedEmployeeAccess(null);
     try {
@@ -687,9 +689,7 @@ export function useAdminFleetPageModel() {
       if (saved)
         plannedBookings = plannedBookings.map((item) => (item.id === saved.id ? saved : item));
     }
-    for (const booking of bookings.filter(
-      (item) => item.date === selectedDay && item.crew,
-    )) {
+    for (const booking of bookings.filter((item) => item.date === selectedDay && item.crew)) {
       const currentBooking = plannedBookings.find((item) => item.id === booking.id) ?? booking;
       const crew = teamOf(currentBooking);
       const normalizedCrew = normalizeCrewLead(crew);
@@ -760,7 +760,7 @@ export function useAdminFleetPageModel() {
       return;
     }
     const recipients = members.flatMap((member) => {
-      const phone = member.phone.replace(/\D/g, '');
+      const phone = normalizePhoneNumber(member.phone);
       if (!phone) return [];
       const key = `${booking.id}|${member.id}`;
       const message =

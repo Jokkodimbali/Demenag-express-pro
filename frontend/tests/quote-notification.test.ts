@@ -73,7 +73,7 @@ test('les conditions de chargement sont ajoutées au message WhatsApp de devis',
   );
   assert.match(
     quoteConditionsText({ stairs: 'balcon', balcPx: 25000 }),
-    /Passage : par le balcon \(supplément de 25 000 FCFA inclus\)\./u,
+    /Passage : par le balcon \(supplément de 25\s+000 FCFA inclus\)\./u,
   );
 });
 

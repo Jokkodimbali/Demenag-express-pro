@@ -13,9 +13,10 @@ import {
 import { apiRoutes } from './routes.js';
 import { adminPasswordResetSchema } from './validation/auth.js';
 import { accountSchema, createAccountSchema, userIdSchema } from './validation/administration.js';
+import { phoneNumberSchema } from './validation/phone.js';
 import { z } from 'zod';
 const accountingMonthValue = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
-const clientPhoneSchema = z.string().regex(/^\d{9}$/);
+const clientPhoneSchema = z.string().regex(/^\d{8,15}$/);
 const inventoryImageKey = z.string().regex(/^[a-z0-9:_-]{1,150}$/u);
 const employeeProofUpdateSchema = z
   .object({
@@ -34,7 +35,7 @@ const inspectionItemUpdateSchema = z.object({
 });
 const clientUpdateSchema = z.object({
   name: z.string().trim().min(2).max(100),
-  phone: z.string().min(9).max(25),
+  phone: phoneNumberSchema,
   address: z.string().trim().max(300).default(''),
 });
 const accountingMonthSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);

@@ -1,16 +1,22 @@
 import { uiText } from '../../content/reference-ui-text';
 import type { BookingViewState } from '../../application/contracts/booking-view';
 import { messages } from '../../content/fr';
+import type { BookingField, BookingFieldErrors } from '../../domain/booking-validation';
+import { sanitizePhoneInput } from '../../domain/phone-number';
 
 export function CustomerDetails({
   draft,
   setDraft,
   recognition,
   recognizingClient,
+  fieldErrors = {},
+  clearFieldError = () => {},
   referenceMode = false,
 }: Pick<BookingViewState, 'draft' | 'setDraft'> & {
   recognition: { phone: string; name: string; bookingCount: number } | null;
   recognizingClient: boolean;
+  fieldErrors?: BookingFieldErrors;
+  clearFieldError?: (field: BookingField) => void;
   referenceMode?: boolean;
 }) {
   return (
@@ -31,14 +37,21 @@ export function CustomerDetails({
             name="customer-name"
             autoComplete="name"
             maxLength={100}
-            required
+            aria-invalid={Boolean(fieldErrors.customerName)}
+            aria-describedby={fieldErrors.customerName ? 'customer-name-error' : undefined}
             placeholder={referenceMode ? 'Nom du client' : undefined}
             aria-label={referenceMode ? 'Nom du client' : undefined}
             value={draft.customerName}
-            onChange={(event) =>
-              setDraft((value) => ({ ...value, customerName: event.target.value }))
-            }
+            onChange={(event) => {
+              clearFieldError('customerName');
+              setDraft((value) => ({ ...value, customerName: event.target.value }));
+            }}
           />
+          {fieldErrors.customerName && (
+            <p className="booking-validation-error" id="customer-name-error" role="alert">
+              {fieldErrors.customerName}
+            </p>
+          )}
         </div>
         <div>
           {!referenceMode && <label htmlFor="customer-phone">{messages.telephone}</label>}
@@ -48,13 +61,25 @@ export function CustomerDetails({
             type="tel"
             autoComplete="tel"
             maxLength={25}
-            placeholder={referenceMode ? 'Téléphone' : undefined}
+            inputMode="tel"
+            aria-invalid={Boolean(fieldErrors.customerPhone)}
+            aria-describedby={fieldErrors.customerPhone ? 'customer-phone-error' : undefined}
+            placeholder={referenceMode ? 'Téléphone' : '+221 77 123 45 67 ou +33 6 12 34 56 78'}
             required
             value={draft.customerPhone}
-            onChange={(event) =>
-              setDraft((value) => ({ ...value, customerPhone: event.target.value }))
-            }
+            onChange={(event) => {
+              clearFieldError('customerPhone');
+              setDraft((value) => ({
+                ...value,
+                customerPhone: sanitizePhoneInput(event.target.value),
+              }));
+            }}
           />
+          {fieldErrors.customerPhone && (
+            <p className="booking-validation-error" id="customer-phone-error" role="alert">
+              {fieldErrors.customerPhone}
+            </p>
+          )}
           {!referenceMode && recognizingClient ? (
             <p className="muted" role="status">
               {uiText['verificationDuNumero']}

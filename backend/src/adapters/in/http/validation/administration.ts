@@ -1,7 +1,8 @@
 import { z } from 'zod';
+import { phoneNumberSchema } from './phone.js';
 export const accountSchema = z.object({
   name: z.string().trim().min(2).max(100),
-  phone: z.string().min(9).max(25),
+  phone: phoneNumberSchema,
   role: z.enum(['client', 'admin']),
   active: z.boolean(),
 });

@@ -8,6 +8,7 @@ import { useAdminClients } from '../application/controllers/useAdminClients';
 import { useApp } from '../application/context';
 import { errorMessage } from '../application/error-message';
 import { normalizedClientPhone } from '../application/services/client-summary';
+import { normalizePhoneNumber, sanitizePhoneInput } from '../domain/phone-number';
 import { usePagination } from '../application/usePagination';
 import { Modal } from '../components/Modal';
 import { Pagination } from '../components/Pagination';
@@ -32,7 +33,6 @@ type ClientRowValue = {
   references: string[];
   bookings: Booking[];
 };
-const digitsOnly = (value: string) => value.replace(/\D/g, '').slice(-9);
 const shortDate = (value: string) => {
   const [year, month, day] = value.split('-');
   return `${day}/${month}/${year}`;
@@ -98,8 +98,10 @@ function ClientRow({
   }, [value.name, value.phone, value.address]);
   async function save() {
     if (name === value.name && phone === value.phone && address === value.address) return;
-    if (name.trim().length < 2 || digitsOnly(phone).length < 9) {
-      setRowError('Vérifiez le nom et le numéro du client.');
+    if (name.trim().length < 2 || !normalizePhoneNumber(phone)) {
+      setRowError(
+        'Vérifiez le nom et saisissez un numéro valide avec son indicatif international.',
+      );
       return;
     }
     setRowError('');
@@ -129,11 +131,14 @@ function ClientRow({
           <input
             aria-label={`Téléphone · ${value.name}`}
             value={phone}
-            onChange={update(setPhone)}
+            type="tel"
+            inputMode="tel"
+            maxLength={30}
+            onChange={(event) => setPhone(sanitizePhoneInput(event.target.value))}
             onBlur={() => void save()}
             className="reference-client-edit"
           />
-          <a href={`tel:${digitsOnly(phone)}`}>{uiText['appeler']}</a>
+          <a href={`tel:${normalizePhoneNumber(phone) ?? phone}`}>{uiText['appeler']}</a>
           {value.account?.passwordResetRequestedAt ? (
             <button
               className="reference-client-reset"
@@ -253,10 +258,12 @@ export function AdminClients() {
       group.push(booking);
       summaries.set(key, group);
     }
-    const profileMap = new Map(profiles.map((profile) => [digitsOnly(profile.phone), profile]));
+    const profileMap = new Map(
+      profiles.map((profile) => [normalizedClientPhone(profile.phone), profile]),
+    );
     return [...summaries.entries()]
       .flatMap(([key, all]) => {
-        const hiddenEntry = hidden.find((entry) => digitsOnly(entry.phone) === key);
+        const hiddenEntry = hidden.find((entry) => normalizedClientPhone(entry.phone) === key);
         const latest = [...all].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
         if (hiddenEntry && latest.createdAt <= hiddenEntry.hiddenAt) return [];
         const profile = profileMap.get(key);
@@ -273,7 +280,9 @@ export function AdminClients() {
         );
         const final = active.reduce((sum, booking) => sum + amounts(booking).finalized, 0);
         const acct =
-          users.find((user) => user.role === 'client' && digitsOnly(user.phone) === key) ?? null;
+          users.find(
+            (user) => user.role === 'client' && normalizedClientPhone(user.phone) === key,
+          ) ?? null;
         return [
           {
             key,
@@ -308,11 +317,12 @@ export function AdminClients() {
     setBusyKey(initial.key);
     try {
       await updateClient(initial.key, next);
-      const newKey = digitsOnly(next.phone);
+      const newKey = normalizedClientPhone(next.phone);
       setProfiles((old) => [
         ...old.filter(
           (profile) =>
-            digitsOnly(profile.phone) !== initial.key && digitsOnly(profile.phone) !== newKey,
+            normalizedClientPhone(profile.phone) !== initial.key &&
+            normalizedClientPhone(profile.phone) !== newKey,
         ),
         { phone: next.phone, name: next.name, address: next.address },
       ]);
@@ -332,7 +342,10 @@ export function AdminClients() {
     if (!confirmed) return;
     try {
       const entry = await hideClientProfile(client.key);
-      setHidden((old) => [...old.filter((value) => digitsOnly(value.phone) !== client.key), entry]);
+      setHidden((old) => [
+        ...old.filter((value) => normalizedClientPhone(value.phone) !== client.key),
+        entry,
+      ]);
     } catch (e) {
       setDirectoryError(errorMessage(e));
     }
@@ -380,7 +393,9 @@ export function AdminClients() {
           <button
             className="reference-client-contact-export"
             type="button"
-            onClick={() => downloadContacts(rows, 'Contacts-Demenag-Express.vcf', catalogue?.settings ?? {})}
+            onClick={() =>
+              downloadContacts(rows, 'Contacts-Demenag-Express.vcf', catalogue?.settings ?? {})
+            }
           >
             Exporter tous les contacts
           </button>

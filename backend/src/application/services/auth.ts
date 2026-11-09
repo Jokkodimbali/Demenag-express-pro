@@ -10,12 +10,11 @@ import type {
   UserRepository,
 } from '../ports/index.js';
 import type { AuthUseCases } from '../ports/use-cases.js';
+import { normalizePhoneNumber } from '../../domain/phone-number.js';
 export function normalizePhone(phone: string) {
-  const clean = phone.replace(/[\s().-]/g, '').replace(/^00/, '+');
-  const local = clean.replace(/^\+?221/, '');
-  if (!/^(70|71|75|76|77|78)\d{7}$/.test(local))
-    throw new AppError(400, messages.saisissezUnNumeroMobileSenegalaisValide);
-  return '+221' + local;
+  const normalized = normalizePhoneNumber(phone);
+  if (!normalized) throw new AppError(400, messages.saisissezUnNumeroInternationalValide);
+  return normalized;
 }
 export class AuthService implements AuthUseCases {
   constructor(

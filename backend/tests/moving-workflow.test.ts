@@ -126,6 +126,8 @@ function harness() {
     },
   } as unknown as BookingRepository;
   const settings = {
+    bookingsEnabled: true,
+    maxAdvanceDays: 366,
     distanceBounds: [15, 25, 35],
     maxTrips: 20,
     maxOptions: 20,
@@ -133,6 +135,8 @@ function harness() {
     labourFloorPrice: 500,
     labourLiftPrice: 500,
     assemblyPrice: 5000,
+    enabledSlots: [{ label: 'Matin', startHour: 9 }],
+    minNoticeHours: 0,
     montageP: {},
   } as Settings;
   const catalogue = {
@@ -227,6 +231,73 @@ test('un devis final au-delà du dernier palier exige un prix de transport posit
   const saved = await service.quote(admin, booking.id, { ...input, customPrice: 25000 });
   assert.equal(saved.quotes[0]?.price.lines[0]?.unitPrice, 25000);
   assert.equal(saved.quotes[0]?.price.total, 25000);
+});
+
+test('un devis provisoire conserve le supplément balcon à fixer comme dans la référence', async () => {
+  const { service, getBooking, setInventorySnapshot } = harness();
+  const booking = getBooking();
+  setInventorySnapshot({
+    sourceInventory: {
+      dwellingType: '',
+      fromFloor: 0,
+      toFloor: 0,
+      fromLift: false,
+      toLift: false,
+      ready: '',
+      stairs: 'balcon',
+      balcPx: 0,
+      entries: {},
+      variants: [],
+      flags: {},
+      custom: [],
+    },
+    dwellingType: '',
+    annexIncluded: false,
+    annexVolumeM3: 0,
+    fromFloor: 0,
+    toFloor: 0,
+    fromLift: false,
+    toLift: false,
+    ready: '',
+    stairs: 'balcon',
+    balcPx: 0,
+    flags: [],
+    items: [],
+    itemCount: 0,
+    totalVolumeM3: 0,
+    vehicleCapacityM3: 20,
+    fillRate: 0.85,
+    estimatedTrips: 1,
+    moverCount: 0,
+    carpenterCount: 0,
+    loadingMinutes: 0,
+    unloadingMinutes: 0,
+    packingMinutes: 0,
+    travelMinutes: 0,
+    totalMinutes: 0,
+    lowDurationMinutes: 0,
+    highDurationMinutes: 0,
+    startTime: '08:00',
+    endTime: '08:00',
+  });
+  const updated = await service.quote(admin, booking.id, {
+    kind: 'provisional',
+    trips: 1,
+    customPrice: null,
+    discount: 0,
+    notes: '',
+    extraLines: [],
+    tolls: [],
+    options: booking.options,
+    version: booking.version,
+  });
+
+  assert.deepEqual(updated.quotes[0]?.price.lines.at(-1), {
+    label: 'Supplément passage par le balcon (à fixer)',
+    quantity: 1,
+    unitPrice: 0,
+    total: 0,
+  });
 });
 
 test('seule l’administration peut enregistrer un rappel de réservation', async () => {
@@ -433,6 +504,32 @@ test('driver cannot change reservation status or course history; admin controls 
   await assert.rejects(service.finishTrip(driverUser, 'booking-1', ['/unloading.jpg']));
   await assert.rejects(service.finishDriverWork(driverUser, 'booking-1'));
   await assert.rejects(service.startTrip(client, 'booking-1', []), /réservée à l’administration/u);
+});
+
+test('un client ne peut pas créer ou modifier une réservation sans date', async () => {
+  const { service } = harness();
+  const input: BookingInput = {
+    vehicleId: 'vehicle-1',
+    routeId: 'route-for-update',
+    customerName: 'Client test',
+    customerPhone: '+221770000003',
+    fromAddress: 'Dakar',
+    toAddress: 'Thiès',
+    date: null,
+    timeSlot: '',
+    options: { labour: 0, desk: 0, wardrobe: 0, bed: 0 },
+    notes: '',
+    requestId: '123e4567-e89b-42d3-a456-426614174000',
+  };
+  await assert.rejects(service.create(client, input), /Choisissez une date/u);
+  await assert.rejects(
+    service.create(client, { ...input, date: '2026-10-23', timeSlot: '08:00' }),
+    /créneau n’est plus disponible/u,
+  );
+  await assert.rejects(
+    service.updateClientRequest(client, 'booking-1', input, 1),
+    /Choisissez une date/u,
+  );
 });
 
 test('driver can access and manage only bookings assigned to their employee profile', async () => {

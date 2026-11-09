@@ -278,7 +278,13 @@ export async function downloadQuote(
   const documentQuote = quote;
   const doc = new jsPDF({ format: 'a4', unit: 'mm' });
   const price = documentQuote?.price || booking.estimate;
-  const sourceNotes = notesForPdf(documentQuote ? documentQuote.notes : booking.notes);
+  const rawNotes = notesForPdf(documentQuote ? documentQuote.notes : booking.notes);
+  const conditionsMatch =
+    /CONDITIONS DE CHARGEMENT\s*\n([\s\S]*?Ces conditions doivent être respectées le jour du déménagement\. Sinon, le déménagement n’aura pas lieu\.)/u.exec(
+      rawNotes,
+    );
+  const loadingConditions = conditionsMatch?.[0] ?? '';
+  const sourceNotes = loadingConditions ? rawNotes.replace(loadingConditions, '').trim() : rawNotes;
   const addressNotes = addressNotesFrom(
     booking.inventorySnapshot
       ? withoutInventoryBlock(
@@ -395,7 +401,13 @@ export async function downloadQuote(
   paragraph(booking.phone, infoX[0]!, y + 13, infoWidth, 9);
   const schedule = booking.date
     ? `${dateLabel(booking.date)}  -  ${booking.timeSlot}`
-    : 'À convenir';
+    : booking.month
+      ? `${new Date(`${booking.month}-01T12:00:00Z`).toLocaleDateString('fr-FR', {
+          month: 'long',
+          year: 'numeric',
+          timeZone: 'Africa/Dakar',
+        })}${booking.timeSlot ? `  -  Début ${booking.timeSlot}` : ''}`
+      : 'À convenir';
   paragraph(schedule, infoX[1]!, y + 7, infoWidth, 10, true);
   paragraph(booking.vehicle.name, infoX[2]!, y + 7, infoWidth, 11, true);
   paragraph(
@@ -547,6 +559,27 @@ export async function downloadQuote(
       }
     }
     y += 3;
+  }
+  if (loadingConditions) {
+    y += 3;
+    ensureSpace(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(36, 40, 44);
+    doc.text('CONDITIONS DE CHARGEMENT', margin, y);
+    y += 5;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(60, 66, 72);
+    const conditionLines = loadingConditions.split(/\r?\n/u).slice(1);
+    for (const conditionLine of conditionLines) {
+      for (const line of doc.splitTextToSize(clean(conditionLine), contentWidth) as string[]) {
+        ensureSpace(6);
+        doc.text(line, margin, y);
+        y += 4.5;
+      }
+    }
+    y += 2;
   }
   const explanation =
     documentQuote?.billingMode === 'driver-rental'
