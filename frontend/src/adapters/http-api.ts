@@ -146,6 +146,10 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
       (await request<{ image: string | null }>(httpRoutes.inventoryIllustration(key))).image,
     saveInventoryIllustration: (key, image) =>
       request(httpRoutes.inventoryIllustration(key), 'PUT', { image }),
+    adminQuoteDraft: async () =>
+      (await request<{ draft: unknown | null }>(httpRoutes.adminQuoteDraft)).draft,
+    saveAdminQuoteDraft: (draft) => request(httpRoutes.adminQuoteDraft, 'PUT', { draft }),
+    clearAdminQuoteDraft: () => request(httpRoutes.adminQuoteDraft, 'DELETE'),
     googleMapsApiKey: async () => (await request<{ key: string }>(httpRoutes.googleMapsKey)).key,
     updateGoogleMapsApiKey: (key) => request(httpRoutes.googleMapsKey, 'PUT', { key }),
     tollPoints: () => sharePendingRead(httpRoutes.tollPoints, () => request(httpRoutes.tollPoints)),

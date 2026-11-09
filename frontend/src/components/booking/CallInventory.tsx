@@ -103,12 +103,10 @@ export function CallInventory({
       <div className="inventory-heading">
         <div>
           <strong>
-            {audience === 'client' && !referenceMode
-              ? 'VOTRE INVENTAIRE'
-              : "FICHE D'APPEL · INVENTAIRE"}
+            {audience === 'client' ? 'VOTRE INVENTAIRE' : "FICHE D'APPEL · INVENTAIRE"}
           </strong>
           <span>
-            {audience === 'client' && !referenceMode
+            {audience === 'client'
               ? 'Indiquez les objets à déménager pour estimer le volume et les allers-retours.'
               : "Cochez et comptez pendant l'appel, le devis se remplit tout seul."}
           </span>
@@ -118,7 +116,7 @@ export function CallInventory({
           className="inventory-collapse"
           onClick={() => setOpen((value) => !value)}
         >
-          {audience === 'client' && !referenceMode
+          {audience === 'client'
             ? open
               ? 'Réduire'
               : 'Développer'
@@ -129,7 +127,7 @@ export function CallInventory({
       </div>
       {open && (
         <div className="inventory-content">
-          {audience === 'client' && !referenceMode && (
+          {audience === 'client' && (
             <p className="muted">
               {uiText['lesMontagesDeLitArmoireEtBureauSelectionnesAlimententD']}
             </p>
@@ -138,6 +136,78 @@ export function CallInventory({
             <p className="alert error" role="alert">
               {inventoryError}
             </p>
+          )}
+          {audience === 'client' && (
+            <section className="inventory-loading-conditions" aria-label="Conditions de chargement">
+              <strong>CONDITIONS DE CHARGEMENT · AFFICHÉES SUR LE DEVIS</strong>
+              <div>
+                <span>Le matériel sera-t-il prêt à être chargé ?</span>
+                <div role="group" aria-label="État de préparation du matériel">
+                  {(
+                    [
+                      ['oui', 'Oui, tout est prêt'],
+                      ['non', 'Non, emballage par l’équipe'],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <button
+                      type="button"
+                      key={value}
+                      aria-pressed={inventory.ready === value}
+                      className={inventory.ready === value ? 'active' : ''}
+                      onClick={() =>
+                        update({
+                          ...inventory,
+                          ready: inventory.ready === value ? '' : value,
+                        })
+                      }
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {inventory.ready === 'non' && (
+                  <small>
+                    Le temps d’emballage est ajouté au planning. Pensez à prévoir cartons et film.
+                  </small>
+                )}
+              </div>
+              <div>
+                <span>Tout passe-t-il par l’escalier ?</span>
+                <div role="group" aria-label="Passage par les escaliers ou le balcon">
+                  {(
+                    [
+                      ['oui', 'Oui, tout passe par l’escalier'],
+                      ['balcon', 'Non, par le balcon'],
+                      ['verif', 'À vérifier'],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <button
+                      type="button"
+                      key={value}
+                      aria-pressed={inventory.stairs === value}
+                      className={inventory.stairs === value ? 'active' : ''}
+                      onClick={() =>
+                        update({
+                          ...inventory,
+                          stairs: inventory.stairs === value ? '' : value,
+                        })
+                      }
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {inventory.stairs === 'balcon' && (
+                  <small>
+                    Le passage par le balcon entraîne un supplément fixé par Demenag Express après
+                    étude.
+                  </small>
+                )}
+                {inventory.stairs === 'verif' && (
+                  <small>Demandez la largeur de l’escalier et des portes, ou une photo.</small>
+                )}
+              </div>
+            </section>
           )}
           <div className="inventory-access">
             {(['from', 'to'] as const).map((side) => (

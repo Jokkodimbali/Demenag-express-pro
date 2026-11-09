@@ -69,7 +69,11 @@ test('les conditions de chargement sont ajoutées au message WhatsApp de devis',
   assert.match(message, /Passage par l’escalier : à confirmer avec nous avant le jour J/u);
   assert.equal(
     quoteConditionsText({ ready: 'oui', stairs: 'oui' }, 'driver-rental'),
-    '- Matériel : tout doit être emballé et prêt à charger à l’arrivée du véhicule.\n- Passage : tout le matériel passe par l’escalier.',
+    'CONDITIONS DE CHARGEMENT\n- Matériel : tout doit être emballé et prêt à charger à l’arrivée du véhicule.\n- Passage : tout le matériel passe par l’escalier.\nCes conditions doivent être respectées le jour du déménagement. Sinon, le déménagement n’aura pas lieu.',
+  );
+  assert.match(
+    quoteConditionsText({ stairs: 'balcon', balcPx: 25000 }),
+    /Passage : par le balcon \(supplément de 25 000 FCFA inclus\)\./u,
   );
 });
 

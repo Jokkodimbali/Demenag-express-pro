@@ -60,7 +60,8 @@ const inventorySnapshotSchema = z.object({
         .max(500),
       flags: z.record(z.string().max(100), z.boolean()),
       ready: z.enum(['oui', 'non', '']).optional(),
-      stairs: z.enum(['oui', 'non', 'verif', '']).optional(),
+      stairs: z.enum(['oui', 'non', 'balcon', 'verif', '']).optional(),
+      balcPx: z.number().int().min(0).max(10000000).optional(),
       blanketLengthCm: z.number().finite().min(1).max(1000).optional(),
       blanketWidthCm: z.number().finite().min(1).max(1000).optional(),
       custom: z
@@ -98,7 +99,8 @@ const inventorySnapshotSchema = z.object({
   fromLift: z.boolean(),
   toLift: z.boolean(),
   ready: z.enum(['oui', 'non', '']),
-  stairs: z.enum(['oui', 'non', 'verif', '']),
+  stairs: z.enum(['oui', 'non', 'balcon', 'verif', '']),
+  balcPx: z.number().int().min(0).max(10000000).optional(),
   flags: z.array(z.string().trim().min(1).max(120)).max(30),
   items: z
     .array(

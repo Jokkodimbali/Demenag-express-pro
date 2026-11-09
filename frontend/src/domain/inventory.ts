@@ -339,7 +339,8 @@ export type Inventory = {
   }[];
   flags: Record<string, boolean>;
   ready?: 'oui' | 'non' | '';
-  stairs?: 'oui' | 'non' | 'verif' | '';
+  stairs?: 'oui' | 'non' | 'balcon' | 'verif' | '';
+  balcPx?: number;
   /** Snapshot of the blanket dimensions used by this quote, in centimetres. */
   blanketLengthCm?: number;
   blanketWidthCm?: number;
@@ -434,9 +435,13 @@ export function inventoryNote(inventory: Inventory): string {
       ? ['Tout le matériel passe dans les escaliers.']
       : inventory.stairs === 'non'
         ? ['Certains objets ne passent pas dans les escaliers.']
-        : inventory.stairs === 'verif'
-          ? ['Passage des escaliers à vérifier.']
-          : []),
+        : inventory.stairs === 'balcon'
+          ? [
+              `Passage par le balcon${inventory.balcPx ? ` · supplément ${inventory.balcPx} FCFA` : ''}.`,
+            ]
+          : inventory.stairs === 'verif'
+            ? ['Passage des escaliers à vérifier.']
+            : []),
     ...selected.map((line) => `- ${line}`),
     ...(flags.length ? [`À noter : ${flags.join(', ')}`] : []),
   ].join('\n');

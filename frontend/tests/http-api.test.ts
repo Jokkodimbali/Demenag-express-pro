@@ -72,3 +72,33 @@ test('La connexion employé envoie le téléphone et le mot de passe initial', a
     globalThis.fetch = originalFetch;
   }
 });
+
+test('Le brouillon de devis administrateur est lu, enregistré et supprimé par API', async () => {
+  const originalFetch = globalThis.fetch;
+  const requests: { url: string; method: string; body?: unknown }[] = [];
+  const draft = { draft: { customerName: 'Awa' }, quoteConfig: { trips: 2 }, tollLines: [] };
+  globalThis.fetch = async (input, init) => {
+    const method = init?.method ?? 'GET';
+    requests.push({
+      url: String(input),
+      method,
+      body: typeof init?.body === 'string' ? JSON.parse(init.body) : undefined,
+    });
+    return method === 'GET'
+      ? new Response(JSON.stringify({ draft }), { status: 200 })
+      : new Response(null, { status: 204 });
+  };
+  try {
+    const api = createHttpApi('/api');
+    assert.deepEqual(await api.adminQuoteDraft(), draft);
+    await api.saveAdminQuoteDraft(draft);
+    await api.clearAdminQuoteDraft();
+    assert.deepEqual(requests, [
+      { url: '/api/admin/quote-draft', method: 'GET', body: undefined },
+      { url: '/api/admin/quote-draft', method: 'PUT', body: { draft } },
+      { url: '/api/admin/quote-draft', method: 'DELETE', body: undefined },
+    ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

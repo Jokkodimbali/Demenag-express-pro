@@ -65,6 +65,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const requestInitialized = useRef(false);
   const restoredDraft = useRef(false);
   const skipInitialSave = useRef(false);
+  const draftSaveQueue = useRef(Promise.resolve());
   const [quoteConfig, setQuoteConfig] = useState<AdminQuoteConfig>({
     trips: 1,
     calcMode: 'auto',
@@ -203,7 +204,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   } = state;
   useEffect(() => {
     if (!resetAdminQuote) return;
-    clearAdminQuoteDraft();
+    void clearAdminQuoteDraft(api);
     setDraft(blankDraft(appCatalogue ?? undefined));
     setQuoteConfig({
       trips: 1,
@@ -236,7 +237,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     setResetVersion((current) => current + 1);
     window.scrollTo({ top: 0 });
     navigate(location.pathname, { replace: true, state: null });
-  }, [appCatalogue, location.pathname, navigate, resetAdminQuote, setDraft, setTollLines]);
+  }, [api, appCatalogue, location.pathname, navigate, resetAdminQuote, setDraft, setTollLines]);
   useEffect(() => {
     if (!startNewRequest || requestInitialized.current) return;
     requestInitialized.current = true;
@@ -281,25 +282,37 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       : draft.questionnaireAnswers['key-ready']?.startsWith('Oui')
         ? ('oui' as const)
         : (draft.inventory.ready ?? ('' as const)),
-    stairs: draft.questionnaireAnswers['key-stairs']?.startsWith('Non')
-      ? ('non' as const)
-      : draft.questionnaireAnswers['key-stairs']?.startsWith('Oui')
-        ? ('oui' as const)
-        : draft.questionnaireAnswers['key-stairs']?.startsWith('À vérifier')
-          ? ('verif' as const)
-          : (draft.inventory.stairs ?? ('' as const)),
+    stairs: draft.questionnaireAnswers['key-stairs']?.startsWith('Non, par le balcon')
+      ? ('balcon' as const)
+      : draft.questionnaireAnswers['key-stairs']?.startsWith('Non')
+        ? ('non' as const)
+        : draft.questionnaireAnswers['key-stairs']?.startsWith('Oui')
+          ? ('oui' as const)
+          : draft.questionnaireAnswers['key-stairs']?.startsWith('À vérifier')
+            ? ('verif' as const)
+            : (draft.inventory.stairs ?? ('' as const)),
   };
   useEffect(() => {
-    const saved =
-      editingReservation || publicRequest || resetAdminQuote ? null : readAdminQuoteDraft();
-    if (saved) {
-      setDraft(saved.draft);
-      setQuoteConfig(saved.quoteConfig);
-      setTollLines(saved.tollLines);
+    if (editingReservation || publicRequest || resetAdminQuote || user?.role !== 'admin') {
+      restoredDraft.current = true;
+      skipInitialSave.current = true;
+      return;
     }
-    restoredDraft.current = true;
-    skipInitialSave.current = true;
-  }, [editingReservation, publicRequest, resetAdminQuote, setDraft, setTollLines]);
+    let active = true;
+    void readAdminQuoteDraft(api).then((saved) => {
+      if (!active) return;
+      if (saved) {
+        setDraft(saved.draft);
+        setQuoteConfig(saved.quoteConfig);
+        setTollLines(saved.tollLines);
+      }
+      restoredDraft.current = true;
+      skipInitialSave.current = true;
+    });
+    return () => {
+      active = false;
+    };
+  }, [api, editingReservation, publicRequest, resetAdminQuote, setDraft, setTollLines, user?.role]);
 
   useEffect(() => {
     if (!initialClient) return;
@@ -330,8 +343,13 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       skipInitialSave.current = false;
       return;
     }
-    if (!publicRequest) saveAdminQuoteDraft({ draft, quoteConfig, tollLines });
-  }, [draft, publicRequest, quoteConfig, tollLines]);
+    if (publicRequest || user?.role !== 'admin') return;
+    const timeout = window.setTimeout(() => {
+      const value = { draft, quoteConfig, tollLines };
+      draftSaveQueue.current = draftSaveQueue.current.then(() => saveAdminQuoteDraft(api, value));
+    }, 350);
+    return () => window.clearTimeout(timeout);
+  }, [api, draft, publicRequest, quoteConfig, tollLines, user?.role]);
 
   useEffect(() => {
     if (!publicRequest || !user) return;
@@ -670,8 +688,19 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         })),
       ]
     : rawPreviewLines;
+  const balconyPrice = Math.max(0, Math.round(Number(estimateInventory.balcPx) || 0));
   const previewLines = [
     ...standardPreviewLines,
+    ...(estimateInventory.stairs === 'balcon'
+      ? [
+          {
+            label: 'Supplément passage par le balcon',
+            quantity: 1,
+            unitPrice: balconyPrice,
+            total: balconyPrice,
+          },
+        ]
+      : []),
     ...(rentalOvertimeAmount > 0
       ? [
           {
@@ -741,6 +770,16 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     if (!canSendQuoteWhatsApp) {
       setStageError('Numéro WhatsApp du client invalide.');
       setOpenQuoteSections((current) => ({ ...current, client: true }));
+      return;
+    }
+    if (quoteKind === 'final' && estimateInventory.stairs === 'balcon' && balconyPrice <= 0) {
+      setStageError('Passage par le balcon : fixez le supplément avant le devis final.');
+      return;
+    }
+    if (quoteKind === 'final' && previewTier === 3 && !(Number(quoteConfig.customPrice) > 0)) {
+      setStageError(
+        `Distance au-delà de ${bounds[2]} km : fixez le prix par aller-retour avant le devis final.`,
+      );
       return;
     }
     if (quoteKind === 'final' && (!draft.date || draft.noDate)) {

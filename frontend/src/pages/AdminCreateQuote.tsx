@@ -174,6 +174,26 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             setStageError('Choisissez une date.');
             return;
           }
+          if (
+            quoteKind === 'final' &&
+            estimateInventory.stairs === 'balcon' &&
+            !(Number(estimateInventory.balcPx) > 0)
+          ) {
+            event.preventDefault();
+            setStageError('Passage par le balcon : fixez le supplément avant le devis final.');
+            return;
+          }
+          if (
+            quoteKind === 'final' &&
+            previewTier === 3 &&
+            !(Number(quoteConfig.customPrice) > 0)
+          ) {
+            event.preventDefault();
+            setStageError(
+              `Distance au-delà de ${catalogue.settings.distanceBounds[2]} km : fixez le prix par aller-retour avant le devis final.`,
+            );
+            return;
+          }
           if (quoteKind === 'final' && (!draft.date || draft.noDate)) {
             event.preventDefault();
             setStageError(
@@ -905,10 +925,32 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                 });
               }}
               onChange={(id, value) =>
-                setDraft((current) => ({
-                  ...current,
-                  questionnaireAnswers: { ...current.questionnaireAnswers, [id]: value },
-                }))
+                setDraft((current) => {
+                  const inventory = { ...current.inventory };
+                  if (id === 'key-ready') {
+                    inventory.ready = value.startsWith('Oui')
+                      ? 'oui'
+                      : value.startsWith('Non')
+                        ? 'non'
+                        : '';
+                  }
+                  if (id === 'key-stairs') {
+                    inventory.stairs = value.startsWith('Non, par le balcon')
+                      ? 'balcon'
+                      : value.startsWith('Non')
+                        ? 'non'
+                        : value.startsWith('Oui')
+                          ? 'oui'
+                          : value.startsWith('À vérifier')
+                            ? 'verif'
+                            : '';
+                  }
+                  return {
+                    ...current,
+                    inventory,
+                    questionnaireAnswers: { ...current.questionnaireAnswers, [id]: value },
+                  };
+                })
               }
             />
           )}

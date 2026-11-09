@@ -25,7 +25,7 @@ export const whatsappPaymentLine = (settings?: {
 };
 
 export function quoteConditionsText(
-  inventory: Pick<BookingInventorySource, 'ready' | 'stairs'> | undefined,
+  inventory: Pick<BookingInventorySource, 'ready' | 'stairs' | 'balcPx'> | undefined,
   billingMode: 'complete' | 'driver-rental' = 'complete',
 ) {
   if (!inventory) return '';
@@ -39,10 +39,16 @@ export function quoteConditionsText(
       `- Matériel : emballage sur place par ${billingMode === 'driver-rental' ? 'vos manœuvres' : 'notre équipe'}.`,
     );
   if (inventory.stairs === 'oui') lines.push('- Passage : tout le matériel passe par l’escalier.');
+  else if (inventory.stairs === 'balcon')
+    lines.push(
+      `- Passage : par le balcon${Number(inventory.balcPx) > 0 ? ` (supplément de ${money(inventory.balcPx!)} inclus).` : '.'}`,
+    );
   else if (inventory.stairs === 'non') lines.push('- Passage : démontage ou monte-meuble prévu.');
   else if (inventory.stairs === 'verif')
     lines.push('- Passage par l’escalier : à confirmer avec nous avant le jour J.');
-  return lines.join('\n');
+  return lines.length
+    ? `CONDITIONS DE CHARGEMENT\n${lines.join('\n')}\nCes conditions doivent être respectées le jour du déménagement. Sinon, le déménagement n’aura pas lieu.`
+    : '';
 }
 
 export function renderQuoteTemplate(

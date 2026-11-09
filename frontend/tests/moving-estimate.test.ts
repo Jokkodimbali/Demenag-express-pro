@@ -73,6 +73,30 @@ test('le démontage d’un objet personnalisé réduit son volume comme dans la 
   assert.equal(dismantled.volume, 0.4);
 });
 
+test('le passage par le balcon augmente le temps de chargement de 20 % et reste figé au devis', () => {
+  const inventory = blankInventory();
+  inventory.entries.salon = { quantity: 1, size: 5, dismantle: false };
+  const laborPlanning = { tripSetupMinutes: 0 };
+  const stairs = estimateMovingWork(inventory, vehicle, null, {
+    trips: 1,
+    crew: 2,
+    laborPlanning,
+  });
+  inventory.stairs = 'balcon';
+  inventory.balcPx = 25000;
+  const balcony = estimateMovingWork(inventory, vehicle, null, {
+    trips: 1,
+    crew: 2,
+    laborPlanning,
+  });
+  const snapshot = bookingInventorySnapshot(inventory, balcony);
+
+  assert.ok(Math.abs(balcony.loadingMinutes / stairs.loadingMinutes - 1.2) < 0.000001);
+  assert.equal(snapshot.stairs, 'balcon');
+  assert.equal(snapshot.balcPx, 25000);
+  assert.equal(snapshot.sourceInventory?.balcPx, 25000);
+});
+
 test('un objet libre décrit utilise ses dimensions et son poids dans les totaux figés', () => {
   const inventory = blankInventory();
   inventory.blanketLengthCm = 210;
@@ -101,6 +125,25 @@ test('un objet libre décrit utilise ses dimensions et son poids dans les totaux
   assert.equal(snapshot.sourceInventory?.blanketLengthCm, 210);
   assert.equal(snapshot.sourceInventory?.blanketWidthCm, 180);
   assert.equal(snapshot.sourceInventory?.custom[0]?.frag, true);
+});
+
+test('le poids saisi remplace le poids du meuble modèle de l’objet personnalisé', () => {
+  const inventory = blankInventory();
+  inventory.custom = [
+    {
+      id: 'custom-sofa',
+      label: 'Canapé ancien',
+      quantity: 1,
+      format: 'large',
+      like: 'salon',
+      kg: 70,
+    },
+  ];
+
+  const estimate = estimateMovingWork(inventory, vehicle, null, { trips: 1 });
+
+  assert.equal(estimate.totalWeightKg, 70);
+  assert.equal(estimate.maxItemWeightKg, 70);
 });
 
 test('la recommandation ne rajoute pas de menuisiers quand la manutention reste limitante', () => {

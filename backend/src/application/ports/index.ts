@@ -83,6 +83,9 @@ export interface CatalogueRepository {
   updateGoogleMapsApiKey(value: string): Promise<void>;
   inventoryIllustration(key: string): Promise<string | null>;
   saveInventoryIllustration(key: string, image: string): Promise<void>;
+  adminQuoteDraft(userId: string): Promise<unknown | null>;
+  saveAdminQuoteDraft(userId: string, draft: unknown): Promise<void>;
+  clearAdminQuoteDraft(userId: string): Promise<void>;
   removeVehicle(id: string): Promise<void>;
   listTollPoints(): Promise<TollPoint[]>;
   createTollPoint(input: TollPointInput): Promise<TollPoint>;

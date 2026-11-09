@@ -223,6 +223,7 @@ function inventoryWeight(inventory: Inventory, annexVolume: number) {
     size: number,
     dismantle: boolean,
     format: InventoryFormat,
+    forceTwoPerson = false,
   ) => {
     const itemCount = Math.min(4, Math.max(1, Math.ceil(maxKg / 25)));
     const kind = ['frigo', 'congelateur', 'machine-laver', 'cuisiniere', 'climatiseur'].includes(
@@ -254,6 +255,7 @@ function inventoryWeight(inventory: Inventory, annexVolume: number) {
     if (kind === 'tv') count = maxKg > 15 || format === 'large' ? 2 : 1;
     if (kind === 'single') count = 1;
     if (kind === 'roll') count = maxKg > 25 ? 2 : 1;
+    if (forceTwoPerson) count = Math.max(2, count);
     if (stairAccess && maxKg > 33 && ['appliance', 'case'].includes(kind))
       count = Math.min(4, count + 1);
     largestHandlingCrew = Math.max(largestHandlingCrew, count);
@@ -289,19 +291,18 @@ function inventoryWeight(inventory: Inventory, annexVolume: number) {
       item.format ?? 'medium',
       Boolean(item.dismantle),
     );
-    const factor = Number(item.kg) > 0 ? Number(item.kg) / Math.max(1, assumedWeight.max) : 1;
-    const itemWeight = {
-      total: assumedWeight.total * factor,
-      max: Number(item.kg) > 0 ? Number(item.kg) : assumedWeight.max,
-    };
+    const itemWeight =
+      Number(item.kg) > 0 ? { total: Number(item.kg), max: Number(item.kg) } : assumedWeight;
     total += itemWeight.total * item.quantity;
     max = Math.max(max, itemWeight.max);
     needs(
-      item.frag && itemWeight.max > 15 ? 'glass' : likeKey,
+      likeKey,
       itemWeight.max,
       1,
       Boolean(item.dismantle),
       item.format ?? 'medium',
+      (Boolean(item.frag) && itemWeight.max > 15) ||
+        Boolean(item.cL && item.cW && item.cH && Math.max(item.cL, item.cW, item.cH) > 180),
     );
   });
   total += Math.round(annexVolume * 110);
@@ -645,7 +646,10 @@ export function estimateMovingWork(
           : 3.5 + 0.4 * (perVehicle - 4);
     return parallelVehicles * referenceEfficiency;
   };
-  const loadingBase = siteHours(inventory.fromFloor, inventory.fromLift) * densityFactor;
+  const loadingBase =
+    siteHours(inventory.fromFloor, inventory.fromLift) *
+    densityFactor *
+    (inventory.stairs === 'balcon' ? 1.2 : 1);
   const unloadingBase = siteHours(inventory.toFloor, inventory.toLift, true) * densityFactor;
   const tripOverheadHours =
     (Math.max(0, Number(labor.tripSetupMinutes) || 0) / 60) *
@@ -1028,6 +1032,7 @@ export function bookingInventorySnapshot(
     toLift: inventory.toLift,
     ready: inventory.ready ?? '',
     stairs: inventory.stairs ?? '',
+    balcPx: inventory.balcPx,
     flags: inventoryFlags.filter((flag) => inventory.flags[flag.key]).map((flag) => flag.label),
     items: allItems,
     itemCount: allItems.reduce((sum, item) => sum + item.quantity, 0),

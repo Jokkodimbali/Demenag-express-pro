@@ -328,7 +328,8 @@ export type BookingInventorySource = {
   }[];
   flags: Record<string, boolean>;
   ready?: 'oui' | 'non' | '';
-  stairs?: 'oui' | 'non' | 'verif' | '';
+  stairs?: 'oui' | 'non' | 'balcon' | 'verif' | '';
+  balcPx?: number;
   blanketLengthCm?: number;
   blanketWidthCm?: number;
   custom: {
@@ -363,7 +364,8 @@ export type BookingInventorySnapshot = {
   fromLift: boolean;
   toLift: boolean;
   ready: 'oui' | 'non' | '';
-  stairs: 'oui' | 'non' | 'verif' | '';
+  stairs: 'oui' | 'non' | 'balcon' | 'verif' | '';
+  balcPx?: number;
   flags: string[];
   items: InventorySnapshotItem[];
   itemCount: number;

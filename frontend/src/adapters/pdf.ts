@@ -1226,11 +1226,14 @@ export async function downloadQuote(
     if (inventory.ready === 'oui') inventoryFlags.push('matériel prêt à être chargé');
     if (inventory.ready === 'non') inventoryFlags.push("matériel pas prêt, emballage par l'équipe");
     if (inventory.stairs === 'oui') inventoryFlags.push('tout passe dans les escaliers');
+    if (inventory.stairs === 'balcon') inventoryFlags.push('passage par le balcon');
     if (inventory.stairs === 'non')
       inventoryFlags.push(
         'certains objets ne passent pas dans les escaliers (démontage, fenêtre ou monte-meuble)',
       );
     if (inventory.stairs === 'verif') inventoryFlags.push('passage des escaliers à vérifier');
+    if (inventory.stairs === 'balcon' && inventory.balcPx)
+      inventoryFlags.push(`supplément balcon : ${money(inventory.balcPx)}`);
     if (inventoryFlags.length) {
       y = paragraph(`À noter : ${inventoryFlags.join(', ')}.`, margin, y, contentWidth, 8.5);
     }

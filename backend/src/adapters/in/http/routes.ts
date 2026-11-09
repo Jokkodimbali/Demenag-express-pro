@@ -3,6 +3,7 @@ export const apiRoutes = {
   ready: '/api/ready',
   catalogue: '/api/catalogue',
   inventoryIllustration: '/api/inventory-illustrations/:key',
+  adminQuoteDraft: '/api/admin/quote-draft',
   googleMapsKey: '/api/admin/google-maps-key',
   tollPoints: '/api/toll-points',
   auth: {

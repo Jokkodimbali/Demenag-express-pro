@@ -307,8 +307,26 @@ export function registerAdminRoutes(
   });
   app.put(apiRoutes.inventoryIllustration, authenticate, admin, async (req, res) => {
     const key = inventoryImageKey.parse(req.params.key);
-    const { image } = z.object({ image: z.string().max(1_000_000).regex(/^data:image\/webp;base64,[A-Za-z0-9+/=]+$/u) }).parse(req.body);
+    const { image } = z
+      .object({
+        image: z
+          .string()
+          .max(1_000_000)
+          .regex(/^data:image\/webp;base64,[A-Za-z0-9+/=]+$/u),
+      })
+      .parse(req.body);
     await deps.catalogue.saveInventoryIllustration(getActor(res), key, image);
+    res.status(204).end();
+  });
+  app.put(apiRoutes.adminQuoteDraft, authenticate, admin, async (req, res) => {
+    const { draft } = z.object({ draft: z.record(z.string(), z.unknown()) }).parse(req.body);
+    if (Buffer.byteLength(JSON.stringify(draft), 'utf8') > 300_000)
+      return res.status(413).json({ message: 'Le brouillon du devis est trop volumineux.' });
+    await deps.catalogue.saveAdminQuoteDraft(getActor(res), draft);
+    res.status(204).end();
+  });
+  app.delete(apiRoutes.adminQuoteDraft, authenticate, admin, async (_req, res) => {
+    await deps.catalogue.clearAdminQuoteDraft(getActor(res));
     res.status(204).end();
   });
   app.get(apiRoutes.googleMapsKey, authenticate, admin, async (_req, res) =>

@@ -26,7 +26,7 @@ function readAsDataUrl(blob: Blob): Promise<string> {
   });
 }
 
-async function compressIllustration(file: File): Promise<string> {
+export async function compressInventoryIllustration(file: File): Promise<string> {
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type))
     throw new Error('Choisissez une image JPG, PNG ou WebP.');
   if (file.size > 10_000_000) throw new Error("L'image doit faire moins de 10 Mo.");
@@ -53,7 +53,7 @@ async function compressIllustration(file: File): Promise<string> {
   return readAsDataUrl(compressed);
 }
 
-export async function readInventoryIllustration(key: string): Promise<string | null> {
+export async function readLegacyInventoryIllustration(key: string): Promise<string | null> {
   const database = await openIllustrationDatabase();
   try {
     return await new Promise((resolve, reject) => {
@@ -67,21 +67,19 @@ export async function readInventoryIllustration(key: string): Promise<string | n
   }
 }
 
-export async function saveInventoryIllustration(key: string, file: File): Promise<string> {
-  const dataUrl = await compressIllustration(file);
+export async function removeLegacyInventoryIllustration(key: string): Promise<void> {
   const database = await openIllustrationDatabase();
   try {
     await new Promise<void>((resolve, reject) => {
       const transaction = database.transaction(storeName, 'readwrite');
-      transaction.objectStore(storeName).put(dataUrl, key);
+      transaction.objectStore(storeName).delete(key);
       transaction.oncomplete = () => resolve();
       transaction.onerror = () =>
-        reject(transaction.error ?? new Error("L'image n'a pas pu être enregistrée."));
+        reject(transaction.error ?? new Error("L'image locale n'a pas pu être supprimée."));
       transaction.onabort = () =>
-        reject(transaction.error ?? new Error("L'image n'a pas pu être enregistrée."));
+        reject(transaction.error ?? new Error("L'image locale n'a pas pu être supprimée."));
     });
   } finally {
     database.close();
   }
-  return dataUrl;
 }

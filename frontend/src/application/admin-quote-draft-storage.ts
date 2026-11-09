@@ -24,17 +24,28 @@ export type AdminQuoteDraft = {
   tollLines: { id: string; label: string; quantity: number; unitPrice: number }[];
 };
 
-const STORAGE_KEY = 'demenag-admin-quote-draft-v1';
+type AdminQuoteDraftApi = {
+  adminQuoteDraft(): Promise<unknown | null>;
+  saveAdminQuoteDraft(draft: unknown): Promise<void>;
+  clearAdminQuoteDraft(): Promise<void>;
+};
+const persistenceQueues = new WeakMap<AdminQuoteDraftApi, Promise<void>>();
 
-export function readAdminQuoteDraft(): AdminQuoteDraft | null {
+function enqueuePersistence(api: AdminQuoteDraftApi, operation: () => Promise<void>) {
+  const next = (persistenceQueues.get(api) ?? Promise.resolve()).then(operation, operation);
+  persistenceQueues.set(
+    api,
+    next.catch(() => undefined),
+  );
+  return next;
+}
+
+export async function readAdminQuoteDraft(
+  api: AdminQuoteDraftApi,
+): Promise<AdminQuoteDraft | null> {
   try {
-    const value = sessionStorage.getItem(STORAGE_KEY);
-    if (!value) return null;
-    const parsed: unknown = JSON.parse(value);
-    if (!isAdminQuoteDraft(parsed)) {
-      sessionStorage.removeItem(STORAGE_KEY);
-      return null;
-    }
+    const parsed = await api.adminQuoteDraft();
+    if (!parsed || !isAdminQuoteDraft(parsed)) return null;
     return {
       ...parsed,
       quoteConfig: {
@@ -84,20 +95,19 @@ export function readAdminQuoteDraft(): AdminQuoteDraft | null {
   }
 }
 
-export function saveAdminQuoteDraft(value: AdminQuoteDraft): void {
-  try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(value));
-  } catch {
-    // Un stockage indisponible ne doit pas empêcher la création du devis.
-  }
+export function saveAdminQuoteDraft(
+  api: AdminQuoteDraftApi,
+  value: AdminQuoteDraft,
+): Promise<void> {
+  return enqueuePersistence(api, () => api.saveAdminQuoteDraft(value)).catch(() => {
+    // Le formulaire reste utilisable si le serveur est momentanément indisponible.
+  });
 }
 
-export function clearAdminQuoteDraft(): void {
-  try {
-    sessionStorage.removeItem(STORAGE_KEY);
-  } catch {
-    // Le formulaire reste utilisable si le stockage de session est bloqué.
-  }
+export function clearAdminQuoteDraft(api: AdminQuoteDraftApi): Promise<void> {
+  return enqueuePersistence(api, () => api.clearAdminQuoteDraft()).catch(() => {
+    // La création du devis enregistré reste prioritaire sur le nettoyage du brouillon.
+  });
 }
 
 function isAdminQuoteDraft(value: unknown): value is AdminQuoteDraft {

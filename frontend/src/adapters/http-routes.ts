@@ -16,6 +16,7 @@ export const httpRoutes = {
   drivers: '/admin/drivers',
   catalogue: '/catalogue',
   inventoryIllustration: (key: string) => `/inventory-illustrations/${encodeURIComponent(key)}`,
+  adminQuoteDraft: '/admin/quote-draft',
   googleMapsKey: '/admin/google-maps-key',
   tollPoints: '/toll-points',
   authentication: {

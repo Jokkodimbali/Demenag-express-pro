@@ -108,14 +108,10 @@ export function inventoryAssemblyLines(
       );
   }
   for (const item of inventory.custom) {
-    if (item.dismantle)
-      append(
-        'custom',
-        item.label.trim() || 'autre objet',
-        item.quantity,
-        1,
-        item.origin ?? 'local',
-      );
+    if (item.dismantle) {
+      const origin = item.origin ?? 'local';
+      append('custom', item.label.trim() || 'autre objet', item.quantity, 1, origin);
+    }
   }
   return [...grouped.values()];
 }

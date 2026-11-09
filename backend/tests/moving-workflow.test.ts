@@ -206,6 +206,29 @@ function harness() {
   };
 }
 
+test('un devis final au-delà du dernier palier exige un prix de transport positif', async () => {
+  const { service, getBooking } = harness();
+  const booking = getBooking();
+  const input = {
+    kind: 'final' as const,
+    trips: 1,
+    customPrice: null,
+    discount: 0,
+    notes: '',
+    extraLines: [],
+    tolls: [],
+    options: booking.options,
+    version: booking.version,
+  };
+
+  await assert.rejects(service.quote(admin, booking.id, input), /Distance au-delà de 35 km/u);
+  assert.equal(getBooking().quotes.length, 0);
+
+  const saved = await service.quote(admin, booking.id, { ...input, customPrice: 25000 });
+  assert.equal(saved.quotes[0]?.price.lines[0]?.unitPrice, 25000);
+  assert.equal(saved.quotes[0]?.price.total, 25000);
+});
+
 test('seule l’administration peut enregistrer un rappel de réservation', async () => {
   const { service, getBooking } = harness();
   await assert.rejects(service.recordBookingReminder(client, 'booking-1'), (error: unknown) => {

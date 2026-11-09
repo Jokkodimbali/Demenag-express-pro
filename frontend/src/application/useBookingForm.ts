@@ -329,6 +329,7 @@ export function useBookingForm({
     workPlan: NonNullable<BookingInput['workPlan']> = [],
     inventorySnapshot?: BookingInput['inventorySnapshot'],
     quoteOptions?: Options,
+    quoteExtraLines: Array<{ label: string; quantity: number; unitPrice: number }> = [],
   ) {
     e.preventDefault();
     if (submitLock.current) return;
@@ -429,7 +430,7 @@ export function useBookingForm({
           ? await api.updateAdminBooking(editingBooking.id, input, editingBooking.version)
           : await api.updateClientBooking(editingBooking.id, input, editingBooking.version)
         : await api.createBooking(input);
-      if (administrativeQuote) clearAdminQuoteDraft();
+      if (administrativeQuote) void clearAdminQuoteDraft(api);
       bookingLookup.current = null;
       setDraft(blankDraft());
       if (editingBooking && !administrativeQuote) {
@@ -447,7 +448,7 @@ export function useBookingForm({
             discountType: quoteConfig?.discountType ?? 'fcfa',
             discountReason: quoteConfig?.discountReason ?? '',
             notes: bookingNotes,
-            extraLines: [],
+            extraLines: quoteExtraLines,
             tolls: quoteTollsFromLines(tollLines),
             options: administrativeQuote && quoteOptions ? quoteOptions : draft.options,
             version: booking.version,

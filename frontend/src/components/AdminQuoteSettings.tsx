@@ -9,6 +9,7 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
     setQuoteConfig,
     draft,
     setDraft,
+    estimateInventory,
     quoteKind,
     setQuoteKind,
     canCreateFinal,
@@ -121,6 +122,111 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
             </button>
           </div>
         </div>
+        <div className="admin-quote-reference-setting">
+          <span>Matériel</span>
+          <div role="group" aria-label="État de préparation du matériel">
+            {(['oui', 'non'] as const).map((value) => {
+              const active = estimateInventory.ready === value;
+              return (
+                <button
+                  type="button"
+                  key={value}
+                  aria-pressed={active}
+                  className={active ? 'active' : ''}
+                  onClick={() =>
+                    setDraft((current) => {
+                      const nextValue = current.inventory.ready === value ? '' : value;
+                      const answer =
+                        nextValue === 'oui'
+                          ? 'Oui, tout est prêt'
+                          : nextValue === 'non'
+                            ? 'Non, emballage par l’équipe'
+                            : '';
+                      return {
+                        ...current,
+                        inventory: { ...current.inventory, ready: nextValue },
+                        questionnaireAnswers: {
+                          ...current.questionnaireAnswers,
+                          'key-ready': answer,
+                        },
+                      };
+                    })
+                  }
+                >
+                  {value === 'oui' ? 'Prêt' : 'À emballer'}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="admin-quote-reference-setting">
+          <span>Passage</span>
+          <div role="group" aria-label="Passage par les escaliers ou le balcon">
+            {(
+              [
+                ['oui', 'Escalier'],
+                ['balcon', 'Balcon'],
+                ['verif', 'À vérifier'],
+              ] as const
+            ).map(([value, label]) => {
+              const active = estimateInventory.stairs === value;
+              return (
+                <button
+                  type="button"
+                  key={value}
+                  aria-pressed={active}
+                  className={active ? 'active' : ''}
+                  onClick={() =>
+                    setDraft((current) => {
+                      const nextValue = current.inventory.stairs === value ? '' : value;
+                      const answer =
+                        nextValue === 'oui'
+                          ? 'Oui, tout passe'
+                          : nextValue === 'balcon'
+                            ? 'Non, par le balcon'
+                            : nextValue === 'verif'
+                              ? 'À vérifier'
+                              : '';
+                      return {
+                        ...current,
+                        inventory: { ...current.inventory, stairs: nextValue },
+                        questionnaireAnswers: {
+                          ...current.questionnaireAnswers,
+                          'key-stairs': answer,
+                        },
+                      };
+                    })
+                  }
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        {(draft.questionnaireAnswers['key-stairs']?.startsWith('Non, par le balcon') ||
+          draft.inventory.stairs === 'balcon') && (
+          <label className="admin-quote-reference-setting">
+            <span>Supplément passage par le balcon (FCFA)</span>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              inputMode="numeric"
+              value={draft.inventory.balcPx ?? ''}
+              onChange={(event) => {
+                const value = event.target.value;
+                setDraft((current) => ({
+                  ...current,
+                  inventory: {
+                    ...current.inventory,
+                    balcPx: value === '' ? undefined : Math.max(0, Math.round(Number(value))),
+                  },
+                }));
+              }}
+            />
+          </label>
+        )}
         <div className="admin-quote-reference-setting">
           <span>Embouteillages</span>
           <div role="group" aria-label="Prise en compte des embouteillages">

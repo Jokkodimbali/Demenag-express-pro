@@ -40,7 +40,12 @@ export function ClientQuestionnaire({
     onChange(id, checked ? 'Question posée' : 'À poser');
   };
   const readyChoices = ['Oui, tout est prêt', 'Non, emballage par l’équipe'];
-  const stairsChoices = ['Oui, tout passe', 'Non, certains objets', 'À vérifier'];
+  const stairsChoices = [
+    'Oui, tout passe',
+    'Non, certains objets',
+    'Non, par le balcon',
+    'À vérifier',
+  ];
   const stepFor = (title: string) => {
     const value = title.toLocaleLowerCase('fr');
     if (/client|contact|date|disponib|connu|source/.test(value)) return 1;
@@ -192,6 +197,11 @@ export function ClientQuestionnaire({
                     </small>
                   )}
                   {answers['key-stairs'] === stairsChoices[2] && (
+                    <small>
+                      Le supplément de passage par le balcon sera précisé dans le devis.
+                    </small>
+                  )}
+                  {answers['key-stairs'] === stairsChoices[3] && (
                     <small>{uiText['demandezLaLargeurDeLEscalierEtDesPortesOuUnePhoto']}</small>
                   )}
                 </label>

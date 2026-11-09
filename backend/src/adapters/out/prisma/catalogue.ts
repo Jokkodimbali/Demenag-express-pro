@@ -49,6 +49,20 @@ export class PrismaCatalogue implements CatalogueRepository {
       update: { image },
     });
   }
+  async adminQuoteDraft(userId: string): Promise<unknown | null> {
+    const row = await this.db.brouillonDevisAdmin.findUnique({ where: { utilisateurId: userId } });
+    return row?.donnees ?? null;
+  }
+  async saveAdminQuoteDraft(userId: string, draft: unknown): Promise<void> {
+    await this.db.brouillonDevisAdmin.upsert({
+      where: { utilisateurId: userId },
+      create: { utilisateurId: userId, donnees: draft as Prisma.InputJsonValue },
+      update: { donnees: draft as Prisma.InputJsonValue },
+    });
+  }
+  async clearAdminQuoteDraft(userId: string): Promise<void> {
+    await this.db.brouillonDevisAdmin.deleteMany({ where: { utilisateurId: userId } });
+  }
   async googleMapsApiKey(): Promise<string> {
     const settings = await this.db.parametreApplication.findUnique({
       where: { id: 'main' },

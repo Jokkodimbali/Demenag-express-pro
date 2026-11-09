@@ -33,6 +33,9 @@ export function createApp(deps: Dependencies) {
     const key = inventoryImageKey.parse(req.params.key);
     res.json({ image: await deps.catalogue.inventoryIllustration(key) });
   });
+  app.get(apiRoutes.adminQuoteDraft, access.authenticate, access.admin, async (_req, res) => {
+    res.json({ draft: await deps.catalogue.adminQuoteDraft(getActor(res)) });
+  });
   app.get(apiRoutes.tollPoints, async (_req, res) =>
     res.json(await deps.catalogue.listTollPoints()),
   );

@@ -157,6 +157,10 @@ export function referenceInventoryNote(
     notes.push(
       'certains objets ne passent pas dans les escaliers (démontage, fenêtre ou monte-meuble)',
     );
+  if (inventory.stairs === 'balcon') {
+    notes.push('passage par le balcon');
+    if (inventory.balcPx) notes.push(`supplément balcon : ${inventory.balcPx} FCFA`);
+  }
   if (inventory.stairs === 'verif') notes.push('passage des escaliers à vérifier');
   if (notes.length) lines.push(`À noter : ${notes.join(', ')}.`);
   return lines.join('\n');

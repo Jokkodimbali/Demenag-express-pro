@@ -289,6 +289,9 @@ export function useCallInventory({
     ...(inventory.stairs === 'non'
       ? ['Objets qui ne passent pas les escaliers : prévoir démontage, corde ou monte-meuble.']
       : []),
+    ...(inventory.stairs === 'balcon'
+      ? ['Passage par le balcon : prévoir et chiffrer le supplément correspondant.']
+      : []),
     ...(!inventory.dwellingType
       ? [
           "Type de logement non précisé : les sacs d'habits, la vaisselle et le linge ne sont pas estimés.",

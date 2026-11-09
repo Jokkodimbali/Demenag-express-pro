@@ -46,24 +46,23 @@ export async function createQuote(
     'Un devis final existe déjà pour cette réservation.',
   );
   requireValue(booking.status !== 'cancelled', messages.cetteReservationEstCloturee);
+  const sourceInventory = booking.inventorySnapshot?.sourceInventory;
   if (input.kind === 'final') {
     requireValue(
       Boolean(booking.date),
       'Un devis sans date reste provisoire. Choisissez une date pour passer en final.',
+    );
+    requireValue(
+      sourceInventory?.stairs !== 'balcon' || Number(sourceInventory.balcPx) > 0,
+      'Passage par le balcon : fixez le supplément avant le devis final.',
     );
   }
   const catalogue = await catalogueRepository.get();
   const vehicle =
     catalogue.vehicles.find((item) => item.id === booking.vehicle.id) ?? booking.vehicle;
   const requestedOptions = input.options ?? booking.options;
-  const inventoryLines = inventoryAssemblyLines(
-    booking.inventorySnapshot?.sourceInventory,
-    catalogue.settings,
-  );
-  const options = subtractInventoryAssemblyOptions(
-    requestedOptions,
-    booking.inventorySnapshot?.sourceInventory,
-  );
+  const inventoryLines = inventoryAssemblyLines(sourceInventory, catalogue.settings);
+  const options = subtractInventoryAssemblyOptions(requestedOptions, sourceInventory);
   const billingMode = input.billingMode ?? 'complete';
   const pricingOptions = billingMode === 'driver-rental' ? { ...options, labour: 0 } : options;
   const quoteSettings =
@@ -98,6 +97,15 @@ export async function createQuote(
   const additionalLines = [
     ...inventoryLines,
     ...input.extraLines,
+    ...(sourceInventory?.stairs === 'balcon' && Number(sourceInventory.balcPx) > 0
+      ? [
+          {
+            label: 'Supplément passage par le balcon',
+            quantity: 1,
+            unitPrice: Math.round(Number(sourceInventory.balcPx)),
+          },
+        ]
+      : []),
     ...(overtimeCharge > 0
       ? [
           {
@@ -125,6 +133,10 @@ export async function createQuote(
   requireValue(
     input.kind !== 'final' || price.total !== null,
     messages.renseignezLeTarifDuTransportAvantDeFinaliser,
+  );
+  requireValue(
+    input.kind !== 'final' || price.tier !== 3 || Number(input.customPrice) > 0,
+    `Distance au-delà de ${catalogue.settings.distanceBounds[2]} km : fixez le prix par aller-retour avant le devis final.`,
   );
   const quoteId = ids.next();
   const accountingConfiguration =

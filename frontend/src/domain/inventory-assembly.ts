@@ -30,7 +30,6 @@ export function inventoryAssemblyLines(
     origin: 'local' | 'import',
     defaultSize = 1,
     sizeLabel?: string,
-    priceOverride?: number,
   ) => {
     if (quantity <= 0 || key === 'clim' || key === 'climatiseur') return;
     const normalizedKey = referenceInventoryKey(key);
@@ -38,7 +37,7 @@ export function inventoryAssemblyLines(
       ? ` ${size} ${size === 1 ? sizeLabel.replace(/s$/u, '') : sizeLabel}`
       : '';
     const originLabel = origin === 'import' ? ' (importé)' : ' (local)';
-    const groupKey = `${normalizedKey}|${normalizedKey === 'custom' ? label.trim().toLocaleLowerCase('fr-FR') : ''}|${sizeLabel ? size : ''}|${origin}|${priceOverride ?? ''}`;
+    const groupKey = `${normalizedKey}|${normalizedKey === 'custom' ? label.trim().toLocaleLowerCase('fr-FR') : ''}|${sizeLabel ? size : ''}|${origin}`;
     const current = grouped.get(groupKey);
     if (current) {
       current.quantity += quantity;
@@ -47,15 +46,13 @@ export function inventoryAssemblyLines(
     grouped.set(groupKey, {
       label: `Menuisier · démontage / montage ${label}${sizedLabel}${originLabel}`,
       quantity,
-      unitPrice:
-        priceOverride ??
-        assemblyUnitPrice(
-          settings,
-          normalizedKey,
-          origin,
-          sizeLabel ? size : undefined,
-          defaultSize,
-        ),
+      unitPrice: assemblyUnitPrice(
+        settings,
+        normalizedKey,
+        origin,
+        sizeLabel ? size : undefined,
+        defaultSize,
+      ),
     });
   };
 
@@ -90,23 +87,7 @@ export function inventoryAssemblyLines(
   for (const item of inventory.custom) {
     if (!item.dismantle) continue;
     const origin = item.origin ?? 'local';
-    const catalogPrice = origin === 'import' ? item.menuPriceImport : item.menuPriceLocal;
-    const priceOverride =
-      Number(item.mp) > 0
-        ? Number(item.mp)
-        : Number(catalogPrice) > 0
-          ? Number(catalogPrice)
-          : undefined;
-    append(
-      'custom',
-      item.label.trim() || 'autre objet',
-      item.quantity,
-      1,
-      origin,
-      1,
-      undefined,
-      priceOverride,
-    );
+    append('custom', item.label.trim() || 'autre objet', item.quantity, 1, origin, 1, undefined);
   }
   return [...grouped.values()];
 }

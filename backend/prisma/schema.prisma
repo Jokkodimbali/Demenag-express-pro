@@ -44,6 +44,7 @@ model Utilisateur {
   reservations                      Reservation[]
   profilChauffeur                   Chauffeur?
   notifications                     Notification[]
+  brouillonDevisAdmin                BrouillonDevisAdmin?
 
   @@map("users")
   @@schema("demenag")
@@ -211,6 +212,16 @@ model IllustrationInventaire {
   modifieLe DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("inventory_illustrations")
+  @@schema("demenag")
+}
+
+model BrouillonDevisAdmin {
+  utilisateurId String      @id @db.Uuid @map("user_id")
+  utilisateur   Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  donnees       Json        @map("data")
+  modifieLe     DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("admin_quote_drafts")
   @@schema("demenag")
 }
 

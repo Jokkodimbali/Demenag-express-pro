@@ -52,6 +52,9 @@ export interface CatalogueRepository {
   deleteVehicle(id: string): Promise<void>;
   inventoryIllustration(key: string): Promise<string | null>;
   saveInventoryIllustration(key: string, image: string): Promise<void>;
+  adminQuoteDraft(): Promise<unknown | null>;
+  saveAdminQuoteDraft(draft: unknown): Promise<void>;
+  clearAdminQuoteDraft(): Promise<void>;
 }
 export interface GoogleMapsSettingsRepository {
   googleMapsApiKey(): Promise<string>;

@@ -221,6 +221,17 @@
   white-space: nowrap;
   cursor: pointer;
 }
+.admin-quote-reference-setting input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #3b3e43;
+  border-radius: 9px;
+  background: #1e2023;
+  color: #f4f5f6;
+  font: inherit;
+  font-size: 14px;
+}
 .admin-quote-reference-setting button.active {
   background: #f6d73c;
   color: #1e2023;

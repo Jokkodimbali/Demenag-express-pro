@@ -173,6 +173,55 @@
 .inventory-heading + .inventory-content {
   margin-top: 14px;
 }
+.inventory-loading-conditions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1.5px solid #f6d73c;
+  border-radius: 14px;
+  background: #272a2e;
+}
+.inventory-loading-conditions > strong {
+  color: #f6d73c;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+.inventory-loading-conditions > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.inventory-loading-conditions > div > span {
+  font-size: 14px;
+  font-weight: 800;
+}
+.inventory-loading-conditions > div > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.inventory-loading-conditions button {
+  min-height: 44px;
+  padding: 8px 13px;
+  border: 1.5px solid #4a5057;
+  border-radius: 999px;
+  background: transparent;
+  color: #d5d9de;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.inventory-loading-conditions button.active {
+  border-color: #f6d73c;
+  background: #f6d73c;
+  color: #1e2023;
+}
+.inventory-loading-conditions small {
+  color: #f6d73c;
+  font-size: 12px;
+  line-height: 1.45;
+}
 .call-inventory > details > summary span {
   color: #aeb4bb;
   font-size: 12px;
