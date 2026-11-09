@@ -43,6 +43,17 @@ const planningDefaults = {
   carryDistanceMeters: 15,
   heat: 1,
   wbgtAdj: 0,
+  maxTotalHours: 12,
+  metabolicReference: 200,
+  effortGround: 200,
+  effortLift: 210,
+  effortStairs: 230,
+  effortPerFloor: 12,
+  effortMaximum: 290,
+  followingTripDiscountPercent: 60,
+  lowDemandDiscountPercent: 10,
+  manoeuvreOvertimeThresholdHours: 8,
+  manoeuvreOvertimeHourlyRate: 0,
   blanketLengthCm: 204,
   blanketWidthCm: 184,
   blanketStock: 20,
@@ -67,6 +78,53 @@ const planningFields = [
     'maxDayHours',
     'Plafond de la journée (h)',
     'Au-delà, la fiche propose un autre véhicule, 2 véhicules ou 2 jours.',
+  ],
+  [
+    'maxTotalHours',
+    'Durée maximale avant proposition de relève (h)',
+    'Au-delà, prévoir une relève, deux véhicules ou deux jours.',
+  ],
+  [
+    'metabolicReference',
+    'Effort de référence (W/m²)',
+    'Base ISO 8996 utilisée pour calculer le pourcentage d’effort.',
+  ],
+  [
+    'effortGround',
+    'Effort au rez-de-chaussée (W/m²)',
+    'Intensité estimée du portage sur sol plat.',
+  ],
+  ['effortLift', 'Effort avec ascenseur (W/m²)', 'Intensité estimée du portage avec ascenseur.'],
+  [
+    'effortStairs',
+    'Effort dans les escaliers (W/m²)',
+    'Intensité de base du portage sans ascenseur.',
+  ],
+  [
+    'effortPerFloor',
+    'Majoration par étage (W/m²)',
+    'Ajoutée à l’effort de base dans les escaliers.',
+  ],
+  ['effortMaximum', 'Effort maximal (W/m²)', 'Plafond appliqué au portage dans les escaliers.'],
+  [
+    'followingTripDiscountPercent',
+    'Allers-retours suivants (%)',
+    'Part du tarif du premier aller-retour, arrondie aux 500 FCFA les plus proches.',
+  ],
+  [
+    'lowDemandDiscountPercent',
+    'Remise jour creux (%)',
+    'Du lundi au jeudi, du 6 au 24 du mois, sur le transport uniquement.',
+  ],
+  [
+    'manoeuvreOvertimeThresholdHours',
+    'Seuil heures manœuvres (h)',
+    'Durée planifiée avant application du supplément horaire.',
+  ],
+  [
+    'manoeuvreOvertimeHourlyRate',
+    'Heure supplémentaire manœuvre (FCFA/h)',
+    '0 désactive la facturation de ces heures.',
   ],
   [
     'defaultStartHour',
@@ -636,48 +694,76 @@ export function TransportSettings({
                       style={inputStyle}
                       type="number"
                       min={
-                        key === 'wbgtAdj'
-                          ? -10
-                          : key === 'heat'
+                        key === 'followingTripDiscountPercent'
+                          ? 10
+                          : key === 'lowDemandDiscountPercent'
                             ? 0
-                            : key === 'maxDayHours'
-                              ? 1
-                              : key === 'maxMoversPerVehicle'
-                                ? 2
-                                : key === 'cubicMetersPerHourPerMover'
-                                  ? 0.1
-                                  : key === 'pauseMinutes'
+                            : key === 'manoeuvreOvertimeHourlyRate'
+                              ? 0
+                              : key === 'manoeuvreOvertimeThresholdHours'
+                                ? 1
+                                : key === 'wbgtAdj'
+                                  ? -10
+                                  : key === 'heat'
                                     ? 0
-                                    : key === 'handlingCalibration'
-                                      ? 0.5
-                                      : key === 'carryDistanceMeters'
-                                        ? 1
-                                        : key === 'defaultStartHour'
-                                          ? 0
-                                          : 0.5
+                                    : key === 'maxDayHours'
+                                      ? 1
+                                      : key === 'maxMoversPerVehicle'
+                                        ? 2
+                                        : key === 'cubicMetersPerHourPerMover'
+                                          ? 0.1
+                                          : key === 'pauseMinutes'
+                                            ? 0
+                                            : key === 'handlingCalibration'
+                                              ? 0.5
+                                              : key === 'carryDistanceMeters'
+                                                ? 1
+                                                : key === 'defaultStartHour'
+                                                  ? 0
+                                                  : 0.5
                       }
                       max={
-                        key === 'wbgtAdj'
-                          ? 10
-                          : key === 'heat'
-                            ? 1
-                            : key === 'maxHandlingHours'
-                              ? 12
-                              : key === 'maxDayHours'
-                                ? 16
-                                : key === 'defaultStartHour'
-                                  ? 23
-                                  : key === 'maxMoversPerVehicle'
-                                    ? 20
-                                    : key === 'cubicMetersPerHourPerMover'
-                                      ? 50
-                                      : key === 'teamVolumePerMover'
-                                        ? 100
-                                        : key === 'handlingCalibration'
-                                          ? 5
-                                          : key === 'carryDistanceMeters'
-                                            ? 200
-                                            : 180
+                        [
+                          'metabolicReference',
+                          'effortGround',
+                          'effortLift',
+                          'effortStairs',
+                          'effortMaximum',
+                        ].includes(key)
+                          ? 1500
+                          : key === 'effortPerFloor'
+                            ? 200
+                            : key === 'maxTotalHours'
+                              ? 48
+                              : key === 'followingTripDiscountPercent'
+                                ? 100
+                                : key === 'lowDemandDiscountPercent'
+                                  ? 50
+                                  : key === 'manoeuvreOvertimeThresholdHours'
+                                    ? 24
+                                    : key === 'manoeuvreOvertimeHourlyRate'
+                                      ? 10000000
+                                      : key === 'wbgtAdj'
+                                        ? 10
+                                        : key === 'heat'
+                                          ? 1
+                                          : key === 'maxHandlingHours'
+                                            ? 12
+                                            : key === 'maxDayHours'
+                                              ? 16
+                                              : key === 'defaultStartHour'
+                                                ? 23
+                                                : key === 'maxMoversPerVehicle'
+                                                  ? 20
+                                                  : key === 'cubicMetersPerHourPerMover'
+                                                    ? 50
+                                                    : key === 'teamVolumePerMover'
+                                                      ? 100
+                                                      : key === 'handlingCalibration'
+                                                        ? 5
+                                                        : key === 'carryDistanceMeters'
+                                                          ? 200
+                                                          : 180
                       }
                       required
                       step={

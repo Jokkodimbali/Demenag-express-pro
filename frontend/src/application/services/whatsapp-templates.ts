@@ -26,7 +26,7 @@ export const whatsappPaymentLine = (settings?: {
 
 export function quoteConditionsText(
   inventory: Pick<BookingInventorySource, 'ready' | 'stairs' | 'balcPx'> | undefined,
-  billingMode: 'complete' | 'driver-rental' = 'complete',
+  billingMode: 'complete' | 'standard' | 'driver-rental' = 'complete',
 ) {
   if (!inventory) return '';
   const lines: string[] = [];

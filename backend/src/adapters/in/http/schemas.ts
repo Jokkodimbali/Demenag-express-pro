@@ -183,6 +183,7 @@ export const estimateSchema = z.object({
   options: optionsSchema,
   trips: z.number().int().min(1).max(20).optional(),
   workAccess: workAccessSchema.optional(),
+  workDate: z.iso.date().nullable().optional(),
 });
 export const adminEstimateSchema = estimateSchema.extend({
   distanceKmOverride: z.number().min(0).max(100000),
@@ -337,7 +338,7 @@ export const quoteSchema = z.object({
     .array(
       z.object({
         label: z.string().trim().min(2).max(100),
-        quantity: z.number().int().min(1).max(100),
+        quantity: z.number().min(0.5).multipleOf(0.5).max(100),
         unitPrice: z.number().int().positive().max(10000000),
       }),
     )
@@ -355,7 +356,8 @@ export const quoteSchema = z.object({
     .default([]),
   options: optionsSchema.optional(),
   version: z.number().int().positive(),
-  billingMode: z.enum(['complete', 'driver-rental']).default('complete'),
+  billingMode: z.enum(['complete', 'standard', 'driver-rental']).default('complete'),
+  menuIncluded: z.boolean().default(false),
   rentalKit: z
     .array(
       z.object({
@@ -552,6 +554,17 @@ export const catalogueSchema = z.object({
         carryDistanceMeters: z.number().int().min(1).max(200).default(15),
         heat: z.number().int().min(0).max(1).optional(),
         wbgtAdj: z.number().min(-10).max(10).optional(),
+        maxTotalHours: z.number().min(1).max(48).default(12),
+        metabolicReference: z.number().min(50).max(1000).default(200),
+        effortGround: z.number().min(50).max(1000).default(200),
+        effortLift: z.number().min(50).max(1000).default(210),
+        effortStairs: z.number().min(50).max(1000).default(230),
+        effortPerFloor: z.number().min(0).max(200).default(12),
+        effortMaximum: z.number().min(50).max(1500).default(290),
+        followingTripDiscountPercent: z.number().int().min(10).max(100).default(60),
+        lowDemandDiscountPercent: z.number().int().min(0).max(50).default(10),
+        manoeuvreOvertimeThresholdHours: z.number().min(1).max(24).default(8),
+        manoeuvreOvertimeHourlyRate: z.number().int().min(0).max(10000000).default(0),
         blanketLengthCm: z.number().int().min(50).max(400).optional(),
         blanketWidthCm: z.number().int().min(50).max(400).optional(),
         blanketStock: z.number().int().min(0).optional(),
@@ -569,6 +582,17 @@ export const catalogueSchema = z.object({
         carryDistanceMeters: 15,
         heat: 1,
         wbgtAdj: 0,
+        maxTotalHours: 12,
+        metabolicReference: 200,
+        effortGround: 200,
+        effortLift: 210,
+        effortStairs: 230,
+        effortPerFloor: 12,
+        effortMaximum: 290,
+        followingTripDiscountPercent: 60,
+        lowDemandDiscountPercent: 10,
+        manoeuvreOvertimeThresholdHours: 8,
+        manoeuvreOvertimeHourlyRate: 0,
       }),
     assemblyPrice: z.number().int().min(0).max(1000000),
     montageP: z

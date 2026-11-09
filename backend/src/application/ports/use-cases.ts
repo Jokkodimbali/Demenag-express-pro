@@ -65,6 +65,7 @@ export interface MovingUseCases {
     workAccess?: WorkAccess,
     trips?: number,
     distanceKmOverride?: number,
+    workDate?: string | null,
   ): Promise<Price>;
   create(user: User, input: BookingInput): Promise<Booking>;
   updateClientRequest(

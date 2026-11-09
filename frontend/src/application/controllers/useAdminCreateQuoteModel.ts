@@ -15,12 +15,7 @@ import {
 } from '../../domain/reference-inventory-note';
 import { referenceTierLabels } from '../../application/presentation/format';
 import { today } from '../../domain/date';
-import {
-  assemblyUnitPrice,
-  labourUnitPrice,
-  labourUnitPriceOverrideFromQuote,
-} from '../../domain/labour-price';
-import { inventoryAssemblyLines, inventoryAssemblyOptions } from '../../domain/inventory-assembly';
+import { labourUnitPrice, labourUnitPriceOverrideFromQuote } from '../../domain/labour-price';
 import { useAdminQuoteTraffic } from './useAdminQuoteTraffic';
 import type { Booking, Options, Price, Quote } from '../../domain/model';
 import { bookingInventorySnapshot, estimateMovingWork } from '../../domain/moving-estimate';
@@ -31,7 +26,7 @@ import {
   quoteConditionsText,
   whatsappPaymentLine,
 } from '../../application/services/whatsapp-templates';
-import { defaultRentalKit } from '../../domain/rental-kit';
+import { createAdminQuotePreview } from '../../application/services/admin-quote-preview';
 
 export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const location = useLocation();
@@ -71,6 +66,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     customPrice: null,
     labourUnitPriceOverride: null,
     billingMode: 'complete',
+    menuIncluded: false,
     overtimeMinutes: 0,
     rentalKit: null,
   });
@@ -199,6 +195,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       customPrice: null,
       labourUnitPriceOverride: null,
       billingMode: 'complete',
+      menuIncluded: false,
       overtimeMinutes: 0,
       rentalKit: null,
     });
@@ -236,6 +233,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       customPrice: null,
       labourUnitPriceOverride: null,
       billingMode: 'complete',
+      menuIncluded: false,
       overtimeMinutes: 0,
       rentalKit: null,
     });
@@ -362,6 +360,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
           : null,
       labourUnitPriceOverride: labourOverride,
       billingMode: quote?.billingMode ?? 'complete',
+      menuIncluded: quote?.menuIncluded ?? false,
       overtimeMinutes: quote?.overtimeMinutes ?? 0,
       rentalKit: quote?.rentalKit ?? null,
     });
@@ -501,147 +500,35 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const displayBusinessPhone = /^221\d{9}$/u.test(businessPhoneDigits)
     ? `+221 ${businessPhoneDigits.slice(3, 5)} ${businessPhoneDigits.slice(5, 8)} ${businessPhoneDigits.slice(8, 10)} ${businessPhoneDigits.slice(10)}`
     : businessPhone;
+  const preview = createAdminQuotePreview({
+    draft,
+    estimateInventory,
+    config: quoteConfig,
+    vehicle: selected ?? null,
+    estimate: movingEstimate,
+    settings: catalogue?.settings,
+    price,
+    extras,
+    labourPrice,
+    simulationNeeds,
+  });
+  const {
+    tier: previewTier,
+    rentalKit,
+    rentalOvertimeAmount,
+    manoeuvreOvertime,
+    previewLines,
+    subtotal: previewSubtotal,
+    discount: previewDiscount,
+    discountLabel: previewDiscountLabel,
+    total: previewTotal,
+  } = preview;
   const bounds = catalogue?.settings.distanceBounds ?? [15, 25, 35];
   const tiers = referenceTierLabels(bounds);
   const effectiveDistance = draft.distanceKmOverride ?? draft.route?.distanceKm;
-  const previewTier = !draft.route
-    ? 0
-    : effectiveDistance! < bounds[0]
-      ? 0
-      : effectiveDistance! <= bounds[1]
-        ? 1
-        : effectiveDistance! <= bounds[2]
-          ? 2
-          : 3;
-  const previewTransportUnit =
-    previewTier === 3 ? (quoteConfig.customPrice ?? 0) : (selected?.prices[previewTier] ?? 0);
-  const transportPreviewLine = selected
-    ? {
-        label: `Transport ${selected.shortName || selected.name} · ${(tiers[previewTier] ?? 'Moins de 15 km').toLowerCase()} (aller-retour)`,
-        quantity: quoteConfig.trips,
-        unitPrice: previewTransportUnit,
-        total: previewTransportUnit * quoteConfig.trips,
-      }
-    : null;
-  const rentalKit =
-    quoteConfig.rentalKit ??
-    (selected
-      ? defaultRentalKit(
-          selected,
-          movingEstimate?.crew ?? draft.options.labour,
-          catalogue?.settings.rentalKitConfiguration,
-          simulationNeeds,
-        )
-      : []);
-  const rentalOvertimeAmount =
-    quoteConfig.billingMode === 'driver-rental'
-      ? Math.round(
-          ((quoteConfig.overtimeMinutes ?? 0) *
-            (catalogue?.settings.rentalOvertimeHourlyRate ?? 10000)) /
-            60,
-        )
-      : 0;
-  const fallbackServiceLines = extras
-    .filter(([key]) => draft.options[key] > 0)
-    .map(([key, label]) => ({
-      label,
-      quantity: draft.options[key],
-      unitPrice:
-        key === 'labour'
-          ? quoteConfig.labourUnitPriceOverride || labourPrice
-          : catalogue
-            ? assemblyUnitPrice(
-                catalogue.settings,
-                key === 'desk' ? 'bureau' : key === 'wardrobe' ? 'armoire' : 'lit',
-              )
-            : 0,
-      total:
-        draft.options[key] *
-        (key === 'labour'
-          ? quoteConfig.labourUnitPriceOverride || labourPrice
-          : catalogue
-            ? assemblyUnitPrice(
-                catalogue.settings,
-                key === 'desk' ? 'bureau' : key === 'wardrobe' ? 'armoire' : 'lit',
-              )
-            : 0),
-    }));
-  const rawPreviewLines = [
-    ...(transportPreviewLine ? [transportPreviewLine] : []),
-    ...(price?.lines ?? fallbackServiceLines)
-      .filter(
-        (line) =>
-          !line.label.startsWith('Transport ') &&
-          !(quoteConfig.billingMode === 'driver-rental' && /^Man[œo]uvre/iu.test(line.label)),
-      )
-      .map((line) =>
-        line.label.startsWith('Manœuvre') && quoteConfig.labourUnitPriceOverride
-          ? {
-              ...line,
-              unitPrice: quoteConfig.labourUnitPriceOverride,
-              total: line.quantity * quoteConfig.labourUnitPriceOverride,
-            }
-          : line,
-      ),
-  ];
-  const inventoryMenuLines = catalogue
-    ? inventoryAssemblyLines(draft.inventory, catalogue.settings)
-    : [];
-  const inventoryMenuOptions = inventoryAssemblyOptions(draft.inventory);
-  const standardPreviewLines = inventoryMenuLines.length
-    ? [
-        ...rawPreviewLines.filter((line) => !line.label.startsWith('Menuisier ·')),
-        ...extras
-          .filter(([key]) => key !== 'labour')
-          .map(([key, label]) => {
-            const inventoryCount = inventoryMenuOptions[key];
-            const quantity = Math.max(0, draft.options[key] - inventoryCount);
-            const unitPrice = catalogue
-              ? assemblyUnitPrice(
-                  catalogue.settings,
-                  key === 'desk' ? 'bureau' : key === 'wardrobe' ? 'armoire' : 'lit',
-                )
-              : 0;
-            return { label, quantity, unitPrice, total: quantity * unitPrice };
-          })
-          .filter((line) => line.quantity > 0),
-        ...inventoryMenuLines.map((line) => ({
-          ...line,
-          total: line.quantity * line.unitPrice,
-        })),
-      ]
-    : rawPreviewLines;
-  const balconyPrice = Math.max(0, Math.round(Number(estimateInventory.balcPx) || 0));
-  const previewLines = [
-    ...standardPreviewLines,
-    ...(estimateInventory.stairs === 'balcon'
-      ? [
-          {
-            label: `Supplément passage par le balcon${balconyPrice > 0 ? '' : ' (à fixer)'}`,
-            quantity: 1,
-            unitPrice: balconyPrice,
-            total: balconyPrice,
-          },
-        ]
-      : []),
-    ...(rentalOvertimeAmount > 0
-      ? [
-          {
-            label: `Dépassement du planning prévisionnel (${quoteConfig.overtimeMinutes} min)`,
-            quantity: 1,
-            unitPrice: rentalOvertimeAmount,
-            total: rentalOvertimeAmount,
-          },
-        ]
-      : []),
-  ];
-  const previewSubtotal = previewLines.reduce((sum, line) => sum + line.total, 0);
-  const previewDiscount =
-    quoteConfig.discountType === 'pct'
-      ? Math.round((previewSubtotal * Math.min(100, quoteConfig.discount)) / 100)
-      : Math.min(previewSubtotal, quoteConfig.discount);
-  const previewDiscountLabel = `Remise${quoteConfig.discountType === 'pct' && quoteConfig.discount ? ` (${Math.min(100, quoteConfig.discount)} %)` : ''}${quoteConfig.discountReason.trim() ? ` · ${quoteConfig.discountReason.trim()}` : ''}`;
-  const previewTotal = previewSubtotal - previewDiscount;
+  const availableMenuLines = preview.availableMenuLines;
+  const menuIncluded = preview.menuIncluded;
+  const inventoryMenuOptions = preview.menuOptions;
   const savedQuote = editingBooking?.quotes.filter((quote) => quote.kind === quoteKind).at(-1);
   const canSendQuoteWhatsApp = Boolean(
     whatsappNumber(draft.customerPhone, catalogue?.settings.whatsappCountryCode ?? '221').length >=
@@ -682,6 +569,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     : '';
   const reminderPayment = whatsappPaymentLine(catalogue?.settings);
   const reminderConditions = quoteConditionsText(estimateInventory, quoteConfig.billingMode);
+  const balconyPrice = Math.max(0, Math.round(Number(estimateInventory.balcPx) || 0));
   const reminderHref = editingBooking
     ? whatsappUrl(
         draft.customerPhone,
@@ -758,6 +646,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
           .join('\n'),
         options: draft.options,
         billingMode: quoteConfig.billingMode,
+        menuIncluded: quoteConfig.billingMode === 'driver-rental' && quoteConfig.menuIncluded,
         rentalKit: quoteConfig.billingMode === 'driver-rental' ? rentalKit : [],
         overtimeMinutes:
           quoteConfig.billingMode === 'driver-rental' ? quoteConfig.overtimeMinutes : 0,
@@ -949,16 +838,13 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     tiers,
     effectiveDistance,
     previewTier,
-    previewTransportUnit,
-    transportPreviewLine,
-    fallbackServiceLines,
-    rawPreviewLines,
-    inventoryMenuLines,
-    inventoryMenuOptions,
+    availableMenuLines,
+    menuIncluded,
     previewLines,
     rentalKit,
     setSimulationNeeds,
     rentalOvertimeAmount,
+    manoeuvreOvertimeLine: manoeuvreOvertime,
     previewSubtotal,
     previewDiscount,
     previewDiscountLabel,

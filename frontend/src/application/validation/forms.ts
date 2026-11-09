@@ -61,6 +61,8 @@ export function quoteFromForm(
   extraLines: QuoteInput['extraLines'],
   options: NonNullable<QuoteInput['options']>,
   tolls: NonNullable<QuoteInput['tolls']> = [],
+  billingMode: NonNullable<QuoteInput['billingMode']> = 'complete',
+  menuIncluded = false,
 ): QuoteInput {
   return {
     kind: data.get('kind') === 'final' ? 'final' : 'provisional',
@@ -74,6 +76,8 @@ export function quoteFromForm(
     tolls,
     options,
     version,
+    billingMode,
+    menuIncluded,
   };
 }
 
@@ -242,6 +246,50 @@ export async function catalogueFromForm(data: FormData, catalogue: Catalogue): P
     wbgtAdj: numberField(
       'movingLaborPlanning.wbgtAdj',
       catalogue.settings.movingLaborPlanning?.wbgtAdj ?? 0,
+    ),
+    maxTotalHours: numberField(
+      'movingLaborPlanning.maxTotalHours',
+      catalogue.settings.movingLaborPlanning?.maxTotalHours ?? 12,
+    ),
+    metabolicReference: numberField(
+      'movingLaborPlanning.metabolicReference',
+      catalogue.settings.movingLaborPlanning?.metabolicReference ?? 200,
+    ),
+    effortGround: numberField(
+      'movingLaborPlanning.effortGround',
+      catalogue.settings.movingLaborPlanning?.effortGround ?? 200,
+    ),
+    effortLift: numberField(
+      'movingLaborPlanning.effortLift',
+      catalogue.settings.movingLaborPlanning?.effortLift ?? 210,
+    ),
+    effortStairs: numberField(
+      'movingLaborPlanning.effortStairs',
+      catalogue.settings.movingLaborPlanning?.effortStairs ?? 230,
+    ),
+    effortPerFloor: numberField(
+      'movingLaborPlanning.effortPerFloor',
+      catalogue.settings.movingLaborPlanning?.effortPerFloor ?? 12,
+    ),
+    effortMaximum: numberField(
+      'movingLaborPlanning.effortMaximum',
+      catalogue.settings.movingLaborPlanning?.effortMaximum ?? 290,
+    ),
+    followingTripDiscountPercent: numberField(
+      'movingLaborPlanning.followingTripDiscountPercent',
+      catalogue.settings.movingLaborPlanning?.followingTripDiscountPercent ?? 60,
+    ),
+    lowDemandDiscountPercent: numberField(
+      'movingLaborPlanning.lowDemandDiscountPercent',
+      catalogue.settings.movingLaborPlanning?.lowDemandDiscountPercent ?? 10,
+    ),
+    manoeuvreOvertimeThresholdHours: numberField(
+      'movingLaborPlanning.manoeuvreOvertimeThresholdHours',
+      catalogue.settings.movingLaborPlanning?.manoeuvreOvertimeThresholdHours ?? 8,
+    ),
+    manoeuvreOvertimeHourlyRate: numberField(
+      'movingLaborPlanning.manoeuvreOvertimeHourlyRate',
+      catalogue.settings.movingLaborPlanning?.manoeuvreOvertimeHourlyRate ?? 0,
     ),
     blanketLengthCm: numberField(
       'movingLaborPlanning.blanketLengthCm',

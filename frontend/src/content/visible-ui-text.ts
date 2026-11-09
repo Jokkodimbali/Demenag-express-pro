@@ -221,4 +221,11 @@ export const visibleUiText = {
   text209: 'Sur devis',
   text210: 'Manœuvres (client)',
   text211: 'Manœuvres',
+  text212: 'Formule du devis',
+  text213: 'Choisir la formule tarifaire',
+  text214: 'Complète',
+  text215: 'Standard',
+  text216: 'Menuisier (location)',
+  text217: 'Inclus',
+  text218: 'Non inclus',
 } as const;

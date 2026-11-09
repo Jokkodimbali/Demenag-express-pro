@@ -120,7 +120,8 @@ export const overlaps = (left: string, right: string) =>
 export const activeBookings = (bookings: Booking[]) =>
   bookings.filter((booking) => booking.date && booking.status !== 'cancelled');
 export const teamOf = (booking: Booking) => {
-  const rental = booking.quotes?.at(-1)?.billingMode === 'driver-rental';
+  const quote = booking.quotes?.at(-1);
+  const rental = quote?.billingMode === 'driver-rental' && !quote.menuIncluded;
   return {
     chauffeur: booking.crew?.chauffeur ?? (booking.driverId ? [booking.driverId] : []),
     menuisier: rental ? [] : (booking.crew?.menuisier ?? []),
@@ -195,12 +196,16 @@ export function mergeTeamChanges(current: Booking, base: Booking, patch: Partial
 }
 export const needsOf = (booking: Booking) => {
   const quote = booking.quotes?.at(-1);
-  if (quote?.billingMode === 'driver-rental') return { chauffeur: 1, menuisier: 0, manoeuvre: 0 };
+  const rental = quote?.billingMode === 'driver-rental' && !quote.menuIncluded;
   const options = quote?.options ?? booking.options;
   return {
     chauffeur: 1,
-    menuisier: Number(options.bed + options.wardrobe + options.desk > 0),
-    manoeuvre: Math.max(0, quote?.providedCrew ?? options.labour ?? 2),
+    menuisier: Number(
+      (options?.bed ?? 0) + (options?.wardrobe ?? 0) + (options?.desk ?? 0) > 0 &&
+        quote?.billingMode !== 'standard' &&
+        !rental,
+    ),
+    manoeuvre: rental ? 0 : Math.max(0, quote?.providedCrew ?? options.labour ?? 2),
   };
 };
 export function trafficTiles(enabled: boolean) {

@@ -13,7 +13,8 @@ export type AdminQuoteConfig = {
   discountReason: string;
   customPrice: number | null;
   labourUnitPriceOverride: number | null;
-  billingMode: 'complete' | 'driver-rental';
+  billingMode: 'complete' | 'standard' | 'driver-rental';
+  menuIncluded: boolean;
   overtimeMinutes: number;
   rentalKit: RentalKitItem[] | null;
 };
@@ -58,8 +59,12 @@ export async function readAdminQuoteDraft(
         labourUnitPriceOverride: parsed.quoteConfig.labourUnitPriceOverride ?? null,
         discountType: parsed.quoteConfig.discountType ?? 'fcfa',
         discountReason: parsed.quoteConfig.discountReason ?? '',
-        billingMode:
-          parsed.quoteConfig.billingMode === 'driver-rental' ? 'driver-rental' : 'complete',
+        billingMode: ['complete', 'standard', 'driver-rental'].includes(
+          parsed.quoteConfig.billingMode,
+        )
+          ? parsed.quoteConfig.billingMode
+          : 'complete',
+        menuIncluded: parsed.quoteConfig.menuIncluded === true,
         overtimeMinutes: Math.max(0, Number(parsed.quoteConfig.overtimeMinutes) || 0),
         rentalKit:
           parsed.quoteConfig.rentalKit === null || Array.isArray(parsed.quoteConfig.rentalKit)
@@ -163,7 +168,8 @@ function isAdminQuoteDraft(value: unknown): value is AdminQuoteDraft {
       config.labourUnitPriceOverride === null ||
       (Number.isInteger(config.labourUnitPriceOverride) && config.labourUnitPriceOverride > 0)) &&
     (config.billingMode === undefined ||
-      ['complete', 'driver-rental'].includes(config.billingMode)) &&
+      ['complete', 'standard', 'driver-rental'].includes(config.billingMode)) &&
+    (config.menuIncluded === undefined || typeof config.menuIncluded === 'boolean') &&
     (config.overtimeMinutes === undefined ||
       (Number.isInteger(config.overtimeMinutes) && config.overtimeMinutes >= 0)) &&
     (config.rentalKit === undefined ||

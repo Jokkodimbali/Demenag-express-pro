@@ -238,6 +238,7 @@ export interface PricingRepository {
     workAccess?: import('../domain/model').WorkAccess,
     trips?: number,
     distanceKmOverride?: number | null,
+    workDate?: string | null,
   ): Promise<Price>;
 }
 export interface NotificationRepository {

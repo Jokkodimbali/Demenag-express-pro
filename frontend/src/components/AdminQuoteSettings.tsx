@@ -27,12 +27,12 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
       <section className="admin-quote-reference-settings" aria-label={visibleUiText.text124}>
         <strong>{visibleUiText.text125}</strong>
         <div className="admin-quote-reference-setting">
-          <span>{visibleUiText.text126}</span>
-          <div role="group" aria-label={visibleUiText.text127}>
+          <span>{visibleUiText.text212}</span>
+          <div role="group" aria-label={visibleUiText.text213}>
             <button
               type="button"
-              aria-pressed={quoteConfig.billingMode !== 'driver-rental'}
-              className={quoteConfig.billingMode !== 'driver-rental' ? 'active' : ''}
+              aria-pressed={quoteConfig.billingMode === 'complete'}
+              className={quoteConfig.billingMode === 'complete' ? 'active' : ''}
               onClick={() =>
                 setQuoteConfig((current) => ({
                   ...current,
@@ -41,7 +41,15 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
                 }))
               }
             >
-              {visibleUiText.text128}
+              {visibleUiText.text214}
+            </button>
+            <button
+              type="button"
+              aria-pressed={quoteConfig.billingMode === 'standard'}
+              className={quoteConfig.billingMode === 'standard' ? 'active' : ''}
+              onClick={() => setQuoteConfig((current) => ({ ...current, billingMode: 'standard' }))}
+            >
+              {visibleUiText.text215}
             </button>
             <button
               type="button"
@@ -55,6 +63,20 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
             </button>
           </div>
         </div>
+        {quoteConfig.billingMode === 'driver-rental' && model.availableMenuLines.length > 0 && (
+          <div className="admin-quote-reference-setting">
+            <span>{visibleUiText.text216}</span>
+            <button
+              type="button"
+              aria-pressed={quoteConfig.menuIncluded}
+              onClick={() =>
+                setQuoteConfig((current) => ({ ...current, menuIncluded: !current.menuIncluded }))
+              }
+            >
+              {quoteConfig.menuIncluded ? visibleUiText.text217 : visibleUiText.text218}
+            </button>
+          </div>
+        )}
         <div className="admin-quote-reference-setting">
           <span>{visibleUiText.text130}</span>
           <div role="group" aria-label={visibleUiText.text3}>

@@ -666,22 +666,12 @@ select option{background:#272A2E;color:#fff}
         <sc-if value="{{ aDevisAdm }}" hint-placeholder-val="{{ false }}">
           <sc-if value="{{ svNewHas }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;background:#14361F;border:1px solid #3DDC84;border-radius:14px;padding:10px 14px;margin-bottom:12px"><span style="flex:1;min-width:200px;font-size:14px;font-weight:800;color:#fff">✓ Devis {{ svNewRef }} enregistré</span><button onClick="{{ svTeam }}" style="background:#3DDC84;color:#1E2023;border:0;border-radius:10px;min-height:44px;padding:0 16px;font-size:13.5px;font-weight:800;cursor:pointer">Affecter l’équipe →</button><button onClick="{{ svSend }}" style="background:transparent;color:#fff;border:1.5px solid #4A5057;border-radius:10px;min-height:44px;padding:0 14px;font-size:13.5px;font-weight:700;cursor:pointer">Envoyer au client →</button><button onClick="{{ svClose }}" title="Fermer" style="background:transparent;color:#AEB4BB;border:0;min-height:44px;padding:0 8px;font-size:18px;cursor:pointer">×</button></div></sc-if>
           <sc-if value="{{ drHas }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;background:#3A3420;border:1px solid #F6D73C;border-radius:14px;padding:10px 14px;margin-bottom:12px"><span style="flex:1;min-width:220px;font-size:13.5px;font-weight:700;color:#fff">Brouillon non enregistré · {{ drTxt }}</span><button onClick="{{ drResume }}" style="background:#F6D73C;color:#1E2023;border:0;border-radius:10px;min-height:44px;padding:0 16px;font-size:13.5px;font-weight:800;cursor:pointer">Reprendre</button><button onClick="{{ drIgnore }}" style="background:transparent;color:#fff;border:1.5px solid #4A5057;border-radius:10px;min-height:44px;padding:0 14px;font-size:13.5px;font-weight:700;cursor:pointer">Ignorer</button></div></sc-if>
-          <div style="background:#272A2E;border:1px solid #3B4046;border-radius:16px;padding:12px 14px;display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 18px;margin-bottom:clamp(14px,4vw,24px)">
-            <span style="flex-basis:100%;font-size:12px;font-weight:800;letter-spacing:0.1em;color:#AEB4BB">RÉGLAGES DU DEVIS</span>
-            <div style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:12px;font-weight:700;color:#AEB4BB">Facturation</span><div style="display:flex;gap:4px;background:#1E2023;border-radius:11px;padding:3px;flex-wrap:wrap"><button onClick="{{ billSetC }}" style="border:0;border-radius:8px;min-height:44px;padding:0 12px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;background:{{ billCBg }};color:{{ billCC }}">Déménagement complet</button><button onClick="{{ billSetL }}" style="border:0;border-radius:8px;min-height:44px;padding:0 12px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;background:{{ billLBg }};color:{{ billLC }}">Location avec chauffeur</button></div></div>
-            <div style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:12px;font-weight:700;color:#AEB4BB">Calcul</span><div style="display:flex;gap:4px;background:#1E2023;border-radius:11px;padding:3px;flex-wrap:wrap"><button onClick="{{ cmSetAuto }}" style="border:0;border-radius:8px;min-height:44px;padding:0 12px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;background:{{ cmABg }};color:{{ cmAC }}">Automatique</button><button onClick="{{ cmSetManual }}" style="border:0;border-radius:8px;min-height:44px;padding:0 12px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;background:{{ cmMBg }};color:{{ cmMC }}">Manuel</button></div></div>
-            <div style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:12px;font-weight:700;color:#AEB4BB">Étape</span><div style="display:flex;gap:4px;background:#1E2023;border-radius:11px;padding:3px;flex-wrap:wrap"><button onClick="{{ dModeProv }}" style="border:0;border-radius:8px;min-height:44px;padding:0 12px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;background:{{ dModePBg }};color:{{ dModePC }}">Provisoire</button><button onClick="{{ dModeFin }}" style="border:0;border-radius:8px;min-height:44px;padding:0 12px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;background:{{ dModeFBg }};color:{{ dModeFC }}">Final</button></div></div>
-            <div style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:12px;font-weight:700;color:#AEB4BB">Embouteillages</span><div style="display:flex;gap:4px;background:#1E2023;border-radius:11px;padding:3px;flex-wrap:wrap"><button onClick="{{ dTrafTog }}" style="border:0;border-radius:8px;min-height:44px;padding:0 12px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;background:{{ dTrafBg }};color:{{ dTrafC }}">{{ dTrafShort }}</button></div></div>
-            <sc-if value="{{ invLab }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:12px;font-weight:700;color:#AEB4BB">Récupération chaleur</span><div style="display:flex;gap:4px;background:#1E2023;border-radius:11px;padding:3px;flex-wrap:wrap"><button onClick="{{ heatTog }}" style="border:0;border-radius:8px;min-height:44px;padding:0 12px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;background:{{ heatBarBg }};color:{{ heatBarC }}">{{ heatShort }}</button></div></div></sc-if>
-            <div style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:12px;font-weight:700;color:#AEB4BB">Matériel</span><div style="display:flex;gap:4px;background:#1E2023;border-radius:11px;padding:3px;flex-wrap:wrap"><sc-for list="{{ rgReady }}" as="o" hint-placeholder-count="2"><button onClick="{{ o.pick }}" style="border:0;border-radius:8px;min-height:44px;padding:0 12px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;background:{{ o.bg }};color:{{ o.c }}">{{ o.lbl }}</button></sc-for></div></div>
-            <div style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:12px;font-weight:700;color:#AEB4BB">Passage</span><div style="display:flex;gap:4px;background:#1E2023;border-radius:11px;padding:3px;flex-wrap:wrap"><sc-for list="{{ rgStairs }}" as="o" hint-placeholder-count="2"><button onClick="{{ o.pick }}" style="border:0;border-radius:8px;min-height:44px;padding:0 12px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;background:{{ o.bg }};color:{{ o.c }}">{{ o.lbl }}</button></sc-for></div></div>
-            <sc-if value="{{ invBalc }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:12px;font-weight:700;color:#AEB4BB">Supplément balcon (FCFA)</span><input type="number" min="0" value="{{ invBalcPx }}" onChange="{{ onBalcPx }}" placeholder="Prix" style="width:130px;min-height:50px;box-sizing:border-box;background:#1E2023;border:1.5px solid {{ invBalcHintC }};border-radius:11px;padding:0 12px;color:#fff;font-size:16px;font-weight:800;outline:none"></div></sc-if>
-            <span style="flex-basis:100%;font-size:12px;color:#8A9199">Matériel et passage apparaissent dans l’encadré « Conditions de chargement » du devis PDF.</span>
-          </div>
+          
         </sc-if>
         <datalist id="dk-qrt"><option value="Almadies, Dakar"></option><option value="Ngor, Dakar"></option><option value="Ouakam, Dakar"></option><option value="Yoff, Dakar"></option><option value="Mermoz, Dakar"></option><option value="Sacré-Cœur, Dakar"></option><option value="Point E, Dakar"></option><option value="Fann, Dakar"></option><option value="Amitié, Dakar"></option><option value="Plateau, Dakar"></option><option value="Médina, Dakar"></option><option value="Gueule Tapée, Dakar"></option><option value="Fass, Dakar"></option><option value="Colobane, Dakar"></option><option value="Grand Dakar, Dakar"></option><option value="HLM, Dakar"></option><option value="Dieuppeul, Dakar"></option><option value="Derklé, Dakar"></option><option value="Liberté, Dakar"></option><option value="Sicap Baobabs, Dakar"></option><option value="Mamelles, Dakar"></option><option value="Ouest Foire, Dakar"></option><option value="Nord Foire, Dakar"></option><option value="Grand Yoff, Dakar"></option><option value="Parcelles Assainies, Dakar"></option><option value="Cambérène, Dakar"></option><option value="Patte d’Oie, Dakar"></option><option value="Castor, Dakar"></option><option value="Front de Terre, Dakar"></option><option value="Hann, Dakar"></option><option value="Bel-Air, Dakar"></option><option value="Biscuiterie, Dakar"></option><option value="Keur Massar, Dakar"></option><option value="Pikine, Dakar"></option><option value="Thiaroye, Dakar"></option><option value="Guédiawaye, Dakar"></option><option value="Yeumbeul, Dakar"></option><option value="Malika, Dakar"></option><option value="Mbao, Dakar"></option><option value="Rufisque, Dakar"></option><option value="Bargny, Dakar"></option><option value="Diamniadio, Dakar"></option><option value="Sébikotane, Dakar"></option><option value="Lac Rose, Dakar"></option></datalist>
-        <div data-devis="1" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:clamp(14px,4vw,24px);align-items:start"><div style="display:flex;flex-direction:column;gap:18px;min-width:0"><div data-step="1" style="display:flex;align-items:center;gap:10px;padding-top:6px"><span style="width:30px;height:30px;border-radius:50%;background:#F6D73C;color:#1E2023;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</span><span style="font-size:15px;font-weight:800;letter-spacing:0.08em;color:#fff">CLIENT ET DATE</span><span style="flex:1;height:1px;background:#3B4046"></span></div>
-            <div style="background:#272A2E;border:1px solid #3B4046;border-radius:clamp(14px,4vw,20px);padding:clamp(14px,4vw,22px);display:flex;flex-direction:column;gap:14px">
+        <div data-devis="1" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:clamp(14px,4vw,24px);align-items:start"><div style="display:flex;flex-direction:column;gap:18px;min-width:0"><div style="display:flex;justify-content:flex-end"><button onClick="{{ stp.allTog }}" style="background:transparent;color:#D5D9DE;border:1.5px solid #4A5057;border-radius:10px;min-height:40px;padding:0 14px;font-size:13px;font-weight:700;cursor:pointer">{{ stp.allLbl }}</button></div>
+            <div data-step="1" onClick="{{ stp.t1 }}" style="display:flex;align-items:center;gap:12px;padding:10px 14px;cursor:pointer;user-select:none;background:#272A2E;border:1px solid #3B4046;border-radius:14px;min-height:56px;min-width:0"><span style="width:30px;height:30px;border-radius:50%;background:#F6D73C;color:#1E2023;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</span><div style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1"><span style="font-size:14px;font-weight:800;letter-spacing:0.08em;color:#fff">CLIENT ET DATE</span><span style="font-size:12.5px;color:#AEB4BB;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ stp.sum1 }}</span></div><span style="display:flex;transform:rotate({{ stp.r1 }});transition:transform .2s;color:#F6D73C;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></span></div>
+            <sc-if value="{{ stp.o1 }}" hint-placeholder-val="{{ true }}"><div style="display:flex;flex-direction:column;gap:18px;min-width:0"><div style="background:#272A2E;border:1px solid #3B4046;border-radius:clamp(14px,4vw,20px);padding:clamp(14px,4vw,22px);display:flex;flex-direction:column;gap:14px">
               <div onClick="{{ dSecV.client.toggle }}" style="display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;min-height:40px"><span style="display:flex;transform:rotate({{ dSecV.client.rot }});transition:transform .2s;color:#F6D73C"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></span><span style="font-size:13px;font-weight:800;letter-spacing:0.12em;color:#F6D73C">{{ dTitle }}</span></div>
               <sc-if value="{{ dSecV.client.open }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:12px">
               <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px">
@@ -728,9 +718,9 @@ select option{background:#272A2E;color:#fff}
                 
               </div>
             </div></sc-if>
-            </div>
-            <div data-step="2" style="display:flex;align-items:center;gap:10px;padding-top:6px"><span style="width:30px;height:30px;border-radius:50%;background:#F6D73C;color:#1E2023;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</span><span style="font-size:15px;font-weight:800;letter-spacing:0.08em;color:#fff">TRAJET</span><span style="flex:1;height:1px;background:#3B4046"></span></div>
-            <div style="background:#272A2E;border:1px solid #3B4046;border-radius:clamp(14px,4vw,20px);padding:clamp(14px,4vw,22px);display:flex;flex-direction:column;gap:12px">
+            </div><button onClick="{{ stp.n1 }}" style="align-self:flex-end;background:#F6D73C;color:#1E2023;border:0;border-radius:10px;min-height:44px;padding:0 18px;font-size:14px;font-weight:800;cursor:pointer">Suivant : trajet →</button></div></sc-if>
+            <div data-step="2" onClick="{{ stp.t2 }}" style="display:flex;align-items:center;gap:12px;padding:10px 14px;cursor:pointer;user-select:none;background:#272A2E;border:1px solid #3B4046;border-radius:14px;min-height:56px;min-width:0"><span style="width:30px;height:30px;border-radius:50%;background:#F6D73C;color:#1E2023;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</span><div style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1"><span style="font-size:14px;font-weight:800;letter-spacing:0.08em;color:#fff">TRAJET</span><span style="font-size:12.5px;color:#AEB4BB;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ stp.sum2 }}</span></div><span style="display:flex;transform:rotate({{ stp.r2 }});transition:transform .2s;color:#F6D73C;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></span></div>
+            <sc-if value="{{ stp.o2 }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:18px;min-width:0"><div style="background:#272A2E;border:1px solid #3B4046;border-radius:clamp(14px,4vw,20px);padding:clamp(14px,4vw,22px);display:flex;flex-direction:column;gap:12px">
               <div onClick="{{ dSecV.trajet.toggle }}" style="display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;min-height:40px"><span style="display:flex;transform:rotate({{ dSecV.trajet.rot }});transition:transform .2s;color:#F6D73C"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></span><span style="font-size:13px;font-weight:800;letter-spacing:0.12em;color:#F6D73C">TRAJET · CARTE</span></div>
               <sc-if value="{{ dSecV.trajet.open }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:12px">
               <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:10px">
@@ -799,16 +789,15 @@ select option{background:#272A2E;color:#fff}
                 </div></sc-if>
               </sc-if>
             </div></sc-if>
-            </div>
-            <div data-step="3" style="display:flex;align-items:center;gap:10px;padding-top:6px"><span style="width:30px;height:30px;border-radius:50%;background:#F6D73C;color:#1E2023;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</span><span style="font-size:15px;font-weight:800;letter-spacing:0.08em;color:#fff">INVENTAIRE</span><span style="flex:1;height:1px;background:#3B4046"></span></div>
-            <sc-if value="{{ cdCli }}" hint-placeholder-val="{{ false }}"><div style="background:#272A2E;border:1.5px solid #F6D73C;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:14px">
+            </div><button onClick="{{ stp.n2 }}" style="align-self:flex-end;background:#F6D73C;color:#1E2023;border:0;border-radius:10px;min-height:44px;padding:0 18px;font-size:14px;font-weight:800;cursor:pointer">Suivant : inventaire →</button></div></sc-if>
+            <div data-step="3" onClick="{{ stp.t3 }}" style="display:flex;align-items:center;gap:12px;padding:10px 14px;cursor:pointer;user-select:none;background:#272A2E;border:1px solid #3B4046;border-radius:14px;min-height:56px;min-width:0"><span style="width:30px;height:30px;border-radius:50%;background:#F6D73C;color:#1E2023;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</span><div style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1"><span style="font-size:14px;font-weight:800;letter-spacing:0.08em;color:#fff">INVENTAIRE</span><span style="font-size:12.5px;color:#AEB4BB;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ stp.sum3 }}</span></div><span style="display:flex;transform:rotate({{ stp.r3 }});transition:transform .2s;color:#F6D73C;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></span></div>
+            <sc-if value="{{ stp.o3 }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:18px;min-width:0"><sc-if value="{{ cdCli }}" hint-placeholder-val="{{ false }}"><div style="background:#272A2E;border:1.5px solid #F6D73C;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:14px">
               <span style="font-size:12px;font-weight:800;letter-spacing:0.1em;color:#F6D73C">CONDITIONS DE CHARGEMENT · AFFICHÉES SUR LE DEVIS</span>
               <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:14px;font-weight:800">Le matériel sera-t-il prêt à être chargé ?</span><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ invReady }}" as="o" hint-placeholder-count="2"><button onClick="{{ o.pick }}" style="flex-shrink:0;white-space:nowrap;background:{{ o.bg }};color:{{ o.c }};border:1.5px solid {{ o.bd }};border-radius:999px;padding:8px 13px;font-size:13px;font-weight:700;cursor:pointer;min-height:44px">{{ o.lbl }}</button></sc-for></div><sc-if value="{{ invReadyHint }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;line-height:1.4;color:#F6D73C">{{ invReadyHintTxt }}</span></sc-if></div>
               <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:14px;font-weight:800">Tout passe-t-il par l’escalier ?</span><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ invStairs }}" as="o" hint-placeholder-count="2"><button onClick="{{ o.pick }}" style="flex-shrink:0;white-space:nowrap;background:{{ o.bg }};color:{{ o.c }};border:1.5px solid {{ o.bd }};border-radius:999px;padding:8px 13px;font-size:13px;font-weight:700;cursor:pointer;min-height:44px">{{ o.lbl }}</button></sc-for></div>
                 <sc-if value="{{ invBalc }}" hint-placeholder-val="{{ false }}"><sc-if value="{{ cdCli }}" hint-placeholder-val="{{ false }}"><span style="font-size:12.5px;line-height:1.45;color:#F6D73C">Le passage par le balcon entraîne un supplément fixé par Demenag Express après étude.</span></sc-if><sc-if value="{{ cdAdm }}" hint-placeholder-val="{{ true }}"><div style="display:flex;flex-direction:column;gap:6px;background:#1E2023;border-radius:12px;padding:10px 12px"><span style="font-size:13px;font-weight:800">Supplément passage par le balcon</span><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><input type="number" min="0" value="{{ invBalcPx }}" onChange="{{ onBalcPx }}" placeholder="Prix" style="flex:1 1 140px;min-width:0;background:#272A2E;border:1px solid #3B4046;border-radius:10px;padding:11px 12px;color:#fff;font-size:17px;font-weight:800;outline:none"><span style="font-size:13px;font-weight:700;color:#AEB4BB">FCFA</span></div><span style="font-size:12.5px;font-weight:700;color:{{ invBalcHintC }}">{{ invBalcHint }}</span></div></sc-if></sc-if>
                 <sc-if value="{{ invStairsHint }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;line-height:1.4;color:#F6D73C">{{ invStairsHintTxt }}</span></sc-if></div>
-            </div></sc-if>
-            <div style="background:#272A2E;border:1px solid #3B4046;border-radius:clamp(14px,4vw,20px);padding:clamp(14px,4vw,22px);display:flex;flex-direction:column;gap:14px">
+            </div></sc-if><div style="background:#272A2E;border:1px solid #3B4046;border-radius:clamp(14px,4vw,20px);padding:clamp(14px,4vw,22px);display:flex;flex-direction:column;gap:14px">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
                 <div style="display:flex;flex-direction:column;gap:4px">
                   <span style="font-size:13px;font-weight:800;letter-spacing:0.12em;color:#F6D73C">FICHE D'APPEL · INVENTAIRE</span>
@@ -1059,7 +1048,8 @@ select option{background:#272A2E;color:#fff}
                             <span style="font-size:12px;line-height:1.4;color:#D5D9DE">{{ labCrewSub }}</span>
                             <span style="font-size:12px;color:#AEB4BB">Réglage du nombre : étape 4</span>
                           </div>
-                          <sc-for list="{{ labTiles }}" as="t" hint-placeholder-count="3">
+                          <sc-if value="{{ durOverHas }}" hint-placeholder-val="{{ false }}"><div style="grid-column:1 / -1;background:#3A2020;border:1.5px solid #FF5A5F;border-radius:12px;padding:10px 14px;font-size:13.5px;font-weight:700;color:#fff">{{ durOverTxt }}</div></sc-if>
+                        <sc-for list="{{ labTiles }}" as="t" hint-placeholder-count="3">
                             <div style="background:#272A2E;border:1px solid #3B4046;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:4px;min-width:0">
                               <span style="font-size:12px;font-weight:700;color:#AEB4BB">{{ t.k }}</span>
                               <span style="font-size:20px;font-weight:800;color:#F6D73C">{{ t.v }}</span>
@@ -1108,11 +1098,15 @@ select option{background:#272A2E;color:#fff}
                         </sc-if>
                         <div onClick="{{ labMethodToggle }}" style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;min-height:36px">
                           <span style="display:flex;transform:rotate({{ labMethodRot }});transition:transform .2s;color:#AEB4BB"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></span>
-                          <span style="font-size:13px;font-weight:700;color:#D5D9DE">Méthode de calcul</span>
+                          <span style="font-size:13px;font-weight:700;color:#D5D9DE">Détail du calcul</span>
                         </div>
                         <sc-if value="{{ labMethodOpen }}" hint-placeholder-val="{{ false }}">
                           <div style="display:flex;flex-direction:column;gap:6px">
-                            <sc-for list="{{ labMethod }}" as="m" hint-placeholder-count="4"><span style="font-size:12px;line-height:1.5;color:#AEB4BB">{{ m }}</span></sc-for>
+                            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,210px),1fr));gap:6px">
+                    <sc-for list="{{ labChain }}" as="cs" hint-placeholder-count="10"><div style="display:grid;grid-template-columns:24px minmax(0,1fr);gap:8px;align-items:start;background:#1E2023;border:1px solid {{ cs.bd }};border-radius:10px;padding:8px 10px;min-width:0"><span style="width:24px;height:24px;border-radius:7px;background:#30343A;color:#F6D73C;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center">{{ cs.n }}</span><div style="display:flex;flex-direction:column;gap:1px;min-width:0"><div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><span style="font-size:12px;font-weight:700;color:#AEB4BB">{{ cs.t }}</span><span style="font-size:14px;font-weight:800;color:#fff;white-space:nowrap">{{ cs.v }}</span></div><span style="font-size:12px;line-height:1.4;color:#D5D9DE">{{ cs.s }}</span></div></div></sc-for>
+                  </div>
+                  <span style="font-size:12px;font-weight:800;letter-spacing:0.08em;color:#AEB4BB;margin-top:6px">RÈGLES APPLIQUÉES</span>
+                  <sc-for list="{{ labMethod }}" as="m" hint-placeholder-count="4"><span style="font-size:12px;line-height:1.5;color:#AEB4BB">{{ m }}</span></sc-for>
                           </div>
                         </sc-if>
                       </div>
@@ -1124,9 +1118,22 @@ select option{background:#272A2E;color:#fff}
                   </div>
                 </div>
               </sc-if>
-            </div>
-            <div data-step="4" style="display:flex;align-items:center;gap:10px;padding-top:6px"><span style="width:30px;height:30px;border-radius:50%;background:#F6D73C;color:#1E2023;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">4</span><span style="font-size:15px;font-weight:800;letter-spacing:0.08em;color:#fff">VÉHICULE ET ÉQUIPE</span><span style="flex:1;height:1px;background:#3B4046"></span></div>
-            <sc-if value="{{ isCD }}" hint-placeholder-val="{{ false }}">
+            </div><button onClick="{{ stp.n3 }}" style="align-self:flex-end;background:#F6D73C;color:#1E2023;border:0;border-radius:10px;min-height:44px;padding:0 18px;font-size:14px;font-weight:800;cursor:pointer">Suivant : formule et prix →</button></div></sc-if>
+            <div data-step="4" onClick="{{ stp.t4 }}" style="display:flex;align-items:center;gap:12px;padding:10px 14px;cursor:pointer;user-select:none;background:#272A2E;border:1px solid #3B4046;border-radius:14px;min-height:56px;min-width:0"><span style="width:30px;height:30px;border-radius:50%;background:#F6D73C;color:#1E2023;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">4</span><div style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1"><span style="font-size:14px;font-weight:800;letter-spacing:0.08em;color:#fff">FORMULE ET PRIX</span><span style="font-size:12.5px;color:#AEB4BB;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ stp.sum4 }}</span></div><span style="display:flex;transform:rotate({{ stp.r4 }});transition:transform .2s;color:#F6D73C;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></span></div>
+            <sc-if value="{{ stp.o4 }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:18px;min-width:0"><sc-if value="{{ aDevisAdm }}" hint-placeholder-val="{{ false }}"><div style="background:#272A2E;border:1px solid #3B4046;border-radius:16px;padding:12px 14px;display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 18px;margin-bottom:clamp(14px,4vw,24px)">
+            <span style="flex-basis:100%;font-size:12px;font-weight:800;letter-spacing:0.1em;color:#AEB4BB">RÉGLAGES DU DEVIS</span>
+            <div style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:12px;font-weight:700;color:#AEB4BB">Formule</span><div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;background:#1E2023;border-radius:11px;padding:3px"><sc-for list="{{ fmList }}" as="fm" hint-placeholder-count="3"><button onClick="{{ fm.pick }}" style="border:0;border-radius:8px;min-height:56px;padding:6px 10px;cursor:pointer;background:{{ fm.bg }};color:{{ fm.c }};display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;min-width:0"><span style="font-size:13px;font-weight:800">{{ fm.l }}</span><span style="font-size:14px;font-weight:800;white-space:nowrap">{{ fm.px }}</span><span style="font-size:11.5px;font-weight:600;color:{{ fm.sc }}">{{ fm.s }}</span></button></sc-for></div>
+              <sc-if value="{{ cheapHas }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:#1E3A2A;border:1.5px solid #3DDC84;border-radius:10px;padding:8px 10px"><span style="font-size:13px;font-weight:700;color:#fff;flex:1 1 200px">{{ cheapTxt }}</span><button onClick="{{ cheapPick }}" style="background:#3DDC84;color:#1E2023;border:0;border-radius:9px;min-height:44px;padding:0 14px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap">Prendre ce véhicule</button></div></sc-if></div>
+            <div style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:12px;font-weight:700;color:#AEB4BB">Calcul</span><div style="display:flex;gap:4px;background:#1E2023;border-radius:11px;padding:3px;flex-wrap:wrap"><button onClick="{{ cmSetAuto }}" style="border:0;border-radius:8px;min-height:44px;padding:0 12px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;background:{{ cmABg }};color:{{ cmAC }}">Automatique</button><button onClick="{{ cmSetManual }}" style="border:0;border-radius:8px;min-height:44px;padding:0 12px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;background:{{ cmMBg }};color:{{ cmMC }}">Manuel</button></div></div>
+            <div style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:12px;font-weight:700;color:#AEB4BB">Étape</span><div style="display:flex;gap:4px;background:#1E2023;border-radius:11px;padding:3px;flex-wrap:wrap"><button onClick="{{ dModeProv }}" style="border:0;border-radius:8px;min-height:44px;padding:0 12px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;background:{{ dModePBg }};color:{{ dModePC }}">Provisoire</button><button onClick="{{ dModeFin }}" style="border:0;border-radius:8px;min-height:44px;padding:0 12px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;background:{{ dModeFBg }};color:{{ dModeFC }}">Final</button></div></div>
+            <div style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:12px;font-weight:700;color:#AEB4BB">Embouteillages</span><div style="display:flex;gap:4px;background:#1E2023;border-radius:11px;padding:3px;flex-wrap:wrap"><button onClick="{{ dTrafTog }}" style="border:0;border-radius:8px;min-height:44px;padding:0 12px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;background:{{ dTrafBg }};color:{{ dTrafC }}">{{ dTrafShort }}</button></div></div>
+            <sc-if value="{{ invLab }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:12px;font-weight:700;color:#AEB4BB">Récupération chaleur</span><div style="display:flex;gap:4px;background:#1E2023;border-radius:11px;padding:3px;flex-wrap:wrap"><button onClick="{{ heatTog }}" style="border:0;border-radius:8px;min-height:44px;padding:0 12px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;background:{{ heatBarBg }};color:{{ heatBarC }}">{{ heatShort }}</button></div></div></sc-if>
+<sc-if value="{{ locMenuShow }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:12px;font-weight:700;color:#AEB4BB">Menuisier (location)</span><div style="display:flex;gap:4px;background:#1E2023;border-radius:11px;padding:3px;flex-wrap:wrap"><button onClick="{{ locMenuTog }}" style="border:0;border-radius:8px;min-height:44px;padding:0 12px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;background:{{ locMenuBg }};color:{{ locMenuC }}">{{ locMenuLbl }}</button></div></div></sc-if>
+            <div style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:12px;font-weight:700;color:#AEB4BB">Matériel</span><div style="display:flex;gap:4px;background:#1E2023;border-radius:11px;padding:3px;flex-wrap:wrap"><sc-for list="{{ rgReady }}" as="o" hint-placeholder-count="2"><button onClick="{{ o.pick }}" style="border:0;border-radius:8px;min-height:44px;padding:0 12px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;background:{{ o.bg }};color:{{ o.c }}">{{ o.lbl }}</button></sc-for></div></div>
+            <div style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:12px;font-weight:700;color:#AEB4BB">Passage</span><div style="display:flex;gap:4px;background:#1E2023;border-radius:11px;padding:3px;flex-wrap:wrap"><sc-for list="{{ rgStairs }}" as="o" hint-placeholder-count="2"><button onClick="{{ o.pick }}" style="border:0;border-radius:8px;min-height:44px;padding:0 12px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;background:{{ o.bg }};color:{{ o.c }}">{{ o.lbl }}</button></sc-for></div></div>
+            <sc-if value="{{ invBalc }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:12px;font-weight:700;color:#AEB4BB">Supplément balcon (FCFA)</span><input type="number" min="0" value="{{ invBalcPx }}" onChange="{{ onBalcPx }}" placeholder="Prix" style="width:130px;min-height:50px;box-sizing:border-box;background:#1E2023;border:1.5px solid {{ invBalcHintC }};border-radius:11px;padding:0 12px;color:#fff;font-size:16px;font-weight:800;outline:none"></div></sc-if>
+            <span style="flex-basis:100%;font-size:12px;color:#8A9199">Matériel et passage apparaissent dans l’encadré « Conditions de chargement » du devis PDF.</span>
+          </div></sc-if><sc-if value="{{ isCD }}" hint-placeholder-val="{{ false }}">
             <div style="background:#272A2E;border:1px solid #3B4046;border-radius:clamp(14px,4vw,20px);padding:clamp(14px,4vw,22px)">
             <div style="display:flex;flex-direction:column;gap:10px">
             <span style="font-size:12px;font-weight:700;letter-spacing:0.1em;color:#AEB4BB">VÉHICULE</span>
@@ -1167,13 +1174,11 @@ select option{background:#272A2E;color:#fff}
             </div>
           </div>
             </div>
-            </sc-if>
-            <sc-if value="{{ notCD }}" hint-placeholder-val="{{ true }}"><div style="background:#272A2E;border:1px solid #3B4046;border-radius:clamp(14px,4vw,20px);padding:clamp(14px,4vw,22px);display:flex;flex-direction:column;gap:10px"><span style="font-size:12px;font-weight:800;letter-spacing:0.1em;color:#AEB4BB">VÉHICULE</span><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+            </sc-if><sc-if value="{{ notCD }}" hint-placeholder-val="{{ true }}"><div style="background:#272A2E;border:1px solid #3B4046;border-radius:clamp(14px,4vw,20px);padding:clamp(14px,4vw,22px);display:flex;flex-direction:column;gap:10px"><span style="font-size:12px;font-weight:800;letter-spacing:0.1em;color:#AEB4BB">VÉHICULE</span><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
                   <sc-for list="{{ dVehicles }}" as="v" hint-placeholder-count="3">
                     <button onClick="{{ v.pick }}" style="background:{{ v.bg }};color:{{ v.color }};border:1.5px solid {{ v.border }};border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;padding:8px 4px">{{ v.short }}</button>
                   </sc-for>
-                </div></div></sc-if>
-            <sc-if value="{{ billCardShow }}" hint-placeholder-val="{{ false }}"><div style="background:#272A2E;border:1px solid #3B4046;border-radius:clamp(14px,4vw,20px);padding:clamp(14px,4vw,22px);display:flex;flex-direction:column;gap:12px">
+                </div></div></sc-if><sc-if value="{{ billCardShow }}" hint-placeholder-val="{{ false }}"><div style="background:#272A2E;border:1px solid #3B4046;border-radius:clamp(14px,4vw,20px);padding:clamp(14px,4vw,22px);display:flex;flex-direction:column;gap:12px">
               <span style="font-size:12px;font-weight:800;letter-spacing:0.1em;color:#AEB4BB">FACTURATION</span>
               <sc-if value="{{ isCD }}" hint-placeholder-val="{{ false }}"><div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;background:#1E2023;border-radius:12px;padding:4px">
                 <button onClick="{{ billSetC }}" style="border:0;border-radius:9px;min-height:44px;font-size:13.5px;font-weight:800;cursor:pointer;background:{{ billCBg }};color:{{ billCC }}">Déménagement complet</button>
@@ -1200,8 +1205,7 @@ select option{background:#272A2E;color:#fff}
                   </div>
                 </div>
               </sc-if>
-            </div></sc-if>
-            <sc-if value="{{ aDevisAdm }}" hint-placeholder-val="{{ false }}"><div style="background:#272A2E;border:1px solid #3B4046;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px">
+            </div></sc-if><sc-if value="{{ aDevisAdm }}" hint-placeholder-val="{{ false }}"><div style="background:#272A2E;border:1px solid #3B4046;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px">
               <span style="font-size:12px;font-weight:800;letter-spacing:0.1em;color:#AEB4BB">ÉQUIPE ET CALCUL</span>
               
               <span style="font-size:12.5px;line-height:1.45;color:#D5D9DE">{{ cmSub }}</span>
@@ -1214,9 +1218,7 @@ select option{background:#272A2E;color:#fff}
                 </div>
                 <span style="font-size:12px;color:#F6D73C">{{ cmAdvice }}</span>
               </sc-if>
-            </div></sc-if>
-            <div data-step="5" style="display:flex;align-items:center;gap:10px;padding-top:6px"><span style="width:30px;height:30px;border-radius:50%;background:#F6D73C;color:#1E2023;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">5</span><span style="font-size:15px;font-weight:800;letter-spacing:0.08em;color:#fff">PRIX ET OPTIONS</span><span style="flex:1;height:1px;background:#3B4046"></span></div>
-            <sc-if value="{{ notCD }}" hint-placeholder-val="{{ true }}"><div style="background:#272A2E;border:1px solid #3B4046;border-radius:clamp(14px,4vw,20px);padding:clamp(14px,4vw,22px);display:flex;flex-direction:column;gap:10px">
+            </div></sc-if><sc-if value="{{ notCD }}" hint-placeholder-val="{{ true }}"><div style="background:#272A2E;border:1px solid #3B4046;border-radius:clamp(14px,4vw,20px);padding:clamp(14px,4vw,22px);display:flex;flex-direction:column;gap:10px">
               <div onClick="{{ pgCardToggle }}" style="display:flex;justify-content:space-between;align-items:center;gap:12px;cursor:pointer;user-select:none;min-height:40px">
                 <div style="display:flex;align-items:center;gap:10px">
                   <span style="display:flex;transform:rotate({{ pgCardRot }});transition:transform .2s;color:#F6D73C"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></span>
@@ -1278,8 +1280,7 @@ select option{background:#272A2E;color:#fff}
                   </sc-for>
                 </div>
               </sc-if>
-            </div></sc-if>
-            <div style="background:#272A2E;border:1px solid #3B4046;border-radius:clamp(14px,4vw,20px);padding:6px 22px 18px">
+            </div></sc-if><div style="background:#272A2E;border:1px solid #3B4046;border-radius:clamp(14px,4vw,20px);padding:6px 22px 18px">
               <div onClick="{{ dSecV.opts.toggle }}" style="display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;min-height:40px"><span style="display:flex;transform:rotate({{ dSecV.opts.rot }});transition:transform .2s;color:#F6D73C"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></span><span style="font-size:13px;font-weight:800;letter-spacing:0.12em;color:#F6D73C">OPTIONS ET QUANTITÉS</span></div>
               <sc-if value="{{ dSecV.opts.open }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:12px">
               <sc-if value="{{ locOff }}" hint-placeholder-val="{{ true }}"><sc-for list="{{ dSteps }}" as="s" hint-placeholder-count="5">
@@ -1315,89 +1316,9 @@ select option{background:#272A2E;color:#fff}
                 <textarea name="d.notes" value="{{ d.notes }}" onChange="{{ onField }}" placeholder="Remarque libre (ajoutée sous l'inventaire de la fiche d'appel)" rows="3" style="grid-column:1 / -1;background:#1E2023;border:1px solid #3B4046;border-radius:10px;padding:12px;color:#fff;font-size:15px;line-height:1.5;outline:none;min-width:0;resize:vertical;font-family:inherit"></textarea>
               </div>
             </div></sc-if>
-            </div>
-            </div>
-
-          <div style="position:sticky;top:96px;display:flex;flex-direction:column;gap:14px"><div data-step="6" style="display:flex;align-items:center;gap:10px;padding-top:6px"><span style="width:30px;height:30px;border-radius:50%;background:#F6D73C;color:#1E2023;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">6</span><span style="font-size:15px;font-weight:800;letter-spacing:0.08em;color:#fff">VÉRIFIER ET ENVOYER</span><span style="flex:1;height:1px;background:#3B4046"></span></div>
-            <div style="background:#fff;color:#1E2023;border-radius:6px;padding:clamp(18px,4vw,34px);display:flex;flex-direction:column;gap:20px">
-              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px">
-                <div style="display:flex;gap:12px;align-items:center">
-                  <img src="assets/logo.png" alt="" style="width:54px;height:54px;border-radius:10px">
-                  <div style="display:flex;flex-direction:column;line-height:1.2"><span style="font-family:Anton,sans-serif;font-size:20px">DEMENAG EXPRESS PRO MTH</span><span style="font-size:12px;color:#5A6168">Dakar · +221 77 510 51 04</span></div>
-                </div>
-                <div style="text-align:right;display:flex;flex-direction:column;gap:2px"><span style="font-family:Anton,sans-serif;font-size:26px">{{ dDocTitle }}</span><span style="font-size:12px;color:#5A6168">{{ dNum }}</span></div>
-              </div>
-              <div style="display:flex;height:4px"><div style="flex:1;background:#0E9F4A"></div><div style="flex:1;background:#F6D73C"></div><div style="flex:1;background:#E3262F"></div></div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;font-size:13px">
-                <div style="display:flex;flex-direction:column;gap:3px"><span style="font-size:12px;font-weight:800;letter-spacing:0.08em;color:#5A6168">CLIENT</span><span style="font-weight:700">{{ dName }}</span><span>{{ d.phone }}</span></div>
-                <div style="display:flex;flex-direction:column;gap:3px"><span style="font-size:12px;font-weight:800;letter-spacing:0.08em;color:#5A6168">DATE PRÉVUE</span><span style="font-weight:700">{{ dDate }}</span><span>{{ dVehName }}</span></div>
-                <div style="display:flex;flex-direction:column;gap:3px;grid-column:span 2"><span style="font-size:12px;font-weight:800;letter-spacing:0.08em;color:#5A6168">TRAJET</span><span style="font-weight:700">{{ dRoute }}</span><span>{{ dKmLabel }}</span></div>
-              </div>
-              <div style="display:flex;flex-direction:column">
-                <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:2px solid #1E2023;font-size:12px;font-weight:800;letter-spacing:0.06em"><span>DÉSIGNATION</span><span>MONTANT</span></div>
-                <sc-for list="{{ dLines }}" as="l" hint-placeholder-count="2">
-                  <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;padding:10px 0;border-bottom:1px solid #E1E4E8;font-size:13px;align-items:center"><span style="display:flex;flex-direction:column;gap:2px"><span>{{ l.label }}</span><span style="font-size:12px;color:#5A6168">{{ l.qty }} × {{ l.pu }}</span></span><span style="font-weight:700;white-space:nowrap">{{ l.amount }}</span></div>
-                </sc-for>
-                <sc-if value="{{ dHasRemise }}"><div style="display:flex;justify-content:space-between;padding:10px 0;font-size:13px;border-bottom:1px solid #E1E4E8"><span>{{ dRemLbl }}</span><span style="font-weight:700">− {{ dRemise }}</span></div></sc-if>
-                <div style="display:flex;justify-content:space-between;align-items:baseline;padding:14px 0 0"><span style="font-size:14px;font-weight:800">{{ dTotLbl }}</span><span style="font-family:Anton,sans-serif;font-size:clamp(22px,6vw,32px)">{{ dTotal }}</span></div>
-              </div>
-              <sc-if value="{{ dHasTolls }}" hint-placeholder-val="{{ false }}">
-                <div style="border:1px solid #D9DDE1;border-radius:12px;overflow:hidden;background:#fff">
-                  <div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:#F7F8F9;flex-wrap:wrap">
-                    <span style="width:30px;height:30px;border-radius:8px;background:#1E2023;color:#F6D73C;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V8l8-5 8 5v13"></path><path d="M4 12h16"></path><path d="M9 21v-5h6v5"></path></svg></span>
-                    <span style="flex:1;min-width:150px;display:flex;flex-direction:column;gap:1px"><span style="font-size:12px;font-weight:800;letter-spacing:0.06em">PÉAGES À LA CHARGE DU CLIENT</span><span style="font-size:12px;color:#5A6168">{{ dTollN }} · à régler sur place par le client</span></span>
-                    <span style="font-size:12px;font-weight:800;letter-spacing:0.04em;color:#5A6168;border:1px solid #C9CED3;border-radius:999px;padding:4px 10px;white-space:nowrap">NON INCLUS DANS LE TOTAL</span>
-                  </div>
-                  <div style="display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;align-items:center">
-                    <span style="font-size:12px;font-weight:800;letter-spacing:0.06em;color:#5A6168;padding:8px 12px;background:#EEF0F2">PÉAGE</span><span style="font-size:12px;font-weight:800;letter-spacing:0.06em;color:#5A6168;padding:8px 12px;background:#EEF0F2;text-align:center">PASSAGES</span><span style="font-size:12px;font-weight:800;letter-spacing:0.06em;color:#5A6168;padding:8px 12px;background:#EEF0F2;text-align:right">PRIX UNIT.</span><span style="font-size:12px;font-weight:800;letter-spacing:0.06em;color:#5A6168;padding:8px 12px;background:#EEF0F2;text-align:right">MONTANT</span>
-                    <sc-for list="{{ dTolls }}" as="l" hint-placeholder-count="1">
-                      <span style="padding:9px 12px;border-top:1px solid #E1E4E8;font-size:13px;display:flex;flex-direction:column;gap:1px;min-width:0"><span style="font-weight:700;overflow-wrap:anywhere">{{ l.name }}</span><span style="font-size:12px;color:#5A6168">{{ l.veh }}</span></span>
-                      <span style="padding:9px 12px;border-top:1px solid #E1E4E8;font-size:13px;text-align:center;font-weight:700;align-self:stretch;display:flex;align-items:center;justify-content:center">{{ l.qty }}</span>
-                      <span style="padding:9px 12px;border-top:1px solid #E1E4E8;font-size:13px;text-align:right;white-space:nowrap;color:#5A6168;align-self:stretch;display:flex;align-items:center;justify-content:flex-end">{{ l.pu }}</span>
-                      <span style="padding:9px 12px;border-top:1px solid #E1E4E8;font-size:13px;text-align:right;white-space:nowrap;font-weight:800;align-self:stretch;display:flex;align-items:center;justify-content:flex-end">{{ l.amount }}</span>
-                    </sc-for>
-                  </div>
-                  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 14px;background:#1E2023;color:#fff;flex-wrap:wrap">
-                    <span style="font-size:13px;font-weight:700">Total péages à régler par le client</span>
-                    <span style="font-size:16px;font-weight:800;color:#F6D73C;white-space:nowrap">{{ dTollTot }}</span>
-                  </div>
-                </div>
-              </sc-if>
-              <sc-if value="{{ dHasNotes }}"><div style="font-size:13px;line-height:1.5;background:#F3F4F6;border-radius:8px;padding:10px 12px;white-space:pre-wrap">{{ dFullNote }}</div></sc-if>
-              <p style="margin:0;font-size:12px;line-height:1.5;color:#5A6168">{{ dLegal }}</p>
-            </div>
-            <sc-if value="{{ dShowStage }}" hint-placeholder-val="{{ true }}">
-              <div style="background:#272A2E;border:1px solid #3B4046;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px">
-                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
-                  <span style="font-size:12px;font-weight:800;letter-spacing:0.1em;color:#AEB4BB">ENVOI DU DEVIS · {{ dModeName }}</span>
-                  
-                </div>
-                
-                <sc-if value="{{ dModeIsProv }}" hint-placeholder-val="{{ true }}">
-                  <div style="display:flex;gap:8px;flex-wrap:wrap"><a href="{{ dWaUrl }}" target="_blank" rel="noopener" onClick="{{ sendProvWa }}" style="background:#0E9F4A;color:#fff;border-radius:10px;padding:14px 16px;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:10px;min-height:48px;text-align:center;flex:1 1 240px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path></svg>Envoyer le devis provisoire sur WhatsApp</a><sc-if value="{{ dRem.hasRem }}" hint-placeholder-val="{{ false }}"><a href="{{ dRem.remUrl }}" target="_blank" rel="noopener" onClick="{{ dRem.remind }}" title="{{ dRem.remTip }}" style="flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;background:transparent;color:#3DDC84;border:1.5px solid #3DDC84;border-radius:10px;padding:0 16px;min-height:48px;font-size:14px;font-weight:800;text-decoration:none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>{{ dRem.remLbl }}</a></sc-if><sc-if value="{{ dRem.off }}" hint-placeholder-val="{{ false }}"><span title="{{ dRem.why }}" style="flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;color:#AEB4BB;border:1.5px dashed #4A5057;border-radius:10px;padding:0 16px;min-height:48px;font-size:14px;font-weight:800;cursor:not-allowed"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>Rappel</span></sc-if></div>
-                  <sc-if value="{{ dRem.off }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:#AEB4BB">Rappel : {{ dRem.why }}.</span></sc-if>
-                  <span style="font-size:12px;color:#AEB4BB;line-height:1.5">Destinataire : <strong style="color:#fff">{{ dWaNum }}</strong></span>
-                </sc-if>
-                <sc-if value="{{ dModeIsFin }}" hint-placeholder-val="{{ false }}">
-                <span style="font-size:13px;color:#D5D9DE;line-height:1.5">Indiquez le nombre réel d'allers-retours, puis enregistrez.</span>
-                  <div style="display:flex;flex-direction:column;gap:6px;background:#1E2023;border:1px solid {{ dJBd }};border-radius:12px;padding:12px 14px">
-                    <span style="font-size:12px;font-weight:800;letter-spacing:0.06em;color:{{ dJC }}">{{ dJTitle }}</span>
-                    <sc-for list="{{ dJRows }}" as="x" hint-placeholder-count="0"><div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;font-size:13.5px"><span style="color:#D5D9DE;overflow-wrap:anywhere">{{ x.l }}</span><span style="font-weight:800;white-space:nowrap;color:{{ x.c }}">{{ x.v }}</span></div></sc-for>
-                    <span style="font-size:12px;color:#AEB4BB">{{ dJNote }}</span>
-                  </div>
-                <div style="display:flex;gap:8px;flex-wrap:wrap"><a href="{{ dWaUrl }}" target="_blank" rel="noopener" onClick="{{ sendFinalWa }}" style="background:#0E9F4A;color:#fff;border-radius:10px;padding:14px 16px;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:10px;min-height:48px;text-align:center;flex:1 1 240px" style-hover="background:#0E8443;color:#fff">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path></svg>
-                  Envoyer le devis final sur WhatsApp
-                </a><sc-if value="{{ dRem.hasRem }}" hint-placeholder-val="{{ false }}"><a href="{{ dRem.remUrl }}" target="_blank" rel="noopener" onClick="{{ dRem.remind }}" title="{{ dRem.remTip }}" style="flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;background:transparent;color:#3DDC84;border:1.5px solid #3DDC84;border-radius:10px;padding:0 16px;min-height:48px;font-size:14px;font-weight:800;text-decoration:none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>{{ dRem.remLbl }}</a></sc-if><sc-if value="{{ dRem.off }}" hint-placeholder-val="{{ false }}"><span title="{{ dRem.why }}" style="flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;color:#AEB4BB;border:1.5px dashed #4A5057;border-radius:10px;padding:0 16px;min-height:48px;font-size:14px;font-weight:800;cursor:not-allowed"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>Rappel</span></sc-if></div>
-                  <sc-if value="{{ dRem.off }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:#AEB4BB">Rappel : {{ dRem.why }}.</span></sc-if>
-                <span style="font-size:12px;color:#AEB4BB;line-height:1.5">Destinataire : <strong style="color:#fff">{{ dWaNum }}</strong> · ouverture via {{ waModeLabel }} · réglable dans Paramètres</span>
-                </sc-if>
-              </div>
-            </sc-if>
-            <sc-if value="{{ pzHas }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;background:#1E2023;border:1px solid #3B4046;border-radius:12px;padding:10px 14px"><span style="flex:1;min-width:220px;font-size:13px;line-height:1.5;color:#D5D9DE">{{ pzTxt }}</span><button onClick="{{ pzApply }}" style="background:transparent;color:#F6D73C;border:1.5px solid #F6D73C;border-radius:10px;min-height:44px;padding:0 14px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap">Appliquer les tarifs actuels</button></div></sc-if>
-            <button onClick="{{ dlPdf }}" style="align-self:flex-start;background:transparent;color:#AEB4BB;border:1.5px solid #3B4046;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;min-height:44px">{{ dPdfLabel }}</button>
-            <sc-if value="{{ simHas }}" hint-placeholder-val="{{ false }}"><div style="display:flex;gap:8px;flex-wrap:wrap"><button onClick="{{ dlPlan }}"$1>Télécharger le plan de chargement</button><button onClick="{{ dlPlanShort }}"$1>Version courte</button></div></sc-if>
-            <sc-if value="{{ aDevisAdm }}" hint-placeholder-val="{{ false }}">
+            </div><button onClick="{{ stp.n4 }}" style="align-self:flex-end;background:#F6D73C;color:#1E2023;border:0;border-radius:10px;min-height:44px;padding:0 18px;font-size:14px;font-weight:800;cursor:pointer">Suivant : planning et 3D →</button></div></sc-if>
+            <div data-step="5" onClick="{{ stp.t5 }}" style="display:flex;align-items:center;gap:12px;padding:10px 14px;cursor:pointer;user-select:none;background:#272A2E;border:1px solid #3B4046;border-radius:14px;min-height:56px;min-width:0"><span style="width:30px;height:30px;border-radius:50%;background:#F6D73C;color:#1E2023;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">5</span><div style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1"><span style="font-size:14px;font-weight:800;letter-spacing:0.08em;color:#fff">PLANNING ET 3D</span><span style="font-size:12.5px;color:#AEB4BB;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ stp.sum5 }}</span></div><span style="display:flex;transform:rotate({{ stp.r5 }});transition:transform .2s;color:#F6D73C;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></span></div>
+            <sc-if value="{{ stp.o5 }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:18px;min-width:0"><sc-if value="{{ aDevisAdm }}" hint-placeholder-val="{{ false }}">
             <div style="background:#272A2E;border:1px solid #3B4046;border-radius:clamp(14px,4vw,20px);padding:clamp(14px,4vw,22px);display:flex;flex-direction:column;gap:14px;grid-column:1 / -1;min-width:0">
               <div onClick="{{ simTog }}" style="display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none">
                 <span style="display:flex;transform:rotate({{ simRot }});transition:transform .2s;color:#F6D73C"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></span>
@@ -1535,17 +1456,100 @@ select option{background:#272A2E;color:#fff}
                 <sc-if value="{{ simLoading }}" hint-placeholder-val="{{ false }}"><span style="font-size:13px;color:#AEB4BB">Chargement de la 3D…</span></sc-if>
               </sc-if>
             </div>
-            </sc-if>
-            <sc-if value="{{ fatHas }}" hint-placeholder-val="{{ false }}">
+            </sc-if><sc-if value="{{ fatHas }}" hint-placeholder-val="{{ false }}">
               <div style="background:#272A2E;border:1px solid #3B4046;border-radius:clamp(14px,4vw,20px);padding:clamp(14px,4vw,22px);display:flex;flex-direction:column;gap:12px">
                 <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap"><span style="font-size:13px;font-weight:800;letter-spacing:0.12em;color:#F6D73C">INDICATEUR DE FATIGUE DE L’ÉQUIPE</span><span style="font-size:15px;font-weight:800;color:{{ fatC }}">{{ fatLvl }} · {{ fatSc }}</span></div>
                 <div style="position:relative;height:12px;border-radius:6px;background:#1E2023;overflow:hidden"><div style="position:absolute;left:50%;top:0;bottom:0;width:2px;background:#4A5057"></div><div style="position:absolute;left:80%;top:0;bottom:0;width:2px;background:#4A5057"></div><div style="height:100%;width:{{ fatPct }};background:{{ fatC }};border-radius:6px"></div></div>
                 <div style="display:flex;justify-content:space-between;font-size:12px;color:#AEB4BB"><span>0 %</span><span>50 % modérée</span><span>80 % élevée</span><span>100 % limite</span></div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:8px"><sc-for list="{{ fatGauges }}" as="gg" hint-placeholder-count="3"><div style="background:#1E2023;border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;min-width:0"><div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><span style="font-size:12px;font-weight:700;color:#AEB4BB">{{ gg.l }}</span><span style="font-size:14px;font-weight:800;color:{{ gg.c }};white-space:nowrap">{{ gg.v }}</span></div><div style="height:6px;border-radius:3px;background:#30343A;overflow:hidden"><div style="height:100%;width:{{ gg.pct }};background:{{ gg.c }}"></div></div><span style="font-size:12px;line-height:1.4;color:#D5D9DE">{{ gg.sub }}</span></div></sc-for></div>
+                <sc-if value="{{ fatHasSol }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:6px;border:1.5px solid #FF9F5A;border-radius:12px;padding:10px 12px"><span style="font-size:13px;font-weight:800">Pour réduire la fatigue</span><sc-for list="{{ fatSol }}" as="so" hint-placeholder-count="2"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><span style="font-size:13px;line-height:1.45;color:#D5D9DE;flex:1 1 220px">{{ so.t }}</span><sc-if value="{{ so.canApply }}" hint-placeholder-val="{{ false }}"><button onClick="{{ so.apply }}" style="background:#F6D73C;color:#1E2023;border:0;border-radius:10px;min-height:44px;padding:0 14px;font-size:13px;font-weight:800;cursor:pointer">Appliquer</button></sc-if></div></sc-for></div></sc-if>
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:6px 16px"><sc-for list="{{ fatRows }}" as="x" hint-placeholder-count="6"><div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:5px 0;border-bottom:1px solid #30343A"><span style="color:#AEB4BB">{{ x.l }}</span><span style="font-weight:800;text-align:right">{{ x.v }}</span></div></sc-for></div>
                 <div style="display:flex;flex-direction:column;gap:5px"><sc-for list="{{ fatRec }}" as="r" hint-placeholder-count="2"><span style="font-size:13px;line-height:1.5;color:#D5D9DE">· {{ r.t }}</span></sc-for></div>
-                <span style="font-size:12px;line-height:1.5;color:#AEB4BB">Calcul : masse portée par personne rapportée à la masse cumulée admissible ISO 11228-1 (10 000 kg par jour à 1 m, 6 000 kg à 20 m, réduite au-delà ; chaque étage sans ascenseur compte pour 15 m), majorée par la chaleur ISO 7243. 25 kg maximum par personne, port à deux au-delà, aide mécanique au-delà de 33 kg.</span>
+                <span style="font-size:12px;line-height:1.5;color:#AEB4BB">Score = la plus élevée des trois jauges. Effort : chaque étape du planning compte selon son effort (portage en escalier plus que plain-pied, trajet assis moins, pauses et repas non comptés) ; 100 % = 8 h à l’effort de référence. Manutention : masse portée par personne face à la limite ISO 11228-1, majorée pour les objets de plus de 25 et 33 kg. Chaleur : contrôlée par les pauses du planning.</span>
+              </div>
+            </sc-if><sc-if value="{{ stp.noPlan }}" hint-placeholder-val="{{ false }}"><span style="font-size:13.5px;color:#AEB4BB">Remplissez l’inventaire pour voir la simulation de chargement et la fatigue de l’équipe.</span></sc-if><button onClick="{{ stp.n5 }}" style="align-self:flex-end;background:#F6D73C;color:#1E2023;border:0;border-radius:10px;min-height:44px;padding:0 18px;font-size:14px;font-weight:800;cursor:pointer">Suivant : vérifier et envoyer →</button></div></sc-if>
+            </div>
+
+          <div style="position:sticky;top:96px;display:flex;flex-direction:column;gap:14px"><div data-step="6" style="display:flex;align-items:center;gap:10px;padding-top:6px"><span style="width:30px;height:30px;border-radius:50%;background:#F6D73C;color:#1E2023;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">6</span><span style="font-size:15px;font-weight:800;letter-spacing:0.08em;color:#fff">VÉRIFIER ET ENVOYER</span><span style="flex:1;height:1px;background:#3B4046"></span></div>
+            <div style="background:#fff;color:#1E2023;border-radius:6px;padding:clamp(18px,4vw,34px);display:flex;flex-direction:column;gap:20px">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px">
+                <div style="display:flex;gap:12px;align-items:center">
+                  <img src="assets/logo.png" alt="" style="width:54px;height:54px;border-radius:10px">
+                  <div style="display:flex;flex-direction:column;line-height:1.2"><span style="font-family:Anton,sans-serif;font-size:20px">DEMENAG EXPRESS PRO MTH</span><span style="font-size:12px;color:#5A6168">Dakar · +221 77 510 51 04</span></div>
+                </div>
+                <div style="text-align:right;display:flex;flex-direction:column;gap:2px"><span style="font-family:Anton,sans-serif;font-size:26px">{{ dDocTitle }}</span><span style="font-size:12px;color:#5A6168">{{ dNum }}</span></div>
+              </div>
+              <div style="display:flex;height:4px"><div style="flex:1;background:#0E9F4A"></div><div style="flex:1;background:#F6D73C"></div><div style="flex:1;background:#E3262F"></div></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;font-size:13px">
+                <div style="display:flex;flex-direction:column;gap:3px"><span style="font-size:12px;font-weight:800;letter-spacing:0.08em;color:#5A6168">CLIENT</span><span style="font-weight:700">{{ dName }}</span><span>{{ d.phone }}</span></div>
+                <div style="display:flex;flex-direction:column;gap:3px"><span style="font-size:12px;font-weight:800;letter-spacing:0.08em;color:#5A6168">DATE PRÉVUE</span><span style="font-weight:700">{{ dDate }}</span><span>{{ dVehName }}</span></div>
+                <div style="display:flex;flex-direction:column;gap:3px;grid-column:span 2"><span style="font-size:12px;font-weight:800;letter-spacing:0.08em;color:#5A6168">TRAJET</span><span style="font-weight:700">{{ dRoute }}</span><span>{{ dKmLabel }}</span></div>
+              </div>
+              <div style="display:flex;flex-direction:column">
+                <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:2px solid #1E2023;font-size:12px;font-weight:800;letter-spacing:0.06em"><span>DÉSIGNATION</span><span>MONTANT</span></div>
+                <sc-for list="{{ dLines }}" as="l" hint-placeholder-count="2">
+                  <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;padding:10px 0;border-bottom:1px solid #E1E4E8;font-size:13px;align-items:center"><span style="display:flex;flex-direction:column;gap:2px"><span>{{ l.label }}</span><span style="font-size:12px;color:#5A6168">{{ l.qty }} × {{ l.pu }}</span></span><span style="font-weight:700;white-space:nowrap">{{ l.amount }}</span></div>
+                </sc-for>
+                <sc-if value="{{ dHasRemise }}"><div style="display:flex;justify-content:space-between;padding:10px 0;font-size:13px;border-bottom:1px solid #E1E4E8"><span>{{ dRemLbl }}</span><span style="font-weight:700">− {{ dRemise }}</span></div></sc-if>
+                <div style="display:flex;justify-content:space-between;align-items:baseline;padding:14px 0 0"><span style="font-size:14px;font-weight:800">{{ dTotLbl }}</span><span style="font-family:Anton,sans-serif;font-size:clamp(22px,6vw,32px)">{{ dTotal }}</span></div>
+              </div>
+              <sc-if value="{{ dHasTolls }}" hint-placeholder-val="{{ false }}">
+                <div style="border:1px solid #D9DDE1;border-radius:12px;overflow:hidden;background:#fff">
+                  <div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:#F7F8F9;flex-wrap:wrap">
+                    <span style="width:30px;height:30px;border-radius:8px;background:#1E2023;color:#F6D73C;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V8l8-5 8 5v13"></path><path d="M4 12h16"></path><path d="M9 21v-5h6v5"></path></svg></span>
+                    <span style="flex:1;min-width:150px;display:flex;flex-direction:column;gap:1px"><span style="font-size:12px;font-weight:800;letter-spacing:0.06em">PÉAGES À LA CHARGE DU CLIENT</span><span style="font-size:12px;color:#5A6168">{{ dTollN }} · à régler sur place par le client</span></span>
+                    <span style="font-size:12px;font-weight:800;letter-spacing:0.04em;color:#5A6168;border:1px solid #C9CED3;border-radius:999px;padding:4px 10px;white-space:nowrap">NON INCLUS DANS LE TOTAL</span>
+                  </div>
+                  <div style="display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;align-items:center">
+                    <span style="font-size:12px;font-weight:800;letter-spacing:0.06em;color:#5A6168;padding:8px 12px;background:#EEF0F2">PÉAGE</span><span style="font-size:12px;font-weight:800;letter-spacing:0.06em;color:#5A6168;padding:8px 12px;background:#EEF0F2;text-align:center">PASSAGES</span><span style="font-size:12px;font-weight:800;letter-spacing:0.06em;color:#5A6168;padding:8px 12px;background:#EEF0F2;text-align:right">PRIX UNIT.</span><span style="font-size:12px;font-weight:800;letter-spacing:0.06em;color:#5A6168;padding:8px 12px;background:#EEF0F2;text-align:right">MONTANT</span>
+                    <sc-for list="{{ dTolls }}" as="l" hint-placeholder-count="1">
+                      <span style="padding:9px 12px;border-top:1px solid #E1E4E8;font-size:13px;display:flex;flex-direction:column;gap:1px;min-width:0"><span style="font-weight:700;overflow-wrap:anywhere">{{ l.name }}</span><span style="font-size:12px;color:#5A6168">{{ l.veh }}</span></span>
+                      <span style="padding:9px 12px;border-top:1px solid #E1E4E8;font-size:13px;text-align:center;font-weight:700;align-self:stretch;display:flex;align-items:center;justify-content:center">{{ l.qty }}</span>
+                      <span style="padding:9px 12px;border-top:1px solid #E1E4E8;font-size:13px;text-align:right;white-space:nowrap;color:#5A6168;align-self:stretch;display:flex;align-items:center;justify-content:flex-end">{{ l.pu }}</span>
+                      <span style="padding:9px 12px;border-top:1px solid #E1E4E8;font-size:13px;text-align:right;white-space:nowrap;font-weight:800;align-self:stretch;display:flex;align-items:center;justify-content:flex-end">{{ l.amount }}</span>
+                    </sc-for>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 14px;background:#1E2023;color:#fff;flex-wrap:wrap">
+                    <span style="font-size:13px;font-weight:700">Total péages à régler par le client</span>
+                    <span style="font-size:16px;font-weight:800;color:#F6D73C;white-space:nowrap">{{ dTollTot }}</span>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ dHasNotes }}"><div style="font-size:13px;line-height:1.5;background:#F3F4F6;border-radius:8px;padding:10px 12px;white-space:pre-wrap">{{ dFullNote }}</div></sc-if>
+              <p style="margin:0;font-size:12px;line-height:1.5;color:#5A6168">{{ dLegal }}</p>
+            </div>
+            <sc-if value="{{ dShowStage }}" hint-placeholder-val="{{ true }}">
+              <div style="background:#272A2E;border:1px solid #3B4046;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+                  <span style="font-size:12px;font-weight:800;letter-spacing:0.1em;color:#AEB4BB">ENVOI DU DEVIS · {{ dModeName }}</span>
+                  
+                </div>
+                
+                <sc-if value="{{ dModeIsProv }}" hint-placeholder-val="{{ true }}">
+                  <div style="display:flex;gap:8px;flex-wrap:wrap"><a href="{{ dWaUrl }}" target="_blank" rel="noopener" onClick="{{ sendProvWa }}" style="background:#0E9F4A;color:#fff;border-radius:10px;padding:14px 16px;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:10px;min-height:48px;text-align:center;flex:1 1 240px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path></svg>Envoyer le devis provisoire sur WhatsApp</a><sc-if value="{{ dRem.hasRem }}" hint-placeholder-val="{{ false }}"><a href="{{ dRem.remUrl }}" target="_blank" rel="noopener" onClick="{{ dRem.remind }}" title="{{ dRem.remTip }}" style="flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;background:transparent;color:#3DDC84;border:1.5px solid #3DDC84;border-radius:10px;padding:0 16px;min-height:48px;font-size:14px;font-weight:800;text-decoration:none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>{{ dRem.remLbl }}</a></sc-if><sc-if value="{{ dRem.off }}" hint-placeholder-val="{{ false }}"><span title="{{ dRem.why }}" style="flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;color:#AEB4BB;border:1.5px dashed #4A5057;border-radius:10px;padding:0 16px;min-height:48px;font-size:14px;font-weight:800;cursor:not-allowed"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>Rappel</span></sc-if></div>
+                  <sc-if value="{{ dRem.off }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:#AEB4BB">Rappel : {{ dRem.why }}.</span></sc-if>
+                  <span style="font-size:12px;color:#AEB4BB;line-height:1.5">Destinataire : <strong style="color:#fff">{{ dWaNum }}</strong></span>
+                </sc-if>
+                <sc-if value="{{ dModeIsFin }}" hint-placeholder-val="{{ false }}">
+                <span style="font-size:13px;color:#D5D9DE;line-height:1.5">Indiquez le nombre réel d'allers-retours, puis enregistrez.</span>
+                  <div style="display:flex;flex-direction:column;gap:6px;background:#1E2023;border:1px solid {{ dJBd }};border-radius:12px;padding:12px 14px">
+                    <span style="font-size:12px;font-weight:800;letter-spacing:0.06em;color:{{ dJC }}">{{ dJTitle }}</span>
+                    <sc-for list="{{ dJRows }}" as="x" hint-placeholder-count="0"><div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;font-size:13.5px"><span style="color:#D5D9DE;overflow-wrap:anywhere">{{ x.l }}</span><span style="font-weight:800;white-space:nowrap;color:{{ x.c }}">{{ x.v }}</span></div></sc-for>
+                    <span style="font-size:12px;color:#AEB4BB">{{ dJNote }}</span>
+                  </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap"><a href="{{ dWaUrl }}" target="_blank" rel="noopener" onClick="{{ sendFinalWa }}" style="background:#0E9F4A;color:#fff;border-radius:10px;padding:14px 16px;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:10px;min-height:48px;text-align:center;flex:1 1 240px" style-hover="background:#0E8443;color:#fff">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path></svg>
+                  Envoyer le devis final sur WhatsApp
+                </a><sc-if value="{{ dRem.hasRem }}" hint-placeholder-val="{{ false }}"><a href="{{ dRem.remUrl }}" target="_blank" rel="noopener" onClick="{{ dRem.remind }}" title="{{ dRem.remTip }}" style="flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;background:transparent;color:#3DDC84;border:1.5px solid #3DDC84;border-radius:10px;padding:0 16px;min-height:48px;font-size:14px;font-weight:800;text-decoration:none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>{{ dRem.remLbl }}</a></sc-if><sc-if value="{{ dRem.off }}" hint-placeholder-val="{{ false }}"><span title="{{ dRem.why }}" style="flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;color:#AEB4BB;border:1.5px dashed #4A5057;border-radius:10px;padding:0 16px;min-height:48px;font-size:14px;font-weight:800;cursor:not-allowed"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>Rappel</span></sc-if></div>
+                  <sc-if value="{{ dRem.off }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:#AEB4BB">Rappel : {{ dRem.why }}.</span></sc-if>
+                <span style="font-size:12px;color:#AEB4BB;line-height:1.5">Destinataire : <strong style="color:#fff">{{ dWaNum }}</strong> · ouverture via {{ waModeLabel }} · réglable dans Paramètres</span>
+                </sc-if>
               </div>
             </sc-if>
+            <sc-if value="{{ pzHas }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;background:#1E2023;border:1px solid #3B4046;border-radius:12px;padding:10px 14px"><span style="flex:1;min-width:220px;font-size:13px;line-height:1.5;color:#D5D9DE">{{ pzTxt }}</span><button onClick="{{ pzApply }}" style="background:transparent;color:#F6D73C;border:1.5px solid #F6D73C;border-radius:10px;min-height:44px;padding:0 14px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap">Appliquer les tarifs actuels</button></div></sc-if>
+            <button onClick="{{ dlPdf }}" style="align-self:flex-start;background:transparent;color:#AEB4BB;border:1.5px solid #3B4046;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;min-height:44px">{{ dPdfLabel }}</button>
+            <sc-if value="{{ simHas }}" hint-placeholder-val="{{ false }}"><div style="display:flex;gap:8px;flex-wrap:wrap"><button onClick="{{ dlPlan }}"$1>Télécharger le plan de chargement</button><button onClick="{{ dlPlanShort }}"$1>Version courte</button></div></sc-if>
+            
             
             <div data-save-bar="1" style="position:fixed;left:0;right:0;bottom:0;z-index:1400;background:rgba(30,32,35,0.97);border-top:1px solid #3B4046;box-shadow:0 -6px 20px rgba(0,0,0,0.35);padding:10px clamp(14px,3vw,28px) calc(10px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:8px clamp(12px,2.4vw,26px);flex-wrap:wrap">
               <div style="display:flex;flex-direction:column;min-width:0"><span style="font-size:12px;font-weight:700;letter-spacing:0.08em;color:#AEB4BB">{{ sbTotLbl }}</span><span style="font-family:Anton,sans-serif;font-size:24px;line-height:1.15;color:#F6D73C;white-space:nowrap">{{ sbTotal }}</span></div>
@@ -1868,7 +1872,7 @@ select option{background:#272A2E;color:#fff}
               <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;font-weight:700;letter-spacing:0.06em;color:#AEB4BB">MANŒUVRE (PAR DÉMÉNAGEMENT)</span><input type="number" min="0" value="{{ fin.manPay }}" onChange="{{ fin.onManPay }}" style="background:#1E2023;border:1px solid #3B4046;border-radius:10px;padding:10px 12px;color:#fff;font-size:15px;outline:none;min-width:0;width:100%;box-sizing:border-box"></label>
               
             </div>
-            <span style="font-size:12px;font-weight:700;letter-spacing:0.06em;color:#AEB4BB">TARIFS MENUISIER PAR MEUBLE (FCFA)</span>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-size:12px;font-weight:700;letter-spacing:0.06em;color:#AEB4BB">TARIFS MENUISIER PAR MEUBLE (FCFA)</span><button onClick="{{ fin.mnReset }}" style="background:transparent;border:1.5px solid #4A5057;color:#D5D9DE;border-radius:10px;min-height:44px;padding:0 12px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap">Revenir à la grille par défaut</button></div>
             <div style="overflow-x:auto;border:1px solid #30343A;border-radius:12px">
               <div style="display:grid;grid-template-columns:minmax(140px,1.4fr) minmax(110px,1fr) minmax(110px,1fr);min-width:380px;font-size:13px;align-items:center">
                 <span style="padding:8px 10px;font-weight:800;color:#AEB4BB;background:#1E2023">Meuble</span><span style="padding:8px 10px;font-weight:800;color:#AEB4BB;background:#1E2023">Local</span><span style="padding:8px 10px;font-weight:800;color:#AEB4BB;background:#1E2023">Importé</span>
@@ -2682,7 +2686,11 @@ select option{background:#272A2E;color:#fff}
         <sc-for list="{{ psNav }}" as="n" hint-placeholder-count="5"><button onClick="{{ n.go }}" style="background:{{ n.bg }};color:{{ n.c }};border:1.5px solid #4A5057;border-radius:999px;min-height:44px;padding:0 14px;font-size:13.5px;font-weight:800;cursor:pointer;white-space:nowrap">{{ n.l }}</button></sc-for>
         <button onClick="{{ psAll }}" style="margin-left:auto;background:transparent;border:0;color:#F6D73C;min-height:44px;padding:0 6px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:underline">{{ psAllLbl }}</button>
       </div>
-      <span style="font-size:12.5px;color:#AEB4BB">Les sauvegardes et la remise à zéro sont dans l’onglet Données.</span>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#272A2E;border:1.5px solid #F6D73C;border-radius:14px;padding:12px 14px">
+            <div style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 260px"><span style="font-size:14px;font-weight:800;color:#fff">Prix et charges par défaut</span><span style="font-size:12.5px;line-height:1.45;color:#AEB4BB">Transport, manœuvres, menuisier (prix client et paie), dépassement, vidange, assurance, dette. Les devis enregistrés gardent leurs prix.</span></div>
+            <button onClick="{{ psReset }}" style="display:flex;align-items:center;gap:8px;background:#F6D73C;color:#1E2023;border:0;border-radius:10px;min-height:44px;padding:0 16px;font-size:14px;font-weight:800;cursor:pointer;white-space:nowrap"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"></path><path d="M3 3v5h5"></path></svg>Réinitialiser par défaut</button>
+          </div>
+          <span style="font-size:12.5px;color:#AEB4BB">Les sauvegardes et la remise à zéro des données sont dans l’onglet Données.</span>
 
       <div data-ps="tarifs" style="display:flex;flex-direction:column;background:#1E2023;border:1px solid #3B4046;border-radius:18px">
         <div onClick="{{ ps.tarifs.tog }}" style="display:flex;align-items:center;gap:12px;padding:16px 18px;cursor:pointer;user-select:none;min-height:44px">
@@ -2709,7 +2717,16 @@ select option{background:#272A2E;color:#fff}
               <div style="display:flex;align-items:center;gap:6px;min-width:0"><input type="number" min="0" name="t.manEtage" value="{{ tManEtage }}" onChange="{{ onField }}" style="background:#1E2023;border:1px solid #3B4046;border-radius:10px;padding:11px;color:#fff;font-size:16px;font-weight:700;outline:none;min-width:0;flex:1;width:100%"><span style="font-size:12px;font-weight:700;color:#AEB4BB;white-space:nowrap">FCFA / étage</span></div></label>
             <label style="display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:10px;align-items:center"><span style="font-size:14px;color:#D5D9DE">Forfait avec ascenseur, dès le 1er (par manœuvre)</span>
               <div style="display:flex;align-items:center;gap:6px;min-width:0"><input type="number" min="0" name="t.manAsc" value="{{ tManAsc }}" onChange="{{ onField }}" style="background:#1E2023;border:1px solid #3B4046;border-radius:10px;padding:11px;color:#fff;font-size:16px;font-weight:700;outline:none;min-width:0;flex:1;width:100%"><span style="font-size:12px;font-weight:700;color:#AEB4BB;white-space:nowrap">FCFA / pers.</span></div></label>
-            <span style="font-size:12px;font-weight:800;letter-spacing:0.08em;color:#AEB4BB;padding-top:6px">DÉMONTAGE / MONTAGE PAR MEUBLE (PRIX CLIENT)</span>
+            <label style="display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:10px;align-items:center"><span style="font-size:14px;color:#D5D9DE">Heures comprises dans le prix d’un manœuvre</span>
+              <div style="display:flex;align-items:center;gap:6px;min-width:0"><input type="number" min="1" name="t.manOverH" value="{{ tManOverH }}" onChange="{{ onField }}" style="background:#1E2023;border:1px solid #3B4046;border-radius:10px;padding:11px;color:#fff;font-size:16px;font-weight:700;outline:none;min-width:0;flex:1;width:100%"><span style="font-size:12px;font-weight:700;color:#AEB4BB;white-space:nowrap">h</span></div></label>
+            <label style="display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:10px;align-items:center"><span style="font-size:14px;color:#D5D9DE">Au-delà, prix par heure et par manœuvre (0 = désactivé)</span>
+              <div style="display:flex;align-items:center;gap:6px;min-width:0"><input type="number" min="0" name="t.manOverPx" value="{{ tManOverPx }}" onChange="{{ onField }}" style="background:#1E2023;border:1px solid #3B4046;border-radius:10px;padding:11px;color:#fff;font-size:16px;font-weight:700;outline:none;min-width:0;flex:1;width:100%"><span style="font-size:12px;font-weight:700;color:#AEB4BB;white-space:nowrap">FCFA / h</span></div></label>
+            <span style="font-size:12px;font-weight:800;letter-spacing:0.08em;color:#AEB4BB;padding-top:6px">REMISES AUTOMATIQUES</span>
+            <label style="display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:10px;align-items:center"><span style="font-size:14px;color:#D5D9DE">Allers-retours suivants, en % du 1er (100 = pas de dégressif)</span>
+              <div style="display:flex;align-items:center;gap:6px;min-width:0"><input type="number" min="10" max="100" name="t.tripDeg" value="{{ tTripDeg }}" onChange="{{ onField }}" style="background:#1E2023;border:1px solid #3B4046;border-radius:10px;padding:11px;color:#fff;font-size:16px;font-weight:700;outline:none;min-width:0;flex:1;width:100%"><span style="font-size:12px;font-weight:700;color:#AEB4BB;white-space:nowrap">%</span></div></label>
+            <label style="display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:10px;align-items:center"><span style="font-size:14px;color:#D5D9DE">Remise jour creux sur le transport (lundi à jeudi, du 6 au 24 du mois)</span>
+              <div style="display:flex;align-items:center;gap:6px;min-width:0"><input type="number" min="0" max="50" name="t.creux" value="{{ tCreux }}" onChange="{{ onField }}" style="background:#1E2023;border:1px solid #3B4046;border-radius:10px;padding:11px;color:#fff;font-size:16px;font-weight:700;outline:none;min-width:0;flex:1;width:100%"><span style="font-size:12px;font-weight:700;color:#AEB4BB;white-space:nowrap">%</span></div></label>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding-top:6px"><span style="font-size:12px;font-weight:800;letter-spacing:0.08em;color:#AEB4BB">DÉMONTAGE / MONTAGE PAR MEUBLE (PRIX CLIENT)</span><button onClick="{{ tarMnReset }}" style="background:transparent;border:1.5px solid #4A5057;color:#D5D9DE;border-radius:10px;min-height:44px;padding:0 12px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap">Revenir à la grille par défaut</button></div>
                 <div style="display:grid;grid-template-columns:minmax(140px,260px) minmax(0,160px) minmax(0,160px);gap:8px 10px;align-items:center">
                   <span></span><span style="font-size:12px;font-weight:800;color:#AEB4BB">Local (FCFA)</span><span style="font-size:12px;font-weight:800;color:#AEB4BB">Importé (FCFA)</span>
                   <sc-for list="{{ tarMn }}" as="m" hint-placeholder-count="8">
@@ -3230,7 +3247,7 @@ class Component extends DCLogic {
       const upd = patch => this.save({ ...this.state.data, clients: (this.state.data.clients || []).map(x => x.id === c.id ? { ...x, ...patch } : x) });
       return { name: c.name, phone: c.phone || '', addr: c.addr || '', n: String(rs.length), tot: this.fmt(p + f), fin: this.fmt(f), last: last ? this.fdate(last) : '—', tel: 'tel:' + this.digits(c.phone || ''),
         onName: e => upd({ name: e.target.value }), onPhone: e => upd({ phone: e.target.value }), onAddr: e => upd({ addr: e.target.value }),
-        devis: () => { this.lastGeo.dfrom = this.lastGeo.dto = undefined; this.clearMap('d'); this.reset('d', { ...this.blankD(), name: c.name, phone: c.phone, from: c.addr || '' }, { atab: 'devis', dMode: null, dSec: { client: true }, invOpen: false, toast: '' }); window.scrollTo({ top: 0 }); },
+        devis: () => { this.lastGeo.dfrom = this.lastGeo.dto = undefined; this.clearMap('d'); this.reset('d', { ...this.blankD(), name: c.name, phone: c.phone, from: c.addr || '' }, { atab: 'devis', dMode: null, dSec: { client: true }, invOpen: true, toast: '' }); window.scrollTo({ top: 0 }); },
         del: async () => { if (await this.confirmUI('Supprimer ' + c.name + ' de la liste des clients ?')) this.save({ ...this.state.data, clients: (this.state.data.clients || []).filter(x => x.id !== c.id) }); } };
     });
     const lockC = this.cliKey(d.phone).length >= 9 ? all.find(c => this.cliKey(c.phone) === this.cliKey(d.phone)) : null;
@@ -3263,13 +3280,13 @@ class Component extends DCLogic {
   ACC = { 'Salaires': ['661', 'Rémunérations du personnel'], 'Amortissement': ['681', 'Dotations aux amortissements'], 'Réserve nouveau véhicule': ['521', 'Banque · épargne nouveau véhicule'], 'Remboursement dette': ['168', 'Dette envers le père'], 'Réserve légale': ['521', 'Banque · réserve légale'], 'Manœuvres': ['637', 'Personnel extérieur (manœuvres)'], 'Menuisier': ['637', 'Personnel extérieur (menuisier)'], 'Carburant': ['605', 'Autres achats (carburant)'], 'Entretien véhicule': ['624', 'Entretien et réparations'], 'Assurance': ['625', 'Primes d’assurance'], 'Loyer': ['622', 'Locations'], 'Téléphone / Internet': ['628', 'Télécommunications'], 'Publicité': ['627', 'Publicité'], 'Péage / Parking': ['618', 'Autres frais de transport'], 'Impôts et taxes': ['641', 'Impôts et taxes'], 'Autre charge': ['658', 'Charges diverses'], 'Déménagement': ['706', 'Prestations de services'], 'Location véhicule': ['706', 'Prestations de services'], 'Autre revenu': ['758', 'Produits divers'] };
   ACCX = { '571': 'Caisse', '521': 'Banque (réserve véhicule)', '245': 'Matériel de transport', '2845': 'Amortissements matériel de transport', '2848': 'Amortissements autres immobilisations', '168': 'Emprunt auprès du père', '637': 'Personnel extérieur (manœuvres)', '681': 'Dotations aux amortissements', '891': 'Impôt sur le résultat', '441': 'État, impôt sur les bénéfices' };
   CATS = { charge: ['Salaires', 'Manœuvres', 'Menuisier', 'Carburant', 'Entretien véhicule', 'Assurance', 'Loyer', 'Téléphone / Internet', 'Publicité', 'Péage / Parking', 'Impôts et taxes', 'Amortissement', 'Réserve nouveau véhicule', 'Réserve légale', 'Remboursement dette', 'Autre charge'], revenu: ['Déménagement', 'Location véhicule', 'Autre revenu'] };
-  state = this.init();
   maps = {};
   lastGeo = {};
   refB = el => this.bindMap('b', el);
   refD = el => this.bindMap('d', el);
 
   componentDidMount() {
+    setTimeout(() => this.tarifV2(), 2500);
     this._pendHash = location.hash; window.addEventListener('popstate', () => this.applyHash(location.hash));
     try { if (!localStorage.getItem('demx_seen')) localStorage.setItem('demx_seen', JSON.stringify({ t: Date.now() })); } catch (e) {}
     document.addEventListener('click', e => { if (this.state.view !== 'admin') return; const t = e.target && e.target.closest && e.target.closest('[data-ref]'); if (!t) { if (this.state.tdOpen && !(e.target.closest && e.target.closest('button'))) this.setState({ tdOpen: false }); return; } const ref = t.getAttribute('data-ref'); const r = ref && (this.state.data.res || []).find(q => q.ref === ref); if (r) { e.preventDefault(); e.stopPropagation(); this.openDevis(r); } }, true);
@@ -3340,27 +3357,55 @@ class Component extends DCLogic {
     add('eau', 'Eau potable', '≈ ' + Math.max(n * 2, Math.ceil(n * hrs * (HT && HT.wf < 1 ? 1 : 0.6))) + ' L', 'ISO 7243 · chaleur', 'Environ 1 L par heure et par personne par forte chaleur, pauses à l’ombre.');
     return L;
   }
+  calcChain(d, le) {
+    const inv = this.normInv(d.inv || this.blankInv()), f1 = x => (Math.round(x * 10) / 10).toString().replace('.', ','), nb = x => Math.round(x).toLocaleString('fr-FR'), V = this.VEH[d.vehicle] || {}, cap = this.vcap(d.vehicle);
+    const nObj = inv.lines.reduce((a, l) => a + (+l.q > 0 ? +l.q : 0), 0), vol = this.invVolume(inv), ann = this.invAnnex(inv), lg = this.logOf(inv), fl = (et, asc) => !(+et > 0) ? 'RDC' : et + (+et > 1 ? 'e' : 'er') + (asc ? ' avec asc.' : ' sans asc.');
+    const B = (() => { try { return this.laborBase(inv); } catch (e) { return null; } })(), c = (() => { try { return this.calc(d); } catch (e) { return null; } })(), F = (() => { try { return this.fatigue(d); } catch (e) { return null; } })(), T = parseFloat(String(d.km || '').replace(',', '.')) > 0 ? this.dkTraffic(d) : null;
+    const man = this.isManual(d), src3d = !!(window.DemSim && window.DemSim.plan);
+    return [
+      ['Inventaire', nObj + ' objets', (lg ? lg[1] + ' · ' : '') + fl(inv.fEt, inv.fAsc) + ' → ' + fl(inv.tEt, inv.tAsc) + (inv.stairs === 'balcon' ? ' · balcon' : '')],
+      ['Volume', f1(vol) + ' m³', 'Meubles et cartons ' + f1(vol - ann) + ' m³' + (ann ? ' + affaires annexes ' + f1(ann) + ' m³' : '')],
+      ['Allers-retours', (d.trips || 1) + ' AR', V.tag + ' · ' + f1(cap) + ' m³ utiles · ' + (man ? 'fixé à la main' : src3d ? 'plan de chargement 3D' : 'volume ÷ capacité × ' + Math.round(this.invFill(inv) * 100) + ' %')],
+      ['Poids', '≈ ' + nb(le.kg) + ' kg', 'Objet le plus lourd ' + nb(le.maxKg) + ' kg · ' + (B ? B.hPor + ' porteur' + (B.hPor > 1 ? 's' : '') + ' pour lui' : '')],
+      ['Manœuvres', le.n + (le.m ? ' + ' + le.m + ' menuisier' + (le.m > 1 ? 's' : '') : ''), man ? 'Fixé à la main (conseillé : ' + le.nRec + ')' : 'Équipe minimale ' + (B ? B.minCrew : '-') + ', renfort jusqu’à ' + le.L.maxH + ' h de manutention' + (le.overH ? ' (dépassé)' : '')],
+      ['Manutention', this.fDur(le.hand * 60), 'Chargement ' + this.fDur(le.pA * 60) + ' · déchargement ' + this.fDur(le.pB * 60)],
+      ['Trajet', le.legL ? this.fDur(le.legL) + ' par aller' : '—', T ? (d.trafOff ? 'Embouteillages ignorés' : 'Embouteillages ×' + T.f.toFixed(2).replace('.', ',')) + ' · ' + String(d.km).replace('.', ',') + ' km' : 'Distance à renseigner'],
+      ['Planning', this.fDur(le.total), 'Fin prévue ' + le.endLbl + (le.heat && le.heat.wf < 1 && !d.heatOff ? ' · pauses chaleur' : '')],
+      ['Fatigue', F ? F.sc + ' %' : '—', F ? F.lvl + ' · effort ' + F.gauges[0].v + ', manutention ' + F.gauges[1].v : ''],
+      ['Prix', c ? this.fmt(c.total) : '—', c ? c.lines.length + ' ligne' + (c.lines.length > 1 ? 's' : '') + (c.remise ? ' · remise ' + this.fmt(c.remise) : '') + (c.tolls.length ? ' · péages à part' : '') : '']
+    ].map(([t, v, s], i) => ({ n: String(i + 1), t, v, s, last: i === 9, bd: i === 9 ? '#F6D73C' : '#3B4046' }));
+  }
+  fatEff(d, le) { const inv = this.normInv(d.inv), L = this.labP(), st = (et, asc) => !(+et > 0) ? (+L.mRdc || 200) : asc ? (+L.mAsc || 210) : Math.min(+L.mMax || 290, (+L.mSt || 230) + (+L.mEt || 12) * (+et)), mA = st(inv.fEt, inv.fAsc), mB = st(inv.tEt, inv.tAsc), ref = 480 * (+L.mRef || 200);
+    let P = 0, R = 0, O = 0; (le.rows || []).forEach(r => { const m = +r.m || 0; if (r.k === 'load') P += m * mA; else if (r.k === 'unload') P += m * mB; else if (r.k === 'drive' || r.k === 'back') R += m * 100; else if (r.k === 'pause' || r.k === 'night') {} else O += m * 150; });
+    const p = x => Math.round(x / ref * 100); return { pct: p(P + R + O), port: p(P), route: p(R), other: p(O), mA, mB }; }
   fatigue(d) {
     let le = null; try { le = d && d.inv ? this.laborEst(d) : null; } catch (e) {} if (!le || !le.sA) return null;
-    const inv = this.normInv(d.inv), n = Math.max(1, le.n), kg = le.kg || 0, HT = le.heat, nb = x => Math.round(x).toLocaleString('fr-FR');
-    const hf = HT ? 1 + Math.max(0, HT.dl) * 0.08 : 1, frac = m => (kg / le.sA.lim + kg / le.sB.lim) / m, score = m => Math.round(frac(m) * hf * 100);
-    let h25 = 0, h33 = 0; inv.lines.forEach(l => { if (!(+l.q > 0)) return; const k = this.lineKg(l).max; if (k > 25) h25 += +l.q; if (k > 33) h33 += +l.q; });
-    const sc = score(n), lv = sc < 50 ? ['Faible', '#3DDC84'] : sc < 80 ? ['Modérée', '#FFD23F'] : sc < 100 ? ['Élevée', '#FF9F5A'] : ['Excessive', '#FF5A5F'];
-    let nOk = n; while (nOk < 12 && score(nOk) >= 80) nOk++;
+    const inv = this.normInv(d.inv), L = this.labP(), n = Math.max(1, le.n), kg = le.kg || 0, HT = le.heat, nb = x => Math.round(x).toLocaleString('fr-FR'), FD = x => this.fDur(x);
+    let h25 = 0, h33 = 0; inv.lines.forEach(l => { if (!(+l.q > 0)) return; const k = this.lineKg(l).max; if (k > 33) h33 += +l.q; else if (k > 25) h25 += +l.q; });
+    const E = this.fatEff(d, le), mass = (kg / le.sA.lim + kg / le.sB.lim) / n, man = Math.round(mass * 100 * (1 + 0.04 * h33 + 0.02 * h25));
+    const hot = HT && HT.wf < 1, heatOff = !!d.heatOff && !!this.heatOf({ ...d, heatOff: false }, le.cls) && this.heatOf({ ...d, heatOff: false }, le.cls).wf < 1, heat = heatOff ? 100 + Math.round(Math.max(0, (this.heatOf({ ...d, heatOff: false }, le.cls).dl)) * 10) : 0;
+    const sc = Math.max(E.pct, man, heat), LV = v => v < 50 ? ['Faible', '#3DDC84'] : v < 80 ? ['Modérée', '#FFD23F'] : v < 100 ? ['Élevée', '#FF9F5A'] : ['Excessive', '#FF5A5F'], lv = LV(sc);
     const fl = (et, asc) => { et = +et || 0; return !et ? 'RDC' : et + (et > 1 ? 'e' : 'er') + ' étage ' + (asc ? 'avec ascenseur' : 'sans ascenseur'); };
+    const G = (l, v, sub) => { const c = LV(v)[1]; return { l, v: v + ' %', pct: Math.min(100, v) + '%', c, sub }; };
+    const gauges = [G('Effort physique · ISO 8996', E.pct, 'Portage ' + E.port + ' % · trajets ' + E.route + ' % · arrivée et contrôle ' + E.other + ' %'), G('Manutention · ISO 11228-1', man, '≈ ' + nb(kg * 2 / n) + ' kg portés par manœuvre' + (h33 ? ' · ' + h33 + ' objet' + (h33 > 1 ? 's' : '') + ' > 33 kg' : '') + (h25 ? ' · ' + h25 + ' > 25 kg' : ''))];
+    gauges.push(heatOff ? G('Chaleur · ISO 7243', heat, 'Pauses chaleur désactivées alors que la chaleur dépasse la référence') : { l: 'Chaleur · ISO 7243', v: hot ? 'Pauses prévues' : 'Sans contrainte', pct: '0%', c: '#3DDC84', sub: hot ? HT.rest + ' min de récupération après ' + HT.work + ' min de portage, entre 9 h et 18 h' : 'Chaleur sous la référence' });
+    const sol = [], mx = Math.max(n, +L.maxMen || 6);
+    if (sc >= 80) {
+      if (E.pct >= man && E.pct >= heat) { let found = null; for (let k2 = n + 1; k2 <= mx; k2++) { let l2 = null; try { l2 = this.laborEst({ ...d, inv: { ...inv, crew: k2 } }); } catch (e) {} if (!l2) break; const e2 = this.fatEff({ ...d, inv: { ...inv, crew: k2 } }, l2).pct; if (e2 < 80 || k2 === mx) { found = { k2, e2, t: l2.total }; if (e2 < 80) break; } }
+        if (found && found.e2 < E.pct) sol.push({ t: found.k2 + ' manœuvres : effort ' + found.e2 + ' %, durée ' + FD(found.t), canApply: true, apply: () => this.upd('d', { calcMode: 'manual', man: found.k2, inv: { ...this.normInv((this.form.d || this.state.d).inv), crew: found.k2 } }, null, { toast: found.k2 + ' manœuvres appliqués.' }) });
+        (le.alts || []).filter(x => x.V === 2).slice(0, 1).forEach(x => sol.push({ t: '2 × ' + this.VEH[x.k].tag + ' en parallèle : effort ≈ ' + Math.round(E.pct * x.P.total / Math.max(1, le.total)) + ' % par équipe', canApply: false }));
+        sol.push({ t: 'Relève d’équipe à mi-chantier ou 2 jours : effort ≈ ' + Math.round(E.pct / 2) + ' % par équipe ou par jour', canApply: false }); }
+      if (man >= 80) sol.push({ t: 'Manutention : aide mécanique (diable, sangles de portage) pour les ' + (h33 + h25) + ' objets lourds, jamais à bras.', canApply: false });
+      if (heatOff) sol.push({ t: 'Réactiver les pauses chaleur dans les réglages du devis.', canApply: false });
+    }
     const rec = [];
-    if (nOk > n) rec.push('Passer à ' + nOk + ' manœuvres ramène la charge sous 80 % de la limite ISO (' + score(nOk) + ' %).');
-    if (h33) rec.push(h33 + ' objet' + (h33 > 1 ? 's' : '') + ' de plus de 33 kg : aide mécanique obligatoire (diable, sangles de portage), jamais à bras.');
-    else if (h25) rec.push(h25 + ' objet' + (h25 > 1 ? 's' : '') + ' de plus de 25 kg : toujours à deux.');
+    if (h33) rec.push(h33 + ' objet' + (h33 > 1 ? 's' : '') + ' de plus de 33 kg : aide mécanique obligatoire (diable, sangles de portage), jamais à bras.'); else if (h25) rec.push(h25 + ' objet' + (h25 > 1 ? 's' : '') + ' de plus de 25 kg : toujours à deux.');
     if (le.cls >= 4) rec.push('Escalier sans ascenseur : un porteur par palier, rotation des postes toutes les 30 min.');
-    if (HT && HT.wf < 1) rec.push('Chaleur : ' + HT.rest + ' min de récupération à l’ombre après ' + HT.work + ' min de portage, environ 1 L d’eau par heure et par personne.');
-    if (!rec.length) rec.push('Charge de travail dans les limites ISO pour l’équipe prévue.');
-    return { sc, pct: Math.min(100, sc) + '%', lvl: lv[0], c: lv[1], n,
-      rows: [['Poids total à porter', '≈ ' + nb(kg) + ' kg'], ['Masse portée par manœuvre', '≈ ' + nb(kg * 2 / n) + ' kg'],
-        ['Limite ISO 11228-1 au départ', nb(le.sA.lim) + ' kg / jour (' + le.sA.dist + ' m équivalents)'], ['Limite ISO 11228-1 à l’arrivée', nb(le.sB.lim) + ' kg / jour (' + le.sB.dist + ' m équivalents)'],
-        ['Métabolisme ISO 8996', le.cls >= 4 ? 'Classe 4 · très élevé (escalier)' : 'Classe 3 · élevé'],
-        ['Chaleur ISO 7243', HT ? 'WBGT ' + String(HT.W).replace('.', ',') + ' °C · réf. ' + HT.ref + ' °C · ' + (HT.wf < 1 ? Math.round(HT.wf * 100) + ' % de travail' : 'sans restriction') : 'non prise en compte'],
-        ['Départ · arrivée', fl(inv.fEt, inv.fAsc) + ' · ' + fl(inv.tEt, inv.tAsc)], ['Objets > 25 kg · > 33 kg', h25 + ' · ' + h33]].map(([l, v]) => ({ l, v })),
+    if (hot) rec.push('Chaleur : ' + HT.rest + ' min de récupération à l’ombre après ' + HT.work + ' min de portage, environ 1 L d’eau par heure et par personne.');
+    sol.forEach(s2 => rec.push(s2.t));
+    if (!rec.length) rec.push('Charge de travail dans les limites pour l’équipe prévue.');
+    return { sc, pct: Math.min(100, sc) + '%', lvl: lv[0], c: lv[1], n, gauges, sol, hasSol: sol.length > 0,
+      rows: [['Durée totale', FD(le.total)], ['Effort de portage', E.mA + ' W/m² au départ · ' + E.mB + ' W/m² à l’arrivée'], ['Poids total à porter', '≈ ' + nb(kg) + ' kg'], ['Limite ISO 11228-1', nb(le.sA.lim) + ' kg au départ · ' + nb(le.sB.lim) + ' kg à l’arrivée'], ['Départ · arrivée', fl(inv.fEt, inv.fAsc) + ' · ' + fl(inv.tEt, inv.tAsc)], ['Équipe', n + ' manœuvres']].map(([l, v]) => ({ l, v })),
       rec: rec.map(t => ({ t })) };
   }
   HANDK = { frigo: 'app', congel: 'app', mal: 'app', cuisiniere: 'app', clim: 'app', micro: 'small', armoire: 'case', buffet: 'case', biblio: 'case', commode: 'case', vitrine: 'glass', coiffeuse: 'glass', salon: 'sofa', matelas: 'mat', lit: 'bed', tablem: 'table', bureau: 'table', tv: 'tv', carton: 'box', sac: 'box', gaz: 'gas', velo: 'misc', pot: 'misc', tapis: 'roll' };
@@ -3418,8 +3463,22 @@ class Component extends DCLogic {
     return { cgOn: !D.cgOff, cgTog: () => this.save({ ...this.state.data, cgOff: !this.state.data.cgOff }), cgRef: el => { if (el && document.activeElement !== el && el.value !== v) el.value = v; },
       cgSet: e => { const t = e.target.value; if (t !== v) { this.save({ ...this.state.data, cg: t }); this.setState({ toast: 'Conditions générales enregistrées.' }); } },
       cgReset: () => this.setState({ cf: { title: 'Revenir au texte modèle ?', text: 'Les conditions générales reviennent au texte d’origine.', yesLbl: 'Rétablir', yes: () => { this.save({ ...this.state.data, cg: null }); this.setState({ toast: 'Texte modèle rétabli.' }); } } }) }; }
-  qStep(t) { t = String(t || '').toLowerCase(); if (/client|contact|date|disponib|connu|source/.test(t)) return 1; if (/adresse|accès|acces|trajet|étage|etage|ascenseur|stationnement|départ|arrivée|logement|accès/.test(t)) return 2; if (/inventaire|meuble|objet|carton|électro|electro|fragile|démont|demont|prêt|pret|escalier|chargement/.test(t)) return 3; if (/véhicule|vehicule|équipe|equipe|manœuvre|manoeuvre|horaire|heure/.test(t)) return 4; if (/prix|paiement|péage|peage|option|remise|budget|tarif/.test(t)) return 5; return 6; }
-  goStep(n) { const el = document.querySelector('[data-step="' + n + '"]'); if (el) { let sc = el.parentElement; while (sc && !(/(auto|scroll)/.test(getComputedStyle(sc).overflowY) && sc.scrollHeight > sc.clientHeight)) sc = sc.parentElement; sc = sc || document.scrollingElement || document.documentElement;
+  qStep(t) { t = String(t || '').toLowerCase(); if (/client|contact|date|disponib|connu|source/.test(t)) return 1; if (/adresse|accès|acces|trajet|étage|etage|ascenseur|stationnement|départ|arrivée|logement|accès/.test(t)) return 2; if (/inventaire|meuble|objet|carton|électro|electro|fragile|démont|demont|prêt|pret|escalier|chargement/.test(t)) return 3; if (/horaire|heure/.test(t)) return 1; if (/véhicule|vehicule|équipe|equipe|manœuvre|manoeuvre|prix|paiement|péage|peage|option|remise|budget|tarif|formule/.test(t)) return 4; if (/planning|durée|duree|fatigue|3d/.test(t)) return 5; return 6; }
+  stepVals(s, d) {
+    const op = s.dStp == null ? 1 : s.dStp, inv = d && d.inv ? this.normInv(d.inv) : null, km = parseFloat(String((d && d.km) || '').replace(',', '.')) || 0, F1 = x => (Math.round(x * 10) / 10).toString().replace('.', ',');
+    const nObj = inv ? inv.lines.reduce((a, l) => a + (+l.q > 0 ? +l.q : 0), 0) : 0; let c = null, le = null; try { c = this.calc(d); } catch (e) {} try { le = nObj ? this.laborEst(d) : null; } catch (e) {}
+    const fm = d.bill === 'loc' ? 'Économique' : d.noMenu ? 'Standard' : 'Complète', V = this.VEH[d.vehicle] || {};
+    const sum = [[(d.name || '').trim() || 'Nom du client à saisir', d.phone, d.noDate ? 'date à fixer' : d.date ? this.fdate(d.date) + (d.start ? ' à ' + d.start : '') : 'date à choisir'].filter(Boolean).join(' · '),
+      (d.from || d.to) ? (d.from || '?') + ' → ' + (d.to || '?') + (km ? ' · ' + String(d.km).replace('.', ',') + ' km' : '') : 'Adresses de départ et d’arrivée',
+      nObj ? nObj + ' objets · ' + F1(this.invVolume(inv)) + ' m³ · ' + (d.trips || 1) + ' aller(s)-retour(s)' : 'Fiche d’appel à remplir',
+      'Formule ' + fm + ' · ' + (V.tag || '') + (c ? ' · ' + this.fmt(c.total) : ''),
+      le ? 'Durée ' + this.fDur(le.total) + ' · fin prévue ' + le.endLbl + ' · ' + le.n + ' manœuvres' : 'Après l’inventaire'];
+    const o = { noPlan: !nObj, allLbl: op === -1 ? 'Replier les étapes' : 'Tout afficher', allTog: () => this.setState(op === -1 ? { dStp: 1 } : { dStp: -1, dSec: { ...(this.state.dSec || {}), client: true, trajet: true }, invOpen: true }) };
+    [1, 2, 3, 4, 5].forEach(n => { const on = op === -1 || op === n; o['o' + n] = on; o['r' + n] = on ? '0deg' : '-90deg'; o['sum' + n] = sum[n - 1]; o['t' + n] = () => this.setState(op === n ? { dStp: 0 } : { dStp: n, dSec: { ...(this.state.dSec || {}), client: true, trajet: true }, invOpen: true }); o['n' + n] = () => this.goStep(n + 1); });
+    return o;
+  }
+  goStep(n) {
+    if (n <= 5 && this.state.dStp !== -1 && this.state.dStp !== n) { this.setState({ dStp: n, dSec: { ...(this.state.dSec || {}), client: true, trajet: true }, invOpen: true }, () => setTimeout(() => this.goStep(n), 80)); return; } const el = document.querySelector('[data-step="' + n + '"]'); if (el) { let sc = el.parentElement; while (sc && !(/(auto|scroll)/.test(getComputedStyle(sc).overflowY) && sc.scrollHeight > sc.clientHeight)) sc = sc.parentElement; sc = sc || document.scrollingElement || document.documentElement;
       const top = sc === document.scrollingElement || sc === document.documentElement ? el.getBoundingClientRect().top + window.scrollY - 70 : sc.scrollTop + el.getBoundingClientRect().top - sc.getBoundingClientRect().top - 70; sc.scrollTo({ top: Math.max(0, top), behavior: 'smooth' }); } if (window.innerWidth < 1100) this.setState({ qOpen: false }); }
   aiCfg() { try { return JSON.parse(localStorage.getItem('demx_ai') || '{}') || {}; } catch (e) { return {}; } }
   aiSetCfg(p) { try { localStorage.setItem('demx_ai', JSON.stringify({ ...this.aiCfg(), ...p })); } catch (e) {} this.setState({ aiTick: Date.now() }); }
@@ -3467,7 +3526,7 @@ class Component extends DCLogic {
     doc.text(doc.splitTextToSize(T('Chaque minute au-delà de la fin prévue est facturée ' + this.fmt(c0.otPm) + ' (' + this.fmt(c0.otH) + ' par heure), jusqu’à la fin du déchargement. Prévision du total à payer selon l’heure de fin :'), W - 2 * M - 10), M + 5, y + 12.5);
     let yy = y + 25; doc.setFillColor(30, 32, 35); doc.rect(M + 4, yy - 4.3, W - 2 * M - 8, 6.4, 'F'); doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(255, 255, 255);
     doc.text(T('FIN DU DÉMÉNAGEMENT'), M + 7, yy); doc.text(T('SUPPLÉMENT'), M + 112, yy, { align: 'right' }); doc.text(T('TOTAL À PAYER'), W - M - 7, yy, { align: 'right' }); yy += rh;
-    const toM = s => { const m = String(s).match(/(\d{1,2}):(\d{2})/); return m ? +m[1] * 60 + +m[2] : null; }, e0 = toM(K.end), nx = /lendemain|J2/.test(K.end || '');
+    const toM = s => { const m = String(s).match(/(\d{1,2}):(\d{2})/); return m ? +m[1] * 60 + +m[2] : null; }, e0 = toM(K.end), nx = /lendemain|J\d/.test(K.end || '');
     rows.forEach((mn, i) => { if (i % 2) { doc.setFillColor(255, 255, 255); doc.rect(M + 4, yy - 4.3, W - 2 * M - 8, rh, 'F'); }
       const sp = Math.round(mn * c0.otH / 60), t2 = e0 == null ? '' : (e0 + mn) % 1440, lbl = mn ? (e0 == null ? '+' + this.fDur(mn) : this.fT(t2) + ((nx || e0 + mn >= 1440) ? ' (lendemain)' : '') + '  ·  +' + this.fDur(mn)) : 'À l’heure prévue';
       doc.setFont('helvetica', mn ? 'normal' : 'bold'); doc.setFontSize(9.5); doc.setTextColor(30, 32, 35); doc.text(T(lbl), M + 7, yy);
@@ -3665,7 +3724,11 @@ class Component extends DCLogic {
   }
   locVals(d) {
     const loc = d.bill === 'loc', base = { locOn: loc, locOff: !loc, billCBg: loc ? 'transparent' : '#F6D73C', billCC: loc ? '#D5D9DE' : '#1E2023', billLBg: loc ? '#F6D73C' : 'transparent', billLC: loc ? '#1E2023' : '#D5D9DE',
-      billCardShow: this.state.view === 'cdevis' || loc, billSetC: () => this.upd('d', { bill: 'classic', otMin: 0 }), billSetL: () => this.upd('d', { bill: 'loc' }, null, { toast: 'Location avec chauffeur : les manœuvres ne sont plus facturées.' }) };
+      billCardShow: this.state.view === 'cdevis' || loc, billSetC: () => this.upd('d', { bill: 'classic', otMin: 0 }), billSetL: () => this.upd('d', { bill: 'loc' }, null, { toast: 'Location avec chauffeur : les manœuvres ne sont plus facturées.' }),
+      fmList: (() => { const cur = loc ? 'eco' : d.noMenu ? 'std' : 'full', V = { eco: { bill: 'loc', locMenu: false }, std: { bill: 'classic', noMenu: true }, full: { bill: 'classic', noMenu: false } }, px = k => { try { return this.fmt(this.calc({ ...d, ...V[k], otMin: 0 }).total); } catch (e) { return '—'; } };
+        return [['eco', 'Économique', 'Vos porteurs'], ['std', 'Standard', 'Avec nos manœuvres'], ['full', 'Complète', '+ menuisier']].map(([k, l, s]) => { const on = cur === k; return { l, s: s + (k === 'std' ? ' · conseillée' : ''), px: px(k), bg: on ? '#F6D73C' : 'transparent', c: on ? '#1E2023' : '#D5D9DE', sc: on ? '#1E2023' : '#AEB4BB',
+          pick: () => this.upd('d', { ...V[k], ...(k === 'eco' ? {} : { otMin: 0 }) }, null, { toast: 'Formule ' + l + ' : ' + px(k) + '.' }) }; }); })(),
+      ...(() => { const cv = this.cheapVeh(d); return cv ? { cheapHas: true, cheapTxt: 'Moins cher avec le ' + this.VEH[cv.k].tag + ' : ' + this.fmt(cv.t) + ' (− ' + this.fmt(cv.gain) + ', ' + cv.trips + ' aller' + (cv.trips > 1 ? 's' : '') + '-retour' + (cv.trips > 1 ? 's' : '') + ')', cheapPick: () => { const c0 = this.form.d || this.state.d; this.upd('d', { vehicle: cv.k, fitAck: false, trips: cv.trips }, () => { this.drawPeages && this.drawPeages('d'); this.autoApply(); }, { toast: this.VEH[cv.k].tag + ' choisi : ' + this.fmt(cv.t) + '.' }); } } : { cheapHas: false }; })() };
     if (!loc) return base;
     const K = this.locKit(d), om = Math.max(0, Math.round(+d.otMin || 0));
     const cur = () => { const c0 = this.form.d || this.state.d; return Array.isArray(c0.kit) ? c0.kit.map(x => ({ ...x })) : K.def.map(([l, q, id]) => ({ l, q, id })); }, setK = k => this.upd('d', { kit: k });
@@ -4121,7 +4184,7 @@ class Component extends DCLogic {
     if (this.NSF[k]) per *= this.NSF[k];
     if (it.dm && l.dm) per *= this.dmF(k);
     return per * l.q; }
-  invFill(i) { return i && i.opts && i.opts.fragile ? 0.75 : 0.85; }
+  invFill(i) { const L = this.labP(); return i && i.opts && i.opts.fragile ? Math.max(30, Math.min(100, +L.fillF || 75)) / 100 : Math.max(30, Math.min(100, +L.fill || 85)) / 100; }
   invFlags(i) { const f = []; if (!i) return f;
     if (i.ready === 'oui') f.push('matériel prêt à être chargé'); if (i.ready === 'non') f.push("matériel pas prêt, emballage par l'équipe");
     if (i.stairs === 'oui') f.push('tout passe dans les escaliers'); if (i.stairs === 'balcon') f.push('passage par le balcon' + (+i.balcPx > 0 ? ' (supplément ' + this.fmt(+i.balcPx) + ')' : '')); if (i.stairs === 'non') f.push('certains objets ne passent pas dans les escaliers (démontage, fenêtre ou monte-meuble)'); if (i.stairs === 'verif') f.push('passage des escaliers à vérifier');
@@ -4272,7 +4335,7 @@ class Component extends DCLogic {
   VOLF = { tbasse: [0.25, 0.4, 0.6], meubletv: [0.35, 0.6, 1], tv: [0.15, 0.25, 0.4], buffet: [1, 1.5, 2.2], biblio: [0.6, 1.2, 2], vitrine: [0.6, 1.2, 1.8], tapis: [0.05, 0.15, 0.3],
     coiffeuse: [0.4, 0.6, 1], commode: [0.5, 0.7, 1.1], chevet: [0.1, 0.2, 0.3], bureau: [0.5, 0.9, 1.5],
     frigo: [0.35, 1, 1.8], congel: [0.5, 0.9, 1.2], cuisiniere: [0.25, 0.6, 0.9], mal: [0.4, 0.5, 0.6], clim: [0.25, 0.4, 0.7],
-    carton: [0.04, 0.07, 0.12], chaise: [0.05, 0.25, 0.4], sac: [0.05, 0.1, 0.15], velo: [0.3, 0.5, 0.7], pot: [0.05, 0.15, 0.4], custom: [0.3, 0.5, 0.8] };
+    carton: [0.04, 0.07, 0.12], chaise: [0.12, 0.25, 0.4], sac: [0.05, 0.1, 0.15], velo: [0.3, 0.5, 0.7], pot: [0.05, 0.15, 0.4], custom: [0.3, 0.5, 0.8] };
   NSF = { salon: 1.25 };
   DMF = { lit: 0.6, armoire: 0.6, tablem: 0.6, bureau: 0.7 };
   dmF(k) { return k === 'clim' ? 1 : (this.DMF[k] || 0.8); }
@@ -4512,7 +4575,7 @@ class Component extends DCLogic {
     const t = this.state.data.tarifs, sc = this.state.pmScen || 'none', Y = '#F6D73C', D = '#1E2023';
     const ascA = sc === 'dep' || sc === 'both', ascB = sc === 'arr' || sc === 'both', fl = ['RDC', '1er', '2e', '3e', '4e', '5e'];
     const di = (this.form.d || this.state.d || {}).inv, hit = di && !!di.fAsc === ascA && !!di.tAsc === ascB;
-    return { tManEtage: t.manEtage ?? 500, tManAsc: t.manAsc ?? 500, pmHead: fl,
+    return { tManEtage: t.manEtage ?? 500, tManAsc: t.manAsc ?? 500, tManOverH: t.manOverH ?? 8, tManOverPx: t.manOverPx ?? 0, tTripDeg: t.tripDeg ?? 100, tCreux: t.creux ?? 0, pmHead: fl,
       pmScens: [['none', 'Sans ascenseur'], ['dep', 'Ascenseur au départ'], ['arr', "Ascenseur à l'arrivée"], ['both', 'Ascenseur des deux côtés']].map(([k, lb]) => { const s = sc === k; return { lbl: lb, bg: s ? Y : 'transparent', c: s ? D : '#D5D9DE', bd: s ? Y : '#3B4046', pick: () => this.setState({ pmScen: k }) }; }),
       pmRows: fl.map((lb, a) => ({ lbl: lb, cells: fl.map((x, b) => { const on = hit && (+di.fEt || 0) === a && (+di.tEt || 0) === b;
         return { v: String(this.manPrice({ inv: { fEt: a, fAsc: ascA, tEt: b, tAsc: ascB } }, t)).replace(/\B(?=(\d{3})+(?!\d))/g, ' '), bg: on ? Y : '#1E2023', c: on ? D : '#fff' }; }) })) };
@@ -4815,7 +4878,7 @@ class Component extends DCLogic {
   hasOrig(k) { return !this.NOORIG.includes(k); }
   mnItems() { const out = []; this.INVCAT.forEach(c => c.items.forEach(i => { if (i.k !== 'clim') out.push({ ...i, sec: c.sec }); })); out.push({ k: 'custom', n: 'autre objet', sec: 'Autres objets' }); return out; }
   mnOk(k) { return this.mnItems().some(i => i.k === k); }
-  mnPrice(k, o, s) { const P = (this.finCfg().menuPrices || {})[k] || {}, key = o === 'import' ? 'import' : 'local', d = o === 'import' ? 10000 : 5000; if (s != null) { const e = (P.sz || {})[+s]; if (e && e[key] != null) return +e[key] || 0; } return +(P[key] ?? d) || 0; }
+  mnPrice(k, o, s) { const P = (this.finCfg().menuPrices || {})[k] || this.gridOf('pay')[k] || {}, key = o === 'import' ? 'import' : 'local', d = o === 'import' ? 10000 : 5000; if (s != null) { const e = (P.sz || {})[+s]; if (e && e[key] != null) return +e[key] || 0; } return +(P[key] ?? d) || 0; }
   menuPayLines(inv) { const L = (inv && inv.lines) || [], M = {};
     L.forEach(l0 => { const l = this.xl(l0), it = this.invItem(l); if (!it) return; const q = +l.q || 0, on = q > 0 && l.k !== 'clim' && (l.dm || (this.SEATS.includes(l.k) && l.mn)); if (!on) return;
       const sz = it.size ? l.s : null, pu = l.k === 'custom' && +l.mp > 0 ? +l.mp : this.mnPrice(l.k === 'custom' && l.like ? l.like : l.k, l.o, sz), nm = String(it.n || l.name || l.k).replace(/^./, c => c.toUpperCase()) + (it.size && sz != null ? ' ' + sz + ' ' + (sz > 1 ? it.size.lp : it.size.l) : '') + (this.hasOrig(l.k) ? (l.o === 'import' ? ', importé' : ', local') : ''), key = nm + '|' + pu;
@@ -5053,7 +5116,7 @@ class Component extends DCLogic {
       addAnnex: () => set({ annexes: [...F.annexes, { l: '', v: 0, y: 3 }] }),
       sal: F.salaries.map((p, i) => { const up = q => set({ salaries: F.salaries.map((x, j) => j === i ? { ...x, ...q } : x) }); return { n: p.n, a: p.a, onN: ev => up({ n: ev.target.value }), onA: ev => up({ a: +ev.target.value || 0 }), del: () => set({ salaries: F.salaries.filter((x, j) => j !== i) }) }; }),
       addSal: () => set({ salaries: [...F.salaries, { n: '', a: 0 }] }), manPay: F.manPay, onManPay: num('manPay'),
-      salTot: fm(F.salaries.reduce((a, x) => a + (+x.a || 0), 0)) + ' / mois', manTxt: r ? 'Ce mois, inscrit au journal : manœuvres ' + fm(r.Man) + ' · menuisier ' + fm(r.Menu) : '', mnList: this.mnItems().map((i, ix, A) => { const P = F.menuPrices || {}, up = (o, v) => set({ menuPrices: { ...P, [i.k]: { ...(P[i.k] || {}), [o]: Math.max(0, +v || 0) } } }), sz = i.size, rg = sz ? this.szRange(i.k) : null;
+      salTot: fm(F.salaries.reduce((a, x) => a + (+x.a || 0), 0)) + ' / mois', manTxt: r ? 'Ce mois, inscrit au journal : manœuvres ' + fm(r.Man) + ' · menuisier ' + fm(r.Menu) : '', mnReset: () => this.setState({ cfAsk: { title: 'Revenir à la grille par défaut ?', text: 'La paie du menuisier revient à la grille d’origine et celle du manœuvre à 5 000 FCFA. Les écritures déjà passées au journal ne changent pas.', yesLbl: 'Rétablir', yes: () => { this.save({ ...this.state.data, fin: { ...(this.state.data.fin || {}), menuPrices: this.gridOf('pay'), manPay: 5000 } }); this.setState({ toast: 'Paie par défaut rétablie.' }); } } }), mnList: this.mnItems().map((i, ix, A) => { const P = F.menuPrices || {}, up = (o, v) => set({ menuPrices: { ...P, [i.k]: { ...(P[i.k] || {}), [o]: Math.max(0, +v || 0) } } }), sz = i.size, rg = sz ? this.szRange(i.k) : null;
         const scen = rg ? Array.from({ length: rg[1] - rg[0] + 1 }, (_, j) => { const n = rg[0] + j, upS = o => ev => { const cur = P[i.k] || {}, Z = { ...(cur.sz || {}) }; Z[n] = { local: this.mnPrice(i.k, 'local', n), import: this.mnPrice(i.k, 'import', n), ...(Z[n] || {}), [o]: Math.max(0, +ev.target.value || 0) }; set({ menuPrices: { ...P, [i.k]: { ...cur, sz: Z } } }); };
           return { lbl: n + ' ' + (n > 1 ? sz.lp : sz.l), lo: this.mnPrice(i.k, 'local', n), im: this.mnPrice(i.k, 'import', n), onLo: upS('local'), onIm: upS('import'), bd: n === sz.d ? '#F6D73C' : '#3B4046' }; }) : [];
         return { scen, hasU: !!sz, head: ix === 0 || A[ix - 1].sec !== i.sec, sec: (i.sec || '').toUpperCase(), n: i.n.charAt(0).toUpperCase() + i.n.slice(1) + (sz ? ' (' + sz.d + ' ' + (sz.d > 1 ? sz.lp : sz.l) + ')' : ''), lo: this.mnPrice(i.k, 'local'), im: this.mnPrice(i.k, 'import'), onLo: ev => up('local', ev.target.value), onIm: ev => up('import', ev.target.value) }; }),
@@ -5391,7 +5454,7 @@ class Component extends DCLogic {
       ['pause', 'Pause si la journée dépasse 5 h (min)', '0 pour ne pas compter de pause.'],
       ['volMan', 'm³ par manœuvre', 'Taille de l’équipe de base : 1 manœuvre par tranche de ce volume (2 minimum).'],
       ['ovTrip', 'Mise en place par voyage (min)', 'Stationnement, rampe, sanglage : compté au chargement et au déchargement de chaque voyage.'],
-      ['cal', 'Coefficient de calage', '×1 = prévision standard. Se règle depuis le suivi du planning.']];
+      ['maxDur', 'Alerte durée totale (h)', 'Au-delà, le devis signale un chantier trop long : relève d’équipe, 2 véhicules ou 2 jours.'], ['fill', 'Remplissage du véhicule (%)', 'Part du volume utile chargée, si le plan 3D n’est pas disponible.'], ['fillF', 'Remplissage avec objets fragiles (%)', 'Utilisé quand le client signale du fragile.'], ['annexKg', 'Densité des affaires annexes (kg/m³)', 'Linge, vaisselle, petits objets.'], ['tArr', 'Arrivée et briefing (min)', 'Au début de chaque déménagement.'], ['tEnd', 'Vérification finale (min)', 'État des lieux et signature.'], ['mRef', 'Fatigue · effort de référence (W/m²)', 'ISO 8996 : 100 % de fatigue = 8 h de travail à ce niveau d’effort.'], ['mRdc', 'Fatigue · portage plain-pied (W/m²)', 'Effort moyen de la chaîne de portage au rez-de-chaussée.'], ['mAsc', 'Fatigue · portage avec ascenseur (W/m²)', ''], ['mSt', 'Fatigue · portage en escalier (W/m²)', 'Effort au 1er étage sans ascenseur.'], ['mEt', 'Fatigue · effort ajouté par étage (W/m²)', 'Plafonné à 290 W/m².'], ['cal', 'Coefficient de calage', '×1 = prévision standard. Se règle depuis le suivi du planning.']];
     const calib = this.labCalib();
     const okC = calib.n > 0 && Math.abs(calib.k - (+L.cal || 1)) > 0.02;
     const out0 = { labCalHas: calib.n > 0, labCalTxt: calib.n ? 'D’après le suivi du planning : les étapes ont duré ×' + calib.k.toFixed(2).replace('.', ',') + ' le temps prévu (' + calib.n + ' étape' + (calib.n > 1 ? 's' : '') + ' mesurée' + (calib.n > 1 ? 's' : '') + ').' : '', labCalCan: okC, labCalLbl: 'Appliquer le calage ×' + calib.k.toFixed(2).replace('.', ','), labCalApply: () => { this.save({ ...this.state.data, labor: { ...(this.state.data.labor || {}), v2: 1, cal: Math.round(calib.k * 100) / 100 } }); this.setState({ toast: 'Coefficient de calage ×' + calib.k.toFixed(2).replace('.', ',') + ' appliqué aux nouveaux devis et au planning.' }); } };
@@ -5429,7 +5492,8 @@ class Component extends DCLogic {
     return [...new Set(w)].join(' · ');
   }
   invVolume(i) { return this.invFurn(i) + this.invAnnex(i); }
-  estTrips(i, veh) { const vol = i ? this.invVolume(i) : 0; return vol > 0 ? Math.max(1, Math.ceil(vol / ((this.vcap(veh)) * this.invFill(i)))) : 0; }
+  estTrips(i, veh) { const vol = i ? this.invVolume(i) : 0; if (!(vol > 0)) return 0; const S = window.DemSim; if (S && S.plan) { try { const P = S.plan(this.simInputOf({ inv: i, vehicle: veh }, veh)); if (P && P.trips && P.trips.length) return P.trips.length; } catch (e) {} } return Math.max(1, Math.ceil(vol / (this.vcap(veh) * this.invFill(i)))); }
+  fitOut(d) { const S = window.DemSim; if (!S || !S.plan || !d || !d.inv) return []; try { const P = S.plan(this.simInputOf(d, d.vehicle)); return (P && P.out) || []; } catch (e) { return []; } }
   DMT = { lit: [0.35, 0.5], armoire: [0.25, 0.4], tablem: [0.15, 0.25], bureau: [0.25, 0.4], clim: [0.75, 1.25] };
   LABCAT = { carton: 'light', sac: 'light', pot: 'light', tapis: 'light', micro: 'light', ventilo: 'light', gaz: 'light', chevet: 'light',
     salon: 'bulky', matelas: 'bulky', frigo: 'heavy', congel: 'heavy', cuisiniere: 'heavy', mal: 'heavy', buffet: 'heavy', vitrine: 'heavy', armoire: 'heavy' };
@@ -5441,7 +5505,7 @@ class Component extends DCLogic {
     if (t === 'A') { const b = s || 3, mods = { 1: [1], 2: [2], 3: [3], 4: [2, 2], 5: [3, 2], 6: [3, 3], 7: [3, 2, 2], 8: [3, 3, 2] }[Math.min(8, Math.max(1, b))] || [3]; return { tot: mods.reduce((a, m) => a + 30 + 25 * m, 0), max: l.dm ? 30 : 30 + 25 * Math.max(...mods) }; }
     if (t === 'T') { const k = 25 + 3 * (s || 6); return { tot: k, max: l.dm ? Math.round(k * 0.6) : k }; }
     const k = Array.isArray(t) ? t[gi] : t; return { tot: k, max: k }; }
-  invKg(inv) { inv = this.normInv(inv); let tot = 0, max = 0; inv.lines.forEach(l => { if (!(l.q > 0)) return; const w = this.lineKg(l); tot += w.tot * l.q; max = Math.max(max, w.max); }); tot += Math.round(this.invAnnex(inv) * 110); return { tot: Math.round(tot), max }; }
+  invKg(inv) { inv = this.normInv(inv); let tot = 0, max = 0; inv.lines.forEach(l => { if (!(l.q > 0)) return; const w = this.lineKg(l); tot += w.tot * l.q; max = Math.max(max, w.max); }); tot += Math.round(this.invAnnex(inv) * (+this.labP().annexKg || 110)); return { tot: Math.round(tot), max }; }
   LABZ = ['pause', 'heat', 'wbgtAdj', 'ovTrip'];
   WBGT_DK = [22, 22, 23, 23, 25, 27, 28, 28.5, 29, 28.5, 26.5, 24];
   isoLim(dist) { return dist <= 1 ? 10000 : dist <= 20 ? 10000 - (dist - 1) * 4000 / 19 : 6000 * 20 / dist; }
@@ -5452,7 +5516,7 @@ class Component extends DCLogic {
     return { W: Wt, ref, dl, wf, cls, mo, work: wf >= 1 ? 150 : Math.round(60 * wf), rest: wf >= 1 ? 15 : Math.round(60 * (1 - wf)) }; }
   carriers(kg, stairs) { const n = kg <= 25 ? 1 : kg <= 100 ? 2 : 3; return Math.min(4, n + (stairs && kg > 33 ? 1 : 0)); }
   CATP = { light: { r: 1.4, st: 0.10, lift: 0.03 }, furn: { r: 1, st: 0.15, lift: 0.05 }, bulky: { r: 1.2, st: 0.20, lift: 0.15 }, heavy: { r: 0.72, st: 0.25, lift: 0.08 } };
-  LAB0 = { maxH: 3, dayH: 8, start: 8, maxMen: 6, rate: 2.7, pause: 30, volMan: 6, ovTrip: 15, cal: 1, carryM: 15, heat: 1, wbgtAdj: 0 };
+  LAB0 = { maxH: 3, dayH: 8, start: 8, maxMen: 6, rate: 2.7, pause: 30, volMan: 6, ovTrip: 15, cal: 1, carryM: 15, heat: 1, wbgtAdj: 0, maxDur: 12, fill: 85, fillF: 75, annexKg: 110, tArr: 20, tEnd: 15, mRef: 200, mRdc: 200, mAsc: 210, mSt: 230, mEt: 12, mMax: 290 };
   labP() { const st = (this.state && this.state.data && this.state.data.labor) || {}; return { ...this.LAB0, ...st, ...(st.v3 || (st.v2 && st.rate != null && +st.rate !== 2.25) ? {} : { rate: this.LAB0.rate }) }; }
   fDur(min, st) { st = st || 5; min = Math.max(st, Math.round(min / st) * st); const hh = Math.floor(min / 60), m = min % 60; return hh ? hh + ' h' + (m ? ' ' + String(m).padStart(2, '0') : '') : m + ' min'; }
   fT(min) { min = Math.round(min / 5) * 5; return String(Math.floor(min / 60) % 24).padStart(2, '0') + ':' + String(min % 60).padStart(2, '0'); }
@@ -5503,8 +5567,9 @@ class Component extends DCLogic {
     const stairsHeavy = heavyN > 0 && ((inv.fEt >= 2 && !inv.fAsc) || (inv.tEt >= 2 && !inv.tAsc));
     const stairs3 = (inv.fEt >= 3 && !inv.fAsc) || (inv.tEt >= 3 && !inv.tAsc), flN = Math.max(inv.fAsc ? 0 : +inv.fEt || 0, inv.tAsc ? 0 : +inv.tEt || 0), flL = Math.max(inv.fAsc ? +inv.fEt || 0 : 0, inv.tAsc ? +inv.tEt || 0 : 0), stAdd = flN > 0 ? Math.ceil(flN / 2) : flL >= 4 ? 1 : 0, stairs2 = (inv.fEt >= 2 && !inv.fAsc) || (inv.tEt >= 2 && !inv.tAsc), W = this.invKg(inv), dens = W.tot / vol, wf = Math.max(0.85, Math.min(1.4, Math.sqrt(dens / 110))), carry = this.carriers(W.max, stairs2), sA = this.isoSite(inv.fEt, inv.fAsc, o.acces), sB = this.isoSite(inv.tEt, inv.tAsc, o.acces), isoCrew = Math.max(1, Math.ceil(W.tot / sA.lim + W.tot / sB.lim - 0.05)), cls = flN >= 2 ? 4 : 3;
     const volCrew = Math.max(Math.ceil(vol / Math.max(1, +L.volMan || 6)), Math.ceil(W.tot / Math.max(100, (+L.volMan || 6) * 110))) + stAdd;
-    return { vol, cv, L, dA, dB, stairsHeavy, stairs3, flN, stAdd, kg: W.tot, maxKg: W.max, carry, wf, sA, sB, isoCrew, cls, hPor: (() => { try { return Math.max(1, ...this.handlingInv(inv).map(x => x.n)); } catch (e) { return 1; } })(), minCrew: Math.max(stairsHeavy ? 3 : 2, carry, (() => { try { return Math.max(1, ...this.handlingInv(inv).map(x => x.n)); } catch (e) { return 1; } })(), Math.min(+L.maxMen || 6, Math.max(volCrew, isoCrew))), phL: site(inv.fEt, inv.fAsc, false) * wf * (inv.stairs === 'balcon' ? 1.2 : 1), phU: site(inv.tEt, inv.tAsc, true) * wf,
-      phP: (o.emballage || inv.ready === 'non') ? 0.45 * cv.light + 0.1 * (cv.furn + cv.bulky + cv.heavy) : 0 };
+    let HI = []; try { HI = this.handlingInv(inv); } catch (e) {} const hPor = Math.max(1, ...HI.map(x => x.n)), nTop = HI.filter(x => x.n >= hPor).length, hNeed = hPor > 2 && nTop <= 2 && dA + dB > 0 ? hPor - 1 : hPor;
+    return { vol, cv, L, dA, dB, stairsHeavy, stairs3, flN, stAdd, kg: W.tot, maxKg: W.max, carry: hPor, wf, sA, sB, isoCrew, cls, hPor, hHelp: hNeed < hPor, minCrew: Math.max(stairsHeavy ? 3 : 2, hNeed, Math.min(+L.maxMen || 6, Math.max(volCrew, isoCrew))), phL: site(inv.fEt, inv.fAsc, false) * wf * (inv.stairs === 'balcon' ? 1 + 0.4 * (cv.bulky + cv.heavy) / vol : 1), phU: site(inv.tEt, inv.tAsc, true) * wf,
+      phP: o.emballage ? 0.45 * cv.light + 0.1 * (cv.furn + cv.bulky + cv.heavy) : 0 };
   }
   laborPlan(d, B, veh, V, N, crew) {
     const L = B.L, cal = Math.max(0.5, +L.cal || 1), ovH = Math.max(0, +L.ovTrip || 0) / 60 * Math.ceil(N / V), eff1 = n => n <= 2 ? n : n <= 4 ? 2 + 0.75 * (n - 2) : 3.5 + 0.4 * (n - 4), eff = n => V * eff1(n / V);
@@ -5521,20 +5586,20 @@ class Component extends DCLogic {
     let k; try { k = JSON.stringify([d, invIn || null], (kk, v) => this.LESKIP.has(kk) ? undefined : v); } catch (e) { return this.laborEst0(d, invIn); }
     if (this._leC.has(k)) return this._leC.get(k); const r = this.laborEst0(d, invIn); if (this._leC.size > 80) this._leC.clear(); this._leC.set(k, r); return r; }
   laborEst0(d, invIn) { if (!this._inPz) { const pz = this.pzFor(d); if (pz) return this.withPz(pz, () => this.laborEst(d, invIn)); }
-    const inv = this.normInv(invIn || d.inv || this.blankInv()), B = this.laborBase(inv); if (!B) return null;
+    const inv = this.normInv(invIn || d.inv || this.blankInv()), B1 = this.laborBase(inv); if (!B1) return null; const B = (d.bill === 'loc' && !d.locMenu) || (d.bill !== 'loc' && d.noMenu) ? { ...B1, dA: 0, dB: 0 } : B1;
     const veh = d.vehicle, N = Math.max(1, +d.trips || this.estTrips(inv, veh) || 1), P = this.laborPlan(d, B, veh, 1, N, +inv.crew || 0);
     const km = parseFloat(String(d.km || '').replace(',', '.')) || 0, F = x => this.fDur(x);
     const r5 = x => Math.max(5, Math.round(x / 5) * 5);
     const ms = String(d.start || '').match(/^(\d{1,2}):(\d{2})/), mm = String(d.time || '').match(/(\d{1,2})\s*h/), start = ms ? +ms[1] * 60 + +ms[2] : (mm ? +mm[1] : B.L.start) * 60, rows = [];
     const segs = [], seg = (what, sub, m, split, k) => { if (m > 0) segs.push({ what, sub, m: r5(m), split, k }); }, nm = P.n + ' manœuvres';
-    seg('Arrivée et briefing', 'Tour du logement avec le client, consignes du chef d’équipe, protection des sols et des portes', 20, false, 'arr');
+    seg('Arrivée et briefing', 'Tour du logement avec le client, consignes du chef d’équipe, protection des sols et des portes', +(B.L.tArr ?? 20), false, 'arr');
     if (P.tP && !P.packJ1) seg('Emballage', 'Cartons, film, serviettes de protection', P.tP * 60, true, 'pack');
     for (let i = 1; i <= P.N; i++) { const last = i === P.N, tag = P.N > 1 ? ' ' + i + ' / ' + P.N : '';
       seg('Chargement' + tag, nm + (P.m && i === 1 ? ', démontage par le menuisier' : '') + ' · mur par mur, sanglé', P.pA * 60 / P.N, true, 'load');
       if (P.legL) seg('Trajet' + tag, String(km).replace('.', ',') + ' km, stationnement compris', P.legL, false, 'drive');
       seg('Déchargement' + tag, nm + (P.m && last ? ', remontage par le menuisier' : '') + ' · placement pièce par pièce', P.pB * 60 / P.N, true, 'unload');
       if (!last && P.legE) seg('Retour à vide' + tag, 'Vers le logement de départ', P.legE, false, 'back'); }
-    seg('Vérification finale', 'Tour des pièces avec le client, état des lieux, signature', 15, false, 'end');
+    seg('Vérification finale', 'Tour des pièces avec le client, état des lieux, signature', +(B.L.tEnd ?? 15), false, 'end');
     const D0 = B.L.start * 60, WEND = 19 * 60, AMP = 10 * 60, HT = this.heatOf(d, B.cls), WK = HT ? HT.work : 150, RS = HT ? HT.rest : 15, hot = HT && HT.wf < 1;
     let day = 0, t = start, dS = start, wEnd = Infinity, w = 0, lunch = false, loaded = false, work = 0; this._dinner = false;
     const lbl = () => (t >= 1440 ? 'J' + (Math.floor(t / 1440) + 1) + ' · ' : '') + this.fT(t), push = (what, sub, m, k) => { rows.push({ what, sub, m, t: lbl(), dur: F(m), k, abs: t }); t += m; if (k !== 'night') work += m; };
@@ -5543,10 +5608,10 @@ class Component extends DCLogic {
       while (m > 0) {
         if (!lunch && t >= 12 * 60 + 15 && t < 14 * 60 && t - dS >= 120) { push('Pause déjeuner', 'Repas, eau, repos de l’équipe', 45, 'pause'); lunch = true; w = 0; continue; }
         if (!this._dinner && t >= 19 * 60 + 30 && t < 21 * 60 && t - dS >= 180) { push('Pause dîner', 'Repas et repos de l’équipe', 30, 'pause'); this._dinner = true; w = 0; continue; }
-        if (w >= WK) { push(hot ? 'Récupération chaleur' : 'Pause', hot ? RS + ' min à l’ombre et eau après ' + WK + ' min de portage (ISO 7243 : WBGT ' + String(HT.W).replace('.', ',') + ' °C, référence ' + HT.ref + ' °C)' : '15 min toutes les 2 h 30 de portage, hydratation', RS, 'pause'); w = 0; continue; }
+        const tod = t % 1440, hotN = hot && (HT.manual || (tod >= 540 && tod < 1080)), wk = hotN ? WK : 150, rs = hotN ? RS : 15;
+        if (w >= wk) { push(hotN ? 'Récupération chaleur' : 'Pause', hotN ? rs + ' min à l’ombre et eau après ' + wk + ' min de portage (ISO 7243 : WBGT ' + String(HT.W).replace('.', ',') + ' °C, référence ' + HT.ref + ' °C)' : '15 min toutes les 2 h 30 de portage, hydratation', rs, 'pause'); w = 0; continue; }
         const avail = wEnd - t;
-
-        let ch = sg.split ? Math.min(m, avail, Math.max(Math.min(30, WK), WK - w)) : m;
+        let ch = sg.split ? Math.min(m, avail, Math.max(Math.min(30, wk), wk - w)) : m;
         if (sg.split && !lunch && t < 12 * 60 + 15 && t + ch > 12 * 60 + 30 && 12 * 60 + 15 - t >= 20) ch = 12 * 60 + 15 - t;
         ch = sg.split && m - ch < 15 ? m : ch; ch = Math.min(ch, sg.split ? Math.max(ch, 0) : ch);
         push(sg.what + (part ? ' (suite)' : ''), sg.sub, ch, sg.k); m -= ch; w += sg.k === 'drive' || sg.k === 'back' ? 0 : ch; part++;
@@ -5554,13 +5619,13 @@ class Component extends DCLogic {
       }
       if (sg.k === 'load') loaded = true; if (sg.k === 'unload') loaded = false; });
     const endAbs = t, totR = work, days = 1; this._dinner = false;
-    let alts = [];
+    const kS = P.total > 0 ? totR / P.total : 1; let alts = [];
     if (totR > B.L.dayH * 60 + 1 || (P.overH && P.n >= P.nRec)) {
       Object.keys(this.VEH).forEach(k => [1, 2].forEach(V => { if (k === veh && V === 1) return; const Nk = this.estTrips(inv, k); if (!Nk || (V === 2 && Nk < 2)) return;
-        const Pk = this.laborPlan(d, B, k, V, Nk, 0); if (!Pk.overD) alts.push({ k, V, Nk, P: Pk, both: !Pk.overH }); }));
+        const Pk0 = this.laborPlan(d, B, k, V, Nk, 0), Pk = { ...Pk0, total: Pk0.total * kS }; if (Pk.total <= B.L.dayH * 60 + 1) alts.push({ k, V, Nk, P: Pk, both: !Pk.overH }); }));
       alts.sort((x, y) => (y.both - x.both) || (x.V - y.V) || (x.P.total - y.P.total)); alts = alts.slice(0, 3);
     }
-    return { ...P, kg: B.kg, maxKg: B.maxKg, carry: B.carry, flN: B.flN, stAdd: B.stAdd, sA: B.sA, sB: B.sB, isoCrew: B.isoCrew, cls: B.cls, heat: HT, total: totR, overD: totR > B.L.dayH * 60 + 1, L: B.L, dA: B.dA, dB: B.dB, vol: B.vol, stairsHeavy: B.stairsHeavy, km, start, end: endAbs, endLbl: (t >= 1440 ? 'lendemain ' : '') + this.fT(t), endLate: false, rows, alts, days, lo: totR * 0.85, hi: totR * 1.3 };
+    return { ...P, kg: B.kg, maxKg: B.maxKg, carry: B.carry, flN: B.flN, stAdd: B.stAdd, sA: B.sA, sB: B.sB, isoCrew: B.isoCrew, cls: B.cls, heat: HT, total: totR, overD: totR > B.L.dayH * 60 + 1, L: B.L, dA: B.dA, dB: B.dB, vol: B.vol, stairsHeavy: B.stairsHeavy, km, start, end: endAbs, endLbl: (t >= 2880 ? 'J' + (Math.floor(t / 1440) + 1) + ' · ' : t >= 1440 ? 'lendemain ' : '') + this.fT(t), durOver: totR > (+B.L.maxDur || 12) * 60, maxDur: +B.L.maxDur || 12, endLate: false, rows, alts, days, lo: totR * 0.85, hi: totR * 1.3 };
   }
   laborLine(d) { const le = d.inv ? this.laborEst(d) : null; if (!le) return ''; const F = x => this.fDur(x);
     return "Main-d'œuvre : " + le.n + ' manœuvres (≈ ' + le.kg + ' kg, objet le plus lourd ≈ ' + le.maxKg + ' kg)' + (le.m ? ' + ' + le.m + ' menuisier' + (le.m > 1 ? 's' : '') : '') + ', chargement + déchargement ≈ ' + F(le.hand * 60)
@@ -5603,6 +5668,9 @@ class Component extends DCLogic {
       
       const mo = !!this.state.labMethod;
       const hcur = this.form.d || this.state.d, hOn = !hcur.heatOff && !!le.heat, hRest = le.heat ? le.heat.rest : 0;
+      const lmShow = hcur.bill === 'loc' && (this.normInv(hcur.inv || this.blankInv()).lines || []).some(l => +l.q > 0 && l.dm);
+      Object.assign(lab, { locMenuShow: lmShow, locMenuLbl: hcur.locMenu ? 'Inclus' : 'Non inclus', locMenuBg: hcur.locMenu ? '#F6D73C' : 'transparent', locMenuC: hcur.locMenu ? '#1E2023' : '#D5D9DE', locMenuTog: () => this.upd('d', { locMenu: !hcur.locMenu }),
+        durOverHas: !!le.durOver, durOverTxt: 'Chantier de ' + F(le.total) + ', au-delà de ' + le.maxDur + ' h : prévoir une relève d’équipe, 2 véhicules ou 2 jours.' });
       Object.assign(lab, { heatBarBg: hOn ? '#F6D73C' : 'transparent', heatBarC: hOn ? '#1E2023' : '#D5D9DE', heatShort: hOn ? 'Comptée · ' + hRest + ' min/h' : 'Non comptée', heatOn: hOn, heatLbl: hOn ? 'Supprimer' : 'Ajouter', heatBg: hOn ? 'transparent' : '#F6D73C', heatC: hOn ? '#F6D73C' : '#1E2023', heatMin: hRest + ' min',
         heatSub: hOn ? 'Par heure de portage, à l’ombre' + (le.heat.manual ? ' (réglé)' : ' (ISO 7243)') : 'Non comptée dans la durée',
         heatTog: () => hOn ? this.upd('d', { heatOff: true }) : this.upd('d', { heatOff: false, heatRest: +hcur.heatRest > 0 ? hcur.heatRest : 15 }),
@@ -5613,7 +5681,7 @@ class Component extends DCLogic {
         labSt: (ok ? '✓ Tient dans la journée · ' : 'Dépasse ' + L.dayH + ' h · ') + F(le.total), labKg: 'Poids estimé ≈ ' + le.kg.toLocaleString('fr-FR') + ' kg · objet le plus lourd ≈ ' + le.maxKg + ' kg, porté à ' + le.carry + (le.carry > 1 ? ' personnes' : ' personne') + (le.flN ? ' · ' + le.flN + (le.flN > 1 ? ' étages' : ' étage') + ' sans ascenseur : +' + le.stAdd + ' manœuvre' + (le.stAdd > 1 ? 's' : '') + ' pour la chaîne dans l’escalier' : ''), labStC: ok ? '#3DDC84' : '#FF5A5F',
         labPlan: le.rows, labEnd: le.endLbl, labEndLate: le.endLate,
         labHasAlt: alts.length > 0, labAlts: alts, labAltTitle: le.overD ? 'Journée de plus de ' + L.dayH + ' h. Pour raccourcir :' : 'Chargement + déchargement au-delà de ' + L.maxH + ' h. Solutions :',
-        labMethodOpen: mo, labMethodRot: mo ? '0deg' : '-90deg', labMethodToggle: () => this.setState(st => ({ labMethod: !st.labMethod })),
+        labMethodOpen: mo, labChain: this.calcChain(d, le), labMethodRot: mo ? '0deg' : '-90deg', labMethodToggle: () => this.setState(st => ({ labMethod: !st.labMethod })),
         labMethod: [
           'Cadence par manœuvre et par heure au rez-de-chaussée : cartons et sacs ≈ ' + rt(1.4) + ' m³, meubles ≈ ' + rt(1) + ' m³, canapés et matelas ≈ ' + rt(1.2) + ' m³, objets lourds (frigo, armoire montée, buffet…) ≈ ' + rt(0.72) + ' m³. Déchargement 20 % plus rapide.',
           "Étages sans ascenseur : de +10 % (cartons) à +25 % (objets lourds) par étage, 40 % de plus si escalier étroit. Avec ascenseur : +5 % d'attente puis +3 % à +15 % par étage, les canapés passant souvent par l'escalier.",
@@ -5711,6 +5779,33 @@ class Component extends DCLogic {
   newRef() { const R = ((this.state.data || {}).res || []), used = new Set(R.map(r => r.ref)); let r, g = 0; do { r = 'DEM-' + (4830 + R.length + Math.floor(Math.random() * 900)); } while (used.has(r) && g++ < 50); return r; }
   ensureRef(src) { if (!src) return ''; const r = this.refNum(src) || src.ref; if (r) return r; const nr = this.newRef(); src.ref = nr; const cur = this.form.d || this.state.d; if (cur && !cur.resId && !cur.ref) this.upd('d', { ref: nr }); return nr; }
   refNum(d) { const r = d && d.resId && ((this.state.data || {}).res || []).find(x => x.id === d.resId); return (r && r.ref) || (d && d.ref) || ''; }
+  tarifV2() { const D = this.state.data; if (!D || !D.tarifs || D.tarifs.v2) { setTimeout(() => this.tarifV3(), 200); return; } const snap = this.pzSnap(D), r5 = n => Math.round(n / 500) * 500;
+    const res = (D.res || []).map(r => r.pz ? r : { ...r, pz: snap }), old = D.tarifs.montageP || {}, mp = {};
+    const sc = v => { if (v == null) return { local: 7500, import: 12500 }; if (typeof v !== 'object') { const L = r5(+v * 0.5); return { local: L, import: L + 5000 }; } const L = v.local != null ? r5(+v.local * 0.5) : 7500, o = { ...v, local: L, import: L + 5000 }; if (v.u != null) o.u = r5(+v.u * 0.5); if (v.uI != null) o.uI = o.u != null ? o.u : r5(+v.uI * 0.5); if (v.sz) { o.sz = {}; Object.entries(v.sz).forEach(([s, e]) => { const l2 = e && e.local != null ? r5(+e.local * 0.5) : null; o.sz[s] = { ...(e || {}), ...(l2 != null ? { local: l2, import: l2 + 5000 } : {}) }; }); } return o; };
+    this.INVCAT.flatMap(c => c.items).forEach(i => { mp[i.k] = sc(old[i.k]); });
+    this.save({ ...D, res, tarifs: { ...D.tarifs, v2: true, montage: 7500, montageP: mp, tripDeg: 60, creux: 10 } }); this.setState({ toast: 'Nouvelle grille tarifaire appliquée aux nouveaux devis. Les devis existants gardent leurs prix.' }); setTimeout(() => this.tarifV3(), 1500); }
+  tarifV3() { const D = this.state.data; if (!D || !D.tarifs || !D.tarifs.v2) return; if (D.tarifs.v4) { setTimeout(() => this.tarifV5(), 200); return; } const snap = this.pzSnap(D), T0 = D.tarifs, r5 = n => Math.round(n / 500) * 500;
+    const res = (D.res || []).map(r => r.pz ? r : { ...r, pz: snap });
+    const M = (Array.isArray(T0.master) ? T0.master : [25000, 31000, 37000]).map(x => +x || 0), tra = M.map(x => r5(x * 0.6)), spr = M.map(x => r5(x * 1.12));
+    const mp = { ...(T0.montageP || {}) }, fixed = [];
+    Object.entries(mp).forEach(([k, v]) => { if (!v || typeof v !== 'object' || !v.sz) return; const base = +v.local || 7500, sz = { ...v.sz }; Object.entries(sz).forEach(([s, e]) => { if (e && +e.local > Math.max(30000, base * 5)) { fixed.push(k + ' ' + s); delete sz[s]; } }); mp[k] = { ...v, sz }; });
+    const f = a => a.map(x => this.fmt(x).replace(' FCFA', '')).join(' / ');
+    this.save({ ...D, res, tarifs: { ...T0, v3: true, v4: true, trafic: tra, sprinter: spr, montageP: mp } });
+    this.setState({ toast: 'Tarifs par aller-retour : Trafic ' + f(tra) + ' · Master ' + f(M) + ' (inchangé) · Sprinter ' + f(spr) + '.' + (fixed.length ? ' Prix menuisier aberrant retiré : ' + fixed.join(', ') + '.' : '') + ' Les devis existants gardent leurs prix.' }); setTimeout(() => this.tarifV5(), 1500); }
+  MNGRID = {"salon":{"1":[2000,2600,3000,3900],"2":[4000,5200,6000,7800],"3":[5000,6500,7000,9100],"4":[7000,9100,10000,13000],"5":[10000,13000,12000,15600],"6":[12000,15600,15000,19500],"7":[15000,19500,18000,23400],"8":[17000,22100,20000,26000],"9":[19000,24700,21000,27300],"10":[21000,27300,24000,31200]},"tbasse":[2000,2600,4000,5200],"meubletv":[5000,6500,7000,9100],"tv":[0,0,0,0],"tablem":{"2":[4000,5200,5000,6500],"3":[5000,6500,6000,7800],"4":[5000,6500,7000,9100],"5":[5000,6500,7000,9100],"6":[5000,6500,7000,9100],"7":[5000,6500,7000,9100],"8":[5000,6500,7000,9100],"9":[5000,6500,7000,9100],"10":[6000,7800,10000,13000],"11":[6000,7800,10000,13000],"12":[6000,7800,10000,13000]},"chaise":[0,0,0,0],"buffet":[7000,9100,10000,13000],"biblio":[10000,13000,15000,19500],"vitrine":[0,0,0,0],"tapis":[0,0,0,0],"lit":{"1":[2500,3250,3000,3900],"2":[3000,3900,5000,6500],"3":[5000,6500,10000,13000],"4":[0,0,0,0]},"matelas":{"1":[0,0,0,0],"2":[0,0,0,0],"3":[0,0,0,0],"4":[0,0,0,0]},"armoire":{"1":[3000,3900,5000,6500],"2":[4000,5200,5000,6500],"3":[5000,6500,7000,9100],"4":[5000,6500,10000,13000],"5":[5000,6500,10000,13000],"6":[5000,6500,10000,13000],"7":[5000,6500,10000,13000],"8":[5000,6500,10000,13000]},"coiffeuse":[0,0,0,0],"commode":[0,0,0,0],"chevet":[0,0,0,0],"bureau":[5000,6500,10000,13000],"frigo":[0,0,0,0],"congel":[0,0,0,0]};
+  gridOf(who) { if (this['_g' + who]) return this['_g' + who]; const o = {}, a = who === 'pay' ? [0, 2] : [1, 3]; Object.entries(this.MNGRID).forEach(([k, v]) => { if (Array.isArray(v)) o[k] = { local: v[a[0]], import: v[a[1]] }; else { const ks = Object.keys(v).map(Number).sort((x, y) => x - y), sz = {}; ks.forEach(s => { sz[s] = { local: v[s][a[0]], import: v[s][a[1]] }; }); const d = v[ks.includes(2) ? 2 : ks[0]]; o[k] = { local: d[a[0]], import: d[a[1]], sz }; } }); this['_g' + who] = o; return o; }
+  DEFTAR = { trafic: [15000, 18500, 22000], sprinter: [28000, 34500, 41500], master: [25000, 31000, 37000], manoeuvre: 6500, manEtage: 500, manAsc: 500, manOverH: 8, manOverPx: 0, montage: 7500, tripDeg: 60, creux: 10, otH: 10000 };
+  DEFFIN = { manPay: 5000, vidange: 150000, vidangeMois: 2, assur: 200000, nVeh: 3, fleet: 30000000, fleetYears: 7, newVeh: 12000000, dette: 30000000, detteMois: 18, seuil: 50, legPct: 10, legCap: 20, objectif: 3000000, avgTicket: 0 };
+  resetDefaults() { const D = this.state.data, snap = this.pzSnap(D), res = (D.res || []).map(r => r.pz ? r : { ...r, pz: snap }), T0 = D.tarifs || {}, keep = {};
+    (D.customVeh || []).forEach(v => { if (T0[v.id]) keep[v.id] = T0[v.id]; });
+    this.save({ ...D, res, tarifs: { ...T0, ...keep, ...this.DEFTAR, montageP: this.gridOf('cli'), v2: true, v3: true, v4: true, v5: true }, fin: { ...(D.fin || {}), ...this.DEFFIN, menuPrices: this.gridOf('pay') } });
+    this.setState({ toast: 'Prix et charges remis par défaut. Les devis déjà enregistrés gardent leurs prix.' }); }
+  tarifV5() { const D = this.state.data; if (!D || !D.tarifs || !D.tarifs.v4 || D.tarifs.v5) return; const snap = this.pzSnap(D), res = (D.res || []).map(r => r.pz ? r : { ...r, pz: snap });
+    this.save({ ...D, res, tarifs: { ...D.tarifs, v5: true, montageP: this.gridOf('cli'), manoeuvre: 6500 }, fin: { ...(D.fin || {}), menuPrices: this.gridOf('pay'), manPay: 5000 } }); this.setState({ toast: 'Grille menuisier appliquée (paie et prix client) et manœuvre à 6 500 FCFA. Les devis existants gardent leurs prix.' }); }
+  cheapVeh(d) { if (!d || !d.inv || this.isManual(d)) return null; const ck = JSON.stringify([d.inv, d.vehicle, d.km, d.tier, d.bill, d.noMenu, d.locMenu, d.date, d.start, d.remise, d.custom, d.peages, (this.state.data || {}).tarifs]); if (this._cvKey === ck) return this._cvVal; this._cvKey = ck; this._cvVal = this.cheapVeh0(d); return this._cvVal; }
+  cheapVeh0(d) { const cur = d.vehicle; let best = null, curTot = null;
+    Object.keys(this.VEH).forEach(k => { try { const dd = { ...d, vehicle: k }; dd.trips = this.estTrips(d.inv, k) || d.trips; if (this.fitOut(dd).length) return; const le = this.laborEst(dd); if (le) dd.man = le.n; const t = this.calc(dd).total; if (k === cur) curTot = t; if (!best || t < best.t) best = { k, t, trips: dd.trips }; } catch (e) {} });
+    if (!best || best.k === cur || curTot == null || curTot - best.t < 500) return null; return { ...best, gain: curTot - best.t }; }
   pzSnap(data) { const F = data.fin || {}; return { at: new Date().toISOString(), tarifs: data.tarifs, peages: (data.peages || []).map(p => ({ id: p.id, price: p.price, prices: p.prices })), fin: { manPay: F.manPay, menuPrices: F.menuPrices } }; }
   pzFor(p) { if (!p || !this.state || !this.state.data) return null; if (p.pz) return p.pz; const id = p.resId || p.id; if (!id) return null; const r = (this.state.data.res || []).find(x => x.id === id); return (r && r.pz) || null; }
   pzData(pz) { const D = this.state.data, P = {}; (pz.peages || []).forEach(x => { P[x.id] = x; }); const pf = pz.fin || {}; return { ...D, tarifs: pz.tarifs || D.tarifs, peages: (D.peages || []).map(p => P[p.id] ? { ...p, price: P[p.id].price, prices: P[p.id].prices } : p), fin: { ...(D.fin || {}), ...(pf.manPay != null ? { manPay: pf.manPay } : {}), ...(pf.menuPrices != null ? { menuPrices: pf.menuPrices } : {}) } }; }
@@ -5793,7 +5888,8 @@ class Component extends DCLogic {
     const L = [['tarifs', 'Tarifs'], ['veh', 'Véhicules'], ['ops', 'Opérations'], ['docs', 'Documents'], ['integ', 'Intégrations']], ps = {};
     L.forEach(([k]) => { const op = !!O[k]; ps[k] = { open: op, rot: op ? '0deg' : '-90deg', sum: SUM[k], tog: () => this.setState(st => ({ psOpen: { ...(st.psOpen || {}), [k]: !op } })) }; });
     const any = L.some(([k]) => O[k]);
-    return { ps, psAllLbl: any ? 'Tout fermer' : 'Tout ouvrir', psAll: () => this.setState({ psOpen: any ? {} : Object.fromEntries(L.map(([k]) => [k, true])) }),
+    return { ps, psAllLbl: any ? 'Tout fermer' : 'Tout ouvrir', psReset: () => this.setState({ cfAsk: { title: 'Réinitialiser les prix et les charges ?', text: 'Remet les valeurs par défaut : transport par véhicule (Trafic 15 000, Sprinter 28 000, Master 25 000 sous 15 km), manœuvre 6 500 FCFA (+500 par étage), grille menuisier client, allers-retours suivants à 60 %, jours creux −10 %, dépassement 10 000 FCFA/h ; paie manœuvre 5 000 FCFA, grille de paie menuisier, vidange, assurance, véhicules, dette et objectif. Les salaires, employés, péages et devis déjà enregistrés ne changent pas.', yesLbl: 'Réinitialiser', yes: () => this.resetDefaults() } }),
+      psAll: () => this.setState({ psOpen: any ? {} : Object.fromEntries(L.map(([k]) => [k, true])) }),
       psNav: L.map(([k, l]) => ({ l, bg: O[k] ? '#F6D73C' : 'transparent', c: O[k] ? '#1E2023' : '#D5D9DE', go: () => { this.setState(st => ({ psOpen: { ...(st.psOpen || {}), [k]: true } })); setTimeout(() => { const el = document.querySelector('[data-ps="' + k + '"]'); if (el) this.scrollEl(el, 90); }, 80); } })) };
   }
   navVals(s) {
@@ -5852,7 +5948,7 @@ class Component extends DCLogic {
         restore: () => this.askConfirm('Restaurer ce point ?', 'Les données reviennent à l’état du ' + fd(p.at) + '. L’état actuel est gardé en point de restauration, et ce qui manquait part dans la corbeille.', 'Restaurer', async () => { await this.snapTake('Avant restauration'); const r = await this.hist('readonly', st => st.get(p.at)); if (!r) return; let d2; try { d2 = JSON.parse(r.json); } catch (e) { return; } this.save(d2); this.setState({ toast: 'Données restaurées au ' + fd(p.at) + '.' }); }),
         dl: async () => { const r = await this.hist('readonly', st => st.get(p.at)); if (r) this.dlJson('Demenag-Express-' + p.at.slice(0, 16).replace(/[:T]/g, '-') + '.json', JSON.stringify({ app: 'Demenag Express', version: 1, savedAt: p.at, data: JSON.parse(r.json) })); },
         del: () => this.askConfirm('Supprimer ce point de restauration ?', 'Le point du ' + fd(p.at) + ' sera effacé pour toujours.', 'Supprimer', async () => { await this.hist('readwrite', st => st.delete(p.at)); this.snapLoad(); }) })),
-      cfHas: !!s.cf, cf: s.cf || {}, cfNo: () => { const c0 = s.cf; this.setState({ cf: null }); if (c0 && c0.no) c0.no(); }, cfYes: () => { const c = s.cf; this.setState({ cf: null }); if (c && c.yes) c.yes(); } };
+      cfHas: !!(s.cf || s.cfAsk), cf: s.cf || s.cfAsk || {}, cfNo: () => { const c0 = s.cf || s.cfAsk; this.setState({ cf: null, cfAsk: null }); if (c0 && c0.no) c0.no(); }, cfYes: () => { const c = s.cf || s.cfAsk; this.setState({ cf: null, cfAsk: null }); if (c && c.yes) c.yes(); } };
   }
   save(data) { const prev0 = this.state.data; data = this.guardData(this.state.data, data);
     if (prev0 && data) { this._savedAt = Date.now(); if (!this._undoing && (data.corbeille || []).length > (prev0.corbeille || []).length) this._undo = { prev: prev0, at: Date.now() };
@@ -5867,7 +5963,7 @@ class Component extends DCLogic {
     catch (e) { this.setState({ fsErr: 'Écriture impossible : reconnectez le fichier.', fsNeed: true, fsOn: false }); }
     this._fsBusy = false; if (this._fsAgain) { this._fsAgain = false; this.fsQueue(); } }
   async fsAttach(fh) { this._fh = fh; try { await this.idb('readwrite', st => st.put(fh, 'main')); } catch (e) {} this.setState({ fsOn: true, fsNeed: false, fsName: fh.name, fsErr: '' }); this._fsLast = ''; await this.fsWrite(); }
-  async fsInit() { if (window.demxFS) { try { const t = await window.demxFS.load(); if (t) { const j = JSON.parse(t), d = j && j.data ? j.data : j; if (d && d.res) { this._dxLast = t; this.setState({ data: d }); try { localStorage.setItem(this.KEY, JSON.stringify(d)); } catch (e) {} } } } catch (e) {} this.setState({ fsOn: true, fsName: 'dossier de l’application' }); return; } if (!window.indexedDB || !window.showSaveFilePicker) return; try { const fh = await this.idb('readonly', st => st.get('main')); if (!fh) return; this._fh = fh;
+  async fsInit() { if (window.demxFS) { try { const t = await window.demxFS.load(); if (t) { const j = JSON.parse(t), d = j && j.data ? j.data : j; if (d && d.res) { this._dxLast = t; this.setState({ data: d }, () => setTimeout(() => this.tarifV2(), 300)); try { localStorage.setItem(this.KEY, JSON.stringify(d)); } catch (e) {} } } } catch (e) {} this.setState({ fsOn: true, fsName: 'dossier de l’application' }); return; } if (!window.indexedDB || !window.showSaveFilePicker) return; try { const fh = await this.idb('readonly', st => st.get('main')); if (!fh) return; this._fh = fh;
     const p = await fh.queryPermission({ mode: 'readwrite' }); this.setState({ fsName: fh.name, fsOn: p === 'granted', fsNeed: p !== 'granted' }); } catch (e) {} }
   fsVals() { const s = this.state, sup = !!window.showSaveFilePicker, at = s.fsAt ? s.fsAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
     if (window.demxFS) return { fsOn: false, fsNeedPerm: false, fsBtn: 'Ouvrir le dossier des données', fsTxt: 'Actif · enregistré automatiquement sur cet ordinateur' + (at ? ' · dernière sauvegarde à ' + at : ''), fsC: '#3DDC84', fsBd: '#3DDC84', fsConnect: () => window.demxFS.openFolder(), fsOpen: async () => { const t = await window.demxFS.importFile(); if (!t) return; try { const j = JSON.parse(t), d = j && j.data ? j.data : j; if (d && d.res) { this.save(d); this.setState({ toast: 'Données importées.' }); } } catch (e) { this.setState({ toast: 'Fichier non reconnu.' }); } }, fsReconnect: () => {}, fsStop: () => {} };
@@ -5885,7 +5981,7 @@ class Component extends DCLogic {
   effTier(p) { return p.km !== undefined && p.km !== '' && p.km !== null ? this.tierOfKm(+p.km) : +p.tier; }
   digits(p) { return (p || '').replace(/\D/g, '').slice(-9); }
   manSupp(et, asc, t) { et = +et || 0; if (et <= 0) return 0; return asc ? (t.manAsc ?? 500) : et * (t.manEtage ?? 500); }
-  montPx(k, t, o, s) { t = t || this.state.data.tarifs; const P = t.montageP || {}, v = P[k], imp = o === 'import'; let b; if (v && typeof v === 'object') b = +(imp ? v.import ?? v.local : v.local) || 0; else { b = +(v ?? t.montage) || 0; if (imp) b = Math.round(b * 1.5); }
+  montPx(k, t, o, s) { t = t || this.state.data.tarifs; const P = t.montageP || {}, v = P[k] != null ? P[k] : this.gridOf('cli')[k], imp = o === 'import'; let b; if (v && typeof v === 'object') b = +(imp ? v.import ?? v.local : v.local) || 0; else { b = +(v ?? t.montage) || 0; if (imp) b = Math.round(b * 1.5); }
     const it = this.INVCAT.flatMap(c => c.items).find(i => i.k === k); if (it && it.size && s != null && v && typeof v === 'object') { const e = (v.sz || {})[+s]; if (e && e[imp ? 'import' : 'local'] != null) return +e[imp ? 'import' : 'local'] || 0; b += Math.max(0, (+s || 0) - it.size.d) * (+(imp ? v.uI ?? v.u : v.u) || 0); } return b; }
   SZR = { salon: [1, 10], tablem: [2, 12], lit: [1, 4], matelas: [1, 4], armoire: [1, 8] };
   szRange(k) { const it = this.INVCAT.flatMap(c => c.items).find(i => i.k === k), base = this.SZR[k] || (it && it.size ? [1, it.size.d + 3] : [1, 1]); let mx = base[1];
@@ -5904,9 +6000,13 @@ class Component extends DCLogic {
     t = t || this.state.data.tarifs;
     const tier = this.effTier(p), v = this.VEH[p.vehicle];
     const unit = tier < 3 ? t[p.vehicle][tier] : (+p.custom || 0);
-    const lines = [{ label: `Transport ${v.short} · ${this.TIERS[tier].toLowerCase()}${tier === 3 ? (unit > 0 ? ', prix fixé' : ', prix à fixer') : ''} (aller-retour)`, qty: p.trips, pu: unit }];
+    const tl = `Transport ${v.short} · ${this.TIERS[tier].toLowerCase()}${tier === 3 ? (unit > 0 ? ', prix fixé' : ', prix à fixer') : ''}`, trN = Math.max(1, +p.trips || 1), deg = Math.max(10, Math.min(100, +(t.tripDeg ?? 100) || 100)) / 100;
+    const lines = trN > 1 && deg < 1 ? [{ label: tl + ' · 1er aller-retour', qty: 1, pu: unit }, { label: 'Allers-retours suivants (' + Math.round(deg * 100) + ' % du 1er)', qty: trN - 1, pu: Math.round(unit * deg / 500) * 500 }] : [{ label: tl + ' (aller-retour)', qty: trN, pu: unit }];
+    { const cx = +(t.creux || 0); if (cx > 0 && p.date && !p.noDate) { const dt = new Date(p.date + 'T12:00:00'), wd = dt.getDay(), dm = dt.getDate(); if (wd >= 1 && wd <= 4 && dm >= 6 && dm <= 24) { const tt = lines.reduce((a, l) => a + l.qty * l.pu, 0), rx = Math.round(tt * cx / 100 / 500) * 500; if (rx > 0) lines.push({ label: 'Remise jour creux (−' + cx + ' % sur le transport)', qty: 1, pu: -rx }); } } }
     const loc = p.bill === 'loc';
-    if (p.man && !loc) lines.push({ label: 'Manœuvre' + (p.inv ? ' (' + this.flLbl(p.inv.fEt, p.inv.fAsc) + ' → ' + this.flLbl(p.inv.tEt, p.inv.tAsc) + ')' : ''), qty: p.man, pu: +p.manPu > 0 ? +p.manPu : this.manPrice(p, t) }); this.menuLines(p, t).forEach(l => lines.push(l));
+    if (p.man && !loc) lines.push({ label: 'Manœuvre' + (p.inv ? ' (' + this.flLbl(p.inv.fEt, p.inv.fAsc) + ' → ' + this.flLbl(p.inv.tEt, p.inv.tAsc) + ')' : ''), qty: p.man, pu: +p.manPu > 0 ? +p.manPu : this.manPrice(p, t) });
+    if (p.man && !loc && +t.manOverPx > 0 && p.inv) { let le = null; try { le = this.laborEst(p); } catch (e) {} const oh = +t.manOverH || 8, q = le ? Math.ceil(Math.max(0, le.total / 60 - oh) * 2) / 2 : 0; if (q > 0) lines.push({ label: 'Manœuvres · heures au-delà de ' + oh + ' h (' + p.man + ' × ' + String(q).replace('.', ',') + ' h)', qty: p.man * q, pu: +t.manOverPx }); }
+    if ((!loc && !p.noMenu) || (loc && p.locMenu)) this.menuLines(p, t).forEach(l => lines.push(l));
     if (p.inv && p.inv.stairs === 'balcon') lines.push({ label: 'Supplément passage par le balcon' + (+p.inv.balcPx > 0 ? '' : ' (à fixer)'), qty: 1, pu: +p.inv.balcPx || 0 });
     const pgs = (this.state && this.state.data && this.state.data.peages) || [];
     const tolls = []; pgs.forEach(pg => { const n = +((p.peages || {})[pg.id]) || 0; if (n) { const pu = this.pgPrice(pg, p.vehicle); tolls.push({ label: (/^péage/i.test(pg.name) ? pg.name : 'Péage · ' + pg.name) + ' (' + v.tag + ')', qty: n, pu, amount: n * pu }); } });
@@ -6031,7 +6131,7 @@ class Component extends DCLogic {
     delete base.devis;
     const d = { ...this.blankD(), ...base, resId: r.id, num: r.ref || base.num || '' };
     this.lastGeo.dfrom = this.lastGeo.dto = undefined;
-    this.reset('d', d, { atab: 'devis', dMode: null, dSec: {}, invOpen: false, toast: '', pin: { ...this.state.pin, d: 'from' } });
+    this.reset('d', d, { atab: 'devis', dMode: null, dSec: {}, invOpen: true, toast: '', pin: { ...this.state.pin, d: 'from' } });
     window.scrollTo({ top: 0 });
   }
   TPLF = "Bonjour {nom},\n\nVoici votre devis final Demenag Express n° {num} :\n- Date : {date}{heure}\n- Trajet : {trajet}\n- Véhicule : {vehicule}, {voyages}\n- Montant total : {total}\n\nCe montant est définitif.\nJe vous envoie le PDF du devis final juste après ce message.\n\nMerci pour votre confiance.";
@@ -6089,7 +6189,7 @@ class Component extends DCLogic {
   dFin(s, d) { const r0 = d && d.resId && (s.data.res || []).find(r => r.id === d.resId); return (s.dMode || (r0 && r0.status === 'termine' ? 'final' : 'prov')) === 'final'; }
   commitDevis(mode) {
     const s = this.state, d = { ...(this.form.d || s.d) };
-    if (!d.name.trim()) { this.setState({ toast: 'Renseignez le nom du client.' }); return false; }
+    if (!d.name.trim()) { this.setState({ toast: 'Renseignez le nom du client.' }); return false; } { const fo = this.fitOut(d); if (fo.length && !d.fitAck && !this.isManual(d)) { this.setState({ cfAsk: { title: fo.length + (fo.length > 1 ? ' objets ne rentrent pas' : ' objet ne rentre pas') + ' dans le ' + ((this.VEH[d.vehicle] || {}).tag || 'véhicule'), text: fo.join(' · ') + '. Choisissez un autre véhicule ou le démontage. Enregistrer quand même ?', yesLbl: 'Enregistrer quand même', yes: () => this.upd('d', { fitAck: true }, () => this.commitDevis(mode)) } }); return false; } }
     if (d.noDate && !d.month) { this.setState({ toast: 'Sélectionnez au moins le mois du déménagement.' }); return false; }
     if (mode === 'final' && d.inv && d.inv.stairs === 'balcon' && !(+d.inv.balcPx > 0)) { this.setState({ toast: 'Passage par le balcon : fixez le supplément avant le devis final.' }); return false; }
     if (mode === 'final' && d.inv && d.inv.stairs === 'verif') setTimeout(() => this.setState({ toast: 'Attention : le passage par l’escalier n’est pas encore confirmé avec le client.' }), 900);
@@ -6098,7 +6198,7 @@ class Component extends DCLogic {
     if (d.noDate) d.date = '';
     const c = this.calc(d);
     let res = [...s.data.res];
-    const core = { source: d.source || '', trips: d.trips, remise: d.remise, remiseType: d.remiseType || 'fcfa', remiseWhy: d.remiseWhy || '', custom: d.custom, name: d.name, phone: d.phone, vehicle: d.vehicle, from: d.from, to: d.to, fromLL: d.fromLL, toLL: d.toLL, km: d.km, tier: c.tier, date: d.date, noDate: !!d.noDate && !d.date, month: d.noDate ? d.month : (d.date || '').slice(0, 7), start: d.start, man: d.man, bureau: d.bureau, armoire: d.armoire, lit: d.lit, notes: d.notes, inv: d.inv, peages: d.peages, qc: d.qc, heatOff: !!d.heatOff, heatRest: +d.heatRest || 0, calcMode: d.calcMode || 'auto', legMan: +d.legMan || 0, trafOff: !!d.trafOff, bill: d.bill || 'classic', otMin: +d.otMin || 0, kit: Array.isArray(d.kit) ? d.kit : null, blk: d.blk && +d.blk.cmL > 0 ? { cmL: +d.blk.cmL, cmW: +d.blk.cmW } : { cmL: this.blkSize().cmL, cmW: this.blkSize().cmW } };
+    const core = { source: d.source || '', trips: d.trips, remise: d.remise, remiseType: d.remiseType || 'fcfa', remiseWhy: d.remiseWhy || '', custom: d.custom, name: d.name, phone: d.phone, vehicle: d.vehicle, from: d.from, to: d.to, fromLL: d.fromLL, toLL: d.toLL, km: d.km, tier: c.tier, date: d.date, noDate: !!d.noDate && !d.date, month: d.noDate ? d.month : (d.date || '').slice(0, 7), start: d.start, man: d.man, bureau: d.bureau, armoire: d.armoire, lit: d.lit, notes: d.notes, inv: d.inv, peages: d.peages, qc: d.qc, heatOff: !!d.heatOff, heatRest: +d.heatRest || 0, calcMode: d.calcMode || 'auto', legMan: +d.legMan || 0, trafOff: !!d.trafOff, locMenu: !!d.locMenu, noMenu: !!d.noMenu, fitAck: !!d.fitAck, bill: d.bill || 'classic', otMin: +d.otMin || 0, kit: Array.isArray(d.kit) ? d.kit : null, blk: d.blk && +d.blk.cmL > 0 ? { cmL: +d.blk.cmL, cmW: +d.blk.cmW } : { cmL: this.blkSize().cmL, cmW: this.blkSize().cmW } };
     const isNew = !d.resId;
     if (isNew) {
       const id = 'r' + Date.now();
@@ -6249,7 +6349,7 @@ class Component extends DCLogic {
             doc.text(doc.splitTextToSize(T('Chaque minute au-delà de la fin prévue est facturée en supplément : ' + this.fmt(pm) + ' par minute (' + this.fmt(c0.otH) + ' par heure). Le temps compte jusqu’à la fin du déchargement. Prévision du total à payer :'), W - 2 * M - 10), M + 5, y + 12.5);
             let yy = y + 24; doc.setFillColor(30, 32, 35); doc.rect(M + 4, yy - 4.3, W - 2 * M - 8, 6.4, 'F'); doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(255, 255, 255);
             doc.text('FIN DU DÉMÉNAGEMENT', M + 7, yy); doc.text('SUPPLÉMENT', M + 105, yy, { align: 'right' }); doc.text(T('TOTAL À PAYER'), W - M - 7, yy, { align: 'right' }); yy += rh;
-            const toM = s => { const m = String(s).match(/(\d{1,2}):(\d{2})/); return m ? +m[1] * 60 + +m[2] : null; }, e0 = toM(LE.endLbl), nx = /lendemain|J2/.test(LE.endLbl);
+            const toM = s => { const m = String(s).match(/(\d{1,2}):(\d{2})/); return m ? +m[1] * 60 + +m[2] : null; }, e0 = toM(LE.endLbl), nx = /lendemain|J\d/.test(LE.endLbl);
             rows.forEach((mn, i) => { if (i % 2) { doc.setFillColor(246, 247, 248); doc.rect(M + 4, yy - 4.3, W - 2 * M - 8, rh, 'F'); }
               const t2 = e0 == null ? '' : (e0 + mn) % 1440, lbl = mn ? (e0 == null ? '+' + this.fDur(mn) : this.fT(t2) + ((nx || e0 + mn >= 1440) ? ' (lendemain)' : '') + '  ·  +' + this.fDur(mn)) : 'À l’heure prévue (' + LE.endLbl + ')';
               doc.setFont('helvetica', mn ? 'normal' : 'bold'); doc.setFontSize(9.5); doc.setTextColor(30, 32, 35); doc.text(T(lbl), M + 7, yy);
@@ -6304,7 +6404,7 @@ class Component extends DCLogic {
     [[11, 107, 53], [246, 215, 60], [227, 38, 47]].forEach((col, i) => { doc.setFillColor(...col); doc.rect(i * W / 3, 40, W / 3, 1.4, 'F'); });
     y = 49;
     const cg = 4, cw3 = (W - 2 * M - 2 * cg) / 3, ch = 23;
-    [['CLIENT', d.name || '-', d.phone || ''], ['DATE PRÉVUE', d.date ? this.fdate(d.date) : (d.month ? this.fmonth(d.month) : '-'), src.time || (d.start ? 'Début ' + d.start : '')], ['VÉHICULE', v.short, c.loc ? 'Location avec chauffeur' : 'Déménagement complet']].forEach(([lb, v1, v2], i) => {
+    [['CLIENT', d.name || '-', d.phone || ''], ['DATE PRÉVUE', d.date ? this.fdate(d.date) : (d.month ? this.fmonth(d.month) : '-'), src.time || (d.start ? 'Début ' + d.start : '')], ['VÉHICULE', v.short, c.loc ? 'Formule Économique · location avec chauffeur' : d.noMenu ? 'Formule Standard' : 'Formule Complète']].forEach(([lb, v1, v2], i) => {
       const x = M + i * (cw3 + cg); doc.setFillColor(...LG); doc.roundedRect(x, y, cw3, ch, 2.5, 2.5, 'F');
       doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...GR); doc.text(T(lb), x + 5, y + 7);
       doc.setFontSize(11); doc.setTextColor(...DK); doc.text(doc.splitTextToSize(T(v1), cw3 - 9)[0] || '', x + 5, y + 13.5);
@@ -6359,23 +6459,18 @@ class Component extends DCLogic {
       else if (I0.stairs === 'balcon') CR.push({ ok: 0, cap: 'PASSAGE', main: 'Par le balcon', sub: +I0.balcPx > 0 ? 'Supplément de ' + this.fmt(+I0.balcPx) + ' inclus dans ce devis.' : 'Supplément à fixer.' });
       else if (I0.stairs === 'non') CR.push({ ok: 0, cap: 'PASSAGE', main: 'Démontage ou monte-meuble', sub: 'Certains objets ne passent pas par l’escalier.' });
       else if (I0.stairs === 'verif') CR.push({ ok: 0, cap: 'PASSAGE', main: 'À confirmer', sub: 'Passage par l’escalier à vérifier avec le client.' });
-      if (CR.length) { const gp = 5, n = CR.length, cw = (W - 2 * M - gp * (n - 1)) / n;
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); const subs = CR.map(x => doc.splitTextToSize(T(x.sub), cw - 19)), ch = 17 + Math.max(...subs.map(s => s.length)) * 3.8;
-        if (y + ch + 9 > 278) { doc.addPage(); y = 24; }
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...DK); doc.text(T('CONDITIONS DE CHARGEMENT'), M, y + 3); doc.setDrawColor(...YL); doc.setLineWidth(0.8); doc.line(M, y + 5, M + 14, y + 5); y += 9;
-        CR.forEach((x, i) => { const cx = M + i * (cw + gp), G = x.ok ? [30, 140, 80] : [214, 140, 20];
-          if (x.ok) doc.setFillColor(236, 248, 241); else doc.setFillColor(255, 246, 224); doc.roundedRect(cx, y, cw, ch, 3, 3, 'F');
-          doc.setFillColor(...G); doc.roundedRect(cx, y, 2.2, ch, 1.1, 1.1, 'F');
-          const ix = cx + 10, iy = y + 9; doc.circle(ix, iy, 3.6, 'F');
-          if (x.ok) { doc.setDrawColor(255, 255, 255); doc.setLineWidth(0.8); doc.line(ix - 1.7, iy, ix - 0.4, iy + 1.3); doc.line(ix - 0.4, iy + 1.3, ix + 1.9, iy - 1.4); }
-          else { doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(255, 255, 255); doc.text('!', ix, iy + 1.3, { align: 'center' }); }
-          doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(...G); doc.text(T(x.cap), cx + 17, y + 6.5);
-          doc.setFontSize(11); doc.setTextColor(...DK); doc.text(T(x.main), cx + 17, y + 11.8);
-          doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(80, 86, 92); doc.text(subs[i], cx + 17, y + 16.5); });
-        y += ch + 2.5; doc.setFont('helvetica', 'bold'); doc.setFontSize(9); const wl = doc.splitTextToSize(T('Ces conditions doivent être respectées le jour du déménagement. Sinon, le déménagement n’aura pas lieu.'), W - 2 * M - 14), wh = wl.length * 4.2 + 5;
-        if (y + wh > 284) { doc.addPage(); y = 24; } doc.setFillColor(...DK); doc.roundedRect(M, y, W - 2 * M, wh, 2.5, 2.5, 'F'); doc.setFillColor(...YL); doc.circle(M + 6, y + wh / 2, 2.4, 'F'); doc.setTextColor(...DK); doc.setFontSize(8.5); doc.text('!', M + 6, y + wh / 2 + 1.1, { align: 'center' });
-        doc.setFontSize(9); doc.setTextColor(255, 255, 255); doc.text(wl, M + 11, y + 4.8);
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(...DK); y += wh + 5; } }
+      if (CR.length) { const n = CR.length, pad = 4, cw = (W - 2 * M - pad * 2) / n, bh = 13;
+        CR.forEach(x => { if (x.cap === 'PASSAGE' && /balcon/i.test(x.main) && /Supplément de/.test(x.sub)) x.main += ' · +' + x.sub.match(/Supplément de ([^ ]+(?: [^ ]+)*?) inclus/)[1]; });
+        if (y + bh > 280) { doc.addPage(); y = 24; }
+        doc.setFillColor(246, 247, 248); doc.roundedRect(M, y, W - 2 * M, bh, 2, 2, 'F'); doc.setFillColor(...YL); doc.roundedRect(M, y, 1.6, bh, 0.8, 0.8, 'F');
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(...DK); doc.text(T('CONDITIONS DE CHARGEMENT'), M + pad + 1, y + 4.4);
+        doc.setFontSize(7); doc.setTextColor(180, 40, 45); doc.text(T('À respecter, sinon le déménagement n’aura pas lieu.'), W - M - pad, y + 4.4, { align: 'right' });
+        CR.forEach((x, i) => { const cx = M + pad + 1 + i * cw, G = x.ok ? [30, 140, 80] : [214, 140, 20], iy = y + 9.4;
+          doc.setFillColor(...G); doc.circle(cx + 1.9, iy - 0.2, 1.9, 'F');
+          if (x.ok) { doc.setDrawColor(255, 255, 255); doc.setLineWidth(0.5); doc.line(cx + 1.0, iy - 0.2, cx + 1.7, iy + 0.5); doc.line(cx + 1.7, iy + 0.5, cx + 2.9, iy - 0.9); }
+          else { doc.setFont('helvetica', 'bold'); doc.setFontSize(6.5); doc.setTextColor(255, 255, 255); doc.text('!', cx + 1.9, iy + 0.6, { align: 'center' }); }
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(8.3); doc.setTextColor(...DK); doc.text(doc.splitTextToSize(T(x.main), cw - 7)[0], cx + 5, iy + 0.6); });
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(...DK); y += bh + 3; } }
     const hasInv = !!d.inv, hasObj = hasInv && this.normInv(d.inv).lines.some(l => l.q > 0);
     if (!hasInv && c.tolls && c.tolls.length) { doc.setFont('helvetica', 'bold'); doc.text(T('Péages à la charge du client (non inclus) : ' + this.fmt(c.tollTot) + ' - détail en page annexe.'), M, y); doc.setFont('helvetica', 'normal'); y += 7; }
     const pNote = hasInv ? '' : this.fullNote(d);
@@ -6383,7 +6478,7 @@ class Component extends DCLogic {
     doc.setTextColor(90, 97, 104); doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
     const legal = final ? "Devis final établi sur la base du nombre réel d'allers-retours effectués (" + d.trips + "), au tarif de la tranche de distance appliquée."
       : "Devis temporaire, calculé sur " + d.trips + " aller(s)-retour(s) estimé(s). Le transport est facturé par aller-retour effectué : le devis final, basé sur le nombre réel d'allers-retours, sera envoyé par Demenag Express à la fin du déménagement.";
-    const lg = doc.splitTextToSize(T(legal), W - 2 * M); doc.text(lg, M, y); y += lg.length * 4.4 + 5;
+    doc.setFontSize(8); const lg = doc.splitTextToSize(T(legal), W - 2 * M); doc.text(lg, M, y); y += lg.length * 3.6 + 3.5;
     { const P = this.payCfg(), pt = this.payTxt(); let qi = null;
       if (pt && P.wave && P.qr) qi = await new Promise(ok => { const im = new Image(); im.onload = () => ok({ url: P.qr, w: im.naturalWidth, h: im.naturalHeight }); im.onerror = () => ok(null); im.src = P.qr; });
       const LGc = [244, 245, 247], card = (x, y0, w, H) => { doc.setFillColor(...LGc); doc.roundedRect(x, y0, w, H, 2.5, 2.5, 'F'); };
@@ -6393,21 +6488,21 @@ class Component extends DCLogic {
         doc.setDrawColor(174, 180, 187); doc.setLineWidth(0.3); doc.line(x0, y0 + H - 7, x0 + zw, y0 + H - 7);
         doc.setDrawColor(215, 219, 224); doc.line(x0 + zw + gw / 2, y0 + 5, x0 + zw + gw / 2, y0 + H - 5);
         doc.setFont('helvetica', 'bold'); const l3 = doc.splitTextToSize(T('CACHET DEMENAG EXPRESS'), zw); doc.text(l3, xb, y0 + 6);
-        const top = y0 + 6 + l3.length * 3.3 + 1.5, sz = Math.max(18, Math.min(28, zw - 2, y0 + H - 3 - top)), sx = xb + (zw - sz) / 2;
+        const top = y0 + 6 + l3.length * 3.3 + 1.5, sz = Math.max(11, Math.min(28, zw - 2, y0 + H - 3 - top)), sx = xb + (zw - sz) / 2;
         if (stamp) doc.addImage(stamp.url, 'PNG', sx, top, sz, sz); if (sign) { const sw = sz * 0.85, sh = sw * sign.h / sign.w; doc.addImage(sign.url, 'PNG', sx - sw * 0.3, top + sz / 2 - sh / 2 + 2, sw, sh); } };
       const drawSig = (x0, y0, x1, H) => { doc.setTextColor(90, 97, 104); doc.setFont('helvetica', 'bold'); doc.setFontSize(8);
         const half = H / 2; doc.text(T('SIGNATURE DU CLIENT · BON POUR ACCORD'), x0, y0 + 6); doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.text(T('Écrire « Lu et approuvé », nom et date'), x0, y0 + 10.5); doc.setFont('helvetica', 'bold'); doc.setDrawColor(174, 180, 187); doc.setLineWidth(0.3); doc.line(x0, y0 + half - 4, x1, y0 + half - 4);
         const yc = y0 + half + 2; doc.text('CACHET ET SIGNATURE DEMENAG EXPRESS', x0, yc + 3); const sz = Math.max(26, Math.min(40, H - half - 8)), sx = x1 - sz, sy = yc + 5;
         if (stamp) doc.addImage(stamp.url, 'PNG', sx, sy, sz, sz); if (sign) { const sw = sz * 0.85, sh = sw * sign.h / sign.w; doc.addImage(sign.url, 'PNG', sx - sw * 0.5, sy + sz / 2 - sh / 2 + 3, sw, sh); } };
       if (pt) {
-        let H = Math.min(108, 285 - y); if (H < 44) { doc.addPage(); y = 24; H = 108; }
+        let H = Math.min(108, 286 - y); if (H < 24) { doc.addPage(); y = 24; H = 108; }
         if (H < 70) { const tw = W - 2 * M, pw = tw * 0.58, sw2 = tw - pw - 6, bx = M, sx3 = M + pw + 6; card(bx, y, pw, H); card(sx3, y, sw2, H);
-          let qw = 0, qh = 0; if (qi) { qh = H - 8; qw = qh * qi.w / qi.h; const mx = pw * 0.48; if (qw > mx) { qw = mx; qh = qw * qi.h / qi.w; } }
+          let qw = 0, qh = 0; if (qi) { qh = H - 5; qw = qh * qi.w / qi.h; const mx = pw * 0.48; if (qw > mx) { qw = mx; qh = qw * qi.h / qi.w; } }
           const txW = pw - (qi ? qw + 16 : 10);
           doc.setTextColor(90, 97, 104); doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.text('MODE DE PAIEMENT', bx + 5, y + 6);
           doc.setTextColor(30, 32, 35); doc.setFontSize(11); const pl2 = doc.splitTextToSize(T(pt), txW); doc.text(pl2.slice(0, 2), bx + 5, y + 12.5);
           if (qi) { doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(90, 97, 104); doc.text(doc.splitTextToSize(T('Scannez ce QR code avec l’application Wave pour payer Demenag Express.'), txW), bx + 5, y + 14 + Math.min(2, pl2.length) * 4.6);
-            const qx = bx + pw - qw - 5, qy = y + (H - qh) / 2; doc.setFillColor(255, 255, 255); doc.roundedRect(qx - 2, qy - 2, qw + 4, qh + 4, 2, 2, 'F'); doc.addImage(qi.url, 'PNG', qx, qy, qw, qh); }
+            const qx = bx + pw - qw - 4, qy = y + (H - qh) / 2; doc.setFillColor(255, 255, 255); doc.roundedRect(qx - 1, qy - 1, qw + 2, qh + 2, 1.5, 1.5, 'F'); doc.addImage(qi.url, 'PNG', qx, qy, qw, qh); }
           drawSigC(sx3 + 5, y, W - M - 5, H); y += H + 6;
         } else {
         const colW = (W - 2 * M - 6) / 2, bx = M, sx2 = M + colW + 6;
@@ -6602,10 +6697,10 @@ class Component extends DCLogic {
 
     const d = s.d, dc = this.calc(d);
     const cdVehicles = vehicles.map(v => { const id = Object.keys(this.VEH).find(k => this.VEH[k].short === v.short) || v.id, sel = d.vehicle === id;
-      return { ...v, pick: () => { const c0 = this.form.d || this.state.d, tr = this.isManual(c0) ? 0 : this.estTrips(c0.inv, id); this.upd('d', { vehicle: id, ...(tr ? { trips: tr } : {}) }); }, border: sel ? Y : '#3B4046', bg: sel ? '#30343A' : '#1E2023', sel }; });
+      return { ...v, pick: () => { const c0 = this.form.d || this.state.d, tr = this.isManual(c0) ? 0 : this.estTrips(c0.inv, id); this.upd('d', { vehicle: id, fitAck: false, ...(tr ? { trips: tr } : {}) }); }, border: sel ? Y : '#3B4046', bg: sel ? '#30343A' : '#1E2023', sel }; });
     const cdVeh = cdVehicles.find(v => v.sel) || cdVehicles[0];
     const dVehicles = Object.keys(this.VEH).map(id => { const sel = d.vehicle === id;
-      return { short: this.VEH[id].tag, pick: () => { const c0 = this.form.d || this.state.d, tr = this.isManual(c0) ? 0 : this.estTrips(c0.inv, id); this.upd('d', { vehicle: id, ...(tr ? { trips: tr } : {}) }, () => this.drawPeages('d')); }, bg: sel ? Y : 'transparent', color: sel ? D : '#fff', border: sel ? Y : '#3B4046' }; });
+      return { short: this.VEH[id].tag, pick: () => { const c0 = this.form.d || this.state.d, tr = this.isManual(c0) ? 0 : this.estTrips(c0.inv, id); this.upd('d', { vehicle: id, fitAck: false, ...(tr ? { trips: tr } : {}) }, () => this.drawPeages('d')); }, bg: sel ? Y : 'transparent', color: sel ? D : '#fff', border: sel ? Y : '#3B4046' }; });
     const tarifRows = Object.keys(this.VEH).map(id => ({ name: this.VEH[id].short + ' · par aller-retour',
       tiers: [0, 1, 2].map(i => ({ label: this.TIERS[i], name: `t.${id}.${i}`, val: t[id][i] })) }));
     const lgC = s.lg.tab === 'client';
@@ -6646,8 +6741,8 @@ class Component extends DCLogic {
         snSpaceLbl: isC ? 'Voir mon espace client' : 'Suivre ma demande (Mon compte)', snSpace: () => { if (isC) this.setState({ view: 'client' }); else this.setState(st => ({ view: 'login', lg: { ...st.lg, tab: 'client', phone: r.phone || '' } })); window.scrollTo({ top: 0 }); },
         snHome: () => { this.setState({ view: 'home' }); window.scrollTo({ top: 0 }); }, snWa: this.waUrl((s.data.wa || {}).biz || '', 'Bonjour Demenag Express, je viens d’envoyer ma demande ' + (r.ref || '') + '.') }; })(),
       isCD: s.view === 'cdevis', cdBackLbl: s.user && s.user.role === 'client' ? 'Retour à mon espace' : 'Retour à l’accueil', cdVehicles, cdVeh, notCD: s.view !== 'cdevis', showAdmSec: s.view === 'admin' || s.view === 'cdevis', cdAdm: !(s.user && s.user.role === 'client'), cdCli: !!(s.user && s.user.role === 'client'),
-      goCD: () => { const u2 = s.user || {}; this.lastGeo.dfrom = this.lastGeo.dto = undefined; this.clearMap('d'); this.reset('d', { ...this.blankD(), name: u2.name && u2.name !== u2.phone ? u2.name : '', phone: u2.phone || '' }, { view: 'cdevis', atab: 'devis', dMode: 'prov', dSec: { client: true }, invOpen: false, toast: '' }); window.scrollTo({ top: 0 }); },
-      goCDb: () => { const u2 = s.user || {}, veh = s.b.vehicle; this.lastGeo.dfrom = this.lastGeo.dto = undefined; this.clearMap('d'); this.reset('d', { ...this.blankD(), vehicle: veh, name: u2.role === 'client' && u2.name !== u2.phone ? u2.name : '', phone: u2.role === 'client' ? u2.phone : '' }, { view: 'cdevis', atab: 'devis', dMode: 'prov', dSec: { client: true }, invOpen: false, toast: '' }); window.scrollTo({ top: 0 }); },
+      goCD: () => { const u2 = s.user || {}; this.lastGeo.dfrom = this.lastGeo.dto = undefined; this.clearMap('d'); this.reset('d', { ...this.blankD(), name: u2.name && u2.name !== u2.phone ? u2.name : '', phone: u2.phone || '' }, { view: 'cdevis', atab: 'devis', dMode: 'prov', dSec: { client: true }, invOpen: true, toast: '' }); window.scrollTo({ top: 0 }); },
+      goCDb: () => { const u2 = s.user || {}, veh = s.b.vehicle; this.lastGeo.dfrom = this.lastGeo.dto = undefined; this.clearMap('d'); this.reset('d', { ...this.blankD(), vehicle: veh, name: u2.role === 'client' && u2.name !== u2.phone ? u2.name : '', phone: u2.role === 'client' ? u2.phone : '' }, { view: 'cdevis', atab: 'devis', dMode: 'prov', dSec: { client: true }, invOpen: true, toast: '' }); window.scrollTo({ top: 0 }); },
       cdBack: () => { this.setState({ view: s.user && s.user.role === 'client' ? 'client' : 'home', toast: '' }); window.scrollTo({ top: 0 }); },
       loggedIn: !!u, notLogged: !u, userLabel: u ? (u.role === 'admin' ? 'Administration' : 'Mon espace') : '',
       goHome: go('home'), goLogin: go('login'), goBook,
@@ -6658,6 +6753,7 @@ class Component extends DCLogic {
       bVeh: vehicles.find(x => x.short === this.VEH[s.b.vehicle].short),
       vehicles, tiers, tManoeuvre: 'dès ' + this.fmt(t.manoeuvre), tMontage: this.fmt(t.montage),
       manPuAuto: (() => { try { return this.fmt(this.manPrice(this.form.d || s.d || {})); } catch (e) { return ''; } })(),
+      tarMnReset: () => this.setState({ cfAsk: { title: 'Revenir à la grille par défaut ?', text: 'Les prix client du démontage / montage reviennent à la grille d’origine (paie du menuisier + 30 %) et le manœuvre à 6 500 FCFA. Les devis déjà enregistrés gardent leurs prix.', yesLbl: 'Rétablir', yes: () => { this.save({ ...this.state.data, tarifs: { ...this.state.data.tarifs, montageP: this.gridOf('cli'), manoeuvre: 6500 } }); this.setState({ toast: 'Grille client rétablie.' }); } } }),
       tarMn: this.mnItems().map((i, ix, A) => { const T0 = this.state.data.tarifs, v0 = (T0.montageP || {})[i.k], ob = v0 && typeof v0 === 'object' ? v0 : {}; const up = o => ev => { const t2 = { ...this.state.data.tarifs }, P = t2.montageP || {}, v = P[i.k], cur = { ...(v && typeof v === 'object' ? v : {}), local: this.montPx(i.k, t2, 'local'), import: this.montPx(i.k, t2, 'import') }; t2.montageP = { ...P, [i.k]: { ...cur, [o]: Math.max(0, +ev.target.value || 0) } }; this.save({ ...this.state.data, tarifs: t2 }); };
         const sz = i.size, rg = sz ? this.szRange(i.k) : null;
         const scen = rg ? Array.from({ length: rg[1] - rg[0] + 1 }, (_, j) => { const n = rg[0] + j, upS = o => ev => { const t2 = { ...this.state.data.tarifs }, P = t2.montageP || {}, v = P[i.k], cur = { ...(v && typeof v === 'object' ? v : {}), local: this.montPx(i.k, t2, 'local'), import: this.montPx(i.k, t2, 'import') }, Z = { ...(cur.sz || {}) }; Z[n] = { local: this.montPx(i.k, t2, 'local', n), import: this.montPx(i.k, t2, 'import', n), ...(Z[n] || {}), [o]: Math.max(0, +ev.target.value || 0) }; t2.montageP = { ...P, [i.k]: { ...cur, sz: Z } }; this.save({ ...this.state.data, tarifs: t2 }); };
@@ -6766,7 +6862,7 @@ class Component extends DCLogic {
       saveDevis: () => this.commitDevis('prov'), saveProv: () => this.commitDevis('prov'),
       sendProv: () => { if (this.commitDevis('prov')) this.setState({ toast: 'Devis provisoire envoyé dans l’espace client.' }); },
       sendProvWa: e => { const kd = this.dFin(s, d) ? 'final' : 'prov'; try { const r0 = s.data.res.find(x => x.id === d.resId); this.pdf({ ...d, ref: r0 ? r0.ref : '', time: r0 ? r0.time : '' }, kd); } catch (e0) {} const ph = this.waNum(d.phone); if (ph.length < 10) { e.preventDefault(); return this.setState({ toast: 'Numéro WhatsApp du client invalide.' }); } if (!this.commitDevis(kd)) e.preventDefault(); },
-      dSecV: (() => { const o = {}; ['client', 'trajet', 'opts'].forEach(k => { const op = !!(s.dSec || {})[k]; o[k] = { open: op, rot: op ? '0deg' : '-90deg', toggle: () => this.setState(st => ({ dSec: { ...(st.dSec || {}), [k]: !op } })) }; }); return o; })(), sendFinal: () => this.commitDevis('final'),
+      stp: this.stepVals(s, d), dSecV: (() => { const o = {}; ['client', 'trajet', 'opts'].forEach(k => { const op = k === 'opts' ? !!(s.dSec || {})[k] : (s.dSec || {})[k] !== false; o[k] = { open: op, rot: op ? '0deg' : '-90deg', toggle: () => this.setState(st => ({ dSec: { ...(st.dSec || {}), [k]: !op } })) }; }); return o; })(), sendFinal: () => this.commitDevis('final'),
       sendFinalWa: e => { try { const r0 = s.data.res.find(x => x.id === d.resId); this.pdf({ ...d, ref: r0 ? r0.ref : '', time: r0 ? r0.time : '' }, 'final'); } catch (e0) {} const ph = this.waNum(d.phone); if (ph.length < 10) { e.preventDefault(); return this.setState({ toast: 'Numéro WhatsApp du client invalide.' }); } if (!this.commitDevis('final')) e.preventDefault(); },
       dIsNew: !resRef, dIsExisting: !!resRef, dShowStage: s.view !== 'cdevis', dRem: (() => { const r = d.resId && s.data.res.find(x => x.id === d.resId), off = why => ({ hasRem: false, off: true, why });
         if (!r) return off('Enregistrez le devis pour envoyer un rappel');
@@ -6778,7 +6874,7 @@ class Component extends DCLogic {
       dWaUrl: this.waUrl(d.phone, this.waMsg(d, this.dFin(s, d) ? 'final' : 'prov')),
       ...(() => { const r = d.resId && s.data.res.find(x => x.id === d.resId), pz = r && r.pz; if (!pz) return { pzHas: false }; const dd = new Date(pz.at);
         return { pzHas: true, pzTxt: 'Tarifs figés au ' + dd.toLocaleDateString('fr-FR') + ' : transport, manœuvres, menuiserie, péages et paies restent ceux de cette date. Les volumes des véhicules suivent les paramètres actuels.', pzApply: () => { const D = this.state.data, snap = this.pzSnap(D); this.save({ ...D, res: D.res.map(x => x.id === r.id ? { ...x, pz: snap } : x) }); this.setState({ toast: 'Tarifs actuels appliqués à ' + (r.ref || 'cette réservation') + '.' }); } }; })(),
-      ...(() => { const F = s.atab === 'devis' && s.view === 'admin' ? this.fatigue(d) : null; return F ? { fatHas: true, fatPct: F.pct, fatSc: F.sc + ' %', fatLvl: 'Fatigue ' + F.lvl.toLowerCase(), fatC: F.c, fatRows: F.rows, fatRec: F.rec } : { fatHas: false }; })(),
+      ...(() => { const F = s.atab === 'devis' && s.view === 'admin' ? this.fatigue(d) : null; return F ? { fatHas: true, fatPct: F.pct, fatSc: F.sc + ' %', fatLvl: 'Fatigue ' + F.lvl.toLowerCase(), fatC: F.c, fatRows: F.rows, fatRec: F.rec.filter(r => !F.sol.some(s2 => s2.t === r.t)), fatGauges: F.gauges, fatSol: F.sol, fatHasSol: F.hasSol } : { fatHas: false }; })(),
       ...this.qSetVals(),
       ...(() => { const b = this.blkSize(), set = p => this.save({ ...this.state.data, blk: { L: b.cmL, W: b.cmW, ...p } });
         return { blkL: b.cmL, blkW: b.cmW, blkArea: (b.L * b.W).toFixed(2).replace('.', ',') + ' m² par serviette', blkIsDef: b.def, blkNotDef: !b.def,
@@ -6801,6 +6897,7 @@ class Component extends DCLogic {
       tarifRows, tar: t
     };
   }
+  state = this.init();
 }
 </script>
 </body>

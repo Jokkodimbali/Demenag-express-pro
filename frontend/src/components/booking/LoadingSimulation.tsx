@@ -596,6 +596,30 @@ export function LoadingSimulation({
                                 }}
                               />
                             </div>
+                            {details.fatigue.gauges.map((gauge) => (
+                              <div key={gauge.label} className="loading-simulation-fatigue-gauge">
+                                <div className="loading-simulation-fatigue-rows">
+                                  <span>{gauge.label}</span>
+                                  <strong>{gauge.score} %</strong>
+                                </div>
+                                <div className="loading-simulation-fatigue-track">
+                                  <span
+                                    style={{
+                                      width: `${Math.min(100, gauge.score)}%`,
+                                      background:
+                                        gauge.score >= 100
+                                          ? '#FF5A5F'
+                                          : gauge.score >= 80
+                                            ? '#FF9F5A'
+                                            : gauge.score >= 50
+                                              ? '#FFD23F'
+                                              : '#3DDC84',
+                                    }}
+                                  />
+                                </div>
+                                <small>{gauge.detail}</small>
+                              </div>
+                            ))}
                             <div className="loading-simulation-fatigue-rows">
                               {details.fatigue.rows.map(([label, value]) => (
                                 <div key={label}>

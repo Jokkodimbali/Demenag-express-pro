@@ -41,6 +41,8 @@ export function useBookingCard({
     discount: last?.price.discountValue ?? last?.price.discount ?? 0,
     discountType: last?.price.discountType ?? 'fcfa',
     discountReason: last?.price.discountReason ?? '',
+    billingMode: last?.billingMode ?? 'complete',
+    menuIncluded: last?.menuIncluded ?? false,
     options: quotedServiceOptions(b, last),
   }));
   const quoteSettings = catalogue?.settings ?? b.pricingSettings;
@@ -74,6 +76,8 @@ export function useBookingCard({
       discountType: last?.price.discountType ?? 'fcfa',
       discountReason: last?.price.discountReason ?? '',
       options: quotedServiceOptions(b, last),
+      billingMode: last?.billingMode ?? 'complete',
+      menuIncluded: last?.menuIncluded ?? false,
     });
     setExtraLines(extrasFromLast(last, tollPoints));
     setQuoteNotes(last?.notes || b.notes || '');
@@ -190,7 +194,15 @@ export function useBookingCard({
       onChange(
         await api.quote(
           b.id,
-          quoteFromForm(form, b.version, billableExtraLines, quoteDraft.options, quoteTolls),
+          quoteFromForm(
+            form,
+            b.version,
+            billableExtraLines,
+            quoteDraft.options,
+            quoteTolls,
+            quoteDraft.billingMode,
+            quoteDraft.menuIncluded,
+          ),
         ),
       );
       setEditing(false);

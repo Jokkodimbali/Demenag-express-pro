@@ -78,6 +78,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
     previewTier,
     previewSubtotal,
     previewDiscount,
+    manoeuvreOvertimeLine,
     onTollToggle,
     changeQuoteOption,
     toggleQuoteSection,
@@ -222,6 +223,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             movingEstimate?.volume
               ? { ...draft.options, labour: movingEstimate.crew }
               : draft.options,
+            manoeuvreOvertimeLine ? [manoeuvreOvertimeLine] : [],
           );
         }}
         className="admin-quote-layout"
@@ -460,7 +462,6 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
               </div>
             )}
           </section>
-
           <AdminQuoteStepHeading number={2} title={quoteText.stepRoute} />
           <section
             className={`admin-quote-card${publicRequest ? ' reference-request-route-card' : ''}`}
@@ -577,7 +578,6 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
               </div>
             )}
           </section>
-
           <AdminQuoteStepHeading number={3} title={quoteText.stepInventory} />
           <CallInventory
             draft={draft}
@@ -665,7 +665,6 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
               <AdminQuoteVehicleBilling model={model} catalogue={catalogue} />
             </>
           )}
-
           <AdminQuoteStepHeading number={5} title={quoteText.stepOptions} />
           {!publicRequest && (
             <section className="admin-quote-card">
@@ -754,43 +753,51 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                         </button>
                       </div>
                     </div>
-                    {extras.map(([key, label]) => (
-                      <div className="admin-quote-service-row" key={key}>
-                        <strong>
-                          {key === 'labour'
-                            ? 'Manœuvres'
-                            : key === 'desk'
-                              ? 'Montage/démontage bureau'
-                              : key === 'wardrobe'
-                                ? 'Montage/démontage armoire'
-                                : 'Montage/démontage lit 2 places'}
-                        </strong>
-                        <div className="admin-quote-stepper">
-                          <button
-                            type="button"
-                            aria-label={`Retirer ${label}`}
-                            disabled={
-                              draft.options[key] === 0 ||
-                              (key === 'labour' &&
-                                Boolean(movingEstimate?.volume) &&
-                                draft.options.labour <= 1)
-                            }
-                            onClick={() => changeQuoteOption(key, -1)}
-                          >
-                            −
-                          </button>
-                          <output>{draft.options[key]}</output>
-                          <button
-                            type="button"
-                            aria-label={`Ajouter ${label}`}
-                            disabled={draft.options[key] >= catalogue.settings.maxOptions}
-                            onClick={() => changeQuoteOption(key, 1)}
-                          >
-                            +
-                          </button>
+                    {extras
+                      .filter(
+                        ([key]) =>
+                          quoteConfig.billingMode === 'complete' ||
+                          (quoteConfig.billingMode === 'driver-rental' &&
+                            quoteConfig.menuIncluded) ||
+                          key === 'labour',
+                      )
+                      .map(([key, label]) => (
+                        <div className="admin-quote-service-row" key={key}>
+                          <strong>
+                            {key === 'labour'
+                              ? 'Manœuvres'
+                              : key === 'desk'
+                                ? 'Montage/démontage bureau'
+                                : key === 'wardrobe'
+                                  ? 'Montage/démontage armoire'
+                                  : 'Montage/démontage lit 2 places'}
+                          </strong>
+                          <div className="admin-quote-stepper">
+                            <button
+                              type="button"
+                              aria-label={`Retirer ${label}`}
+                              disabled={
+                                draft.options[key] === 0 ||
+                                (key === 'labour' &&
+                                  Boolean(movingEstimate?.volume) &&
+                                  draft.options.labour <= 1)
+                              }
+                              onClick={() => changeQuoteOption(key, -1)}
+                            >
+                              −
+                            </button>
+                            <output>{draft.options[key]}</output>
+                            <button
+                              type="button"
+                              aria-label={`Ajouter ${label}`}
+                              disabled={draft.options[key] >= catalogue.settings.maxOptions}
+                              onClick={() => changeQuoteOption(key, 1)}
+                            >
+                              +
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
                   </>
                 )}
                 {!publicRequest && (

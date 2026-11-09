@@ -8,7 +8,6 @@ import type {
   Options,
   Point,
   QuoteInput,
-  QuotePricingInput,
   User,
   WorkAccess,
   WorkPlanReview,
@@ -19,7 +18,7 @@ import {
   requireActiveUser,
   requireAdministrator,
 } from '../../domain/policies/access.js';
-import { calculatePrice, labourUnitPrice } from '../../domain/pricing.js';
+import { calculatePrice } from '../../domain/pricing.js';
 import { fallbackWorkPlan } from './fallback-work-plan.js';
 import type {
   BookingRepository,
@@ -37,6 +36,8 @@ import { createQuote } from './moving-quote.js';
 import { addressChangeForUpdate } from './moving-address-change.js';
 import { createRouteTicket } from './moving-routing.js';
 import { normalizePhone } from './auth.js';
+import { movingPriceInput } from './moving-price-input.js';
+import { repriceProvisionalQuote } from './reprice-provisional-quote.js';
 import {
   deleteBooking,
   listTrashedBookings,
@@ -64,45 +65,6 @@ export class MovingService implements MovingUseCases {
   reverse(point: Point) {
     return this.routing.reverse(point);
   }
-  private async priceInput(
-    vehicleId: string,
-    routeId: string,
-    options: Options,
-    workAccess?: WorkAccess,
-    trips = 1,
-    distanceKmOverride?: number | null,
-  ) {
-    const [catalogue, route] = await Promise.all([this.catalogue.get(), this.routes.find(routeId)]);
-    if (!route || +new Date(route.expiresAt) <= +this.clock.now())
-      throw new AppError(400, messages.recalculezLeTrajetSonEstimationAExpire);
-    const vehicle = catalogue.vehicles.find((v) => v.id === vehicleId);
-    if (!vehicle || vehicle.active === false) throw new AppError(400, messages.vehiculeInconnu);
-    if (distanceKmOverride != null)
-      requireValue(
-        Number.isFinite(distanceKmOverride) &&
-          distanceKmOverride >= 0 &&
-          distanceKmOverride <= 100000,
-        'La distance personnalisée doit être comprise entre 0 et 100 000 km.',
-      );
-    const effectiveRoute =
-      distanceKmOverride == null ? route : { ...route, distanceKm: distanceKmOverride };
-    return {
-      route: effectiveRoute,
-      settings: catalogue.settings,
-      vehicle,
-      estimate: calculatePrice(
-        vehicle,
-        catalogue.settings,
-        effectiveRoute.distanceKm,
-        options,
-        trips,
-        null,
-        0,
-        [],
-        workAccess,
-      ),
-    };
-  }
   async estimate(
     vehicleId: string,
     routeId: string,
@@ -110,9 +72,21 @@ export class MovingService implements MovingUseCases {
     workAccess?: WorkAccess,
     trips = 1,
     distanceKmOverride?: number,
+    workDate?: string | null,
   ) {
     return (
-      await this.priceInput(vehicleId, routeId, options, workAccess, trips, distanceKmOverride)
+      await movingPriceInput(
+        this.catalogue,
+        this.routes,
+        this.clock,
+        vehicleId,
+        routeId,
+        options,
+        workAccess,
+        trips,
+        distanceKmOverride,
+        workDate,
+      )
     ).estimate;
   }
   async create(user: User, input: BookingInput) {
@@ -125,13 +99,17 @@ export class MovingService implements MovingUseCases {
       user.role === 'admin' || input.distanceKmOverride == null,
       'La distance personnalisée est réservée à l’administration.',
     );
-    const { route, vehicle, estimate, settings } = await this.priceInput(
+    const { route, vehicle, estimate, settings } = await movingPriceInput(
+      this.catalogue,
+      this.routes,
+      this.clock,
       input.vehicleId,
       input.routeId,
       input.options,
       input.workAccess,
       input.trips ?? 1,
       user.role === 'admin' ? input.distanceKmOverride : undefined,
+      input.date,
     );
     if (user.role !== 'admin')
       requireValue(
@@ -230,12 +208,17 @@ export class MovingService implements MovingUseCases {
       'Le véhicule ne peut plus être changé après l’affectation d’un chauffeur.',
     );
     requireValue(Boolean(input.date), 'Choisissez une date.');
-    const { route, vehicle, estimate, settings } = await this.priceInput(
+    const { route, vehicle, estimate, settings } = await movingPriceInput(
+      this.catalogue,
+      this.routes,
+      this.clock,
       input.vehicleId,
       input.routeId,
       input.options,
       input.workAccess,
       input.trips ?? 1,
+      undefined,
+      input.date,
     );
     if (input.date) validateDate(input.date, this.clock.now(), settings, input.timeSlot);
     if (input.timeSlot !== booking.timeSlot) {
@@ -290,13 +273,17 @@ export class MovingService implements MovingUseCases {
         !booking.quotes.some((quote) => quote.kind === 'final'),
       messages.cetteReservationEstCloturee,
     );
-    const { route, vehicle, estimate, settings } = await this.priceInput(
+    const { route, vehicle, estimate, settings } = await movingPriceInput(
+      this.catalogue,
+      this.routes,
+      this.clock,
       input.vehicleId,
       input.routeId,
       input.options,
       input.workAccess,
       input.trips ?? 1,
       input.distanceKmOverride,
+      input.date,
     );
     if (input.date && input.date !== booking.date)
       validateDate(
@@ -783,90 +770,18 @@ export class MovingService implements MovingUseCases {
     let quotes = booking.quotes;
     const latestQuote = quotes.at(-1);
     if (latestQuote?.kind === 'provisional') {
-      const currentSettings = catalogue.settings;
-      const pricingSettings = {
-        distanceBounds: currentSettings.distanceBounds,
-        maxTrips: currentSettings.maxTrips,
-        maxOptions: currentSettings.maxOptions,
-        labourPrice: currentSettings.labourPrice,
-        labourFloorPrice: currentSettings.labourFloorPrice,
-        labourLiftPrice: currentSettings.labourLiftPrice,
-        assemblyPrice: currentSettings.assemblyPrice,
-        montageP: currentSettings.montageP,
-      };
-      const legacyPricingInput = () => {
-        const transport = latestQuote.price.lines.find((line) => /^Transport\b/u.test(line.label));
-        const labour = latestQuote.price.lines.find((line) => /^Man[œo]uvre\b/iu.test(line.label));
-        const standardLines = new Set<string>([
-          messages.menuisierBureau,
-          messages.menuisierArmoire,
-          messages.menuisierLit,
-        ]);
-        const lines = latestQuote.price.lines.filter(
-          (line) =>
-            !/^Transport\b/u.test(line.label) &&
-            !/^Man[œo]uvre\b/iu.test(line.label) &&
-            !standardLines.has(line.label),
-        );
-        return {
-          settings: pricingSettings,
-          trips: latestQuote.price.trips,
-          customPrice: latestQuote.price.tier === 3 ? (transport?.unitPrice ?? null) : null,
-          discount: latestQuote.price.discountValue ?? latestQuote.price.discount,
-          discountType: latestQuote.price.discountType ?? 'fcfa',
-          discountReason: latestQuote.price.discountReason ?? '',
-          options: latestQuote.options ?? booking.options,
-          labourUnitPriceOverride:
-            labour && labour.unitPrice !== labourUnitPrice(pricingSettings, booking.workAccess)
-              ? labour.unitPrice
-              : null,
-          extraLines: lines.map(({ label, quantity, unitPrice }) => ({
-            label,
-            quantity,
-            unitPrice,
-          })),
-        } as const;
-      };
-      const pricingInput: QuotePricingInput = latestQuote.pricingInput ?? legacyPricingInput();
-      const rentalOvertimeHourlyRate =
-        pricingInput.rentalOvertimeHourlyRate ??
-        catalogue.settings.rentalOvertimeHourlyRate ??
-        10000;
-      const extraLines = pricingInput.extraLines.filter(
-        (line) => !line.label.startsWith('Dépassement du planning prévisionnel'),
-      );
-      if (pricingInput.billingMode === 'driver-rental' && (pricingInput.overtimeMinutes ?? 0) > 0) {
-        const minutes = pricingInput.overtimeMinutes ?? 0;
-        extraLines.push({
-          label: `Dépassement du planning prévisionnel (${minutes} min, ${rentalOvertimeHourlyRate} FCFA par heure)`,
-          quantity: 1,
-          unitPrice: Math.round((minutes * rentalOvertimeHourlyRate) / 60),
-        });
-      }
-      const settings = {
-        ...pricingInput.settings,
-        maxTrips: Math.max(pricingInput.settings.maxTrips, pricingInput.trips),
-      };
-      const price = calculatePrice(
-        booking.vehicle,
-        settings,
+      const repriced = repriceProvisionalQuote(
+        booking,
+        latestQuote,
+        catalogue.settings,
         route.distanceKm,
-        pricingInput.options,
-        pricingInput.trips,
-        pricingInput.customPrice,
-        pricingInput.discount,
-        extraLines,
-        booking.workAccess,
-        pricingInput.labourUnitPriceOverride,
-        pricingInput.discountType,
-        pricingInput.discountReason,
       );
       quotes = quotes.map((quote) =>
         quote.id === latestQuote.id
           ? {
               ...quote,
-              price,
-              pricingInput: { ...pricingInput, extraLines, rentalOvertimeHourlyRate },
+              price: repriced.price,
+              pricingInput: repriced.pricingInput,
             }
           : quote,
       );

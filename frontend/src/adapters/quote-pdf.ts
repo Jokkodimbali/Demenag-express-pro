@@ -142,7 +142,9 @@ export async function downloadQuote(
     doc,
     documentQuote?.billingMode === 'driver-rental'
       ? 'Location avec chauffeur'
-      : 'Déménagement complet',
+      : documentQuote?.billingMode === 'standard'
+        ? 'Formule Standard'
+        : 'Déménagement complet',
     infoX[2]!,
     y + 13,
     infoWidth,

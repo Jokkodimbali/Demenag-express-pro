@@ -27,7 +27,8 @@ export type AdminQuoteConfig = {
   discountReason: string;
   customPrice: number | null;
   labourUnitPriceOverride?: number | null;
-  billingMode?: 'complete' | 'driver-rental';
+  billingMode?: 'complete' | 'standard' | 'driver-rental';
+  menuIncluded?: boolean;
   overtimeMinutes?: number;
   rentalKit?: RentalKitItem[] | null;
 };
@@ -215,6 +216,7 @@ export function useBookingForm({
         },
         administrativeQuote ? (quoteConfig?.trips ?? 1) : draft.estimatedTrips,
         administrativeQuote ? draft.distanceKmOverride : null,
+        draft.noDate ? null : draft.date,
       )
       .then(setPrice)
       .catch((e: unknown) => {
@@ -253,6 +255,8 @@ export function useBookingForm({
     draft.inventory.toLift,
     draft.route,
     draft.distanceKmOverride,
+    draft.date,
+    draft.noDate,
     draft.vehicleId,
     draft.options,
     quoteConfig?.trips,
@@ -512,6 +516,7 @@ export function useBookingForm({
             options: administrativeQuote && quoteOptions ? quoteOptions : draft.options,
             version: booking.version,
             billingMode: quoteConfig?.billingMode ?? 'complete',
+            menuIncluded: quoteConfig?.menuIncluded ?? false,
             rentalKit:
               quoteConfig?.billingMode === 'driver-rental'
                 ? (quoteConfig.rentalKit ??

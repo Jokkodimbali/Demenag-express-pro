@@ -61,10 +61,19 @@ export async function createQuote(
   const vehicle =
     catalogue.vehicles.find((item) => item.id === booking.vehicle.id) ?? booking.vehicle;
   const requestedOptions = input.options ?? booking.options;
-  const inventoryLines = inventoryAssemblyLines(sourceInventory, catalogue.settings);
-  const options = subtractInventoryAssemblyOptions(requestedOptions, sourceInventory);
   const billingMode = input.billingMode ?? 'complete';
-  const pricingOptions = billingMode === 'driver-rental' ? { ...options, labour: 0 } : options;
+  const options = subtractInventoryAssemblyOptions(requestedOptions, sourceInventory);
+  const menuIncluded = input.menuIncluded ?? false;
+  const inventoryLines =
+    billingMode === 'complete' || (billingMode === 'driver-rental' && menuIncluded)
+      ? inventoryAssemblyLines(sourceInventory, catalogue.settings)
+      : [];
+  const pricingOptions =
+    billingMode === 'driver-rental'
+      ? { ...options, labour: 0, ...(menuIncluded ? {} : { desk: 0, wardrobe: 0, bed: 0 }) }
+      : billingMode === 'standard'
+        ? { ...options, desk: 0, wardrobe: 0, bed: 0 }
+        : options;
   const quoteSettings =
     input.kind === 'final'
       ? { ...catalogue.settings, maxTrips: Math.max(catalogue.settings.maxTrips, input.trips) }
@@ -129,6 +138,7 @@ export async function createQuote(
     input.labourUnitPriceOverride,
     input.discountType,
     input.discountReason,
+    booking.date,
   );
   requireValue(
     input.kind !== 'final' || price.total !== null,
@@ -151,6 +161,7 @@ export async function createQuote(
     options: pricingOptions,
     tolls,
     billingMode,
+    menuIncluded,
     rentalKit: input.rentalKit ?? [],
     overtimeMinutes,
     providedCrew: Math.max(0, Math.round(input.providedCrew ?? options.labour)),
@@ -164,6 +175,7 @@ export async function createQuote(
         labourLiftPrice: quoteSettings.labourLiftPrice,
         assemblyPrice: quoteSettings.assemblyPrice,
         montageP: quoteSettings.montageP,
+        movingLaborPlanning: quoteSettings.movingLaborPlanning,
       },
       trips: input.trips,
       customPrice: input.customPrice,
@@ -174,6 +186,7 @@ export async function createQuote(
       labourUnitPriceOverride: input.labourUnitPriceOverride ?? null,
       extraLines: additionalLines,
       billingMode,
+      menuIncluded,
       overtimeMinutes,
       rentalOvertimeHourlyRate,
     },

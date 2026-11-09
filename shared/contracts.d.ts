@@ -216,6 +216,17 @@ export type MovingLaborPlanningSettings = {
   blanketLengthCm?: number;
   blanketWidthCm?: number;
   blanketStock?: number;
+  maxTotalHours?: number;
+  metabolicReference?: number;
+  effortGround?: number;
+  effortLift?: number;
+  effortStairs?: number;
+  effortPerFloor?: number;
+  effortMaximum?: number;
+  followingTripDiscountPercent?: number;
+  lowDemandDiscountPercent?: number;
+  manoeuvreOvertimeThresholdHours?: number;
+  manoeuvreOvertimeHourlyRate?: number;
 };
 export type LabourMatrixScenario = 'none' | 'from' | 'to' | 'both';
 export type LabourPriceMatrix = Record<LabourMatrixScenario, number[][]>;
@@ -412,7 +423,8 @@ export type Quote = {
     carpenters: number;
     carpenterAmount: number;
   };
-  billingMode?: 'complete' | 'driver-rental';
+  billingMode?: 'complete' | 'standard' | 'driver-rental';
+  menuIncluded?: boolean;
   rentalKit?: RentalKitItem[];
   overtimeMinutes?: number;
   providedCrew?: number;
@@ -437,6 +449,7 @@ export type QuotePricingSettings = Pick<
   | 'labourLiftPrice'
   | 'assemblyPrice'
   | 'montageP'
+  | 'movingLaborPlanning'
 >;
 export type QuotePricingInput = {
   settings: QuotePricingSettings;
@@ -448,7 +461,8 @@ export type QuotePricingInput = {
   options: Options;
   labourUnitPriceOverride: number | null;
   extraLines: Array<{ label: string; quantity: number; unitPrice: number }>;
-  billingMode?: 'complete' | 'driver-rental';
+  billingMode?: 'complete' | 'standard' | 'driver-rental';
+  menuIncluded?: boolean;
   overtimeMinutes?: number;
   rentalOvertimeHourlyRate?: number;
 };
@@ -543,7 +557,8 @@ export type QuoteInput = {
   }>;
   options?: Options;
   version: number;
-  billingMode?: 'complete' | 'driver-rental';
+  billingMode?: 'complete' | 'standard' | 'driver-rental';
+  menuIncluded?: boolean;
   rentalKit?: RentalKitItem[];
   overtimeMinutes?: number;
   providedCrew?: number;

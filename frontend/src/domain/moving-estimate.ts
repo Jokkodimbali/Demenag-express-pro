@@ -38,9 +38,26 @@ export const defaultMovingLaborPlanning: MovingLaborPlanningSettings = {
   carryDistanceMeters: 15,
   heat: 1,
   wbgtAdj: 0,
+  maxTotalHours: 12,
+  metabolicReference: 200,
+  effortGround: 200,
+  effortLift: 210,
+  effortStairs: 230,
+  effortPerFloor: 12,
+  effortMaximum: 290,
+  followingTripDiscountPercent: 60,
+  lowDemandDiscountPercent: 10,
+  manoeuvreOvertimeThresholdHours: 8,
+  manoeuvreOvertimeHourlyRate: 0,
 };
 
-export type PlanningStep = { time: string; title: string; detail: string; minutes: number };
+export type PlanningStep = {
+  time: string;
+  title: string;
+  detail: string;
+  minutes: number;
+  kind?: string;
+};
 export type HeatRecovery = {
   wbgt: number;
   reference: number;
@@ -110,6 +127,15 @@ export type MovingEstimate = {
   endTime: string;
   endLate: boolean;
   planning: PlanningStep[];
+  fatigueEffort: {
+    percentage: number;
+    carrying: number;
+    travel: number;
+    other: number;
+    from: number;
+    to: number;
+  };
+  heatPenalty: number;
   heat: HeatRecovery | null;
   warnings: string[];
   vehicleWarnings: string[];
@@ -451,6 +477,25 @@ export function estimateMovingWork(
     options.heatOff,
     options.heatRest,
   );
+  const heatWithoutPauses = options.heatOff
+    ? heatRecovery(
+        options.date ?? '',
+        options.month ?? '',
+        Math.max(
+          inventory.fromLift ? 0 : inventory.fromFloor,
+          inventory.toLift ? 0 : inventory.toFloor,
+        ) >= 2
+          ? 4
+          : 3,
+        labor,
+        false,
+        options.heatRest,
+      )
+    : null;
+  const heatPenalty =
+    heatWithoutPauses && heatWithoutPauses.work < 150
+      ? 100 + Math.round(Math.max(0, heatWithoutPauses.wbgt - heatWithoutPauses.reference) * 10)
+      : 0;
   const restRule = heat ?? { work: 150, rest: 15, wbgt: 0, reference: 0, manual: false };
   const planning: PlanningStep[] = [];
   let cursor = startAt;
@@ -467,6 +512,7 @@ export function estimateMovingWork(
           title: 'Pause déjeuner',
           detail: 'Repas, eau, repos de l’équipe',
           minutes: 45,
+          kind: 'pause',
         });
         cursor += 45;
         workSinceRest = 0;
@@ -479,6 +525,7 @@ export function estimateMovingWork(
           title: 'Pause dîner',
           detail: 'Repas et repos de l’équipe',
           minutes: 30,
+          kind: 'pause',
         });
         cursor += 30;
         workSinceRest = 0;
@@ -494,6 +541,7 @@ export function estimateMovingWork(
               ? `${heat.rest} min à l’ombre et eau après ${heat.work} min de portage (ISO 7243 : WBGT ${String(heat.wbgt).replace('.', ',')} °C, référence ${heat.reference} °C)`
               : '15 min toutes les 2 h 30 de portage, hydratation',
           minutes: restRule.rest,
+          kind: 'pause',
         });
         cursor += restRule.rest;
         workSinceRest = 0;
@@ -520,6 +568,7 @@ export function estimateMovingWork(
         title: `${segment.title}${part ? ' (suite)' : ''}`,
         detail: segment.detail,
         minutes: chunk,
+        kind: segment.kind,
       });
       cursor += chunk;
       remaining -= chunk;
@@ -534,6 +583,77 @@ export function estimateMovingWork(
     cursor += step.minutes;
   });
   const totalMinutes = planning.reduce((sum, step) => sum + step.minutes, 0);
+  const effortAt = (floor: number, lift: boolean) =>
+    floor <= 0
+      ? (labor.effortGround ?? 200)
+      : lift
+        ? (labor.effortLift ?? 210)
+        : Math.min(
+            labor.effortMaximum ?? 290,
+            (labor.effortStairs ?? 230) + (labor.effortPerFloor ?? 12) * floor,
+          );
+  const effortFrom = effortAt(inventory.fromFloor, inventory.fromLift);
+  const effortTo = effortAt(inventory.toFloor, inventory.toLift);
+  const fatigueWork = planning.reduce(
+    (sum, step) =>
+      sum +
+      (step.kind === 'load'
+        ? step.minutes * effortFrom
+        : step.kind === 'unload'
+          ? step.minutes * effortTo
+          : step.kind === 'drive' || step.kind === 'back'
+            ? step.minutes * 100
+            : step.kind === 'pause' || step.kind === 'night'
+              ? 0
+              : step.minutes * 150),
+    0,
+  );
+  const effortReference = 480 * (labor.metabolicReference ?? 200);
+  const fatigueEffort = {
+    percentage: Math.round((fatigueWork / effortReference) * 100),
+    carrying: Math.round(
+      (planning.reduce(
+        (sum, step) =>
+          sum +
+          (step.kind === 'load'
+            ? step.minutes * effortFrom
+            : step.kind === 'unload'
+              ? step.minutes * effortTo
+              : 0),
+        0,
+      ) /
+        effortReference) *
+        100,
+    ),
+    travel: Math.round(
+      (planning.reduce(
+        (sum, step) =>
+          sum + (step.kind === 'drive' || step.kind === 'back' ? step.minutes * 100 : 0),
+        0,
+      ) /
+        effortReference) *
+        100,
+    ),
+    other: Math.round(
+      (planning.reduce(
+        (sum, step) =>
+          sum +
+          (step.kind !== 'load' &&
+          step.kind !== 'unload' &&
+          step.kind !== 'drive' &&
+          step.kind !== 'back' &&
+          step.kind !== 'pause' &&
+          step.kind !== 'night'
+            ? step.minutes * 150
+            : 0),
+        0,
+      ) /
+        effortReference) *
+        100,
+    ),
+    from: effortFrom,
+    to: effortTo,
+  };
   const endAt = cursor;
   const warnings: string[] = [];
   const dimensionsWarnings = vehicleDimensionWarnings(inventory, vehicle);
@@ -558,6 +678,10 @@ export function estimateMovingWork(
   if (totalMinutes > labor.maxDayHours * 60)
     warnings.push(
       `La durée dépasse ${labor.maxDayHours} h : prévoir un départ plus tôt, un véhicule supplémentaire ou deux jours.`,
+    );
+  if (totalMinutes > (labor.maxTotalHours ?? 12) * 60)
+    warnings.push(
+      `La durée dépasse ${labor.maxTotalHours ?? 12} h : prévoir une relève, deux véhicules ou deux jours.`,
     );
   if (endAt > 19 * 60)
     warnings.push('Fin après 19 h : commencer plus tôt ou répartir sur 2 jours.');
@@ -607,6 +731,8 @@ export function estimateMovingWork(
     endTime: formatTime(endAt),
     endLate: endAt > 19 * 60,
     planning,
+    fatigueEffort,
+    heatPenalty,
     heat,
     warnings,
     vehicleWarnings: dimensionsWarnings,

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
-const expectedDocument = '0e0f6051c1da84ced1107d6cdacf5b3b63c9a43baa137bc5d1e5bf1f79fb6540';
+const expectedDocument = '6ce98f6ef68e65d3d0dda77845f343881cb902fdba2bc928f2e63243121be628';
 const expectedReferenceScripts = {
   'support.js': '8fe7df74405f3c55f49b7249c74ea1397e65d07dea2b1bd3b4a489bec2e28cbe',
   'image-slot.js': '7fca2b8ffd71fa00e78c1f8ed0ba79bf888293397f9fc51c65a0f07ad6014890',

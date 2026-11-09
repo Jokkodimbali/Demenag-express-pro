@@ -6,6 +6,10 @@ import {
   labourUnitPriceOverrideFromQuote,
 } from '../../domain/labour-price';
 import { referenceTierLabels } from '../../application/presentation/format';
+import {
+  referenceLowDemandDiscount,
+  referenceTransportLines,
+} from '../../domain/reference-pricing';
 
 /** Reprice an open estimate against today's catalogue; completed moves remain historical. */
 export function liveBookingPrice(
@@ -42,34 +46,52 @@ export function liveBookingPrice(
       line.unitPrice,
     ]),
   );
-  const lines = price.lines.map((line) => {
-    let unitPrice = line.unitPrice;
-    let label = line.label;
-    if (label.startsWith('Transport')) {
-      unitPrice = tier === 3 ? custom : vehicle.prices[tier];
-      label = `Transport ${vehicle.shortName || vehicle.name} · ${referenceTierLabels(bounds)[tier].toLocaleLowerCase('fr')} (aller-retour)`;
-    } else if (label.startsWith('Manœuvre'))
-      unitPrice = labourOverride ?? labourUnitPrice(settings, booking.workAccess);
-    else if (assembly.has(label)) unitPrice = assembly.get(label)!;
-    else {
-      const key = {
-        'Menuisier · bureau': 'bureau',
-        'Menuisier · armoire': 'armoire',
-        'Menuisier · lit': 'lit',
-      }[label];
-      if (key) unitPrice = assemblyUnitPrice(settings, key);
-    }
-    return { ...line, label, unitPrice, total: line.quantity * unitPrice };
-  });
-  if (!lines.some((line) => line.label.startsWith('Transport'))) {
-    const unitPrice = tier === 3 ? custom : vehicle.prices[tier];
-    lines.unshift({
-      label: `Transport ${vehicle.shortName || vehicle.name} · ${referenceTierLabels(bounds)[tier].toLocaleLowerCase('fr')} (aller-retour)`,
-      quantity: price.trips,
-      unitPrice,
-      total: price.trips * unitPrice,
+  const lines = price.lines
+    .filter(
+      (line) => !line.label.startsWith('Transport') && !line.label.startsWith('Remise jour creux'),
+    )
+    .map((line) => {
+      let unitPrice = line.unitPrice;
+      let label = line.label;
+      if (label.startsWith('Transport')) {
+        unitPrice = tier === 3 ? custom : vehicle.prices[tier];
+        label = `Transport ${vehicle.shortName || vehicle.name} · ${referenceTierLabels(bounds)[tier].toLocaleLowerCase('fr')} (aller-retour)`;
+      } else if (label.startsWith('Manœuvre'))
+        unitPrice = labourOverride ?? labourUnitPrice(settings, booking.workAccess);
+      else if (assembly.has(label)) unitPrice = assembly.get(label)!;
+      else {
+        const key = {
+          'Menuisier · bureau': 'bureau',
+          'Menuisier · armoire': 'armoire',
+          'Menuisier · lit': 'lit',
+        }[label];
+        if (key) unitPrice = assemblyUnitPrice(settings, key);
+      }
+      return { ...line, label, unitPrice, total: line.quantity * unitPrice };
     });
-  }
+  const transportUnitPrice = tier === 3 ? custom : vehicle.prices[tier];
+  const transportLines = referenceTransportLines(
+    `Transport ${vehicle.shortName || vehicle.name} · ${referenceTierLabels(bounds)[tier].toLocaleLowerCase('fr')}`,
+    transportUnitPrice,
+    price.trips,
+    settings.movingLaborPlanning?.followingTripDiscountPercent ?? 100,
+  );
+  if (transportLines.length === 1 && transportLines[0])
+    transportLines[0].label += ' (aller-retour)';
+  const transportTotal = transportLines.reduce((sum, line) => sum + line.total, 0);
+  const lowDemandDiscount = referenceLowDemandDiscount(
+    transportTotal,
+    booking.date,
+    settings.movingLaborPlanning?.lowDemandDiscountPercent ?? 0,
+  );
+  if (lowDemandDiscount > 0)
+    transportLines.push({
+      label: `Remise jour creux (−${settings.movingLaborPlanning?.lowDemandDiscountPercent ?? 0} % sur le transport)`,
+      quantity: 1,
+      unitPrice: -lowDemandDiscount,
+      total: -lowDemandDiscount,
+    });
+  lines.unshift(...transportLines);
   const subtotal = lines.reduce((sum, line) => sum + line.total, 0);
   const value = price.discountValue ?? price.discount;
   const discount =
