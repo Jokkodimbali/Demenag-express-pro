@@ -76,8 +76,6 @@ export function liveBookingPrice(
     price.trips,
     settings.movingLaborPlanning?.followingTripDiscountPercent ?? 100,
   );
-  if (transportLines.length === 1 && transportLines[0])
-    transportLines[0].label += ' (aller-retour)';
   const transportTotal = transportLines.reduce((sum, line) => sum + line.total, 0);
   const lowDemandDiscount = referenceLowDemandDiscount(
     transportTotal,

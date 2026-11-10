@@ -2,6 +2,7 @@ import { requireValue } from './errors.js';
 import { messages } from './messages/fr.js';
 import type { Options, Price, QuotePricingSettings, Vehicle, WorkAccess } from './model.js';
 import { referenceLowDemandDiscount, referenceTransportLines } from './reference-pricing.js';
+import { referenceAssemblyPriceDefaults } from '../../../shared/reference-assembly-price-defaults.js';
 
 const MAX_DATABASE_INTEGER = 2_147_483_647;
 
@@ -31,7 +32,20 @@ export function assemblyUnitPrice(
                 : key === 'ventilo'
                   ? 'ventilateur'
                   : key;
-  const configured = settings.montageP?.[key] ?? settings.montageP?.[legacyKey];
+  const configuredValue =
+    settings.montageP?.[key] ??
+    settings.montageP?.[legacyKey] ??
+    referenceAssemblyPriceDefaults[key as keyof typeof referenceAssemblyPriceDefaults];
+  const configured = configuredValue as
+    | number
+    | {
+        local?: number;
+        import?: number;
+        u?: number;
+        uI?: number;
+        sz?: Record<string, { local?: number; import?: number }>;
+      }
+    | undefined;
   if (configured == null)
     return origin === 'import' ? Math.round(settings.assemblyPrice * 1.5) : settings.assemblyPrice;
   if (typeof configured === 'number')
@@ -133,7 +147,6 @@ export function calculatePrice(
       unitPrice: -lowDemandDiscount,
       total: -lowDemandDiscount,
     });
-  if (lines.length === 1 && lines[0]) lines[0].label += ' (aller-retour)';
   const accessDescription = workAccess
     ? ` (${accessLabel(workAccess.fromFloor, workAccess.fromLift)} → ${accessLabel(workAccess.toFloor, workAccess.toLift)})`
     : '';

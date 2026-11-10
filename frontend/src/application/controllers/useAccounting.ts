@@ -121,7 +121,10 @@ export function useAccounting() {
           const normalized = {
             ...defaults,
             ...config,
-            menuPrices: config.menuPrices ?? {},
+            menuPrices: {
+              ...defaults.menuPrices,
+              ...(config.menuPrices ?? {}),
+            },
             advertising: config.advertising ?? {},
             salaries: config.salaries ?? defaults.salaries,
             annexes: config.annexes ?? defaults.annexes,

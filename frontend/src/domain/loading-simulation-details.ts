@@ -451,7 +451,9 @@ export function fatigueAdvice(
       ['Poids total à porter', `≈ ${number(kg)} kg`],
       [
         'Durée totale prévue',
-        estimate ? `${number(estimate.totalMinutes / 60)} h` : 'Non calculée',
+        estimate && Number.isFinite(estimate.totalMinutes)
+          ? `${number(estimate.totalMinutes / 60)} h`
+          : 'Non calculée',
       ],
       ['Effort départ · arrivée', `${effort?.from ?? 200} · ${effort?.to ?? 200} W/m²`],
       ['Masse portée par manœuvre', `≈ ${number((kg * 2) / effectiveCrew)} kg`],

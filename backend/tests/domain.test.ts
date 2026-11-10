@@ -74,7 +74,7 @@ test('Le transport, les options et la remise sont calculés en FCFA entiers', ()
     null,
     5000,
   );
-  assert.equal(price.total, 133000);
+  assert.equal(price.total, 121900);
   assert.equal(price.lines.length, 3);
 });
 test('Chaque ligne du devis conserve la quantité exacte de sa prestation', () => {
@@ -99,7 +99,7 @@ test('Le prix personnalisé ne remplace pas la tranche normale après modificati
   const price = calculatePrice(vehicle, settings, 20, none, 2, 90000);
   assert.equal(price.lines[0].unitPrice, vehicle.prices[1]);
   assert.equal(price.lines[0].label, 'Transport Sprinter · 15 – 25 km (aller-retour)');
-  assert.equal(price.total, vehicle.prices[1] * 2);
+  assert.equal(price.total, 74000);
 });
 test('Le tarif par manœuvre ajoute les étages sans ascenseur et le forfait ascenseur', () => {
   const access = { fromFloor: 2, toFloor: 1, fromLift: false, toLift: true };

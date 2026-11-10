@@ -1,4 +1,5 @@
 import type { LabourMatrixScenario, LabourPriceMatrix, Price, Settings, WorkAccess } from './model';
+import { referenceAssemblyPriceDefaults } from '../../../shared/reference-tariff-defaults.js';
 
 export const labourMatrixScenarios: {
   id: LabourMatrixScenario;
@@ -44,7 +45,20 @@ export function assemblyUnitPrice(
                 : key === 'ventilo'
                   ? 'ventilateur'
                   : key;
-  const configured = settings.montageP?.[key] ?? settings.montageP?.[legacyKey];
+  const configuredValue =
+    settings.montageP?.[key] ??
+    settings.montageP?.[legacyKey] ??
+    referenceAssemblyPriceDefaults[key as keyof typeof referenceAssemblyPriceDefaults];
+  const configured = configuredValue as
+    | number
+    | {
+        local?: number;
+        import?: number;
+        u?: number;
+        uI?: number;
+        sz?: Record<string, { local?: number; import?: number }>;
+      }
+    | undefined;
   if (configured == null)
     return origin === 'import' ? Math.round(settings.assemblyPrice * 1.5) : settings.assemblyPrice;
   if (typeof configured === 'number')

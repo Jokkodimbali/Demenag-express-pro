@@ -2,29 +2,18 @@ import type { AccountingFinanceConfiguration, Catalogue, Settings, Vehicle } fro
 import { createLabourPriceMatrix } from './labour-price';
 import { defaultMovingLaborPlanning } from './moving-estimate';
 
-import { referenceAssemblyPayrollDefaults, referenceAssemblyPriceDefaults, referenceVehiclePrices } from '../../../shared/reference-tariff-defaults.js';
+import {
+  referenceAccountingChargeDefaults,
+  referenceAssemblyPriceDefaults,
+  referenceVehiclePrices,
+} from '../../../shared/reference-tariff-defaults.js';
 
 export function resetAccountingChargesToReference(
   current: AccountingFinanceConfiguration,
 ): AccountingFinanceConfiguration {
   return {
     ...current,
-    moverCostPerMove: 5000,
-    oilChangeCost: 150000,
-    oilChangeIntervalMonths: 2,
-    vehicleInsuranceAnnual: 200000,
-    vehicleCount: 3,
-    fleetValue: 30000000,
-    fleetYears: 7,
-    newVehicleTarget: 12000000,
-    debt: 30000000,
-    debtMonths: 18,
-    profitCapPercent: 50,
-    legalReservePercent: 10,
-    legalReserveCapitalPercent: 20,
-    monthlyProfitTarget: 3000000,
-    averageMovingPrice: 0,
-    menuPrices: referenceAssemblyPayrollDefaults,
+    ...referenceAccountingChargeDefaults,
   };
 }
 

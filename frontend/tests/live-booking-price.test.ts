@@ -10,6 +10,7 @@ const settings = {
   labourFloorPrice: 500,
   labourLiftPrice: 500,
   assemblyPrice: 15000,
+  montageP: { lit: { local: 15000, import: 22500 } },
 } as Settings;
 const price: Price = {
   tier: 0,
@@ -71,7 +72,15 @@ test('le chiffre d’affaires publicitaire final exige un déménagement termin�
 test('les tarifs manœuvre, montage et remise en pourcentage sont recalculés ensemble', () => {
   const result = liveBookingPrice(
     { ...booking, estimate: { ...price, discountType: 'pct', discountValue: 10 } },
-    { ...catalogue, settings: { ...settings, labourPrice: 8000, assemblyPrice: 20000 } },
+    {
+      ...catalogue,
+      settings: {
+        ...settings,
+        labourPrice: 8000,
+        assemblyPrice: 20000,
+        montageP: { lit: { local: 20000, import: 30000 } },
+      },
+    },
   );
   assert.equal(result.discount, 25400);
   assert.equal(result.total, 228600);
