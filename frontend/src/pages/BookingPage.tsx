@@ -1,5 +1,5 @@
 import { uiText } from '../content/reference-ui-text';
-import { ArrowRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useBookingForm } from '../application/useBookingForm';
@@ -183,7 +183,6 @@ export function BookingPage() {
                 <div>
                   <span style={{ width: `${mobileBookingStep * 25}%` }} />
                 </div>
-                {mobileBookingError && <small role="alert">{mobileBookingError}</small>}
               </div>
               <div className="booking-fields">
                 <div className="booking-mobile-step" data-booking-step="1">
@@ -332,20 +331,26 @@ export function BookingPage() {
       </section>
       {!done && catalogue && !bookingsClosed && (
         <div className="mobile-booking-bar">
+          {mobileBookingError && (
+            <small className="mobile-booking-error" role="alert">
+              {mobileBookingError}
+            </small>
+          )}
           <div>
-            <small>{messages.estimation}</small>
+            <small>ESTIMATION PROVISOIRE</small>
             <strong>{price ? money(price.total) : messages.aCalculer}</strong>
           </div>
           {isMobileBooking && mobileBookingStep > 1 && (
             <button
               type="button"
               className="button secondary"
+              aria-label={uiText['retour']}
               onClick={() => {
                 setMobileBookingError('');
                 setMobileBookingStep((step) => step - 1);
               }}
             >
-              {uiText['retour']}
+              <ArrowLeft size={18} aria-hidden="true" />
             </button>
           )}
           {isMobileBooking && mobileBookingStep < 4 ? (
@@ -375,6 +380,7 @@ export function BookingPage() {
             <button
               form="booking-form"
               className="button primary"
+              type="submit"
               disabled={
                 !price ||
                 submitting ||
@@ -383,7 +389,7 @@ export function BookingPage() {
                 (catalogue.settings.bookingsEnabled === false && !editingBooking)
               }
             >
-              {editingBooking ? 'Envoyer ma demande' : user ? 'Envoyer' : messages.reserver3}
+              {editingBooking ? 'Envoyer ma demande' : 'Envoyer'}
             </button>
           )}
         </div>

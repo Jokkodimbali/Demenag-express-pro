@@ -498,7 +498,11 @@ test('driver cannot change reservation status or course history; admin controls 
   const { service } = harness();
   await assert.rejects(
     service.status(driverUser, 'booking-1', 'cancelled', 1),
-    /Le chauffeur ne peut pas modifier la réservation/u,
+    (error: unknown) =>
+      error instanceof Error &&
+      'status' in error &&
+      error.status === 403 &&
+      /Le chauffeur ne peut pas modifier la réservation/u.test(error.message),
   );
   await assert.rejects(service.startTrip(driverUser, 'booking-1', ['/loading.jpg']));
   await assert.rejects(service.finishTrip(driverUser, 'booking-1', ['/unloading.jpg']));
@@ -565,6 +569,7 @@ test('client can change only the schedule of their own open reservation', async 
   );
   await assert.rejects(
     service.schedule(driverUser, 'booking-1', '2026-10-26', '10:00', getBooking().version),
+    (error: unknown) => error instanceof Error && 'status' in error && error.status === 403,
   );
   addFinalQuote();
   await assert.rejects(
@@ -586,6 +591,7 @@ test('client can update their own open reservation notes only', async () => {
   );
   await assert.rejects(
     service.updateNotes(driverUser, 'booking-1', 'Refusé', getBooking().version),
+    (error: unknown) => error instanceof Error && 'status' in error && error.status === 403,
   );
   addFinalQuote();
   await assert.rejects(service.updateNotes(client, 'booking-1', 'Refusé', getBooking().version));
