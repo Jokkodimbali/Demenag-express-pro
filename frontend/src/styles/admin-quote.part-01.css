@@ -356,6 +356,9 @@
   font-size: 19px;
   font-weight: 900;
 }
+.admin-quote-save-bar-break {
+  display: none;
+}
 .admin-quote-save-bar .admin-quote-submit {
   position: absolute;
   right: clamp(18px, 3vw, 32px);

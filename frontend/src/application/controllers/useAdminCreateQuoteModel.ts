@@ -154,7 +154,15 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   );
   const editingBooking = state.editingBooking;
   const quoteSettings = editingBooking?.pricingSettings ?? state.catalogue?.settings;
-  const quoteTollPoints = editingBooking?.pricingSnapshot?.tollPoints ?? appTollPoints;
+  const savedTollPrices = new Map(
+    editingBooking?.pricingSnapshot?.tollPoints.map((point) => [point.id, point]) ?? [],
+  );
+  const quoteTollPoints = appTollPoints.map((point) => {
+    const saved = savedTollPrices.get(point.id);
+    return saved
+      ? { ...point, heavyPrice: saved.heavyPrice, vehiclePrices: saved.vehiclePrices }
+      : point;
+  });
   const {
     catalogue,
     loading,
@@ -511,7 +519,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     ? referenceMovingEstimateNote(
         movingEstimate,
         draft.route?.distanceKm ?? 0,
-        catalogue?.settings.movingLaborPlanning?.maxDayHours,
+        quoteSettings?.movingLaborPlanning?.maxDayHours,
       )
     : '';
   const questionnaireText = [
@@ -620,7 +628,6 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const effectiveDistance = draft.distanceKmOverride ?? draft.route?.distanceKm;
   const availableMenuLines = preview.availableMenuLines;
   const menuIncluded = preview.menuIncluded;
-  const inventoryMenuOptions = preview.menuOptions;
   const savedQuote = editingBooking?.quotes.filter((quote) => quote.kind === quoteKind).at(-1);
   const canSendQuoteWhatsApp = Boolean(
     whatsappNumber(draft.customerPhone, catalogue?.settings.whatsappCountryCode ?? '221').length >=
@@ -840,7 +847,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     const warnings =
       quoteConfig.calcMode === 'manual' || !selected || !catalogue
         ? []
-        : vehicleFitWarnings(estimateInventory, selected, catalogue.settings);
+        : vehicleFitWarnings(estimateInventory, selected, quoteSettings ?? catalogue.settings);
     if (!warnings.length) return true;
     const copy = fitConfirmationCopy(warnings);
     const confirmed = await requestConfirmation({

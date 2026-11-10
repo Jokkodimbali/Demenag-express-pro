@@ -29,16 +29,7 @@ export async function verifyProvisionalQuoteCreation(
   const originalVehicle = await context.db.vehicule.findUniqueOrThrow({
     where: { id: 'sprinter' },
   });
-  const originalVehiclePrices = originalVehicle.tarifs as [number, number, number];
-  const changedVehiclePrices = originalVehiclePrices.map((price) => price + 1_000) as [
-    number,
-    number,
-    number,
-  ];
-  await context.db.vehicule.update({
-    where: { id: 'sprinter' },
-    data: { tarifs: changedVehiclePrices },
-  });
+  const currentVehiclePrices = originalVehicle.tarifs as [number, number, number];
   const tollPoint = await context.db.pointPeage.findFirstOrThrow();
   const tollVehiclePrices = tollPoint.tarifsVehicules as Record<string, number>;
   const tollUnitPrice = tollVehiclePrices.sprinter ?? tollPoint.tarifLourd;
@@ -240,21 +231,17 @@ export async function verifyProvisionalQuoteCreation(
     .send({ version: latestBooking.body.version });
   assert.equal(applied.status, 200, JSON.stringify(applied.body));
   const appliedData = applied.body as import('../../src/domain/model.js').Booking;
-  assert.deepEqual(appliedData.pricingSnapshot?.vehiclePrices.sprinter, changedVehiclePrices);
-  assert.deepEqual(appliedData.vehicle.prices, changedVehiclePrices);
+  assert.deepEqual(appliedData.pricingSnapshot?.vehiclePrices.sprinter, currentVehiclePrices);
+  assert.deepEqual(appliedData.vehicle.prices, currentVehiclePrices);
   const persistedApplied = await context.db.reservation.findUniqueOrThrow({
     where: { id: bookingId },
   });
   assert.deepEqual(
     (persistedApplied.donnees as import('../../src/domain/model.js').Booking).pricingSnapshot
       ?.vehiclePrices.sprinter,
-    changedVehiclePrices,
+    currentVehiclePrices,
     'Le remplacement explicite des tarifs doit être persisté dans la réservation.',
   );
-  await context.db.vehicule.update({
-    where: { id: 'sprinter' },
-    data: { tarifs: originalVehiclePrices },
-  });
 }
 
 export async function verifyCancelledAccounting(

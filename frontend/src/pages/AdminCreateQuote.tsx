@@ -135,8 +135,8 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
     inventory: model.inventoryCount > 0
       ? `${model.inventoryCount} objets · ${String(Math.round((movingEstimate?.volume ?? 0) * 10) / 10).replace('.', ',')} m³ · ${quoteConfig.trips} aller(s)-retour(s)`
       : 'Fiche d’appel à remplir',
-    formula: `Formule ${quoteConfig.billingMode === 'complete' ? 'Complète' : quoteConfig.billingMode === 'standard' ? 'Standard' : 'Économique'} · ${selected?.shortName || selected?.name || ''}${model.previewTotal == null ? '' : ` · ${money(model.previewTotal)}`}`,
-    planning: movingEstimate
+    formula: `Formule ${quoteConfig.billingMode === 'complete' ? 'Complète' : quoteConfig.billingMode === 'standard' ? 'Standard' : 'Économique'} · ${selected && ['sprinter', 'master', 'trafic'].includes(selected.id) ? selected.id[0].toUpperCase() + selected.id.slice(1) : selected?.shortName || selected?.name || ''}${model.previewTotal == null ? '' : ` · ${money(model.previewTotal)}`}`,
+    planning: model.inventoryCount > 0 && movingEstimate
       ? `Durée ${formatDuration(movingEstimate.totalMinutes)} · fin prévue ${movingEstimate.endTime} · ${movingEstimate.crew} manœuvres`
       : 'Après l’inventaire',
   };
@@ -214,18 +214,15 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
         </p>
       )}
       {editingReservation && editingBooking && user?.role === 'admin' && !editingLocked && (
-        <section className="admin-quote-pricing-snapshot" aria-label="Tarifs du devis">
-          <p>
-            Les tarifs de transport, manœuvre, menuiserie et péages sont ceux enregistrés pour
-            cette réservation. Les dimensions des véhicules suivent les paramètres actuels.
-          </p>
+        <section className="admin-quote-pricing-snapshot" aria-label={visibleUiText.pricingSnapshotHeading}>
+          <p>{visibleUiText.pricingSnapshotNotice}</p>
           <button
             className="button secondary"
             type="button"
             onClick={() => void applyCurrentPricingSnapshot()}
             disabled={pricingSnapshotBusy}
           >
-            {pricingSnapshotBusy ? 'Application des tarifs…' : 'Appliquer les tarifs actuels'}
+            {pricingSnapshotBusy ? visibleUiText.pricingSnapshotBusy : visibleUiText.pricingSnapshotAction}
           </button>
           {pricingSnapshotError && <p className="alert error" role="alert">{pricingSnapshotError}</p>}
         </section>
@@ -374,11 +371,11 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                   </span>
                   <span>
                     {uiText['manœuvre']}
-                    <strong>{money(catalogue.settings.labourPrice)}</strong> {uiText['pers']}
+                    <strong>{money((quoteSettings ?? catalogue.settings).labourPrice)}</strong> {uiText['pers']}
                   </span>
                   <span>
                     {uiText['menuisier']}
-                    <strong>{money(catalogue.settings.assemblyPrice)}</strong> {uiText['meuble']}
+                    <strong>{money((quoteSettings ?? catalogue.settings).assemblyPrice)}</strong> {uiText['meuble']}
                   </span>
                 </div>
               </div>
@@ -693,12 +690,12 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
           <CallInventory
             draft={draft}
             setDraft={setDraft}
-            maxOptions={catalogue.settings.maxOptions}
+            maxOptions={(quoteSettings ?? catalogue.settings).maxOptions}
             vehicles={catalogue.vehicles}
             selectedVehicleId={draft.vehicleId}
             quoteTrips={quoteConfig.trips}
-            maxTrips={catalogue.settings.maxTrips}
-            laborPlanning={catalogue.settings.movingLaborPlanning}
+            maxTrips={(quoteSettings ?? catalogue.settings).maxTrips}
+            laborPlanning={(quoteSettings ?? catalogue.settings).movingLaborPlanning}
             ignoreTraffic={quoteConfig.trafficOff}
             manualLegMinutes={quoteConfig.calcMode === 'manual' ? quoteConfig.legMinutes : 0}
             hasToll={tollLines.some((line) => line.quantity * line.unitPrice > 0)}
@@ -834,10 +831,10 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                         <button
                           type="button"
                           aria-label={uiText['ajouterUnAllerRetour']}
-                          disabled={quoteConfig.trips >= catalogue.settings.maxTrips}
+                          disabled={quoteConfig.trips >= (quoteSettings ?? catalogue.settings).maxTrips}
                           onClick={() => {
                             const trips = Math.min(
-                              catalogue.settings.maxTrips,
+                              (quoteSettings ?? catalogue.settings).maxTrips,
                               quoteConfig.trips + 1,
                             );
                             enterManualCalculation();
@@ -890,7 +887,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                             <button
                               type="button"
                               aria-label={`Ajouter ${label}`}
-                              disabled={draft.options[key] >= catalogue.settings.maxOptions}
+                              disabled={draft.options[key] >= (quoteSettings ?? catalogue.settings).maxOptions}
                               onClick={() => changeQuoteOption(key, 1)}
                             >
                               +
@@ -1065,7 +1062,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             quoteKind={quoteKind}
             total={model.previewTotal}
             trips={quoteConfig.trips}
-            movingEstimate={movingEstimate}
+            movingEstimate={model.inventoryCount > 0 ? movingEstimate : null}
             driverRental={quoteConfig.billingMode === 'driver-rental'}
             submitting={model.submitting}
             disabled={

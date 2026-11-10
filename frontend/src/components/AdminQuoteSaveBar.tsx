@@ -46,6 +46,7 @@ export function AdminQuoteSaveBar({
           </div>
         </>
       )}
+      <span className="admin-quote-save-bar-break" aria-hidden="true" />
       <button
         type="submit"
         form="admin-quote-form"

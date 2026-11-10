@@ -986,8 +986,23 @@ export class MovingService implements MovingUseCases {
     );
     const vehicle = catalogue.vehicles.find((item) => item.id === booking.vehicle.id);
     if (!vehicle) throw new AppError(400, messages.vehiculeInconnu);
+    const estimate = calculatePrice(
+      vehicle,
+      catalogue.settings,
+      booking.distanceKm,
+      booking.options,
+      booking.estimate.trips,
+      null,
+      0,
+      [],
+      booking.workAccess,
+      undefined,
+      'fcfa',
+      '',
+      booking.date,
+    );
     return this.bookings.update(
-      { ...booking, vehicle, pricingSettings: catalogue.settings, pricingSnapshot },
+      { ...booking, vehicle, pricingSettings: catalogue.settings, pricingSnapshot, estimate },
       version,
     );
   }

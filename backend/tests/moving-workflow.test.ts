@@ -15,6 +15,7 @@ import type {
   Driver,
   Settings,
   User,
+  TollPoint,
 } from '../src/domain/model.js';
 
 const now = new Date('2026-10-22T12:00:00.000Z');
@@ -38,6 +39,7 @@ const driver: Driver = {
 
 function harness() {
   let catalogueVehiclePrices: [number, number, number] = [10000, 20000, 30000];
+  let catalogueTollPoints: TollPoint[] = [];
   let booking: Booking = {
     id: 'booking-1',
     reference: 'DEM-2026-BOOKING1',
@@ -147,7 +149,7 @@ function harness() {
         vehicles: [{ ...booking.vehicle, prices: catalogueVehiclePrices }],
         settings,
       }) as Catalogue,
-    listTollPoints: async () => [],
+    listTollPoints: async () => catalogueTollPoints,
   } as unknown as CatalogueRepository;
   const drivers = {
     findByUserId: async (userId: string) =>
@@ -204,6 +206,9 @@ function harness() {
     setCurrentVehiclePrices: (prices: [number, number, number]) => {
       catalogueVehiclePrices = prices;
     },
+    setCurrentTollPoints: (points: TollPoint[]) => {
+      catalogueTollPoints = points;
+    },
     setDistance: (distanceKm: number) => {
       booking = { ...booking, distanceKm };
     },
@@ -253,7 +258,37 @@ test('le devis utilise les tarifs figés puis les remplace uniquement sur action
   const updated = await service.applyCurrentPricingSnapshot(admin, booking.id, quote.version);
   assert.deepEqual(updated.pricingSnapshot?.vehiclePrices['vehicle-1'], [12000, 24000, 36000]);
   assert.deepEqual(updated.vehicle.prices, [12000, 24000, 36000]);
+  assert.equal(updated.estimate.lines.find((line) => line.label.startsWith('Transport'))?.unitPrice, 24000);
   assert.equal(updated.version, quote.version + 1);
+});
+
+test('les péages existants gardent leur tarif figé et les nouveaux utilisent le tarif courant', async () => {
+  const { service, getBooking, setPricingSnapshot, setCurrentTollPoints } = harness();
+  const oldPoint: TollPoint = {
+    id: 'old', name: 'Ancien', region: 'Dakar', axis: 'A1', heavyPrice: 100,
+    vehiclePrices: { 'vehicle-1': 100 }, latitude: null, longitude: null,
+  };
+  setPricingSnapshot({
+    capturedAt: now.toISOString(),
+    vehiclePrices: { 'vehicle-1': [10000, 20000, 30000] },
+    tollPoints: [oldPoint],
+    accounting: null,
+  });
+  setCurrentTollPoints([
+    { ...oldPoint, heavyPrice: 500, vehiclePrices: { 'vehicle-1': 500 } },
+    { ...oldPoint, id: 'new', name: 'Nouveau', heavyPrice: 700,
+      vehiclePrices: { 'vehicle-1': 700 } },
+  ]);
+  const booking = getBooking();
+  const result = await service.quote(admin, booking.id, {
+    kind: 'provisional', trips: 1, customPrice: null, discount: 0, notes: '',
+    extraLines: [], options: booking.options, version: booking.version,
+    tolls: [
+      { tollPointId: 'old', direction: 'one-way', quantity: 1 },
+      { tollPointId: 'new', direction: 'one-way', quantity: 1 },
+    ],
+  });
+  assert.deepEqual(result.quotes[0]?.tolls?.map((line) => line.unitPrice), [100, 700]);
 });
 
 test('un devis final au-delà du dernier palier exige un prix de transport positif', async () => {

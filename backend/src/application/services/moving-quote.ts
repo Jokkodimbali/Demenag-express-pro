@@ -83,9 +83,15 @@ export async function createQuote(
     input.kind === 'final'
       ? { ...pricingSettings, maxTrips: Math.max(pricingSettings.maxTrips, input.trips) }
       : pricingSettings;
-  const tollPoints = booking.pricingSnapshot
-    ? booking.pricingSnapshot.tollPoints
-    : await catalogueRepository.listTollPoints();
+  const savedTollPrices = new Map(
+    booking.pricingSnapshot?.tollPoints.map((point) => [point.id, point]) ?? [],
+  );
+  const tollPoints = (await catalogueRepository.listTollPoints()).map((point) => {
+    const saved = savedTollPrices.get(point.id);
+    return saved
+      ? { ...point, heavyPrice: saved.heavyPrice, vehiclePrices: saved.vehiclePrices }
+      : point;
+  });
   const tolls = (input.tolls ?? []).map((line) => {
     const point = tollPoints.find((item) => item.id === line.tollPointId);
     requireValue(point, 'Un péage sélectionné n’existe plus dans le catalogue.');

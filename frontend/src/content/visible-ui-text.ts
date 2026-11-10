@@ -256,6 +256,11 @@ export const visibleUiText = {
   assemblyResetSuccess: 'Grille client rétablie.',
   pricingManoeuvreIncludedHours: 'Heures comprises dans le prix d’un manœuvre',
   pricingManoeuvreOvertimeHourly: 'Au-delà, prix par heure et par manœuvre (0 = désactivé)',
+  pricingSnapshotHeading: 'Tarifs du devis',
+  pricingSnapshotNotice:
+    'Les tarifs de transport, manœuvre, menuiserie et péages sont ceux enregistrés pour cette réservation. Les dimensions des véhicules suivent les paramètres actuels.',
+  pricingSnapshotAction: 'Appliquer les tarifs actuels',
+  pricingSnapshotBusy: 'Application des tarifs…',
   pricingAutomaticDiscounts: 'REMISES AUTOMATIQUES',
   pricingFollowingTrips: 'Allers-retours suivants, en % du 1er (100 = pas de dégressif)',
   pricingLowDemand: 'Remise jour creux sur le transport (lundi à jeudi, du 6 au 24 du mois)',
