@@ -72,8 +72,9 @@ export function useBookingForm({
   const lookupPhone = useRef('');
   const autofilledName = useRef<{ phone: string; name: string } | null>(null);
   const adminQuoteInitialized = useRef(false);
-  const tiers = tierLabels(catalogue?.settings.distanceBounds);
-  const bounds = catalogue?.settings.distanceBounds ?? [15, 25, 35];
+  const pricingSettings = editingBooking?.pricingSettings ?? catalogue?.settings;
+  const tiers = tierLabels(pricingSettings?.distanceBounds);
+  const bounds = pricingSettings?.distanceBounds ?? [15, 25, 35];
   const distance = draft.distanceKmOverride ?? draft.route?.distanceKm;
   const quoteTier =
     distance == null
@@ -85,7 +86,17 @@ export function useBookingForm({
           : distance <= bounds[2]
             ? 2
             : 3;
-  const selected = catalogue?.vehicles.find((v) => v.id === draft.vehicleId);
+  const catalogueVehicle = catalogue?.vehicles.find((v) => v.id === draft.vehicleId);
+  const selected = catalogueVehicle
+    ? {
+        ...catalogueVehicle,
+        prices:
+          editingBooking?.pricingSnapshot?.vehiclePrices[catalogueVehicle.id] ??
+          (editingBooking?.vehicle.id === catalogueVehicle.id
+            ? editingBooking.vehicle.prices
+            : catalogueVehicle.prices),
+      }
+    : undefined;
   const administrativeQuote = mode === 'admin-quote' && user?.role === 'admin';
   useEffect(() => {
     if (!editId) {
@@ -575,7 +586,7 @@ export function useBookingForm({
       ...d,
       options: {
         ...d.options,
-        [key]: Math.max(0, Math.min(catalogue?.settings.maxOptions ?? 0, d.options[key] + delta)),
+        [key]: Math.max(0, Math.min(pricingSettings?.maxOptions ?? 0, d.options[key] + delta)),
       },
     }));
   }
@@ -663,6 +674,7 @@ export function useBookingForm({
     clientRecognition,
     recognizingClient,
     editingBooking,
+    setEditingBooking,
     editLoading,
     editError,
     recognizeClient,

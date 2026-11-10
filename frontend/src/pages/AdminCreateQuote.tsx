@@ -32,6 +32,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
   const [activeStep, setActiveStep] = useState(1);
   const {
     editingReservation,
+    editingBooking,
     resetVersion,
     quoteConfig,
     setQuoteConfig,
@@ -48,6 +49,12 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
     trafficDuration,
     state,
     editingLocked,
+    pricingSnapshotBusy,
+    pricingSnapshotError,
+    applyCurrentPricingSnapshot,
+    quoteSettings,
+    quoteTollPoints,
+    user,
     catalogue,
     loading,
     error,
@@ -206,6 +213,23 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
           {uiText['cetteReservationEstClotureeSonDevisResteConsultableMai']}
         </p>
       )}
+      {editingReservation && editingBooking && user?.role === 'admin' && !editingLocked && (
+        <section className="admin-quote-pricing-snapshot" aria-label="Tarifs du devis">
+          <p>
+            Les tarifs de transport, manœuvre, menuiserie et péages sont ceux enregistrés pour
+            cette réservation. Les dimensions des véhicules suivent les paramètres actuels.
+          </p>
+          <button
+            className="button secondary"
+            type="button"
+            onClick={() => void applyCurrentPricingSnapshot()}
+            disabled={pricingSnapshotBusy}
+          >
+            {pricingSnapshotBusy ? 'Application des tarifs…' : 'Appliquer les tarifs actuels'}
+          </button>
+          {pricingSnapshotError && <p className="alert error" role="alert">{pricingSnapshotError}</p>}
+        </section>
+      )}
       <form
         id="admin-quote-form"
         onSubmit={async (event) => {
@@ -237,7 +261,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
           ) {
             event.preventDefault();
             setStageError(
-              `Distance au-delà de ${catalogue.settings.distanceBounds[2]} km : fixez le prix par aller-retour avant le devis final.`,
+              `Distance au-delà de ${(quoteSettings ?? catalogue.settings).distanceBounds[2]} km : fixez le prix par aller-retour avant le devis final.`,
             );
             return;
           }
@@ -340,12 +364,12 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                 <div className="reference-prices">
                   {selected.prices.map((amount, index) => (
                     <span key={index}>
-                      {referenceTierLabels(catalogue.settings.distanceBounds)[index]} :{' '}
+                      {referenceTierLabels((quoteSettings ?? catalogue.settings).distanceBounds)[index]} :{' '}
                       <strong>{money(amount)}</strong>
                     </span>
                   ))}
                   <span>
-                    {referenceTierLabels(catalogue.settings.distanceBounds)[3]} :{' '}
+                    {referenceTierLabels((quoteSettings ?? catalogue.settings).distanceBounds)[3]} :{' '}
                     <strong>{uiText['surDevis']}</strong>
                   </span>
                   <span>
@@ -762,6 +786,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                     lines={tollLines}
                     onToggle={onTollToggle}
                     roundTrips={quoteConfig.trips}
+                    points={quoteTollPoints}
                   />
                 </div>
               )}

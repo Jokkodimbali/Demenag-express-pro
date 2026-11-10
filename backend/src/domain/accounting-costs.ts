@@ -17,7 +17,7 @@ const sizedItems = new Set(['salon', 'tablem', 'lit', 'matelas', 'armoire']);
 const asInt = (value: number) => (Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0);
 
 function menuUnitPrice(
-  config: AccountingFinanceConfiguration | null,
+  config: Pick<AccountingFinanceConfiguration, 'menuPrices'> | null,
   key: string,
   origin: 'local' | 'import',
   size?: number,
@@ -33,7 +33,7 @@ function menuUnitPrice(
 export function captureAccountingCosts(
   booking: Booking,
   price: Price,
-  config: AccountingFinanceConfiguration | null,
+  config: Pick<AccountingFinanceConfiguration, 'menuPrices' | 'moverCostPerMove'> | null,
   billingMode?: Quote['billingMode'],
 ) {
   const source = booking.inventorySnapshot?.sourceInventory;
@@ -83,7 +83,7 @@ export function captureAccountingCosts(
 export function accountingCostsForQuote(
   booking: Booking,
   quote: Pick<Quote, 'price' | 'billingMode' | 'accountingCosts'>,
-  config: AccountingFinanceConfiguration | null,
+  config: Pick<AccountingFinanceConfiguration, 'menuPrices' | 'moverCostPerMove'> | null,
 ) {
   const costs =
     quote.accountingCosts ??

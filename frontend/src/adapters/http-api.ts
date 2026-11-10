@@ -216,6 +216,8 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
       }),
     updateBookingRoute: (id, from, to, version) =>
       request(httpRoutes.bookingRoute(id), 'PATCH', { from, to, version }),
+    applyCurrentPricingSnapshot: (id, version) =>
+      request(httpRoutes.bookingApplyCurrentPricing(id), 'POST', { version }),
     assignDriver: (id, driverId, version) =>
       request(`${httpRoutes.bookings}/${id}/driver`, 'PATCH', { driverId, version }),
     updateCrew: (id, input) => request(`${httpRoutes.bookings}/${id}/crew`, 'PATCH', input),

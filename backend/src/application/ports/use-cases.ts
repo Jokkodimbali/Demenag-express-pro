@@ -107,6 +107,7 @@ export interface MovingUseCases {
     details?: Pick<WorkPlanReview, 'cause' | 'severity' | 'correctiveAction'>,
   ): Promise<Booking>;
   updateRoute(user: User, id: string, from: Point, to: Point, version: number): Promise<Booking>;
+  applyCurrentPricingSnapshot(user: User, id: string, version: number): Promise<Booking>;
   assignDriver(user: User, id: string, driverId: string | null, version: number): Promise<Booking>;
   updateCrew(
     user: User,

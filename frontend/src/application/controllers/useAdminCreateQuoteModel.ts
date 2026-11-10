@@ -32,6 +32,7 @@ import {
   vehicleFitWarnings,
 } from '../../application/services/quote-vehicle-fit';
 import { fitConfirmationCopy } from '../../application/services/quote-fit-confirmation';
+import { errorMessage } from '../../application/error-message';
 
 export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const location = useLocation();
@@ -84,6 +85,8 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const [resetVersion, setResetVersion] = useState(0);
   const [pdfError, setPdfError] = useState('');
   const [stageError, setStageError] = useState('');
+  const [pricingSnapshotBusy, setPricingSnapshotBusy] = useState(false);
+  const [pricingSnapshotError, setPricingSnapshotError] = useState('');
   const [reminderNotice, setReminderNotice] = useState('');
   const whatsappWindow = useRef<Window | null>(null);
   const sendWhatsAppAfterSave = useRef(false);
@@ -93,7 +96,14 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     tolls: false,
     options: false,
   });
-  const { exportQuote, catalogue: appCatalogue, user, api, requestConfirmation } = useApp();
+  const {
+    exportQuote,
+    catalogue: appCatalogue,
+    tollPoints: appTollPoints,
+    user,
+    api,
+    requestConfirmation,
+  } = useApp();
   const bookingCommands = useBookingCommands();
   const state = useBookingForm({
     mode: publicRequest && user?.role !== 'admin' ? 'booking' : 'admin-quote',
@@ -143,6 +153,8 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       state.editingBooking.quotes.some((quote) => quote.kind === 'final')),
   );
   const editingBooking = state.editingBooking;
+  const quoteSettings = editingBooking?.pricingSettings ?? state.catalogue?.settings;
+  const quoteTollPoints = editingBooking?.pricingSnapshot?.tollPoints ?? appTollPoints;
   const {
     catalogue,
     loading,
@@ -167,6 +179,16 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     editLoading,
     editError,
   } = state;
+  const quoteVehicle = selected
+    ? {
+        ...selected,
+        prices:
+          editingBooking?.pricingSnapshot?.vehiclePrices[selected.id] ??
+          (editingBooking?.vehicle.id === selected.id
+            ? editingBooking.vehicle.prices
+            : selected.prices),
+      }
+    : null;
   const route = draft.route ?? undefined;
   const {
     googleMapsKey,
@@ -387,8 +409,8 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     draft.route && draft.distanceKmOverride != null
       ? { ...draft.route, distanceKm: draft.distanceKmOverride }
       : draft.route;
-  const labourPrice = catalogue
-    ? labourUnitPrice(catalogue.settings, {
+  const labourPrice = quoteSettings
+    ? labourUnitPrice(quoteSettings, {
         fromFloor: draft.inventory.fromFloor,
         toFloor: draft.inventory.toFloor,
         fromLift: draft.inventory.fromLift,
@@ -400,7 +422,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         trips: quoteConfig.trips,
         crew: draft.inventory.crew,
         startTime: draft.timeSlot,
-        laborPlanning: catalogue?.settings.movingLaborPlanning,
+        laborPlanning: quoteSettings?.movingLaborPlanning,
         ignoreTraffic: quoteConfig.trafficOff,
         manualLegMinutes: quoteConfig.calcMode === 'manual' ? quoteConfig.legMinutes : 0,
         date: draft.date,
@@ -430,7 +452,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         toAddress: draft.toAddress,
         startTime: draft.timeSlot,
         hasToll: tollLines.some((line) => line.quantity * line.unitPrice > 0),
-        settings: catalogue?.settings,
+        settings: quoteSettings,
         estimate: movingEstimate,
       })
     : null;
@@ -527,12 +549,13 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     draft,
     estimateInventory,
     config: quoteConfig,
-    vehicle: selected ?? null,
+    vehicle: quoteVehicle,
     estimate: movingEstimate,
-    settings: catalogue?.settings,
+    settings: quoteSettings,
     price,
     extras,
     labourPrice,
+    applySnapshotLabourPrice: Boolean(editingBooking?.pricingSnapshot),
     simulationNeeds,
   });
   const formulaPrices = {
@@ -545,36 +568,39 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         menuIncluded: false,
         overtimeMinutes: 0,
       },
-      vehicle: selected ?? null,
+      vehicle: quoteVehicle,
       estimate: movingEstimate,
-      settings: catalogue?.settings,
+      settings: quoteSettings,
       price,
       extras,
       labourPrice,
+      applySnapshotLabourPrice: Boolean(editingBooking?.pricingSnapshot),
       simulationNeeds,
     }).total,
     standard: createAdminQuotePreview({
       draft,
       estimateInventory,
       config: { ...quoteConfig, billingMode: 'standard', overtimeMinutes: 0 },
-      vehicle: selected ?? null,
+      vehicle: quoteVehicle,
       estimate: movingEstimate,
-      settings: catalogue?.settings,
+      settings: quoteSettings,
       price,
       extras,
       labourPrice,
+      applySnapshotLabourPrice: Boolean(editingBooking?.pricingSnapshot),
       simulationNeeds,
     }).total,
     complete: createAdminQuotePreview({
       draft,
       estimateInventory,
       config: { ...quoteConfig, billingMode: 'complete', overtimeMinutes: 0 },
-      vehicle: selected ?? null,
+      vehicle: quoteVehicle,
       estimate: movingEstimate,
-      settings: catalogue?.settings,
+      settings: quoteSettings,
       price,
       extras,
       labourPrice,
+      applySnapshotLabourPrice: Boolean(editingBooking?.pricingSnapshot),
       simulationNeeds,
     }).total,
   };
@@ -589,7 +615,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     discountLabel: previewDiscountLabel,
     total: previewTotal,
   } = preview;
-  const bounds = catalogue?.settings.distanceBounds ?? [15, 25, 35];
+  const bounds = quoteSettings?.distanceBounds ?? [15, 25, 35];
   const tiers = referenceTierLabels(bounds);
   const effectiveDistance = draft.distanceKmOverride ?? draft.route?.distanceKm;
   const availableMenuLines = preview.availableMenuLines;
@@ -677,7 +703,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     form.requestSubmit();
   }
   async function downloadCurrentQuote() {
-    const pdfSettings = catalogue?.settings;
+    const pdfSettings = quoteSettings ?? catalogue?.settings;
     if (!pdfSettings || !selected) return;
     setPdfError('');
     try {
@@ -799,7 +825,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       const minimum = movingEstimate?.volume ? 1 : 0;
       const labour = Math.max(
         minimum,
-        Math.min(catalogue?.settings.maxOptions ?? 20, current.options.labour + delta),
+        Math.min(quoteSettings?.maxOptions ?? 20, current.options.labour + delta),
       );
       return {
         ...current,
@@ -836,6 +862,23 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     setOpenQuoteSections((current) => ({ ...current, [section]: !current[section] }));
   }
 
+  async function applyCurrentPricingSnapshot() {
+    if (!editingBooking || user?.role !== 'admin' || pricingSnapshotBusy) return;
+    setPricingSnapshotBusy(true);
+    setPricingSnapshotError('');
+    try {
+      const updated = await api.applyCurrentPricingSnapshot(
+        editingBooking.id,
+        editingBooking.version,
+      );
+      state.setEditingBooking(updated);
+    } catch (reason) {
+      setPricingSnapshotError(errorMessage(reason));
+    } finally {
+      setPricingSnapshotBusy(false);
+    }
+  }
+
   return {
     location,
     navigate,
@@ -856,6 +899,9 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     setPdfError,
     stageError,
     setStageError,
+    pricingSnapshotBusy,
+    pricingSnapshotError,
+    applyCurrentPricingSnapshot,
     reminderNotice,
     setReminderNotice,
     whatsappWindow,
@@ -873,6 +919,8 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     state,
     editingLocked,
     editingBooking,
+    quoteSettings,
+    quoteTollPoints,
     catalogue,
     loading,
     error,

@@ -244,6 +244,21 @@ export function registerBookingRoutes(
       ),
     );
   });
+  app.post(
+    `${apiRoutes.bookings}/:id/pricing-snapshot/apply-current`,
+    authenticate,
+    admin,
+    async (req, res) => {
+      const p = z.object({ version: z.number().int().positive() }).parse(req.body);
+      res.json(
+        await deps.moving.applyCurrentPricingSnapshot(
+          getActor(res),
+          z.uuid().parse(req.params.id),
+          p.version,
+        ),
+      );
+    },
+  );
   app.patch(`${apiRoutes.bookings}/:id/driver`, authenticate, admin, async (req, res) => {
     const p = driverAssignmentSchema.parse(req.body);
     const booking = await deps.moving.assignDriver(

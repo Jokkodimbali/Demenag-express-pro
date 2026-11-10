@@ -69,7 +69,10 @@ test('a booking keeps its inventory and admin edits preserve or clear planning s
         return saved;
       },
     } as unknown as BookingRepository,
-    { get: async () => catalogue } as CatalogueRepository,
+    {
+      get: async () => catalogue,
+      listTollPoints: async () => [],
+    } as unknown as CatalogueRepository,
     { find: async () => route } as unknown as RouteRepository,
     {} as never,
     {} as never,

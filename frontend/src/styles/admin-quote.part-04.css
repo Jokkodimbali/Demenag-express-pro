@@ -712,3 +712,29 @@
     margin-left: 0;
   }
 }
+.admin-quote-pricing-snapshot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid #454a50;
+  border-radius: 12px;
+  background: #25282c;
+}
+.admin-quote-pricing-snapshot > p:first-child {
+  margin: 0;
+  color: #c4c9ce;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.admin-quote-pricing-snapshot .alert {
+  margin: 0;
+}
+@media (max-width: 640px) {
+  .admin-quote-pricing-snapshot {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

@@ -124,6 +124,7 @@ export interface BookingRepository {
     details?: Pick<WorkPlanReview, 'cause' | 'severity' | 'correctiveAction'>,
   ): Promise<Booking>;
   updateBookingRoute(id: string, from: Point, to: Point, version: number): Promise<Booking>;
+  applyCurrentPricingSnapshot(id: string, version: number): Promise<Booking>;
   quote(id: string, input: QuoteInput): Promise<Booking>;
   assignDriver(id: string, driverId: string | null, version: number): Promise<Booking>;
   updateCrew(
