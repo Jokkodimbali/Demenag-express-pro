@@ -52,7 +52,9 @@ export function useCallInventory({
   const hiddenInventoryKeys = catalogue?.settings.hiddenInventoryKeys ?? [];
   const [customLabel, setCustomLabel] = useState('');
   const [inventoryError, setInventoryError] = useState('');
-  const [open, setOpen] = useState(audience === 'client' && !referenceMode);
+  const [open, setOpen] = useState(
+    audience === 'admin' || (audience === 'client' && !referenceMode),
+  );
   const [openCustom, setOpenCustom] = useState(false);
   const [activeWidget, setActiveWidget] = useState<string | null>(null);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);

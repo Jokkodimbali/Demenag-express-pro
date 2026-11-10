@@ -32,7 +32,7 @@ import { verifyPlanningFollowUp } from './planning-follow-up.js';
 export async function runIntegrationScenario() {
   const url = process.env.TEST_DATABASE_URL;
   if (!url) return;
-  const context = createIntegrationContext(url);
+  const context = await createIntegrationContext(url);
   let original: Awaited<ReturnType<typeof captureOriginalConfiguration>> | undefined;
   const routeIds: string[] = [];
   let scenarioError: unknown;
@@ -98,6 +98,13 @@ export async function runIntegrationScenario() {
   }
   try {
     await context.db.$disconnect();
+  } catch (error) {
+    cleanupErrors.push(error);
+  }
+  try {
+    await new Promise<void>((resolve, reject) =>
+      context.server.close((error) => (error ? reject(error) : resolve())),
+    );
   } catch (error) {
     cleanupErrors.push(error);
   }

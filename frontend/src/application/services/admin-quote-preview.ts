@@ -109,6 +109,8 @@ export function createAdminQuotePreview(input: {
       .filter(
         (line) =>
           !line.label.startsWith('Transport ') &&
+          !line.label.startsWith('Allers-retours suivants') &&
+          !line.label.startsWith('Remise jour creux') &&
           (config.billingMode === 'complete' ||
             (config.billingMode === 'driver-rental' && config.menuIncluded) ||
             !line.label.startsWith('Menuisier ·')) &&

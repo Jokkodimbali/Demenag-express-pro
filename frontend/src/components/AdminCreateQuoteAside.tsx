@@ -4,7 +4,6 @@ import { whatsappNumber } from '../application/services/whatsapp';
 import { uiText } from '../content/reference-ui-text';
 import type { useAdminCreateQuoteModel } from '../application/controllers/useAdminCreateQuoteModel';
 import type { Catalogue, Vehicle } from '../domain/model';
-import type { ReactNode } from 'react';
 import { visibleUiText } from '../content/visible-ui-text';
 import { adminQuoteVehicleText as quoteText } from '../content/admin-quote-vehicle';
 import { AdminQuoteCalculationDetails } from './AdminQuoteCalculationDetails';
@@ -16,13 +15,11 @@ export function AdminCreateQuoteAside({
   publicRequest,
   catalogue,
   selected,
-  simulation,
 }: {
   model: Model;
   publicRequest: boolean;
   catalogue: Catalogue;
   selected: Vehicle;
-  simulation?: ReactNode;
 }) {
   const {
     displayBusinessPhone,
@@ -372,29 +369,25 @@ export function AdminCreateQuoteAside({
           {submitError}
         </p>
       )}
-      <button
-        className={`button primary admin-quote-submit${publicRequest ? ' reference-request-submit' : ' admin-quote-save-bar-submit'}`}
-        disabled={
-          submitting ||
-          estimating ||
-          editLoading ||
-          Boolean(editError) ||
-          editingLocked ||
-          (publicRequest && !editingReservation && catalogue.settings.bookingsEnabled === false)
-        }
-      >
-        {publicRequest
-          ? submitting
+      {publicRequest && (
+        <button
+          className="button primary admin-quote-submit reference-request-submit"
+          disabled={
+            submitting ||
+            estimating ||
+            editLoading ||
+            Boolean(editError) ||
+            editingLocked ||
+            (!editingReservation && catalogue.settings.bookingsEnabled === false)
+          }
+        >
+          {submitting
             ? 'Envoi…'
             : editingReservation
               ? 'Envoyer les modifications'
-              : 'Envoyer ma demande'
-          : submitting
-            ? 'Enregistrement…'
-            : editingReservation
-              ? 'Enregistrer les modifications'
-              : 'Enregistrer'}
-      </button>
+              : 'Envoyer ma demande'}
+        </button>
+      )}
       {!publicRequest && (
         <button
           type="button"
@@ -404,7 +397,6 @@ export function AdminCreateQuoteAside({
           {`Télécharger le PDF ${quoteKind === 'final' ? 'final' : 'provisoire'}`}
         </button>
       )}
-      {simulation}
     </aside>
   );
 }

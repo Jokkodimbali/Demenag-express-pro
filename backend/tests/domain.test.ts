@@ -11,7 +11,8 @@ import { validateDate, transition } from '../src/domain/booking.js';
 import { AuthService, normalizePhone } from '../src/application/services/auth.js';
 import { registerSchema } from '../src/adapters/in/http/validation/auth.js';
 import { ScryptPasswords } from '../src/adapters/out/security/crypto.js';
-import type { Settings, UserCredentials, Vehicle } from '../src/domain/model.js';
+import { accountingCostsForQuote, captureAccountingCosts } from '../src/domain/accounting-costs.js';
+import type { Booking, Settings, UserCredentials, Vehicle } from '../src/domain/model.js';
 const vehicle: Vehicle = {
   id: 'sprinter',
   name: 'Sprinter',
@@ -462,4 +463,53 @@ test('Le délai minimum de réservation s’applique à la date et à l’heure 
   const rules = { ...settings, minNoticeHours: 24 };
   assert.throws(() => validateDate('2026-10-16', now, rules, '08:00'));
   assert.doesNotThrow(() => validateDate('2026-10-16', now, rules, '10:00'));
+});
+
+test('la location avec chauffeur exclut les manœuvres de l’entreprise des charges comptables', () => {
+  const booking = {
+    estimate: {
+      lines: [{ label: 'Manœuvre', quantity: 3, unitPrice: 6_500, total: 19_500 }],
+    },
+    inventorySnapshot: {
+      sourceInventory: {
+        entries: {
+          salon: { quantity: 1, size: 5, dismantle: true, origin: 'local' },
+        },
+        variants: [],
+        custom: [],
+      },
+    },
+  } as unknown as Booking;
+  const price = {
+    lines: [{ label: 'Transport Sprinter', quantity: 1, unitPrice: 28_000, total: 28_000 }],
+  } as Booking['estimate'];
+
+  const completeCosts = captureAccountingCosts(booking, price, null, 'complete');
+  const rentalCosts = captureAccountingCosts(booking, price, null, 'driver-rental');
+
+  assert.equal(completeCosts.movers, 3);
+  assert.equal(completeCosts.moverAmount, 15_000);
+  assert.equal(rentalCosts.movers, 0);
+  assert.equal(rentalCosts.moverAmount, 0);
+  assert.equal(rentalCosts.carpenters, completeCosts.carpenters);
+  assert.equal(rentalCosts.carpenterAmount, completeCosts.carpenterAmount);
+
+  const correctedStoredCosts = accountingCostsForQuote(
+    booking,
+    {
+      price,
+      billingMode: 'driver-rental',
+      accountingCosts: {
+        movers: 3,
+        moverAmount: 15_000,
+        carpenters: 1,
+        carpenterAmount: 12_000,
+      },
+    },
+    null,
+  );
+  assert.equal(correctedStoredCosts.movers, 0);
+  assert.equal(correctedStoredCosts.moverAmount, 0);
+  assert.equal(correctedStoredCosts.carpenters, 1);
+  assert.equal(correctedStoredCosts.carpenterAmount, 12_000);
 });

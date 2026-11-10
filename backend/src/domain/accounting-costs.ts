@@ -1,4 +1,4 @@
-import type { AccountingFinanceConfiguration, Booking, Price } from './model.js';
+import type { AccountingFinanceConfiguration, Booking, Price, Quote } from './model.js';
 import referenceAssemblyPayrollDefaults from '../../../shared/reference-assembly-payroll-prices.js';
 
 const aliases: Record<string, string> = {
@@ -23,7 +23,8 @@ function menuUnitPrice(
   size?: number,
 ) {
   const normalizedKey = aliases[key] ?? key;
-  const prices = config?.menuPrices?.[normalizedKey] ?? referenceAssemblyPayrollDefaults[normalizedKey];
+  const prices =
+    config?.menuPrices?.[normalizedKey] ?? referenceAssemblyPayrollDefaults[normalizedKey];
   const sized = size == null ? undefined : prices?.sz?.[String(size)]?.[origin];
   if (sized != null) return asInt(sized);
   return asInt(prices?.[origin] ?? (origin === 'import' ? 10_000 : 5_000));
@@ -33,14 +34,17 @@ export function captureAccountingCosts(
   booking: Booking,
   price: Price,
   config: AccountingFinanceConfiguration | null,
+  billingMode?: Quote['billingMode'],
 ) {
   const source = booking.inventorySnapshot?.sourceInventory;
   const movers =
-    booking.crew?.manoeuvre.length ||
-    price.lines.find((line) => /man[œo]uvre/i.test(line.label))?.quantity ||
-    booking.estimate.lines.find((line) => /man[œo]uvre/i.test(line.label))?.quantity ||
-    source?.crew ||
-    0;
+    billingMode === 'driver-rental'
+      ? 0
+      : booking.crew?.manoeuvre.length ||
+        price.lines.find((line) => /man[œo]uvre/i.test(line.label))?.quantity ||
+        booking.estimate.lines.find((line) => /man[œo]uvre/i.test(line.label))?.quantity ||
+        source?.crew ||
+        0;
   let carpenters = 0;
   let carpenterAmount = 0;
   const add = (
@@ -74,4 +78,15 @@ export function captureAccountingCosts(
     carpenters,
     carpenterAmount: asInt(carpenterAmount),
   };
+}
+
+export function accountingCostsForQuote(
+  booking: Booking,
+  quote: Pick<Quote, 'price' | 'billingMode' | 'accountingCosts'>,
+  config: AccountingFinanceConfiguration | null,
+) {
+  const costs =
+    quote.accountingCosts ??
+    captureAccountingCosts(booking, quote.price, config, quote.billingMode);
+  return quote.billingMode === 'driver-rental' ? { ...costs, movers: 0, moverAmount: 0 } : costs;
 }

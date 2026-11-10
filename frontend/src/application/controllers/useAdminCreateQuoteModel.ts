@@ -88,7 +88,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const whatsappWindow = useRef<Window | null>(null);
   const sendWhatsAppAfterSave = useRef(false);
   const [openQuoteSections, setOpenQuoteSections] = useState({
-    client: publicRequest,
+    client: true,
     route: false,
     tolls: false,
     options: false,
@@ -211,7 +211,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     setStageError('');
     setPdfError('');
     setReminderNotice('');
-    setOpenQuoteSections({ client: false, route: false, tolls: false, options: false });
+    setOpenQuoteSections({ client: true, route: false, tolls: false, options: false });
     setResetVersion((current) => current + 1);
     window.scrollTo({ top: 0 });
     navigate(location.pathname, { replace: true, state: null });
@@ -535,6 +535,49 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     labourPrice,
     simulationNeeds,
   });
+  const formulaPrices = {
+    economic: createAdminQuotePreview({
+      draft,
+      estimateInventory,
+      config: {
+        ...quoteConfig,
+        billingMode: 'driver-rental',
+        menuIncluded: false,
+        overtimeMinutes: 0,
+      },
+      vehicle: selected ?? null,
+      estimate: movingEstimate,
+      settings: catalogue?.settings,
+      price,
+      extras,
+      labourPrice,
+      simulationNeeds,
+    }).total,
+    standard: createAdminQuotePreview({
+      draft,
+      estimateInventory,
+      config: { ...quoteConfig, billingMode: 'standard', overtimeMinutes: 0 },
+      vehicle: selected ?? null,
+      estimate: movingEstimate,
+      settings: catalogue?.settings,
+      price,
+      extras,
+      labourPrice,
+      simulationNeeds,
+    }).total,
+    complete: createAdminQuotePreview({
+      draft,
+      estimateInventory,
+      config: { ...quoteConfig, billingMode: 'complete', overtimeMinutes: 0 },
+      vehicle: selected ?? null,
+      estimate: movingEstimate,
+      settings: catalogue?.settings,
+      price,
+      extras,
+      labourPrice,
+      simulationNeeds,
+    }).total,
+  };
   const {
     tier: previewTier,
     rentalKit,
@@ -896,6 +939,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     previewDiscount,
     previewDiscountLabel,
     previewTotal,
+    formulaPrices,
     savedQuote,
     canSendQuoteWhatsApp,
     reminderDays,

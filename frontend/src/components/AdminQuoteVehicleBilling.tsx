@@ -1,4 +1,3 @@
-import { visibleUiText } from '../content/visible-ui-text';
 import { useState } from 'react';
 import { money } from '../application/presentation/format';
 import { adminQuoteVehicleText as t } from '../content/admin-quote-vehicle';
@@ -29,6 +28,41 @@ export function AdminQuoteVehicleBilling({
       {quoteConfig.billingMode === 'driver-rental' && (
         <section className="admin-quote-billing admin-quote-card" aria-label={t.billing}>
           <h3>{t.billing}</h3>
+          <div className="admin-quote-billing-options" role="group" aria-label={t.billing}>
+          <button
+            type="button"
+            aria-pressed={quoteConfig.billingMode !== 'driver-rental'}
+            className={quoteConfig.billingMode !== 'driver-rental' ? 'active' : ''}
+            onClick={() =>
+              setQuoteConfig((current) => ({
+                ...current,
+                billingMode: current.billingMode === 'standard' ? 'standard' : 'complete',
+                overtimeMinutes: 0,
+              }))
+            }
+          >
+            {t.complete}
+          </button>
+          <button
+            type="button"
+            aria-pressed={quoteConfig.billingMode === 'driver-rental'}
+            className={quoteConfig.billingMode === 'driver-rental' ? 'active' : ''}
+            onClick={() =>
+              setQuoteConfig((current) => ({
+                ...current,
+                billingMode: 'driver-rental',
+                menuIncluded: false,
+                overtimeMinutes: 0,
+              }))
+            }
+          >
+            {t.driverRental}
+          </button>
+          </div>
+        </section>
+      )}
+      {quoteConfig.billingMode === 'driver-rental' && (
+        <section className="admin-quote-billing admin-quote-card" aria-label={t.billing}>
           <div className="admin-quote-rental-details" aria-label={t.rentalMaterial}>
             <p>{t.rentalDescription}</p>
             <div className="admin-quote-rental-heading">
@@ -182,51 +216,6 @@ export function AdminQuoteVehicleBilling({
         aria-label={t.teamAndCalculation}
       >
         <h3>{t.teamAndCalculation}</h3>
-        <div className="admin-quote-calc-mode" role="group" aria-label={visibleUiText.text3}>
-          <button
-            type="button"
-            aria-pressed={quoteConfig.calcMode === 'auto'}
-            className={quoteConfig.calcMode === 'auto' ? 'selected' : ''}
-            onClick={() => {
-              setQuoteConfig((current) => ({
-                ...current,
-                calcMode: 'auto',
-                legMinutes: 0,
-              }));
-              setDraft((current) => ({
-                ...current,
-                inventory: { ...current.inventory, crew: 0 },
-              }));
-            }}
-          >
-            {visibleUiText.text4}
-          </button>
-          <button
-            type="button"
-            aria-pressed={quoteConfig.calcMode === 'manual'}
-            className={quoteConfig.calcMode === 'manual' ? 'selected' : ''}
-            onClick={() => {
-              const crew = Math.max(1, movingEstimate?.crew ?? draft.options.labour ?? 2);
-              setQuoteConfig((current) => ({
-                ...current,
-                calcMode: 'manual',
-                // travelLegMinutes includes the reference's 10 minute loading/parking allowance.
-                // Manual legMinutes stores only the route duration; the estimate adds that allowance.
-                legMinutes:
-                  movingEstimate?.travelLegMinutes != null
-                    ? Math.max(0, Math.round(movingEstimate.travelLegMinutes - 10))
-                    : current.legMinutes,
-              }));
-              setDraft((current) => ({
-                ...current,
-                options: { ...current.options, labour: crew },
-                inventory: { ...current.inventory, crew },
-              }));
-            }}
-          >
-            {visibleUiText.text5}
-          </button>
-        </div>
         <p>
           {quoteConfig.calcMode === 'manual'
             ? 'Vous fixez les manœuvres, allers-retours et durée de trajet. L’inventaire ne les modifie plus. Le véhicule reste libre.'

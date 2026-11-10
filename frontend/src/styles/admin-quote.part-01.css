@@ -7,11 +7,90 @@
   align-items: center;
   gap: 10px;
   min-width: 0;
-  padding-top: 6px;
+  padding: 10px 14px;
+  border: 1px solid #3b4046;
+  border-radius: 14px;
+  background: #272a2e;
   color: #fff;
+  text-align: left;
   font-size: 15px;
   font-weight: 800;
   letter-spacing: 0.08em;
+}
+.admin-quote-step > .admin-quote-step-heading {
+  width: 100%;
+  min-height: 56px;
+  cursor: pointer;
+}
+.admin-quote-step-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.admin-quote-step-copy strong {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.admin-quote-step-copy small {
+  overflow: hidden;
+  color: #aeb4bb;
+  font-size: 12.5px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-quote-step-chevron {
+  flex: 0 0 auto;
+  color: #f6d73c;
+  transition: transform 0.2s ease;
+}
+.admin-quote-step-heading[aria-expanded='false'] .admin-quote-step-chevron {
+  transform: rotate(-90deg);
+}
+.admin-quote-step-content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  padding-top: 12px;
+}
+.admin-quote-step-content > .admin-quote-step-next {
+  align-self: flex-end;
+  min-height: 44px;
+  border: 0;
+  border-radius: 10px;
+  padding: 0 18px;
+  background: #f6d73c;
+  color: #1e2023;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.admin-quote-step-content > .admin-quote-step-next:hover {
+  background: #ffdf48;
+}
+.admin-quote-expand-all {
+  display: flex;
+  justify-content: flex-end;
+}
+.admin-quote-expand-all button {
+  min-height: 40px;
+  border: 1.5px solid #4a5057;
+  border-radius: 10px;
+  padding: 0 14px;
+  background: transparent;
+  color: #d5d9de;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.admin-quote-plan-empty {
+  color: #aeb4bb;
+  font-size: 13.5px;
 }
 .admin-quote-step-number {
   display: flex;
@@ -96,47 +175,6 @@
 .admin-quote-vehicle-choices small {
   color: #aeb4bb;
   font-size: 13px;
-}
-.admin-quote-vehicle-detail {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
-  padding: 12px;
-  border: 1px solid #3b4046;
-  border-radius: 14px;
-  background: #1e2023;
-}
-.admin-quote-vehicle-detail > strong {
-  color: #f6d73c;
-  font-size: 12px;
-  letter-spacing: 0.1em;
-}
-.admin-quote-vehicle-detail .reference-vehicle-facts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.admin-quote-vehicle-detail .reference-vehicle-facts span {
-  padding: 5px 9px;
-  border-radius: 8px;
-  background: #30343a;
-  font-size: 12px;
-}
-.admin-quote-vehicle-detail .reference-vehicle-facts .volume {
-  background: #f6d73c;
-  color: #1e2023;
-  font-weight: 800;
-}
-.admin-quote-vehicle-rates {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 14px;
-  color: #aeb4bb;
-  font-size: 12px;
-}
-.admin-quote-vehicle-rates strong {
-  color: #fff;
 }
 .reference-request-page {
   width: 100%;

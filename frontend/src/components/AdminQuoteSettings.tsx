@@ -1,4 +1,6 @@
 import { visibleUiText } from '../content/visible-ui-text';
+import { money } from '../application/presentation/format';
+import { AdminQuoteCheaperVehicle } from './AdminQuoteCheaperVehicle';
 import type { useAdminCreateQuoteModel } from '../application/controllers/useAdminCreateQuoteModel';
 import type { Catalogue } from '../domain/model';
 
@@ -16,6 +18,8 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
     canCreateFinal,
     setStageError,
     movingEstimate,
+    formulaPrices,
+    cheaperVehicle,
   } = model;
   const heatAvailable = Boolean(
     movingEstimate?.volume && (catalogue.settings.movingLaborPlanning?.heat ?? 0) > 0,
@@ -27,8 +31,42 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
       <section className="admin-quote-reference-settings" aria-label={visibleUiText.text124}>
         <strong>{visibleUiText.text125}</strong>
         <div className="admin-quote-reference-setting">
-          <span>{visibleUiText.text212}</span>
-          <div role="group" aria-label={visibleUiText.text213}>
+          <span>Formule</span>
+          <div className="admin-quote-formula-options" role="group" aria-label={visibleUiText.text213}>
+            <button
+              type="button"
+              aria-pressed={quoteConfig.billingMode === 'driver-rental'}
+              className={quoteConfig.billingMode === 'driver-rental' ? 'active' : ''}
+              onClick={() =>
+                setQuoteConfig((current) => ({
+                  ...current,
+                  billingMode: 'driver-rental',
+                  menuIncluded: false,
+                  overtimeMinutes: 0,
+                }))
+              }
+            >
+              <strong>Économique</strong>
+              <b>{money(formulaPrices.economic)}</b>
+              <small>Vos porteurs</small>
+            </button>
+            <button
+              type="button"
+              aria-pressed={quoteConfig.billingMode === 'standard'}
+              className={quoteConfig.billingMode === 'standard' ? 'active' : ''}
+              onClick={() =>
+                setQuoteConfig((current) => ({
+                  ...current,
+                  billingMode: 'standard',
+                  menuIncluded: false,
+                  overtimeMinutes: 0,
+                }))
+              }
+            >
+              <strong>Standard</strong>
+              <b>{money(formulaPrices.standard)}</b>
+              <small>Avec nos manœuvres · conseillée</small>
+            </button>
             <button
               type="button"
               aria-pressed={quoteConfig.billingMode === 'complete'}
@@ -41,42 +79,21 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
                 }))
               }
             >
-              {visibleUiText.text214}
-            </button>
-            <button
-              type="button"
-              aria-pressed={quoteConfig.billingMode === 'standard'}
-              className={quoteConfig.billingMode === 'standard' ? 'active' : ''}
-              onClick={() => setQuoteConfig((current) => ({ ...current, billingMode: 'standard' }))}
-            >
-              {visibleUiText.text215}
-            </button>
-            <button
-              type="button"
-              aria-pressed={quoteConfig.billingMode === 'driver-rental'}
-              className={quoteConfig.billingMode === 'driver-rental' ? 'active' : ''}
-              onClick={() =>
-                setQuoteConfig((current) => ({ ...current, billingMode: 'driver-rental' }))
-              }
-            >
-              {visibleUiText.text129}
+              <strong>Complète</strong>
+              <b>{money(formulaPrices.complete)}</b>
+              <small>+ menuisier</small>
             </button>
           </div>
         </div>
-        {quoteConfig.billingMode === 'driver-rental' && model.availableMenuLines.length > 0 && (
-          <div className="admin-quote-reference-setting">
-            <span>{visibleUiText.text216}</span>
-            <button
-              type="button"
-              aria-pressed={quoteConfig.menuIncluded}
-              onClick={() =>
-                setQuoteConfig((current) => ({ ...current, menuIncluded: !current.menuIncluded }))
-              }
-            >
-              {quoteConfig.menuIncluded ? visibleUiText.text217 : visibleUiText.text218}
-            </button>
-          </div>
-        )}
+        <AdminQuoteCheaperVehicle
+          suggestion={cheaperVehicle}
+          onSelect={(vehicleId, trips) => {
+            setDraft((current) => ({ ...current, vehicleId, estimatedTrips: trips }));
+            setQuoteConfig((current) =>
+              current.calcMode === 'manual' ? current : { ...current, trips },
+            );
+          }}
+        />
         <div className="admin-quote-reference-setting">
           <span>{visibleUiText.text130}</span>
           <div role="group" aria-label={visibleUiText.text3}>
@@ -145,6 +162,56 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
             </button>
           </div>
         </div>
+        <div className="admin-quote-reference-setting">
+          <span>{visibleUiText.text140}</span>
+          <div role="group" aria-label={visibleUiText.text141}>
+            <button
+              type="button"
+              aria-pressed={!quoteConfig.trafficOff}
+              className={!quoteConfig.trafficOff ? 'active' : ''}
+              onClick={() =>
+                setQuoteConfig((current) => ({ ...current, trafficOff: !current.trafficOff }))
+              }
+            >
+              {quoteConfig.trafficOff ? 'Ignorés' : 'Pris en compte'}
+            </button>
+          </div>
+        </div>
+        {heatAvailable && (
+          <div className="admin-quote-reference-setting">
+            <span>{visibleUiText.text57}</span>
+            <div role="group" aria-label={visibleUiText.text142}>
+              <button
+                type="button"
+                aria-pressed={heatActive}
+                className={heatActive ? 'active' : ''}
+                onClick={() =>
+                  setQuoteConfig((current) => ({
+                    ...current,
+                    heatOff: heatActive,
+                    heatRest: heatActive ? current.heatRest : current.heatRest || 15,
+                  }))
+                }
+              >
+                {heatActive ? `Comptée · ${quoteConfig.heatRest || 15} min/h` : 'Non comptée'}
+              </button>
+            </div>
+          </div>
+        )}
+        {quoteConfig.billingMode === 'driver-rental' && model.availableMenuLines.length > 0 && (
+          <div className="admin-quote-reference-setting">
+            <span>{visibleUiText.text216}</span>
+            <button
+              type="button"
+              aria-pressed={quoteConfig.menuIncluded}
+              onClick={() =>
+                setQuoteConfig((current) => ({ ...current, menuIncluded: !current.menuIncluded }))
+              }
+            >
+              {quoteConfig.menuIncluded ? visibleUiText.text217 : visibleUiText.text218}
+            </button>
+          </div>
+        )}
         <div className="admin-quote-reference-setting">
           <span>{visibleUiText.text135}</span>
           <div role="group" aria-label={visibleUiText.text136}>
@@ -250,42 +317,9 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
             />
           </label>
         )}
-        <div className="admin-quote-reference-setting">
-          <span>{visibleUiText.text140}</span>
-          <div role="group" aria-label={visibleUiText.text141}>
-            <button
-              type="button"
-              aria-pressed={!quoteConfig.trafficOff}
-              className={!quoteConfig.trafficOff ? 'active' : ''}
-              onClick={() =>
-                setQuoteConfig((current) => ({ ...current, trafficOff: !current.trafficOff }))
-              }
-            >
-              {quoteConfig.trafficOff ? 'Ignorés' : 'Pris en compte'}
-            </button>
-          </div>
-        </div>
-        {heatAvailable && (
-          <div className="admin-quote-reference-setting">
-            <span>{visibleUiText.text57}</span>
-            <div role="group" aria-label={visibleUiText.text142}>
-              <button
-                type="button"
-                aria-pressed={heatActive}
-                className={heatActive ? 'active' : ''}
-                onClick={() =>
-                  setQuoteConfig((current) => ({
-                    ...current,
-                    heatOff: heatActive,
-                    heatRest: heatActive ? current.heatRest : current.heatRest || 15,
-                  }))
-                }
-              >
-                {heatActive ? `Comptée · ${quoteConfig.heatRest || 15} min/h` : 'Non comptée'}
-              </button>
-            </div>
-          </div>
-        )}
+        <span className="admin-quote-reference-settings-note">
+          Matériel et passage apparaissent dans l’encadré « Conditions de chargement » du devis PDF.
+        </span>
       </section>
     </>
   );

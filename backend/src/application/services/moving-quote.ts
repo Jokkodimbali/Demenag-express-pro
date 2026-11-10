@@ -151,6 +151,10 @@ export async function createQuote(
   const quoteId = ids.next();
   const accountingConfiguration =
     input.kind === 'final' ? ((await accounting?.configuration()) ?? null) : null;
+  const accountingCosts =
+    input.kind === 'final'
+      ? captureAccountingCosts(booking, price, accountingConfiguration, billingMode)
+      : undefined;
   const quote = {
     id: quoteId,
     reference: `DV-${clock.now().getUTCFullYear()}-${quoteId.slice(0, 8).toUpperCase()}`,
@@ -190,9 +194,7 @@ export async function createQuote(
       overtimeMinutes,
       rentalOvertimeHourlyRate,
     },
-    ...(input.kind === 'final'
-      ? { accountingCosts: captureAccountingCosts(booking, price, accountingConfiguration) }
-      : {}),
+    ...(accountingCosts ? { accountingCosts } : {}),
   };
   return bookings.update(
     {

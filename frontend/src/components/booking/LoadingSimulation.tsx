@@ -66,7 +66,7 @@ export function LoadingSimulation({
   const quoteBlanketWidthCm = draft.inventory.blanketWidthCm ?? blanketWidthCm;
   const quoteBlanketSizeDiffers =
     quoteBlanketLengthCm !== blanketLengthCm || quoteBlanketWidthCm !== blanketWidthCm;
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const [ready, setReady] = useState(false);
   const [loadingError, setLoadingError] = useState('');
   const [pdfError, setPdfError] = useState('');
@@ -318,7 +318,9 @@ export function LoadingSimulation({
             <small>
               {plan
                 ? `${plan.trips.length} aller(s)-retour(s) · ${plan.trips.reduce((sum, item) => sum + item.nItems, 0)} objets`
-                : 'Inventaire'}
+                : hasItems
+                  ? loadingError || 'Chargement de la 3D…'
+                  : 'Inventaire vide'}
             </small>
           </span>
         </button>
