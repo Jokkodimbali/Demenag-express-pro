@@ -7,15 +7,13 @@ export async function saveContactVcards(
 ): Promise<ContactVcardSaveResult> {
   if (!vcards.length) return 'cancelled';
   const blob = new Blob([`${vcards.join('\r\n')}\r\n`], { type: 'text/vcard;charset=utf-8' });
-  const file = new File([blob], filename, { type: 'text/vcard' });
-  if (
-    navigator.canShare?.({ files: [file] }) &&
-    navigator.share &&
-    /Android|iPhone|iPad/i.test(navigator.userAgent)
-  ) {
+  if (navigator.share && /Android|iPhone|iPad/i.test(navigator.userAgent)) {
     try {
-      await navigator.share({ files: [file], title });
-      return 'shared';
+      const file = new File([blob], filename, { type: 'text/vcard' });
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title });
+        return 'shared';
+      }
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return 'cancelled';
     }

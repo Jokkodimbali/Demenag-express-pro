@@ -765,7 +765,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     draft,
     editingBooking?.reference,
     selected ?? undefined,
-    quoteSettings,
+    catalogue?.settings,
   );
 
   return {
