@@ -11,7 +11,10 @@ import { validateDate, transition } from '../src/domain/moving/booking.js';
 import { AuthService, normalizePhone } from '../src/application/services/identity/auth.js';
 import { registerSchema } from '../src/adapters/in/http/validation/auth.js';
 import { ScryptPasswords } from '../src/adapters/out/security/crypto.js';
-import { accountingCostsForQuote, captureAccountingCosts } from '../src/domain/accounting/accounting-costs.js';
+import {
+  accountingCostsForQuote,
+  captureAccountingCosts,
+} from '../src/domain/accounting/accounting-costs.js';
 import type { Booking, Settings, UserCredentials, Vehicle } from '../src/domain/shared/model.js';
 const vehicle: Vehicle = {
   id: 'sprinter',

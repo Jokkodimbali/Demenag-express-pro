@@ -11,8 +11,7 @@ function isFrontendView(file) {
 }
 function isFrontendDomain(file) {
   return (
-    file.startsWith('frontend/src/domain/') ||
-    /^frontend\/src\/modules\/.+\/domain\//.test(file)
+    file.startsWith('frontend/src/domain/') || /^frontend\/src\/modules\/.+\/domain\//.test(file)
   );
 }
 function isFrontendApplication(file) {

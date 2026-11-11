@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { blankInventory, inventoryFormatHint } from '../src/modules/moving/domain/inventory/inventory.ts';
+import {
+  blankInventory,
+  inventoryFormatHint,
+} from '../src/modules/moving/domain/inventory/inventory.ts';
 import {
   bookingInventorySnapshot,
   estimateMovingWork,

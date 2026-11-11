@@ -21,7 +21,8 @@ export async function verifyProvisionalQuoteCreation(
   const bookingResponse = await admin.get(`/api/bookings/${bookingId}`).set(integrationHeader);
   assert.equal(bookingResponse.status, 200, JSON.stringify(bookingResponse.body));
   const version = bookingResponse.body.version as number;
-  const initialBookingData = bookingResponse.body as import('../../src/domain/shared/model.js').Booking;
+  const initialBookingData =
+    bookingResponse.body as import('../../src/domain/shared/model.js').Booking;
   assert.ok(
     initialBookingData.pricingSnapshot,
     'La réservation doit conserver son instantané tarifaire.',
@@ -140,7 +141,8 @@ export async function verifyProvisionalQuoteCreation(
   const detailedBooking = await context.db.reservation.findUniqueOrThrow({
     where: { id: bookingId },
   });
-  const detailedData = detailedBooking.donnees as import('../../src/domain/shared/model.js').Booking;
+  const detailedData =
+    detailedBooking.donnees as import('../../src/domain/shared/model.js').Booking;
   const detailedQuote = detailedData.quotes.at(-1);
   assert.ok(detailedQuote);
   assert.equal(detailedQuote.kind, 'provisional');
@@ -463,7 +465,8 @@ export async function verifyArchivedFinalRevenue(
     where: { id: quoteId },
     include: { reservation: true },
   });
-  const bookingData = quote.reservation.donnees as import('../../src/domain/shared/model.js').Booking;
+  const bookingData = quote.reservation
+    .donnees as import('../../src/domain/shared/model.js').Booking;
   const quoteSnapshot = bookingData.quotes.find((item) => item.id === quoteId);
   const quoteCosts = quoteSnapshot?.accountingCosts;
   assert.ok(quoteCosts);

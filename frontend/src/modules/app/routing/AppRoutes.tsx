@@ -7,22 +7,32 @@ import { Guard } from './Guard';
 import { routes } from '../../shared/navigation/config/routes';
 const Auth = lazy(() => import('../../auth/pages/Auth').then((m) => ({ default: m.Auth })));
 const Home = lazy(() => import('../../public-home/pages/Home').then((m) => ({ default: m.Home })));
-const Account = lazy(() => import('../../account/pages/Account').then((m) => ({ default: m.Account })));
-const Admin = lazy(() => import('../../admin/dashboard/pages/Admin').then((m) => ({ default: m.Admin })));
+const Account = lazy(() =>
+  import('../../account/pages/Account').then((m) => ({ default: m.Account })),
+);
+const Admin = lazy(() =>
+  import('../../admin/dashboard/pages/Admin').then((m) => ({ default: m.Admin })),
+);
 const AdminCreateQuote = lazy(() =>
-  import('../../admin/quotes/pages/AdminCreateQuote').then((m) => ({ default: m.AdminCreateQuote })),
+  import('../../admin/quotes/pages/AdminCreateQuote').then((m) => ({
+    default: m.AdminCreateQuote,
+  })),
 );
 const AdminPlanning = lazy(() =>
   import('../../admin/planning/pages/AdminPlanning').then((m) => ({ default: m.AdminPlanning })),
 );
 const AdminPlanFollowUp = lazy(() =>
-  import('../../admin/planning/pages/AdminPlanFollowUp').then((m) => ({ default: m.AdminPlanFollowUp })),
+  import('../../admin/planning/pages/AdminPlanFollowUp').then((m) => ({
+    default: m.AdminPlanFollowUp,
+  })),
 );
 const AdminFinance = lazy(() =>
   import('../../admin/finance/pages/AdminFinance').then((m) => ({ default: m.AdminFinance })),
 );
 const AdminAccounting = lazy(() =>
-  import('../../admin/accounting/pages/AdminAccounting').then((m) => ({ default: m.AdminAccounting })),
+  import('../../admin/accounting/pages/AdminAccounting').then((m) => ({
+    default: m.AdminAccounting,
+  })),
 );
 const AdminFleet = lazy(() =>
   import('../../admin/fleet/pages/AdminFleet').then((m) => ({ default: m.AdminFleet })),
@@ -30,7 +40,9 @@ const AdminFleet = lazy(() =>
 const AdminSettings = lazy(() =>
   import('../../admin/settings/pages/AdminSettings').then((m) => ({ default: m.AdminSettings })),
 );
-const AdminData = lazy(() => import('../../admin/data/pages/AdminData').then((m) => ({ default: m.AdminData })));
+const AdminData = lazy(() =>
+  import('../../admin/data/pages/AdminData').then((m) => ({ default: m.AdminData })),
+);
 const AdminTollPoints = lazy(() =>
   import('../../admin/tolls/pages/AdminTollPoints').then((m) => ({ default: m.AdminTollPoints })),
 );
@@ -41,16 +53,24 @@ const AdminClients = lazy(() =>
   import('../../admin/clients/pages/AdminClients').then((m) => ({ default: m.AdminClients })),
 );
 const AdminVehicleReports = lazy(() =>
-  import('../../admin/vehicle-reports/pages/AdminVehicleReports').then((m) => ({ default: m.AdminVehicleReports })),
+  import('../../admin/vehicle-reports/pages/AdminVehicleReports').then((m) => ({
+    default: m.AdminVehicleReports,
+  })),
 );
 const AdminAnnouncements = lazy(() =>
-  import('../../admin/announcements/pages/AdminAnnouncements').then((m) => ({ default: m.AdminAnnouncements })),
+  import('../../admin/announcements/pages/AdminAnnouncements').then((m) => ({
+    default: m.AdminAnnouncements,
+  })),
 );
 const DriverWorkspace = lazy(() =>
-  import('../../driver/workspace/pages/DriverWorkspace').then((m) => ({ default: m.DriverWorkspace })),
+  import('../../driver/workspace/pages/DriverWorkspace').then((m) => ({
+    default: m.DriverWorkspace,
+  })),
 );
 const DriverVehicleCheck = lazy(() =>
-  import('../../driver/vehicle-check/pages/DriverVehicleCheck').then((m) => ({ default: m.DriverVehicleCheck })),
+  import('../../driver/vehicle-check/pages/DriverVehicleCheck').then((m) => ({
+    default: m.DriverVehicleCheck,
+  })),
 );
 const DriverProfile = lazy(() =>
   import('../../driver/profile/pages/DriverProfile').then((m) => ({ default: m.DriverProfile })),

@@ -4,7 +4,11 @@ import { useCallInventory } from '../application/controllers/useCallInventory';
 import { MovingPlanningPanel } from './MovingPlanningPanel';
 import { CallInventoryCustomItems } from './CallInventoryCustomItems';
 import { inventoryDismantleFactor } from '../../moving/domain/estimate/moving-estimate';
-import { inventoryFlags, inventoryItems, inventoryNote } from '../../moving/domain/inventory/inventory';
+import {
+  inventoryFlags,
+  inventoryItems,
+  inventoryNote,
+} from '../../moving/domain/inventory/inventory';
 import {
   referenceDwellingLabel,
   referenceDwellingVolume,

@@ -1,4 +1,9 @@
-import type { AccountingFinanceConfiguration, Catalogue, Settings, Vehicle } from '../../../shared/domain/model';
+import type {
+  AccountingFinanceConfiguration,
+  Catalogue,
+  Settings,
+  Vehicle,
+} from '../../../shared/domain/model';
 import { createLabourPriceMatrix } from '../../../moving/domain/pricing/labour-price';
 import { defaultMovingLaborPlanning } from '../../../moving/domain/estimate/moving-estimate';
 

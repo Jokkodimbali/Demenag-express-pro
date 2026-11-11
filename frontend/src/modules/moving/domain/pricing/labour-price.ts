@@ -1,4 +1,10 @@
-import type { LabourMatrixScenario, LabourPriceMatrix, Price, Settings, WorkAccess } from '../../../shared/domain/model';
+import type {
+  LabourMatrixScenario,
+  LabourPriceMatrix,
+  Price,
+  Settings,
+  WorkAccess,
+} from '../../../shared/domain/model';
 import { referenceAssemblyPriceDefaults } from '../../../../../../shared/reference-tariff-defaults.js';
 
 export const labourMatrixScenarios: {

@@ -1,5 +1,8 @@
 import type { Booking, Settings } from '../../../shared/domain/model';
-import { whatsappNumber, whatsappUrl } from '../../../shared/messaging/application/services/whatsapp';
+import {
+  whatsappNumber,
+  whatsappUrl,
+} from '../../../shared/messaging/application/services/whatsapp';
 import { whatsappPaymentLine } from '../../../shared/messaging/application/services/whatsapp-templates';
 
 export function bookingReminder(

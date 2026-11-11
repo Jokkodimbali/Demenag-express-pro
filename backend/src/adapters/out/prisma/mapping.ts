@@ -9,7 +9,10 @@ import type {
   UserCredentials,
   Vehicle,
 } from '../../../domain/shared/model.js';
-import { defaultClientQuestions, isLegacyDefaultQuestions } from '../../../domain/moving/questionnaire.js';
+import {
+  defaultClientQuestions,
+  isLegacyDefaultQuestions,
+} from '../../../domain/moving/questionnaire.js';
 import { vehicleCapacity } from '../../../domain/fleet/vehicle-capacity.js';
 import type {
   ParametreApplication,

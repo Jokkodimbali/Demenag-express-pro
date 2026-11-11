@@ -8,7 +8,10 @@ import {
   slotKey,
   teamOf,
 } from '../src/modules/admin/planning/application/services/team-planning';
-import { queueTeamSave, type CrewUpdateInput } from '../src/modules/admin/planning/application/services/team-save-queue';
+import {
+  queueTeamSave,
+  type CrewUpdateInput,
+} from '../src/modules/admin/planning/application/services/team-save-queue';
 
 function booking(values: Partial<Booking> = {}) {
   return {

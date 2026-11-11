@@ -5,7 +5,10 @@ import { referenceTierLabels, tierLabels } from '../../../shared/application/pre
 import type { Booking, BookingInput, Options, Price, Quote } from '../../../shared/domain/model';
 import { inventoryNote } from '../../../moving/domain/inventory/inventory';
 import { tollPrice } from '../../../moving/domain/tolls/toll-prices';
-import { quoteTollsFromLines, type TollExtraLine } from '../../../moving/domain/tolls/toll-selection';
+import {
+  quoteTollsFromLines,
+  type TollExtraLine,
+} from '../../../moving/domain/tolls/toll-selection';
 import { normalizedClientPhone } from '../../../shared/domain/client-identity';
 import { useApp } from '../../../shared/application/context';
 import { errorMessage } from '../../../shared/application/error-message';

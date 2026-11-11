@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { liveBookingPrice } from '../src/modules/moving/application/services/live-booking-price.ts';
-import { completedBookingRevenueAmount, revenueFor } from '../src/modules/admin/accounting/application/services/revenue.ts';
+import {
+  completedBookingRevenueAmount,
+  revenueFor,
+} from '../src/modules/admin/accounting/application/services/revenue.ts';
 import type { Booking, Catalogue, Settings, Price } from '../src/modules/shared/domain/model.ts';
 
 const settings = {

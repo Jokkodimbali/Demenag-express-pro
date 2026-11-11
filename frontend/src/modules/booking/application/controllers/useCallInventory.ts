@@ -3,9 +3,20 @@ import { useApp } from '../../../shared/application/context';
 import { messages } from '../../../shared/content/fr';
 import type { Draft } from '../booking-draft';
 import { useBookingCommands } from './useBookingCommands';
-import type { CustomInventoryType, MovingLaborPlanningSettings, Vehicle } from '../../../shared/domain/model';
-import { estimatedInventoryItemVolume, estimateMovingWork } from '../../../moving/domain/estimate/moving-estimate';
-import { blankInventory, inventoryItems, type Inventory } from '../../../moving/domain/inventory/inventory';
+import type {
+  CustomInventoryType,
+  MovingLaborPlanningSettings,
+  Vehicle,
+} from '../../../shared/domain/model';
+import {
+  estimatedInventoryItemVolume,
+  estimateMovingWork,
+} from '../../../moving/domain/estimate/moving-estimate';
+import {
+  blankInventory,
+  inventoryItems,
+  type Inventory,
+} from '../../../moving/domain/inventory/inventory';
 import { referenceAnnexVolume } from '../../../moving/domain/estimate/reference-inventory-note';
 import { assemblyCount } from '../../../moving/domain/inventory/inventory-count';
 

@@ -14,7 +14,10 @@ import { VehicleSelector } from '../components/VehicleSelector';
 import { messages } from '../../shared/content/fr';
 import { money } from '../../shared/application/presentation/format';
 import { routes } from '../../shared/navigation/config/routes';
-import { bookingInventorySnapshot, estimateMovingWork } from '../../moving/domain/estimate/moving-estimate';
+import {
+  bookingInventorySnapshot,
+  estimateMovingWork,
+} from '../../moving/domain/estimate/moving-estimate';
 import type { VehicleTransition } from '../../moving/domain/vehicle-transition';
 const RouteMap = lazy(() => import('../../moving/maps/RouteMap'));
 export function BookingPage() {

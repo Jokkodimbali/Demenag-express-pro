@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { bookingDateError, bookingTimeError } from '../src/modules/booking/domain/booking-validation';
-import { normalizePhoneNumber, sanitizePhoneInput } from '../src/modules/shared/domain/phone-number';
+import {
+  bookingDateError,
+  bookingTimeError,
+} from '../src/modules/booking/domain/booking-validation';
+import {
+  normalizePhoneNumber,
+  sanitizePhoneInput,
+} from '../src/modules/shared/domain/phone-number';
 
 const settings = {
   maxAdvanceDays: 30,

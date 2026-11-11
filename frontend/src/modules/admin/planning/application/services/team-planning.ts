@@ -1,4 +1,9 @@
-import type { Booking, Driver, DriverAvailabilityDay, Point } from '../../../../shared/domain/model';
+import type {
+  Booking,
+  Driver,
+  DriverAvailabilityDay,
+  Point,
+} from '../../../../shared/domain/model';
 
 export const roles = [
   { id: 'chauffeur', label: 'Chauffeur', plural: 'Chauffeurs', color: '#FFC93C' },

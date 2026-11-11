@@ -1,6 +1,9 @@
 import type { Catalogue, ClientQuestion, Settings } from '../../../shared/domain/model';
 import { createLabourPriceMatrix } from '../../../moving/domain/pricing/labour-price';
-import { referenceInventoryAliases, referenceInventoryKey } from '../../../moving/domain/inventory/inventory-assembly';
+import {
+  referenceInventoryAliases,
+  referenceInventoryKey,
+} from '../../../moving/domain/inventory/inventory-assembly';
 import { referenceAssemblyPriceDefaults } from '../../../../../../shared/reference-tariff-defaults.js';
 import { normalizePaymentQr } from '../../../shared/application/validation/payment-qr';
 import { dataUrl } from '../../../shared/application/validation/image-data-url';

@@ -11,7 +11,10 @@ import {
 import { assemblyUnitPrice as frontendAssemblyUnitPrice } from '../src/modules/moving/domain/pricing/labour-price.ts';
 import { assemblyUnitPrice as backendAssemblyUnitPrice } from '../../backend/src/domain/pricing/pricing.ts';
 import type { Catalogue } from '../src/modules/shared/domain/model.ts';
-import type { AccountingFinanceConfiguration, Booking } from '../src/modules/shared/domain/model.ts';
+import type {
+  AccountingFinanceConfiguration,
+  Booking,
+} from '../src/modules/shared/domain/model.ts';
 import { blankInventory } from '../src/modules/moving/domain/inventory/inventory.ts';
 import {
   inventoryAssemblyLines as frontendAssemblyLines,

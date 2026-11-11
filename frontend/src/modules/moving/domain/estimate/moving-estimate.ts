@@ -20,7 +20,10 @@ import {
   inventoryFlags,
   type Inventory,
 } from '../inventory/inventory';
-import type { BookingInventorySnapshot, MovingLaborPlanningSettings } from '../../../shared/domain/model';
+import type {
+  BookingInventorySnapshot,
+  MovingLaborPlanningSettings,
+} from '../../../shared/domain/model';
 import type { Route, Vehicle } from '../../../shared/domain/model';
 import { referenceTravelMinutes } from '../routing/reference-traffic';
 import { vehicleDimensionWarnings } from '../../../moving/domain/vehicle-dimensions';

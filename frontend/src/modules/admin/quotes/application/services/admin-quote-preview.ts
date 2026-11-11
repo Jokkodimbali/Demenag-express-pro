@@ -5,7 +5,10 @@ import type { MovingEstimate } from '../../../../moving/domain/estimate/moving-e
 import type { Options, Price, Quote, Settings, Vehicle } from '../../../../shared/domain/model';
 import { assemblyUnitPrice } from '../../../../moving/domain/pricing/labour-price';
 import { defaultRentalKit } from '../../../../moving/domain/rental-kit';
-import { inventoryAssemblyLines, inventoryAssemblyOptions } from '../../../../moving/domain/inventory/inventory-assembly';
+import {
+  inventoryAssemblyLines,
+  inventoryAssemblyOptions,
+} from '../../../../moving/domain/inventory/inventory-assembly';
 import { manoeuvreOvertimeLine } from './manoeuvre-overtime';
 import { quoteInventoryLines } from './quote-inventory-lines';
 import { quoteTransportLines } from './quote-transport-lines';
