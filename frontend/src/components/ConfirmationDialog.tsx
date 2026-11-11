@@ -23,7 +23,12 @@ export function ConfirmationDialog({
   onClose: () => void;
 }) {
   return (
-    <Modal titleId={titleId} busy={busy} onClose={onClose} className="account-dialog confirmation-modal">
+    <Modal
+      titleId={titleId}
+      busy={busy}
+      onClose={onClose}
+      className="account-dialog confirmation-modal"
+    >
       <section className="confirmation-dialog">
         <p className="eyebrow">{eyebrow}</p>
         <h2 id={titleId}>{title}</h2>

@@ -54,11 +54,7 @@ export function AdminQuoteStep({
           <strong>{title}</strong>
           <small>{summary}</small>
         </span>
-        <ChevronDown
-          className="admin-quote-step-chevron"
-          size={18}
-          aria-hidden="true"
-        />
+        <ChevronDown className="admin-quote-step-chevron" size={18} aria-hidden="true" />
       </button>
       {expanded && (
         <div className="admin-quote-step-content">

@@ -2,7 +2,12 @@ import { toVehicle, toSettings } from '../src/adapters/out/prisma/mapping.js';
 import '../src/config/env.js';
 import { readEnv } from '../src/config/env.js';
 import { createPrisma } from '../src/adapters/out/prisma/client.js';
-import { createReferenceAccountingConfiguration, createReferenceLabourPriceMatrix, referenceAssemblyPriceDefaults, referenceVehiclePrices } from '../../shared/reference-tariff-defaults.js';
+import {
+  createReferenceAccountingConfiguration,
+  createReferenceLabourPriceMatrix,
+  referenceAssemblyPriceDefaults,
+  referenceVehiclePrices,
+} from '../../shared/reference-tariff-defaults.js';
 import { Prisma } from '../src/generated/prisma/client.js';
 const db = createPrisma(readEnv().DATABASE_URL);
 const vehicles = [

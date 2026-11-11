@@ -2,7 +2,11 @@ import { useReferenceGoogleMapsSettings } from '../../application/controllers/us
 import { referenceSettingsText } from '../../content/reference-settings-text';
 import { useEffect, useRef } from 'react';
 
-export function ReferenceGoogleMapsSettings({ onKeyChange }: { onKeyChange?: (configured: boolean) => void }) {
+export function ReferenceGoogleMapsSettings({
+  onKeyChange,
+}: {
+  onKeyChange?: (configured: boolean) => void;
+}) {
   const { key, setKey, error, loaded, save } = useReferenceGoogleMapsSettings();
   const reportedInitialKey = useRef(false);
   useEffect(() => {
@@ -20,9 +24,11 @@ export function ReferenceGoogleMapsSettings({ onKeyChange }: { onKeyChange?: (co
         value={key}
         disabled={!loaded}
         onChange={(event) => setKey(event.target.value)}
-        onBlur={() => void save(key).then((saved) => {
-          if (saved) onKeyChange?.(Boolean(key.trim()));
-        })}
+        onBlur={() =>
+          void save(key).then((saved) => {
+            if (saved) onKeyChange?.(Boolean(key.trim()));
+          })
+        }
         placeholder={referenceSettingsText.googleMapsPlaceholder}
         aria-label={referenceSettingsText.googleMapsAccessibleLabel}
       />
