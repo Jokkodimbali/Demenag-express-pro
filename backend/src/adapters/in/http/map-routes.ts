@@ -2,7 +2,7 @@ import type { Express } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
 import { security } from '../../../config/security.js';
-import { messages } from '../../../domain/messages/fr.js';
+import { messages } from '../../../domain/shared/messages/fr.js';
 import type { Dependencies } from './dependencies.js';
 import { routeSchema } from './schemas.js';
 import { apiRoutes } from './routes.js';

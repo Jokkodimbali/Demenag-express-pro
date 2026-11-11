@@ -6,8 +6,8 @@ import {
   defaultAccountingFinanceConfiguration,
   referenceFixedChargeEntries,
   simulateAccounting,
-} from '../src/domain/accounting-forecast.ts';
-import type { AccountingEntry, Booking } from '../src/domain/model.ts';
+} from '../src/modules/admin/accounting/domain/accounting-forecast.ts';
+import type { AccountingEntry, Booking } from '../src/modules/shared/domain/model.ts';
 
 const configuration = {
   ...defaultAccountingFinanceConfiguration(new Date('2026-01-15T12:00:00Z')),

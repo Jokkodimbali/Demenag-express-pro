@@ -1,8 +1,8 @@
 import type { Response } from 'express';
 import { z } from 'zod';
-import { AppError } from '../../../domain/errors.js';
-import { messages } from '../../../domain/messages/fr.js';
-import type { User } from '../../../domain/model.js';
+import { AppError } from '../../../domain/shared/errors.js';
+import { messages } from '../../../domain/shared/messages/fr.js';
+import type { User } from '../../../domain/shared/model.js';
 const actorSchema = z.object({
   id: z.uuid(),
   name: z.string(),

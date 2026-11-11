@@ -1,7 +1,7 @@
 import type { RoutingProvider } from '../../../application/ports/index.js';
-import { AppError } from '../../../domain/errors.js';
-import { messages } from '../../../domain/messages/fr.js';
-import type { Point, Route } from '../../../domain/model.js';
+import { AppError } from '../../../domain/shared/errors.js';
+import { messages } from '../../../domain/shared/messages/fr.js';
+import type { Point, Route } from '../../../domain/shared/model.js';
 
 const MAX_ROUTE_WAITERS = 32;
 const MAX_PENDING_ADDRESS_REQUESTS = 10;

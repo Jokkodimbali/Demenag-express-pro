@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createHttpApi, ApiError } from '../src/adapters/http-api.ts';
+import { createHttpApi, ApiError } from '../src/modules/shared/adapters/http-api.ts';
 
 test('Une session refusée est signalée, contrairement aux identifiants incorrects', async () => {
   const originalFetch = globalThis.fetch;

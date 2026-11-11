@@ -2,27 +2,27 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
-import { defaultAccountingFinanceConfiguration } from '../src/domain/accounting-forecast.ts';
+import { defaultAccountingFinanceConfiguration } from '../src/modules/admin/accounting/domain/accounting-forecast.ts';
 import {
   resetAccountingChargesToReference,
   resetCatalogueAssemblyToReference,
   resetCatalogueTariffsToReference,
-} from '../src/domain/reference-tariff-defaults.ts';
-import { assemblyUnitPrice as frontendAssemblyUnitPrice } from '../src/domain/labour-price.ts';
-import { assemblyUnitPrice as backendAssemblyUnitPrice } from '../../backend/src/domain/pricing.ts';
-import type { Catalogue } from '../src/domain/model.ts';
-import type { AccountingFinanceConfiguration, Booking } from '../src/domain/model.ts';
-import { blankInventory } from '../src/domain/inventory.ts';
+} from '../src/modules/admin/settings/domain/reference-tariff-defaults.ts';
+import { assemblyUnitPrice as frontendAssemblyUnitPrice } from '../src/modules/moving/domain/pricing/labour-price.ts';
+import { assemblyUnitPrice as backendAssemblyUnitPrice } from '../../backend/src/domain/pricing/pricing.ts';
+import type { Catalogue } from '../src/modules/shared/domain/model.ts';
+import type { AccountingFinanceConfiguration, Booking } from '../src/modules/shared/domain/model.ts';
+import { blankInventory } from '../src/modules/moving/domain/inventory/inventory.ts';
 import {
   inventoryAssemblyLines as frontendAssemblyLines,
   referenceInventoryKey,
-} from '../src/domain/inventory-assembly.ts';
-import { inventoryAssemblyLines as backendAssemblyLines } from '../../backend/src/domain/inventory-assembly.ts';
+} from '../src/modules/moving/domain/inventory/inventory-assembly.ts';
+import { inventoryAssemblyLines as backendAssemblyLines } from '../../backend/src/domain/inventory/inventory-assembly.ts';
 import {
   accountingMenuPrice,
   defaultAccountingFinanceConfiguration,
-} from '../src/domain/accounting-forecast.ts';
-import { captureAccountingCosts } from '../../backend/src/domain/accounting-costs.ts';
+} from '../src/modules/admin/accounting/domain/accounting-forecast.ts';
+import { captureAccountingCosts } from '../../backend/src/domain/accounting/accounting-costs.ts';
 import {
   referenceAssemblyPayrollDefaults,
   referenceAssemblyPriceDefaults,

@@ -4,8 +4,8 @@ import {
   createLabourPriceMatrix,
   labourUnitPrice,
   labourUnitPriceOverrideFromQuote,
-} from '../src/domain/labour-price.ts';
-import type { Price } from '../src/domain/model.ts';
+} from '../src/modules/moving/domain/pricing/labour-price.ts';
+import type { Price } from '../src/modules/shared/domain/model.ts';
 
 const workAccess = { fromFloor: 2, toFloor: 1, fromLift: false, toLift: true };
 const historicalSettings = {

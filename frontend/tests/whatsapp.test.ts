@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { whatsappNumber, whatsappUrl } from '../src/application/services/whatsapp.ts';
+import { whatsappNumber, whatsappUrl } from '../src/modules/shared/messaging/application/services/whatsapp.ts';
 
 test('les modes mobile api, wa.me et application utilisent le lien universel WhatsApp', () => {
   for (const whatsappMode of ['api', 'wame', 'app'] as const) {

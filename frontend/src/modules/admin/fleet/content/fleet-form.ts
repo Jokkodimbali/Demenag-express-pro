@@ -1,0 +1,8 @@
+import { messages } from '../../../shared/content/fr';
+export const fields = [
+  ['name', messages.labelNom],
+  ['length', 'Longueur utile'],
+  ['height', 'Hauteur utile'],
+  ['width', 'Largeur utile'],
+  ['wheelWidth', messages.largeurEntrePassagesDeRoue],
+] as const;

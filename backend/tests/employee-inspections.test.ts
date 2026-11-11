@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { employeeInspectionSchema } from '../src/adapters/in/http/schemas.js';
-import { VehicleReportService } from '../src/application/services/vehicle-reports.js';
+import { VehicleReportService } from '../src/application/services/fleet/vehicle-reports.js';
 import type { DriverRepository, VehicleReportRepository } from '../src/application/ports/index.js';
-import type { Driver, User } from '../src/domain/model.js';
+import type { Driver, User } from '../src/domain/shared/model.js';
 const image = 'data:image/jpeg;base64,/9j/AA==';
 test('Le contrôle employé conserve les cinq photos et le carburant, et autorise plusieurs envois par jour', async () => {
   const driver: Driver = {

@@ -1,13 +1,13 @@
 import type { CatalogueRepository } from '../../../application/ports/index.js';
-import { AppError } from '../../../domain/errors.js';
-import { messages } from '../../../domain/messages/fr.js';
+import { AppError } from '../../../domain/shared/errors.js';
+import { messages } from '../../../domain/shared/messages/fr.js';
 import type {
   Catalogue,
   Settings,
   TollPoint,
   TollPointInput,
   Vehicle,
-} from '../../../domain/model.js';
+} from '../../../domain/shared/model.js';
 import { Prisma, type PointPeage, type PrismaClient } from '../../../generated/prisma/client.js';
 import { fromSettings, fromVehicle, toSettings, toVehicle } from './mapping.js';
 export class PrismaCatalogue implements CatalogueRepository {

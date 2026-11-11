@@ -1,5 +1,5 @@
 import type { Notification, NotificationRepository } from '../../../application/ports/index.js';
-import type { Role } from '../../../domain/model.js';
+import type { Role } from '../../../domain/shared/model.js';
 import type { PrismaClient } from '../../../generated/prisma/client.js';
 
 function map(row: {

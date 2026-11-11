@@ -10,8 +10,8 @@ import { createBookingInput } from '../../backend/tests/integration/configuratio
 import { deleteScenarioData } from '../../backend/tests/integration/cleanup.ts';
 import { registerScenarioUsers } from '../../backend/tests/integration/accounts.ts';
 import { ScryptPasswords } from '../../backend/src/adapters/out/security/crypto.ts';
-import { liveBookingPrice } from '../src/application/services/live-booking-price.ts';
-import { money } from '../src/domain/format.ts';
+import { liveBookingPrice } from '../src/modules/moving/application/services/live-booking-price.ts';
+import { money } from '../src/modules/shared/application/presentation/format.ts';
 
 if (process.env.BROWSER_TEST_BRANCH_ID !== 'br-small-hall-b4i75gr6')
   throw new Error('Ce test de la page Clients doit viser uniquement la branche Neon isolée.');

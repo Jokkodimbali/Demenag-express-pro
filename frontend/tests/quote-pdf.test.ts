@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
-import { downloadQuote } from '../src/adapters/pdf';
-import type { Booking, Quote, Settings } from '../src/domain/model';
+import { downloadQuote } from '../src/modules/shared/adapters/pdf';
+import type { Booking, Quote, Settings } from '../src/modules/shared/domain/model';
 
 const pixel =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGP4DwQACfsD/fteaysAAAAASUVORK5CYII=';

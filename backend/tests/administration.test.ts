@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { AdministrationService } from '../src/application/services/administration.js';
+import { AdministrationService } from '../src/application/services/administration/administration.js';
 import type {
   AdministrationRepository,
   AdministrationTransaction,
   UserRepository,
 } from '../src/application/ports/index.js';
-import type { User } from '../src/domain/model.js';
+import type { User } from '../src/domain/shared/model.js';
 const actor: User = {
   id: 'admin',
   name: 'Admin',

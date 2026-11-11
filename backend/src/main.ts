@@ -3,7 +3,7 @@ import { OpenStreetMaps } from './adapters/out/maps/osrm.js';
 import { createPrisma } from './adapters/out/prisma/client.js';
 import { compose } from './composition.js';
 import { readEnv } from './config/env.js';
-import { messages } from './domain/messages/fr.js';
+import { messages } from './domain/shared/messages/fr.js';
 async function main() {
   const env = readEnv();
   const db = createPrisma(env.DATABASE_URL, env.DATABASE_POOL_MAX);

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { catalogueFromForm } from '../src/application/validation/forms';
-import type { Catalogue } from '../src/domain/model';
+import { catalogueFromForm } from '../src/modules/shared/application/validation/forms';
+import type { Catalogue } from '../src/modules/shared/domain/model';
 
 test('un groupe de paramètres fermé ne remet pas à zéro les valeurs conservées en base', async () => {
   const catalogue = {

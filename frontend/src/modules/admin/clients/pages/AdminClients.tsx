@@ -1,0 +1,515 @@
+import { visibleUiText } from '../../../shared/content/visible-ui-text';
+import { liveBookingPrice } from '../../../moving/application/services/live-booking-price';
+import { uiText } from '../../../shared/content/reference-ui-text';
+import { messages } from '../../../shared/content/fr';
+import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAdministration } from '../../application/controllers/useAdministration';
+import { useAdminClients } from '../application/controllers/useAdminClients';
+import { useApp } from '../../../shared/application/context';
+import { errorMessage } from '../../../shared/application/error-message';
+import { normalizedClientPhone } from '../../../clients/application/services/client-summary';
+import { normalizePhoneNumber, sanitizePhoneInput } from '../../../shared/domain/phone-number';
+import { usePagination } from '../../../shared/navigation/application/controllers/usePagination';
+import { Modal } from '../../../shared/feedback/Modal';
+import { Pagination } from '../../../shared/navigation/Pagination';
+import { pageSizes } from '../../../shared/navigation/config/pagination';
+import { money } from '../../../shared/application/presentation/format';
+import type { Booking, User } from '../../../shared/domain/model';
+import { routes } from '../../../app/routing/routes';
+import { contactVcard } from '../domain/contact-vcard';
+import type { Settings } from '../../../shared/domain/model';
+
+type DirectoryEntry = { phone: string; name: string; address: string };
+type ClientRowValue = {
+  key: string;
+  name: string;
+  phone: string;
+  address: string;
+  moves: number;
+  total: number;
+  final: number;
+  last: string;
+  account: User | null;
+  references: string[];
+  bookings: Booking[];
+};
+const shortDate = (value: string) => {
+  const [year, month, day] = value.split('-');
+  return `${day}/${month}/${year}`;
+};
+function downloadContacts(
+  contacts: Pick<ClientRowValue, 'name' | 'phone' | 'bookings'>[],
+  filename: string,
+  settings: Pick<Settings, 'contactFirstTemplate' | 'contactLastTemplate'>,
+) {
+  const cards = contacts
+    .map((contact) => contactVcard(contact, settings))
+    .filter((contact) => contact.valid)
+    .map((contact) => contact.vcard);
+  if (!cards.length) return;
+  const url = URL.createObjectURL(
+    new Blob([`${cards.join('\r\n')}\r\n`], { type: 'text/vcard;charset=utf-8' }),
+  );
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 30000);
+}
+function amounts(booking: Booking) {
+  const final = [...booking.quotes].reverse().find((quote) => quote.kind === 'final');
+  return {
+    finalized:
+      (booking.status === 'completed' ? (final?.price.total ?? booking.estimate.total) : 0) ?? 0,
+  };
+}
+function ClientRow({
+  value,
+  onSave,
+  onQuote,
+  onReset,
+  onHide,
+  onContact,
+  onHistory,
+  busy,
+}: {
+  value: ClientRowValue;
+  onSave: (
+    initial: ClientRowValue,
+    next: Pick<ClientRowValue, 'name' | 'phone' | 'address'>,
+  ) => Promise<void>;
+  onQuote: () => void;
+  onReset: () => void;
+  onHide: () => void;
+  onContact: () => void;
+  onHistory: (reference: string) => void;
+  busy: boolean;
+}) {
+  const [name, setName] = useState(value.name),
+    [phone, setPhone] = useState(value.phone),
+    [address, setAddress] = useState(value.address),
+    [rowError, setRowError] = useState('');
+  useEffect(() => {
+    setName(value.name);
+    setPhone(value.phone);
+    setAddress(value.address);
+  }, [value.name, value.phone, value.address]);
+  async function save() {
+    if (name === value.name && phone === value.phone && address === value.address) return;
+    if (name.trim().length < 2 || !normalizePhoneNumber(phone)) {
+      setRowError(
+        'Vérifiez le nom et saisissez un numéro valide avec son indicatif international.',
+      );
+      return;
+    }
+    setRowError('');
+    try {
+      await onSave(value, { name: name.trim(), phone: phone.trim(), address: address.trim() });
+    } catch (e) {
+      setRowError(errorMessage(e));
+    }
+  }
+  const update = (setter: (v: string) => void) => (event: ChangeEvent<HTMLInputElement>) =>
+    setter(event.target.value);
+  return (
+    <tr aria-busy={busy}>
+      <td data-label="Nom">
+        <input
+          aria-label={`Nom · ${value.name}`}
+          value={name}
+          size={Math.max(12, name.length)}
+          maxLength={100}
+          onChange={update(setName)}
+          onBlur={() => void save()}
+          className="reference-client-edit name"
+        />
+      </td>
+      <td data-label="Téléphone">
+        <div className="reference-client-phone">
+          <input
+            aria-label={`Téléphone · ${value.name}`}
+            value={phone}
+            type="tel"
+            inputMode="tel"
+            maxLength={30}
+            onChange={(event) => setPhone(sanitizePhoneInput(event.target.value))}
+            onBlur={() => void save()}
+            className="reference-client-edit"
+          />
+          <a href={`tel:${normalizePhoneNumber(phone) ?? phone}`}>{uiText['appeler']}</a>
+          {value.account?.passwordResetRequestedAt ? (
+            <button
+              className="reference-client-reset"
+              title={uiText['reinitialiserLeMotDePasse']}
+              onClick={onReset}
+            >
+              {uiText['demandeDeReinitReinitialiser']}
+            </button>
+          ) : null}
+        </div>
+        {rowError ? (
+          <small className="reference-client-error" role="alert">
+            {rowError}
+          </small>
+        ) : null}
+      </td>
+      <td data-label="Adresse">
+        <input
+          aria-label={`Adresse · ${value.name}`}
+          value={address}
+          onChange={update(setAddress)}
+          onBlur={() => void save()}
+          placeholder={uiText['texte']}
+          className="reference-client-edit address"
+        />
+      </td>
+      <td data-label="Déménagements" className="reference-client-number">
+        <span>{value.moves}</span>
+        {value.references.length > 0 && (
+          <details className="reference-client-booking-list">
+            <summary aria-label={`Voir les identifiants des ${value.moves} déménagements`}>
+              Identifiants <span aria-hidden="true">▾</span>
+            </summary>
+            <div>
+              {value.references.map((reference) => (
+                <button
+                  className="reference-client-history"
+                  key={reference}
+                  type="button"
+                  onClick={() => onHistory(reference)}
+                >
+                  {reference}
+                </button>
+              ))}
+            </div>
+          </details>
+        )}
+      </td>
+      <td data-label="Montant total" className="reference-client-amount">
+        <strong>{money(value.total)}</strong>
+        <span>
+          {uiText['dontFinal']}
+          {money(value.final)}
+        </span>
+      </td>
+      <td data-label="Dernier rendez-vous" className="reference-client-last">
+        {value.last}
+      </td>
+      <td data-label="Actions">
+        <div className="reference-client-actions">
+          <button className="reference-client-quote" onClick={onQuote}>
+            {uiText['nouveauDevis']}
+          </button>
+          <button
+            className="reference-client-contact"
+            onClick={onContact}
+            title={`Enregistrer ${value.name} dans les contacts`}
+          >
+            {visibleUiText.text203}
+          </button>
+          <button
+            className="reference-client-delete"
+            title={uiText['supprimer']}
+            aria-label={`Supprimer ${value.name}`}
+            onClick={onHide}
+          >
+            ×
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+export function AdminClients() {
+  const { requestConfirmation, catalogue } = useApp();
+  const { loadDirectory, updateClient, hideClientProfile, resetClientPassword } = useAdminClients();
+  const { bookings, loading, error, setRetry } = useAdministration();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [query, setQuery] = useState(() => searchParams.get('q') ?? '');
+  useEffect(() => {
+    const next = searchParams.get('q');
+    if (next) setQuery(next);
+  }, [searchParams]);
+  const [profiles, setProfiles] = useState<DirectoryEntry[]>([]);
+  const [hidden, setHidden] = useState<{ phone: string; hiddenAt: string }[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [directoryError, setDirectoryError] = useState('');
+  const [busyKey, setBusyKey] = useState('');
+  const [resetTarget, setResetTarget] = useState<User | null>(null);
+  const [resetError, setResetError] = useState('');
+  const [resetBusy, setResetBusy] = useState(false);
+  useEffect(() => {
+    let active = true;
+    loadDirectory()
+      .then(([p, h, u]) => {
+        if (!active) return;
+        setProfiles(p);
+        setHidden(h);
+        setUsers(u);
+      })
+      .catch((e) => {
+        if (active) setDirectoryError(errorMessage(e));
+      });
+    return () => {
+      active = false;
+    };
+  }, [loadDirectory]);
+  const rows = useMemo(() => {
+    const summaries = new Map<string, Booking[]>();
+    for (const booking of bookings) {
+      const key = normalizedClientPhone(booking.phone);
+      if (!key) continue;
+      const group = summaries.get(key) ?? [];
+      group.push(booking);
+      summaries.set(key, group);
+    }
+    const profileMap = new Map(
+      profiles.map((profile) => [normalizedClientPhone(profile.phone), profile]),
+    );
+    return [...summaries.entries()]
+      .flatMap(([key, all]) => {
+        const hiddenEntry = hidden.find((entry) => normalizedClientPhone(entry.phone) === key);
+        const latest = [...all].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+        if (hiddenEntry && latest.createdAt <= hiddenEntry.hiddenAt) return [];
+        const profile = profileMap.get(key);
+        const active = all.filter((booking) => booking.status !== 'cancelled');
+        const last =
+          active
+            .map((booking) => booking.date)
+            .filter((date): date is string => Boolean(date))
+            .sort()
+            .at(-1) ?? '';
+        const total = active.reduce(
+          (sum, booking) => sum + (liveBookingPrice(booking, catalogue).total ?? 0),
+          0,
+        );
+        const final = active.reduce((sum, booking) => sum + amounts(booking).finalized, 0);
+        const acct =
+          users.find(
+            (user) => user.role === 'client' && normalizedClientPhone(user.phone) === key,
+          ) ?? null;
+        return [
+          {
+            key,
+            name: profile?.name ?? latest.customerName,
+            phone: profile?.phone ?? latest.phone,
+            address: profile ? profile.address : latest.fromAddress,
+            moves: active.length,
+            total,
+            final,
+            last: last ? shortDate(last) : '—',
+            account: acct,
+            references: all.map((booking) => booking.reference),
+            bookings: all,
+          },
+        ];
+      })
+      .sort((a, b) => b.moves - a.moves || a.name.localeCompare(b.name));
+  }, [bookings, profiles, hidden, users, catalogue]);
+  const needle = query.trim().toLocaleLowerCase('fr');
+  const filtered = rows.filter(
+    (row) =>
+      row.name.toLocaleLowerCase('fr').includes(needle) ||
+      row.phone.replace(/\D/g, '').includes(query.replace(/\D/g, '') || '!') ||
+      row.address.toLocaleLowerCase('fr').includes(needle) ||
+      row.references.some((reference) => reference.toLocaleLowerCase('fr').includes(needle)),
+  );
+  const pagination = usePagination(filtered, pageSizes.clients, needle);
+  async function saveClient(
+    initial: ClientRowValue,
+    next: Pick<ClientRowValue, 'name' | 'phone' | 'address'>,
+  ) {
+    setBusyKey(initial.key);
+    try {
+      await updateClient(initial.key, next);
+      const newKey = normalizedClientPhone(next.phone);
+      setProfiles((old) => [
+        ...old.filter(
+          (profile) =>
+            normalizedClientPhone(profile.phone) !== initial.key &&
+            normalizedClientPhone(profile.phone) !== newKey,
+        ),
+        { phone: next.phone, name: next.name, address: next.address },
+      ]);
+      setRetry((value) => value + 1);
+    } finally {
+      setBusyKey('');
+    }
+  }
+  async function hideClient(client: ClientRowValue) {
+    const confirmed = await requestConfirmation({
+      titleId: 'hide-client-title',
+      eyebrow: messages.confirmationRequise,
+      title: messages.supprimerClientTitre(client.name),
+      description: messages.suppressionClientDescription(client.name),
+      confirmLabel: uiText['supprimer'],
+    });
+    if (!confirmed) return;
+    try {
+      const entry = await hideClientProfile(client.key);
+      setHidden((old) => [
+        ...old.filter((value) => normalizedClientPhone(value.phone) !== client.key),
+        entry,
+      ]);
+    } catch (e) {
+      setDirectoryError(errorMessage(e));
+    }
+  }
+  async function resetPassword(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!resetTarget) return;
+    setResetBusy(true);
+    setResetError('');
+    try {
+      const password = String(new FormData(event.currentTarget).get('password'));
+      await resetClientPassword(resetTarget.id, password);
+      setUsers((old) =>
+        old.map((user) =>
+          user.id === resetTarget.id ? { ...user, passwordResetRequestedAt: null } : user,
+        ),
+      );
+      setResetTarget(null);
+    } catch (e) {
+      setResetError(errorMessage(e));
+    } finally {
+      setResetBusy(false);
+    }
+  }
+  function newQuote(client: ClientRowValue) {
+    navigate(routes.administrationCreateQuote, {
+      state: { initialClient: { name: client.name, phone: client.phone, address: client.address } },
+    });
+  }
+  const countLabel = `${rows.length} client${rows.length === 1 ? '' : 's'}`;
+  return (
+    <section className="reference-clients-page" data-screen-label="Clients administration">
+      <div className="reference-clients-card">
+        <div className="reference-clients-heading">
+          <div>
+            <span>{uiText['clients']}</span>
+            <small>{countLabel}</small>
+          </div>
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={uiText['rechercherUnNomUnNumeroUneAdresse']}
+            aria-label={uiText['rechercherUnNomUnNumeroUneAdresse']}
+          />
+          <button
+            className="reference-client-contact-export"
+            type="button"
+            onClick={() =>
+              downloadContacts(rows, 'Contacts-Demenag-Express.vcf', catalogue?.settings ?? {})
+            }
+          >
+            {visibleUiText.text204}
+          </button>
+        </div>
+        {error || directoryError ? (
+          <p className="reference-client-error" role="alert">
+            {error || directoryError}
+          </p>
+        ) : null}
+        {loading ? <p role="status">{uiText['chargementDesClients']}</p> : null}
+        {!loading && filtered.length === 0 ? (
+          <span className="reference-clients-empty">{uiText['aucunClient']}</span>
+        ) : null}
+        <div className="reference-client-table-scroll">
+          <table>
+            <thead>
+              <tr>
+                {[
+                  'NOM',
+                  'TÉLÉPHONE',
+                  'ADRESSE',
+                  'DÉMÉNAGEMENTS',
+                  'MONTANT TOTAL',
+                  'DERNIER RDV',
+                  '',
+                ].map((label, index) => (
+                  <th key={`${index}-${label}`}>{label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {pagination.rows.map((client) => (
+                <ClientRow
+                  key={client.key}
+                  value={client}
+                  busy={busyKey === client.key}
+                  onSave={saveClient}
+                  onQuote={() => newQuote(client)}
+                  onContact={() =>
+                    downloadContacts(
+                      [client],
+                      `${client.name.replace(/[^\p{L}\p{N}-]+/gu, '-')}.vcf`,
+                      catalogue?.settings ?? {},
+                    )
+                  }
+                  onHistory={(reference) =>
+                    navigate(`${routes.administrationBookings}?q=${encodeURIComponent(reference)}`)
+                  }
+                  onHide={() => void hideClient(client)}
+                  onReset={() => {
+                    setResetError('');
+                    setResetTarget(client.account);
+                  }}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <Pagination
+          page={pagination.page}
+          pageCount={pagination.pageCount}
+          total={pagination.total}
+          onPageChange={pagination.setPage}
+        />
+      </div>
+      {resetTarget ? (
+        <Modal
+          titleId="reference-client-reset-title"
+          busy={resetBusy}
+          onClose={() => setResetTarget(null)}
+        >
+          <form className="confirmation-dialog" onSubmit={resetPassword}>
+            <h2 id="reference-client-reset-title">{uiText['reinitialiserLeMotDePasse']}</h2>
+            <p>{uiText['verifiezLIdentiteDuClientParTelephoneAvantDeLuiCommuni']}</p>
+            <label htmlFor="reference-client-new-password">{uiText['nouveauMotDePasse']}</label>
+            <input
+              id="reference-client-new-password"
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              pattern="(?=.*[A-Za-z])(?=.*[0-9]).{10,128}"
+              minLength={10}
+              maxLength={128}
+              required
+            />
+            {resetError ? (
+              <p role="alert" className="alert error">
+                {resetError}
+              </p>
+            ) : null}
+            <div className="dialog-actions">
+              <button
+                type="button"
+                className="button secondary"
+                onClick={() => setResetTarget(null)}
+              >
+                {uiText['annuler']}
+              </button>
+              <button className="button primary" disabled={resetBusy}>
+                {resetBusy ? 'Enregistrement…' : 'Réinitialiser'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+    </section>
+  );
+}

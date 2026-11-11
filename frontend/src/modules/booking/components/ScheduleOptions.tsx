@@ -1,0 +1,189 @@
+import { visibleUiText } from '../../shared/content/visible-ui-text';
+import { uiText } from '../../shared/content/reference-ui-text';
+import { Minus, Plus } from 'lucide-react';
+import type { BookingViewState } from '../application/contracts/booking-view';
+import { messages } from '../../shared/content/fr';
+import { money } from '../../shared/application/presentation/format';
+import { today } from '../../shared/domain/date';
+import { assemblyUnitPrice } from '../../moving/domain/pricing/labour-price';
+import type { Catalogue } from '../../shared/domain/model';
+import { TollRateSelector } from '../../moving/tolls/components/TollRateSelector';
+import type { BookingField, BookingFieldErrors } from '../domain/booking-validation';
+
+export function ScheduleOptions({
+  catalogue,
+  draft,
+  setDraft,
+  extras,
+  option,
+  administrativeQuote = false,
+  tollLines = [],
+  setTollLines,
+  fieldErrors = {},
+  clearFieldError = () => {},
+  referenceMode = false,
+}: Pick<BookingViewState, 'catalogue' | 'draft' | 'setDraft' | 'extras' | 'option'> & {
+  catalogue: Catalogue;
+  administrativeQuote?: boolean;
+  tollLines?: { id: string; label: string; quantity: number; unitPrice: number }[];
+  setTollLines?: React.Dispatch<
+    React.SetStateAction<{ id: string; label: string; quantity: number; unitPrice: number }[]>
+  >;
+  fieldErrors?: BookingFieldErrors;
+  clearFieldError?: (field: BookingField) => void;
+  referenceMode?: boolean;
+}) {
+  const bookingSlots = catalogue.settings.enabledSlots.length
+    ? catalogue.settings.enabledSlots
+    : [{ label: 'Matin (8h – 12h)', startHour: 8 }];
+  const slotOptions = bookingSlots.map((slot) => ({
+    value: `${String(slot.startHour).padStart(2, '0')}:00`,
+    label: slot.label,
+  }));
+  if (
+    referenceMode &&
+    draft.timeSlot &&
+    !slotOptions.some((slot) => slot.value === draft.timeSlot)
+  ) {
+    slotOptions.unshift({ value: draft.timeSlot, label: `Heure enregistrée · ${draft.timeSlot}` });
+  }
+  return (
+    <section className="panel">
+      {!referenceMode && (
+        <div className="step-title">
+          <span>{messages.text3}</span>
+          <div>
+            <h3>{messages.dateEtOptions}</h3>
+            <p>{messages.unDemenagementQuiSAdapteAVosBesoins}</p>
+          </div>
+        </div>
+      )}
+      {referenceMode && (
+        <h3 className="reference-edit-options-title">{uiText['optionsETQUANTITES']}</h3>
+      )}
+      <div className="field-pair">
+        <div>
+          <label htmlFor="booking-date">{messages.dateSouhaitee}</label>
+          <input
+            id="booking-date"
+            type="date"
+            aria-invalid={Boolean(fieldErrors.date)}
+            aria-describedby={fieldErrors.date ? 'booking-date-error' : undefined}
+            min={referenceMode ? undefined : today()}
+            max={
+              referenceMode
+                ? undefined
+                : new Date(Date.now() + catalogue.settings.maxAdvanceDays * 86400000)
+                    .toISOString()
+                    .slice(0, 10)
+            }
+            value={draft.date}
+            onChange={(e) => {
+              clearFieldError('date');
+              clearFieldError('timeSlot');
+              setDraft((d) => ({ ...d, date: e.target.value }));
+            }}
+          />
+          {fieldErrors.date && (
+            <p className="booking-validation-error" id="booking-date-error" role="alert">
+              {fieldErrors.date}
+            </p>
+          )}
+        </div>
+        <div>
+          <label htmlFor="booking-slot">{uiText['heureSouhaitee']}</label>
+          {!administrativeQuote ? (
+            <select
+              id="booking-slot"
+              aria-invalid={Boolean(fieldErrors.timeSlot)}
+              aria-describedby={fieldErrors.timeSlot ? 'booking-slot-error' : undefined}
+              value={draft.timeSlot}
+              onChange={(e) => {
+                clearFieldError('timeSlot');
+                setDraft((d) => ({ ...d, timeSlot: e.target.value }));
+              }}
+            >
+              <option value="">{visibleUiText.text175}</option>
+              {slotOptions.map((slot) => (
+                <option key={slot.value} value={slot.value}>
+                  {slot.label}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              id="booking-slot"
+              type="time"
+              step="60"
+              value={draft.timeSlot}
+              onChange={(e) => setDraft((d) => ({ ...d, timeSlot: e.target.value }))}
+            />
+          )}
+          {fieldErrors.timeSlot && (
+            <p className="booking-validation-error" id="booking-slot-error" role="alert">
+              {fieldErrors.timeSlot}
+            </p>
+          )}
+          {!referenceMode && (
+            <small className="muted">
+              {uiText['choisissezLHeureQuiVousConvientLEquipeConfirmeraLeRend']}
+            </small>
+          )}
+        </div>
+      </div>
+      <div className="options">
+        {extras.map(([key, label, description]) => (
+          <div className="option-row" key={key}>
+            <div>
+              <strong>{label}</strong>
+              <span>
+                {description} ·{' '}
+                {money(
+                  key === 'labour'
+                    ? catalogue.settings.labourPrice
+                    : assemblyUnitPrice(
+                        catalogue.settings,
+                        key === 'desk' ? 'bureau' : key === 'wardrobe' ? 'armoire' : 'lit',
+                      ),
+                )}
+              </span>
+            </div>
+            <div className="stepper">
+              <button
+                type="button"
+                aria-label={'Retirer : ' + label}
+                onClick={() => option(key, -1)}
+                disabled={draft.options[key] === 0}
+              >
+                <Minus size={16} />
+              </button>
+              <output aria-label={label}>{draft.options[key]}</output>
+              <button
+                type="button"
+                aria-label={'Ajouter : ' + label}
+                onClick={() => option(key, 1)}
+                disabled={draft.options[key] >= catalogue.settings.maxOptions}
+              >
+                <Plus size={16} />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+      {administrativeQuote && setTollLines && (
+        <div className="booking-toll-options">
+          <TollRateSelector
+            lines={tollLines}
+            onToggle={(line, selected) =>
+              setTollLines((current) =>
+                selected
+                  ? [...current.filter((existing) => existing.id !== line.id), line]
+                  : current.filter((existing) => existing.id !== line.id),
+              )
+            }
+          />
+        </div>
+      )}
+    </section>
+  );
+}

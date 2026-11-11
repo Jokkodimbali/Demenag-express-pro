@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { MovingService } from '../src/application/services/moving.js';
+import { MovingService } from '../src/application/services/moving/moving.js';
 import type {
   BookingRepository,
   CatalogueRepository,
@@ -16,7 +16,7 @@ import type {
   Settings,
   User,
   TollPoint,
-} from '../src/domain/model.js';
+} from '../src/domain/shared/model.js';
 
 const now = new Date('2026-10-22T12:00:00.000Z');
 const admin: User = { id: 'admin-1', name: 'Admin', phone: '+221770000001', role: 'admin' };

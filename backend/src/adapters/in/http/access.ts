@@ -2,8 +2,8 @@ import { type NextFunction, type Request, type Response } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import type { AuthUseCases } from '../../../application/ports/use-cases.js';
 import { security } from '../../../config/security.js';
-import { messages } from '../../../domain/messages/fr.js';
-import { requireActiveUser, requireAdministrator } from '../../../domain/policies/access.js';
+import { messages } from '../../../domain/shared/messages/fr.js';
+import { requireActiveUser, requireAdministrator } from '../../../domain/security/access-policy.js';
 import { getActor } from './actor.js';
 import { readSessionCookie } from './session-cookie.js';
 export function createAccess(deps: { auth: Pick<AuthUseCases, 'current'>; production: boolean }) {

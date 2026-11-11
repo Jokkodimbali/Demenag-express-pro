@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { vehicleCapacity } from '../src/domain/vehicle-capacity';
+import { vehicleCapacity } from '../src/modules/admin/fleet/domain/vehicle-capacity';
 
 test('le volume utile reprend la formule de passages de roue du fichier de référence', () => {
   const length = 4.3;

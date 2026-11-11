@@ -3,7 +3,7 @@ import request, { type Response } from 'supertest';
 import type { IntegrationContext } from './context.js';
 import { integrationHeader } from './context.js';
 import { createBookingInput } from './configuration.js';
-import type { Booking } from '../../src/domain/model.js';
+import type { Booking } from '../../src/domain/shared/model.js';
 
 export async function createAndAuthorizeBooking(context: IntegrationContext, routeId: string) {
   const { db, app, clients } = context;

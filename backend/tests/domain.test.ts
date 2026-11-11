@@ -5,14 +5,14 @@ import {
   calculatePrice,
   labourUnitPrice,
   tierOf,
-} from '../src/domain/pricing.js';
-import { vehicleCapacity } from '../src/domain/vehicle-capacity.js';
-import { validateDate, transition } from '../src/domain/booking.js';
-import { AuthService, normalizePhone } from '../src/application/services/auth.js';
+} from '../src/domain/pricing/pricing.js';
+import { vehicleCapacity } from '../src/domain/fleet/vehicle-capacity.js';
+import { validateDate, transition } from '../src/domain/moving/booking.js';
+import { AuthService, normalizePhone } from '../src/application/services/identity/auth.js';
 import { registerSchema } from '../src/adapters/in/http/validation/auth.js';
 import { ScryptPasswords } from '../src/adapters/out/security/crypto.js';
-import { accountingCostsForQuote, captureAccountingCosts } from '../src/domain/accounting-costs.js';
-import type { Booking, Settings, UserCredentials, Vehicle } from '../src/domain/model.js';
+import { accountingCostsForQuote, captureAccountingCosts } from '../src/domain/accounting/accounting-costs.js';
+import type { Booking, Settings, UserCredentials, Vehicle } from '../src/domain/shared/model.js';
 const vehicle: Vehicle = {
   id: 'sprinter',
   name: 'Sprinter',

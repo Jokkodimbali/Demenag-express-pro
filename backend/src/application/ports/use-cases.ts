@@ -17,7 +17,7 @@ import type {
   TollPointInput,
   User,
   Vehicle,
-} from '../../domain/model.js';
+} from '../../domain/shared/model.js';
 import type {
   AccountingEntry,
   AccountingFinanceConfiguration,

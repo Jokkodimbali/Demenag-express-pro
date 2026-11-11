@@ -3,7 +3,7 @@ import { readEnv } from '../src/config/env.js';
 import { createPrisma } from '../src/adapters/out/prisma/client.js';
 import { PrismaUsers } from '../src/adapters/out/prisma/repositories.js';
 import { ScryptPasswords, ids } from '../src/adapters/out/security/crypto.js';
-import { normalizePhone } from '../src/application/services/auth.js';
+import { normalizePhone } from '../src/application/services/identity/auth.js';
 import { registerSchema } from '../src/adapters/in/http/schemas.js';
 import { z } from 'zod';
 const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase() || null;

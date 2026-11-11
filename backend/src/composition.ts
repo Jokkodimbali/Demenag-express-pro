@@ -15,15 +15,15 @@ import {
 } from './adapters/out/prisma/repositories.js';
 import { ScryptPasswords, clock, ids, tokens } from './adapters/out/security/crypto.js';
 import type { RoutingProvider } from './application/ports/index.js';
-import { AdministrationService } from './application/services/administration.js';
-import { AccountingService } from './application/services/accounting.js';
-import { AuthService } from './application/services/auth.js';
-import { CatalogueService } from './application/services/catalogue.js';
-import { DriverService } from './application/services/drivers.js';
-import { MovingService } from './application/services/moving.js';
-import { VehicleReportService } from './application/services/vehicle-reports.js';
-import { NotificationService } from './application/services/notifications.js';
-import { ClaudeService } from './application/services/claude.js';
+import { AdministrationService } from './application/services/administration/administration.js';
+import { AccountingService } from './application/services/accounting/accounting.js';
+import { AuthService } from './application/services/identity/auth.js';
+import { CatalogueService } from './application/services/catalogue/catalogue.js';
+import { DriverService } from './application/services/fleet/drivers.js';
+import { MovingService } from './application/services/moving/moving.js';
+import { VehicleReportService } from './application/services/fleet/vehicle-reports.js';
+import { NotificationService } from './application/services/notifications/notifications.js';
+import { ClaudeService } from './application/services/integrations/claude.js';
 import type { PrismaClient } from './generated/prisma/client.js';
 export function compose(db: PrismaClient, routing: RoutingProvider) {
   const notificationRepository = new PrismaNotifications(db);

@@ -2,14 +2,14 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
-import { calculatePrice } from '../../backend/src/domain/pricing.ts';
-import { inventoryAssemblyLines as backendAssemblyLines } from '../../backend/src/domain/inventory-assembly.ts';
-import { inventoryAssemblyLines as frontendAssemblyLines } from '../src/domain/inventory-assembly.ts';
-import { quoteTotal } from '../src/application/services/quote-total.ts';
-import { estimateMovingWork } from '../src/domain/moving-estimate.ts';
-import { blankInventory } from '../src/domain/inventory.ts';
-import type { Booking, Inventory, Settings, Vehicle } from '../src/domain/model.ts';
-import { inventoryItems } from '../src/domain/inventory.ts';
+import { calculatePrice } from '../../backend/src/domain/pricing/pricing.ts';
+import { inventoryAssemblyLines as backendAssemblyLines } from '../../backend/src/domain/inventory/inventory-assembly.ts';
+import { inventoryAssemblyLines as frontendAssemblyLines } from '../src/modules/moving/domain/inventory/inventory-assembly.ts';
+import { quoteTotal } from '../src/modules/admin/quotes/application/services/quote-total.ts';
+import { estimateMovingWork } from '../src/modules/moving/domain/estimate/moving-estimate.ts';
+import { blankInventory } from '../src/modules/moving/domain/inventory/inventory.ts';
+import type { Booking, Inventory, Settings, Vehicle } from '../src/modules/shared/domain/model.ts';
+import { inventoryItems } from '../src/modules/moving/domain/inventory/inventory.ts';
 
 type ReferenceQuote = {
   vehicle: string;

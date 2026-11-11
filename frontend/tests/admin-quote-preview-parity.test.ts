@@ -1,14 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { AdminQuoteConfig } from '../src/application/admin-quote-draft-storage.ts';
-import { blankDraft } from '../src/application/booking-draft.ts';
-import { createAdminQuotePreview } from '../src/application/services/admin-quote-preview.ts';
-import { calculatePrice } from '../../backend/src/domain/pricing.ts';
+import type { AdminQuoteConfig } from '../src/modules/admin/quotes/application/admin-quote-draft-storage.ts';
+import { blankDraft } from '../src/modules/booking/application/booking-draft.ts';
+import { createAdminQuotePreview } from '../src/modules/admin/quotes/application/services/admin-quote-preview.ts';
+import { calculatePrice } from '../../backend/src/domain/pricing/pricing.ts';
 import {
   inventoryAssemblyLines,
   subtractInventoryAssemblyOptions,
-} from '../../backend/src/domain/inventory-assembly.ts';
-import type { Catalogue, Options, Settings, Vehicle } from '../src/domain/model.ts';
+} from '../../backend/src/domain/inventory/inventory-assembly.ts';
+import type { Catalogue, Options, Settings, Vehicle } from '../src/modules/shared/domain/model.ts';
 
 const settings: Settings = {
   distanceBounds: [15, 25, 35],

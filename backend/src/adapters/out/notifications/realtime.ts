@@ -1,6 +1,6 @@
 import type { Notification, NotificationPublisher } from '../../../application/ports/index.js';
 import type { NotificationRepository } from '../../../application/ports/index.js';
-import type { User } from '../../../domain/model.js';
+import type { User } from '../../../domain/shared/model.js';
 
 type Subscriber = { user: User; send: (notification: Notification) => void };
 

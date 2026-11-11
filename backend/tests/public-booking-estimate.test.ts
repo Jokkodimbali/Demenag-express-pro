@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { MovingService } from '../src/application/services/moving.js';
+import { MovingService } from '../src/application/services/moving/moving.js';
 import { PrismaBookings } from '../src/adapters/out/prisma/bookings.js';
 import type { PrismaClient } from '../src/generated/prisma/client.js';
 import type {
@@ -10,7 +10,7 @@ import type {
   Catalogue,
   RouteTicket,
   User,
-} from '../src/domain/model.js';
+} from '../src/domain/shared/model.js';
 import type {
   BookingRepository,
   CatalogueRepository,

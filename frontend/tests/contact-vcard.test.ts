@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { contactVcard } from '../src/domain/contact-vcard';
-import type { Booking, Settings } from '../src/domain/model';
+import { contactVcard } from '../src/modules/admin/clients/domain/contact-vcard';
+import type { Booking, Settings } from '../src/modules/shared/domain/model';
 
 test('le contact exporté reprend le modèle enregistré et les réservations du client', () => {
   const card = contactVcard(

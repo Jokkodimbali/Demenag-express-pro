@@ -4,7 +4,7 @@ import express, { type Express } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import helmet from 'helmet';
 import { security } from '../../../config/security.js';
-import { messages } from '../../../domain/messages/fr.js';
+import { messages } from '../../../domain/shared/messages/fr.js';
 import type { Dependencies } from './dependencies.js';
 export function registerSecurityMiddleware(
   app: Express,

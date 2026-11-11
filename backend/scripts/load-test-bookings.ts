@@ -6,7 +6,7 @@ import request from 'supertest';
 import { createApp } from '../src/adapters/in/http/app.js';
 import { createPrisma } from '../src/adapters/out/prisma/client.js';
 import { compose } from '../src/composition.js';
-import type { Point, RouteTicket } from '../src/domain/model.js';
+import type { Point, RouteTicket } from '../src/domain/shared/model.js';
 
 const clientCount = Number(process.env.LOAD_TEST_CLIENTS || 1000);
 const expectedDevEndpoint = 'ep-blue-river-b4hli0fp';

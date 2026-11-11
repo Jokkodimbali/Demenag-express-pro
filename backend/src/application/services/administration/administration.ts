@@ -1,0 +1,101 @@
+import { AppError } from '../../../domain/shared/errors.js';
+import { messages } from '../../../domain/shared/messages/fr.js';
+import type { User } from '../../../domain/shared/model.js';
+import { requireAdministrator } from '../../../domain/security/access-policy.js';
+import type {
+  AdministrationRepository,
+  IdGenerator,
+  PasswordHasher,
+  UserRepository,
+} from '../../ports/index.js';
+import type { AdministrationUseCases } from '../../ports/use-cases.js';
+import { normalizePhone } from '../identity/auth.js';
+export class AdministrationService implements AdministrationUseCases {
+  constructor(
+    private repository: AdministrationRepository,
+    private users: UserRepository,
+    private passwords: PasswordHasher,
+    private ids: IdGenerator,
+  ) {}
+  listUsers(actor: User) {
+    requireAdministrator(actor);
+    return this.repository.listUsers();
+  }
+  listClientProfiles(actor: User) {
+    requireAdministrator(actor);
+    return this.repository.listClientProfiles();
+  }
+  listHiddenClients(actor: User) {
+    requireAdministrator(actor);
+    return this.repository.listHiddenClients();
+  }
+  hideClient(actor: User, phone: string) {
+    requireAdministrator(actor);
+    return this.repository.hideClient(phone);
+  }
+  updateClient(actor: User, phone: string, name: string, nextPhone: string, address: string) {
+    requireAdministrator(actor);
+    return this.repository.updateClient(
+      phone,
+      name.trim(),
+      normalizePhone(nextPhone),
+      address.trim(),
+    );
+  }
+  updateUser(actor: User, user: User) {
+    requireAdministrator(actor);
+    if (user.id === actor.id && (user.role !== 'admin' || user.active === false))
+      throw new AppError(400, messages.vousNePouvezPasRetirerVotrePropreAcces);
+    const next = { ...user, phone: normalizePhone(user.phone) };
+    return this.repository.transaction(async (repository) => {
+      requireAdministrator(await repository.findUser(actor.id));
+      const previous = await repository.findUser(next.id);
+      if (!previous) throw new AppError(404, messages.compteIntrouvable);
+      if (
+        previous.role === 'admin' &&
+        (next.role !== 'admin' || next.active === false) &&
+        (await repository.countActiveAdministrators()) <= 1
+      )
+        throw new AppError(400, messages.conservezAuMoinsUnAdministrateurActif);
+      const updated = await repository.saveUser(next);
+      if (updated.active === false || previous.role !== updated.role)
+        await repository.revokeSessions(next.id);
+      return updated;
+    });
+  }
+  async createUser(actor: User, input: Omit<User, 'id'> & { password: string }) {
+    requireAdministrator(actor);
+    return this.users.create({
+      id: this.ids.next(),
+      name: input.name,
+      phone: normalizePhone(input.phone),
+      role: input.role,
+      active: true,
+      passwordHash: await this.passwords.hash(input.password),
+    });
+  }
+  async resetClientPassword(actor: User, userId: string, password: string) {
+    requireAdministrator(actor);
+    const passwordHash = await this.passwords.hash(password);
+    await this.repository.transaction(async (repository) => {
+      requireAdministrator(await repository.findUser(actor.id));
+      const target = await repository.findUser(userId);
+      if (!target || target.role !== 'client') throw new AppError(404, messages.compteIntrouvable);
+      if (!target.passwordResetRequestedAt)
+        throw new AppError(409, 'Aucune demande de réinitialisation en attente pour ce client.');
+      if (!repository.resetClientPassword)
+        throw new AppError(500, 'La réinitialisation des mots de passe est indisponible.');
+      await repository.resetClientPassword(userId, passwordHash);
+    });
+  }
+  async updateProfile(actor: User, input: Pick<User, 'name' | 'phone' | 'photo' | 'email'>) {
+    requireAdministrator(actor);
+    return this.users.updateProfile(
+      actor.id,
+      input.name.trim(),
+      normalizePhone(input.phone),
+      input.photo ?? null,
+      input.email?.trim().toLowerCase() || null,
+    );
+  }
+}

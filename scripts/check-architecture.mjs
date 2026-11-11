@@ -3,6 +3,24 @@ import path from 'node:path';
 import ts from 'typescript';
 const errors = [];
 let count = 0;
+function isFrontendView(file) {
+  return (
+    /^frontend\/src\/(pages|components)\//.test(file) ||
+    /^frontend\/src\/modules\/.+\/(pages|components)\//.test(file)
+  );
+}
+function isFrontendDomain(file) {
+  return (
+    file.startsWith('frontend/src/domain/') ||
+    /^frontend\/src\/modules\/.+\/domain\//.test(file)
+  );
+}
+function isFrontendApplication(file) {
+  return (
+    file.startsWith('frontend/src/application/') ||
+    /^frontend\/src\/modules\/.+\/application\//.test(file)
+  );
+}
 async function visit(directory) {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
     if (entry.name === 'generated') continue;
@@ -36,7 +54,7 @@ async function visit(directory) {
         node.initializer.text.trim()
       )
         errors.push(`${file}: attribut visible hors du catalogue.`);
-      if (/^frontend\/src\/(pages|components)\//.test(file) && ts.isCallExpression(node)) {
+      if (isFrontendView(file) && ts.isCallExpression(node)) {
         const expression = node.expression;
         if (
           (ts.isIdentifier(expression) && expression.text === 'fetch') ||
@@ -61,27 +79,34 @@ async function visit(directory) {
       )
         errors.push(`${file}: le contrôleur doit dépendre des ports : ${specifier}.`);
       if (
-        file.startsWith('frontend/src/application/') &&
-        target.startsWith('frontend/src/adapters/')
+        isFrontendApplication(file) &&
+        (target.startsWith('frontend/src/adapters/') ||
+          /^frontend\/src\/modules\/.+\/adapters\//.test(target))
       )
         errors.push(`${file}: implémentation concrète dans l’application : ${specifier}.`);
       if (
-        /^frontend\/src\/(pages|components)\//.test(file) &&
-        target.startsWith('frontend/src/adapters/')
+        isFrontendView(file) &&
+        (target.startsWith('frontend/src/adapters/') ||
+          /^frontend\/src\/modules\/.+\/adapters\//.test(target))
       )
         errors.push(`${file}: adaptateur concret dans une vue : ${specifier}.`);
       const isDomain = file.startsWith('backend/src/domain/');
       const isApplication = file.startsWith('backend/src/application/');
-      const isFrontendDomain = file.startsWith('frontend/src/domain/');
-      const isFrontendApplication = file.startsWith('frontend/src/application/');
       if (
-        isFrontendDomain &&
-        /^frontend\/src\/(application|adapters|components|pages|config|content|routing)\//.test(
+        isFrontendDomain(file) &&
+        (/^frontend\/src\/(application|adapters|components|pages|config|content|routing)\//.test(
           target,
-        )
+        ) ||
+          /^frontend\/src\/modules\/.+\/(application|adapters|components|pages|config|content)\//.test(
+            target,
+          ))
       )
         errors.push(`${file}: le domaine frontend ne doit pas dépendre de ${specifier}.`);
-      if (isFrontendApplication && /^frontend\/src\/(components|pages)\//.test(target))
+      if (
+        isFrontendApplication(file) &&
+        (/^frontend\/src\/(components|pages)\//.test(target) ||
+          /^frontend\/src\/modules\/.+\/(pages|components)\//.test(target))
+      )
         errors.push(`${file}: l’application frontend ne doit pas dépendre des vues ${specifier}.`);
       if (
         (isDomain || isApplication) &&

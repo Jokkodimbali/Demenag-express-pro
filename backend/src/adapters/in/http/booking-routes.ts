@@ -4,7 +4,7 @@ import type { Access } from './access.js';
 import { getActor } from './actor.js';
 import type { Dependencies } from './dependencies.js';
 import type { NotificationPublisher } from '../../../application/ports/index.js';
-import { messages } from '../../../domain/messages/fr.js';
+import { messages } from '../../../domain/shared/messages/fr.js';
 import {
   bookingSchema,
   bookingCrewSchema,

@@ -8,9 +8,9 @@ import type {
   Settings,
   UserCredentials,
   Vehicle,
-} from '../../../domain/model.js';
-import { defaultClientQuestions, isLegacyDefaultQuestions } from '../../../domain/questionnaire.js';
-import { vehicleCapacity } from '../../../domain/vehicle-capacity.js';
+} from '../../../domain/shared/model.js';
+import { defaultClientQuestions, isLegacyDefaultQuestions } from '../../../domain/moving/questionnaire.js';
+import { vehicleCapacity } from '../../../domain/fleet/vehicle-capacity.js';
 import type {
   ParametreApplication,
   Utilisateur,
