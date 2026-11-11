@@ -366,10 +366,28 @@ export const messages = {
   aucuneReservationAAfficher: 'Aucune réservation à afficher.',
   lesNouvellesDemandesApparaitrontIci: 'Les nouvelles demandes apparaîtront ici.',
   retourALAccueil: ' Retour à l’accueil',
-  votreEspacePersonnel: 'VOTRE ESPACE PERSONNEL',
   bienvenueABord: 'BIENVENUE À BORD.',
   heureuxDeVousRevoir: 'HEUREUX DE VOUS REVOIR.',
-  reservationsSuiviEtDevisToutEstAuMeme: 'Réservations, suivi et devis, tout est au même endroit.',
+  authLoginIdentifier: 'Téléphone ou identifiant',
+  authPasswordCreationPlaceholder: '8 caractères minimum',
+  authNameRequired: 'Saisissez votre nom complet.',
+  authNameInvalid: 'Le nom doit contenir entre 2 et 100 caractères.',
+  authPhoneInvalid:
+    'Saisissez un numéro de téléphone international valide, par exemple +221 77 123 45 67.',
+  authIdentifierInvalid: 'Saisissez un identifiant d’au moins 3 caractères.',
+  authPasswordRequired: 'Saisissez votre mot de passe.',
+  authPasswordTooLong: 'Le mot de passe ne peut pas dépasser 128 caractères.',
+  authPasswordWeak:
+    'Le mot de passe doit contenir au moins 8 caractères, une lettre et un chiffre.',
+  authPasswordConfirmationRequired: 'Confirmez votre mot de passe.',
+  authPasswordMismatch: 'Les deux mots de passe ne correspondent pas.',
+  authCredentialsInvalid: 'Téléphone ou mot de passe incorrect.',
+  authPhoneAlreadyUsed: 'Un compte utilise déjà ce numéro.',
+  authResetSent:
+    'Si un compte client correspond à ce numéro, la demande a été transmise à l’administration.',
+  authSendResetRequest: 'Envoyer la demande',
+  authResetHint:
+    'Après vérification de votre numéro, l’administration vous aidera à choisir un nouveau mot de passe.',
   connexion: 'Connexion',
   creerUnCompte: 'Créer un compte',
   nomComplet: 'Nom complet',
@@ -380,10 +398,6 @@ export const messages = {
   votreMotDePasse: 'Votre mot de passe',
   veuillezPatienter: 'Veuillez patienter…',
   creerMonCompte: 'Créer mon compte',
-  utilisezVotreNumeroHabituelPourRetrouverVosDemandes:
-    'Utilisez votre numéro habituel pour retrouver vos demandes.',
-  lAdministrationUtiliseCeMemeFormulaireDeConnexion:
-    'L’administration utilise ce même formulaire de connexion.',
   volumeUtile: 'Volume utile',
   largeurEntrePassagesDeRoue: 'Largeur entre passages de roue',
   vehicules2: 'VÉHICULES',

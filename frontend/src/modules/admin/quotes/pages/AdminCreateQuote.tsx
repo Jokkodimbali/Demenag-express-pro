@@ -60,6 +60,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
     pricingSnapshotError,
     applyCurrentPricingSnapshot,
     quoteSettings,
+    contactCard,
     quoteTollPoints,
     user,
     catalogue,
@@ -436,6 +437,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
               editingReservation={editingReservation}
               clientRecognition={clientRecognition}
               recognizingClient={recognizingClient}
+              contactCard={contactCard}
             />
           </AdminQuoteStep>
           <AdminQuoteStep

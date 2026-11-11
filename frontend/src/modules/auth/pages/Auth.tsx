@@ -3,12 +3,11 @@ import { useState } from 'react';
 import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useAuthentication } from '../application/controllers/useAuthentication';
 import { messages } from '../../shared/content/fr';
-import { visibleUiText } from '../../shared/content/visible-ui-text';
 import { sanitizePhoneInput } from '../../shared/domain/phone-number';
 export function Auth() {
   const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
   const [registerPassword, setRegisterPassword] = useState('');
-  const [registrationRole, setRegistrationRole] = useState<'client' | 'driver'>('client');
   const [resetMode, setResetMode] = useState(false);
   const {
     register,
@@ -20,6 +19,9 @@ export function Auth() {
     requestPasswordReset,
     resetSent,
     setResetSent,
+    fieldErrors,
+    validateSingleField,
+    clearFieldErrors,
   } = useAuthentication();
   const passwordStrength = [
     registerPassword.length >= 8,
@@ -28,22 +30,38 @@ export function Auth() {
     /[^a-zA-Z0-9]/.test(registerPassword) || registerPassword.length >= 12,
   ].filter(Boolean).length;
   const passwordStrengthLabels = ['Trop faible', 'Faible', 'Moyen', 'Bon', 'Excellent'];
+  const renderFieldError = (field: keyof typeof fieldErrors) => {
+    const message = fieldErrors[field];
+    return message ? (
+      <span className="auth-field-error" id={`auth-${field}-error`} role="alert">
+        {message}
+      </span>
+    ) : null;
+  };
 
   return (
     <div className="auth-page">
       <div className="auth-card">
+        <div className="auth-brand">
+          <img src="/assets/logo.png" alt="" />
+          <span>
+            <strong>{uiText['demenagEXPRESS']}</strong>
+            <small>{uiText['proMTH']}</small>
+          </span>
+        </div>
         <h1>{uiText['monCOMPTE']}</h1>
         {!resetMode && (
           <div className="tabs">
             <button
               type="button"
               className={!register ? 'active' : ''}
+              aria-pressed={!register}
               onClick={() => {
                 setRegister(false);
                 setResetMode(false);
-                setRegistrationRole('client');
                 setRegisterPassword('');
                 setError('');
+                clearFieldErrors();
               }}
             >
               {messages.connexion}
@@ -51,85 +69,78 @@ export function Auth() {
             <button
               type="button"
               className={register ? 'active' : ''}
+              aria-pressed={register}
               onClick={() => {
                 setRegister(true);
                 setResetMode(false);
-                setRegistrationRole('client');
                 setRegisterPassword('');
                 setError('');
+                clearFieldErrors();
               }}
             >
               {messages.creerUnCompte}
             </button>
           </div>
         )}
-        <form onSubmit={resetMode ? requestPasswordReset : submit}>
+        <form noValidate onSubmit={resetMode ? requestPasswordReset : submit}>
           {register && !resetMode && (
             <>
-              <label htmlFor="auth-registration-role">{visibleUiText.text85}</label>
-              <select
-                id="auth-registration-role"
-                name="accountRole"
-                value={registrationRole}
-                onChange={(event) => {
-                  setRegistrationRole(event.target.value as 'client' | 'driver');
-                  setRegisterPassword('');
-                  setError('');
-                }}
-              >
-                <option value="client">{visibleUiText.text86}</option>
-                <option value="driver">{visibleUiText.text87}</option>
-              </select>
-              {registrationRole === 'driver' ? (
-                <p className="caption">{visibleUiText.text88}</p>
-              ) : (
-                <>
-                  <label htmlFor="auth-name">
-                    <span>{uiText['nomCOMPLET']}</span>
-                  </label>
-                  <input
-                    id="auth-name"
-                    name="name"
-                    autoComplete="name"
-                    minLength={2}
-                    maxLength={100}
-                    required
-                    placeholder={messages.votreNomEtPrenom}
-                  />
-                </>
-              )}
+              <label htmlFor="auth-name">
+                <span>{uiText['nomCOMPLET']}</span>
+              </label>
+              <input
+                id="auth-name"
+                name="name"
+                autoComplete="name"
+                minLength={2}
+                maxLength={100}
+                required
+                aria-invalid={Boolean(fieldErrors.name)}
+                aria-describedby={fieldErrors.name ? 'auth-name-error' : undefined}
+                placeholder={messages.votreNomEtPrenom}
+                onBlur={(event) => validateSingleField('name', event.currentTarget.form)}
+              />
+              {renderFieldError('name')}
             </>
           )}
           <label htmlFor="auth-phone">
             <span>
-              {register || resetMode ? uiText['telephone2'] : 'Téléphone ou email administrateur'}
+              {resetMode || register ? uiText['telephone2'] : messages.authLoginIdentifier}
             </span>
           </label>
           <input
             id="auth-phone"
+            key={resetMode ? 'reset-phone' : register ? 'register-phone' : 'login-identifier'}
             name={resetMode ? 'phone' : register ? 'phone' : 'identifier'}
-            type={resetMode ? 'tel' : register ? 'tel' : 'text'}
-            autoComplete={resetMode ? 'tel' : register ? 'tel' : 'username'}
+            type={resetMode || register ? 'tel' : 'text'}
+            autoComplete={resetMode || register ? 'tel' : 'username'}
             inputMode={resetMode || register ? 'tel' : 'text'}
             required
             minLength={resetMode || register ? 9 : 3}
             maxLength={resetMode || register ? 25 : 254}
+            aria-invalid={Boolean(fieldErrors[resetMode || register ? 'phone' : 'identifier'])}
+            aria-describedby={
+              fieldErrors[resetMode || register ? 'phone' : 'identifier']
+                ? `auth-${resetMode || register ? 'phone' : 'identifier'}-error`
+                : undefined
+            }
             placeholder={
-              resetMode || register
-                ? '+221 77 123 45 67 ou +33 6 12 34 56 78'
-                : 'Téléphone international ou email admin'
+              resetMode || register ? '+221 77 123 45 67 ou +33 6 12 34 56 78' : undefined
             }
             onChange={(event) => {
               if (resetMode || register) {
                 event.currentTarget.value = sanitizePhoneInput(event.currentTarget.value);
               }
             }}
+            onBlur={(event) =>
+              validateSingleField(
+                resetMode || register ? 'phone' : 'identifier',
+                event.currentTarget.form,
+                resetMode ? 'reset' : register ? 'register' : 'login',
+              )
+            }
           />
-          <p className="caption">
-            {register || resetMode
-              ? 'Utilisez le numéro associé à votre compte.'
-              : 'Client : téléphone uniquement. Employé : téléphone et mot de passe initial. Administrateur : téléphone ou email avec mot de passe.'}
-          </p>
+          {renderFieldError(resetMode || register ? 'phone' : 'identifier')}
           {!resetMode && (
             <>
               <label htmlFor="auth-password">
@@ -137,24 +148,21 @@ export function Auth() {
               </label>
               <div className="auth-password-field">
                 <input
-                  key={`${register ? 'register' : 'login'}-${registrationRole}-password`}
+                  key={register ? 'register-password' : 'login-password'}
                   id="auth-password"
                   name="password"
                   type={showPassword ? 'text' : 'password'}
-                  autoComplete={
-                    register && registrationRole === 'client' ? 'new-password' : 'current-password'
-                  }
-                  minLength={register && registrationRole === 'client' ? 8 : register ? 10 : 0}
+                  autoComplete={register ? 'new-password' : 'current-password'}
+                  minLength={register ? 8 : 0}
                   maxLength={128}
-                  required={register}
+                  required
+                  aria-invalid={Boolean(fieldErrors.password)}
+                  aria-describedby={fieldErrors.password ? 'auth-password-error' : undefined}
                   placeholder={
-                    register && registrationRole === 'client'
-                      ? '8 caractères minimum'
-                      : register
-                        ? 'Mot de passe initial transmis par l’administration'
-                        : messages.votreMotDePasse
+                    register ? messages.authPasswordCreationPlaceholder : messages.votreMotDePasse
                   }
                   onChange={(event) => setRegisterPassword(register ? event.target.value : '')}
+                  onBlur={(event) => validateSingleField('password', event.currentTarget.form)}
                 />
                 <button
                   className="auth-password-toggle"
@@ -168,8 +176,8 @@ export function Auth() {
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              {!register && <p className="caption">{visibleUiText.text89}</p>}
-              {register && registrationRole === 'client' && (
+              {renderFieldError('password')}
+              {register && (
                 <>
                   <div className="auth-password-strength" aria-live="polite">
                     <div aria-hidden="true">
@@ -185,28 +193,48 @@ export function Auth() {
                   <label htmlFor="auth-password-confirm">
                     <span>{uiText['confirmezLEMOTDEPASSE']}</span>
                   </label>
-                  <input
-                    id="auth-password-confirm"
-                    name="passwordConfirmation"
-                    type={showPassword ? 'text' : 'password'}
-                    autoComplete="new-password"
-                    minLength={8}
-                    maxLength={128}
-                    required
-                    placeholder={uiText['texte2']}
-                  />
-                  <p className="auth-first-password-hint">
-                    {uiText['premiereConnexionCreezVotreMotDePasse8CaracteresMinimu']}
-                  </p>
+                  <div className="auth-password-field">
+                    <input
+                      id="auth-password-confirm"
+                      name="passwordConfirmation"
+                      type={showPasswordConfirmation ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      minLength={8}
+                      maxLength={128}
+                      required
+                      aria-invalid={Boolean(fieldErrors.passwordConfirmation)}
+                      aria-describedby={
+                        fieldErrors.passwordConfirmation
+                          ? 'auth-passwordConfirmation-error'
+                          : undefined
+                      }
+                      placeholder={uiText['texte2']}
+                      onBlur={(event) =>
+                        validateSingleField('passwordConfirmation', event.currentTarget.form)
+                      }
+                    />
+                    <button
+                      className="auth-password-toggle"
+                      type="button"
+                      aria-label={
+                        showPasswordConfirmation
+                          ? messages.masquerMotDePasse
+                          : messages.afficherMotDePasse
+                      }
+                      aria-pressed={showPasswordConfirmation}
+                      onClick={() => setShowPasswordConfirmation((visible) => !visible)}
+                    >
+                      {showPasswordConfirmation ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                  {renderFieldError('passwordConfirmation')}
                 </>
               )}
             </>
           )}
           {resetMode && (
             <p className="caption" role={resetSent ? 'status' : undefined}>
-              {resetSent
-                ? 'Si un compte client correspond à ce numéro, la demande a été transmise à l’administration.'
-                : 'Après vérification de votre numéro, l’administration vous aidera à choisir un nouveau mot de passe.'}
+              {resetSent ? messages.authResetSent : messages.authResetHint}
             </p>
           )}
           {error && (
@@ -218,12 +246,10 @@ export function Auth() {
             {busy
               ? messages.veuillezPatienter
               : resetMode
-                ? 'Envoyer la demande'
+                ? messages.authSendResetRequest
                 : register
-                  ? registrationRole === 'driver'
-                    ? 'Se connecter à mon espace employé'
-                    : messages.creerMonCompte
-                  : 'Se connecter'}
+                  ? messages.creerMonCompte
+                  : messages.connexion}
             <ArrowRight size={18} />
           </button>
         </form>
@@ -235,6 +261,7 @@ export function Auth() {
               setResetMode(true);
               setResetSent(false);
               setError('');
+              clearFieldErrors();
             }}
           >
             {uiText['motDePasseOublie']}
@@ -248,13 +275,11 @@ export function Auth() {
               setResetMode(false);
               setResetSent(false);
               setError('');
+              clearFieldErrors();
             }}
           >
             {uiText['retourALaConnexion']}
           </button>
-        )}
-        {register && (
-          <p className="caption">{messages.utilisezVotreNumeroHabituelPourRetrouverVosDemandes}</p>
         )}
       </div>
     </div>

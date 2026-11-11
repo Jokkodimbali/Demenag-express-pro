@@ -4,14 +4,17 @@ import type { Booking, Driver, Vehicle } from '../../../../shared/domain/model';
 import { useApp } from '../../../../shared/application/context';
 import { errorMessage } from '../../../../shared/application/error-message';
 import { CatalogueService } from '../../../../catalogue/application/services/catalogue';
-import { revenueFor, sameWeek } from '../../../accounting/application/services/revenue';
 import { vehicleFromForm } from '../../../application/forms/vehicle-from-form';
+import {
+  assignedDriversAfterVehicleAssignment,
+  unassignedDriverUpdate,
+  vehicleActivity,
+  vehicleAvailabilityUpdate,
+  vehicleCreationPhotoError,
+  type VehicleActivity,
+} from '../services/fleet-policy';
 
-export type VehicleActivity = {
-  bookings: number;
-  todayRevenue: number;
-  weekRevenue: number;
-};
+export type { VehicleActivity } from '../services/fleet-policy';
 
 export function useFleet() {
   const { api, catalogue, setCatalogue } = useApp();
@@ -58,8 +61,13 @@ export function useFleet() {
     if (!catalogue || !editing || busy) return;
     const data = new FormData(e.currentTarget);
     const isNewVehicle = !catalogue.vehicles.some((vehicle) => vehicle.id === editing.id);
-    if (isNewVehicle && (!String(data.get('image') ?? '') || !String(data.get('interior') ?? ''))) {
-      setError('Importez une photo de profil et une photo intérieure pour ce véhicule.');
+    const photoError = vehicleCreationPhotoError(
+      isNewVehicle,
+      data.get('image'),
+      data.get('interior'),
+    );
+    if (photoError) {
+      setError(photoError);
       return;
     }
     setBusy(true);
@@ -101,8 +109,7 @@ export function useFleet() {
     try {
       setCatalogue(
         await new CatalogueService(api).saveVehicle(catalogue, {
-          ...vehicle,
-          active: vehicle.active === false,
+          ...vehicleAvailabilityUpdate(vehicle),
         }),
       );
     } catch (reason) {
@@ -159,15 +166,7 @@ export function useFleet() {
     setError('');
     try {
       const saved = await api.updateDriver({ ...driver, vehicleId: vehicle.id });
-      setDrivers((values) =>
-        values.map((item) =>
-          item.id === saved.id
-            ? saved
-            : item.vehicleId === vehicle.id
-              ? { ...item, vehicleId: null }
-              : item,
-        ),
-      );
+      setDrivers((values) => assignedDriversAfterVehicleAssignment(values, saved, vehicle.id));
       setDriverChoices((values) => {
         const remaining = { ...values };
         delete remaining[vehicle.id];
@@ -187,7 +186,7 @@ export function useFleet() {
     setError('');
     try {
       const saved = await api.updateDriver({ ...driver, vehicleId: null });
-      setDrivers((values) => values.map((item) => (item.id === saved.id ? saved : item)));
+      setDrivers((values) => unassignedDriverUpdate(values, saved));
       setDriverChoices((values) => {
         const remaining = { ...values };
         delete remaining[vehicle.id];
@@ -201,19 +200,7 @@ export function useFleet() {
   }
 
   function activity(vehicle: Vehicle): VehicleActivity {
-    const vehicleBookings = bookings.filter((booking) => booking.vehicle.id === vehicle.id);
-    const currentDay = today();
-    return {
-      bookings: vehicleBookings.length,
-      todayRevenue: revenueFor(
-        vehicleBookings.filter((booking) => booking.date === currentDay),
-        catalogue,
-      ).total,
-      weekRevenue: revenueFor(
-        vehicleBookings.filter((booking) => sameWeek(booking.date, currentDay)),
-        catalogue,
-      ).total,
-    };
+    return vehicleActivity(bookings, vehicle, catalogue, today());
   }
 
   return {

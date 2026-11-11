@@ -15,16 +15,9 @@ import {
   referenceMovingEstimateNote,
 } from '../../../../moving/domain/estimate/reference-inventory-note';
 import { referenceTierLabels } from '../../../../shared/application/presentation/format';
-import {
-  labourUnitPrice,
-  labourUnitPriceOverrideFromQuote,
-} from '../../../../moving/domain/pricing/labour-price';
 import { useAdminQuoteTraffic } from './useAdminQuoteTraffic';
 import type { Booking, Options, Price, Quote } from '../../../../shared/domain/model';
-import {
-  bookingInventorySnapshot,
-  estimateMovingWork,
-} from '../../../../moving/domain/estimate/moving-estimate';
+import { bookingInventorySnapshot } from '../../../../moving/domain/estimate/moving-estimate';
 import { defaultClientQuestions } from '../../../../booking/domain/questionnaire';
 import { quoteNotificationUrl } from '../services/quote-notification';
 import { quoteConditionsText } from '../../../../shared/messaging/application/services/whatsapp-templates';
@@ -32,7 +25,26 @@ import { createAdminQuotePreview } from '../services/admin-quote-preview';
 import { cheaperCompatibleVehicle, vehicleFitWarnings } from '../services/quote-vehicle-fit';
 import { fitConfirmationCopy } from '../services/quote-fit-confirmation';
 import { quoteReminder } from '../services/quote-reminder';
+import { quoteContactCard } from '../services/quote-contact-card';
 import { startQuoteWhatsAppSubmission } from '../services/quote-whatsapp-submission';
+import {
+  businessPhonePresentation,
+  canCreateFinalQuote,
+  changedQuoteLaborDraft,
+  inventoryItemCount,
+  quoteConfigurationFromBooking,
+  quoteDateLabel,
+  quoteEstimateInventory,
+  quoteQuestionnaireSummary,
+  toggleQuoteToll,
+  totalTollCost,
+} from '../services/admin-quote-form-policy';
+import {
+  estimateAdminQuoteWork,
+  labourPriceForQuote,
+  quoteHasPaidTolls,
+  routeForQuotePricing,
+} from '../services/admin-quote-estimation';
 import { errorMessage } from '../../../../shared/application/error-message';
 
 export function useAdminCreateQuoteModel(publicRequest: boolean) {
@@ -284,33 +296,12 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     });
     navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
   }, [location.pathname, location.search, navigate, setDraft, startNewRequest, user]);
-  const canCreateFinal = Boolean(
-    editingBooking?.status !== 'cancelled' &&
-    !editingBooking?.quotes.some((quote) => quote.kind === 'final') &&
-    Boolean(draft.date) &&
-    !draft.noDate,
-  );
+  const canCreateFinal = canCreateFinalQuote(editingBooking, draft.date, Boolean(draft.noDate));
   useEffect(() => {
     const lastQuote = state.editingBooking?.quotes.at(-1);
     if (lastQuote) setQuoteKind(lastQuote.kind);
   }, [state.editingBooking]);
-  const estimateInventory = {
-    ...draft.inventory,
-    ready: draft.questionnaireAnswers['key-ready']?.startsWith('Non')
-      ? ('non' as const)
-      : draft.questionnaireAnswers['key-ready']?.startsWith('Oui')
-        ? ('oui' as const)
-        : (draft.inventory.ready ?? ('' as const)),
-    stairs: draft.questionnaireAnswers['key-stairs']?.startsWith('Non, par le balcon')
-      ? ('balcon' as const)
-      : draft.questionnaireAnswers['key-stairs']?.startsWith('Non')
-        ? ('non' as const)
-        : draft.questionnaireAnswers['key-stairs']?.startsWith('Oui')
-          ? ('oui' as const)
-          : draft.questionnaireAnswers['key-stairs']?.startsWith('À vérifier')
-            ? ('verif' as const)
-            : (draft.inventory.stairs ?? ('' as const)),
-  };
+  const estimateInventory = quoteEstimateInventory(draft.inventory, draft.questionnaireAnswers);
   useEffect(() => {
     if (editingReservation || publicRequest || resetAdminQuote || user?.role !== 'admin') {
       restoredDraft.current = true;
@@ -381,42 +372,9 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   useEffect(() => {
     const booking = state.editingBooking;
     if (!booking) return;
-    const quote = booking.quotes.at(-1);
-    const labourOverride = labourUnitPriceOverrideFromQuote(
-      quote?.price,
-      booking.pricingSettings,
-      booking.workAccess,
-    );
-    setQuoteConfig({
-      trips: quote?.price.trips ?? booking.estimate.trips,
-      calcMode: 'auto',
-      legMinutes: 0,
-      trafficOff: false,
-      heatOff: false,
-      heatRest: 0,
-      discount: quote?.price.discountValue ?? quote?.price.discount ?? booking.estimate.discount,
-      discountType: quote?.price.discountType ?? 'fcfa',
-      discountReason: quote?.price.discountReason ?? '',
-      customPrice:
-        (quote?.price ?? booking.estimate).tier === 3
-          ? ((quote?.price ?? booking.estimate).lines.find((line) =>
-              line.label.startsWith('Transport'),
-            )?.unitPrice ?? null)
-          : null,
-      labourUnitPriceOverride: labourOverride,
-      billingMode: quote?.billingMode ?? 'complete',
-      menuIncluded: quote?.menuIncluded ?? false,
-      overtimeMinutes: quote?.overtimeMinutes ?? 0,
-      rentalKit: quote?.rentalKit ?? null,
-    });
-    setTollLines(
-      (quote?.tolls ?? []).map((line) => ({
-        id: line.tollPointId,
-        label: line.label,
-        quantity: line.quantity,
-        unitPrice: line.unitPrice,
-      })),
-    );
+    const restored = quoteConfigurationFromBooking(booking);
+    setQuoteConfig(restored.config);
+    setTollLines(restored.tollLines);
   }, [state.editingBooking, setTollLines]);
   useEffect(() => {
     if (
@@ -433,35 +391,17 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     draft.fromAddress,
     draft.toAddress,
   );
-  const pricingRoute =
-    draft.route && draft.distanceKmOverride != null
-      ? { ...draft.route, distanceKm: draft.distanceKmOverride }
-      : draft.route;
-  const labourPrice = quoteSettings
-    ? labourUnitPrice(quoteSettings, {
-        fromFloor: draft.inventory.fromFloor,
-        toFloor: draft.inventory.toFloor,
-        fromLift: draft.inventory.fromLift,
-        toLift: draft.inventory.toLift,
-      })
-    : 0;
-  const movingEstimate = selected
-    ? estimateMovingWork(estimateInventory, selected, pricingRoute, {
-        trips: quoteConfig.trips,
-        crew: draft.inventory.crew,
-        startTime: draft.timeSlot,
-        laborPlanning: quoteSettings?.movingLaborPlanning,
-        ignoreTraffic: quoteConfig.trafficOff,
-        manualLegMinutes: quoteConfig.calcMode === 'manual' ? quoteConfig.legMinutes : 0,
-        date: draft.date,
-        month: draft.month,
-        fromAddress: draft.fromAddress,
-        toAddress: draft.toAddress,
-        hasToll: tollLines.some((line) => line.quantity * line.unitPrice > 0),
-        heatOff: quoteConfig.heatOff,
-        heatRest: quoteConfig.heatRest,
-      })
-    : null;
+  const pricingRoute = routeForQuotePricing(draft.route, draft.distanceKmOverride ?? null);
+  const labourPrice = labourPriceForQuote(quoteSettings, draft);
+  const movingEstimate = estimateAdminQuoteWork({
+    inventory: estimateInventory,
+    vehicle: selected,
+    route: pricingRoute,
+    draft,
+    config: quoteConfig,
+    settings: quoteSettings,
+    tollLines,
+  });
   const selectedVehicleId = selected?.id ?? '';
   const movingEstimateVolume = movingEstimate?.volume ?? 0;
   const movingEstimateCrew = movingEstimate?.crew ?? 0;
@@ -479,7 +419,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         fromAddress: draft.fromAddress,
         toAddress: draft.toAddress,
         startTime: draft.timeSlot,
-        hasToll: tollLines.some((line) => line.quantity * line.unitPrice > 0),
+        hasToll: quoteHasPaidTolls(tollLines),
         settings: quoteSettings,
         estimate: movingEstimate,
       })
@@ -522,10 +462,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   }, [inventoryEstimateKey, selectedVehicleId, movingEstimateTrips, quoteConfig.calcMode]);
   const configuredQuestions = catalogue?.settings.questionnaire;
   const questionnaire = configuredQuestions?.length ? configuredQuestions : defaultClientQuestions;
-  const inventoryCount =
-    Object.values(draft.inventory.entries).reduce((sum, entry) => sum + entry.quantity, 0) +
-    draft.inventory.variants.reduce((sum, entry) => sum + entry.quantity, 0) +
-    draft.inventory.custom.reduce((sum, entry) => sum + entry.quantity, 0);
+  const inventoryCount = inventoryItemCount(draft.inventory);
   const visibleInventoryText =
     inventoryCount > 0 ||
     Boolean(draft.inventory.dwellingType) ||
@@ -542,37 +479,12 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         quoteSettings?.movingLaborPlanning?.maxDayHours,
       )
     : '';
-  const questionnaireText = [
-    ...questionnaire
-      .filter(
-        (question) =>
-          question.active &&
-          draft.questionnaireAnswers[question.id]?.trim() &&
-          !['Question posée', 'À poser'].includes(draft.questionnaireAnswers[question.id].trim()),
-      )
-      .map((question) => question.label + ' : ' + draft.questionnaireAnswers[question.id].trim()),
-    ...[
-      ['key-ready', 'Le matériel sera-t-il prêt à être chargé ?'],
-      ['key-stairs', 'Tout le matériel passe-t-il dans les escaliers ?'],
-    ]
-      .filter(([id]) => draft.questionnaireAnswers[id]?.trim())
-      .map(([id, label]) => `${label} : ${draft.questionnaireAnswers[id].trim()}`),
-  ].join('\n');
-  const totalTolls = tollLines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
-  const quoteDate = draft.date
-    ? draft.date.split('-').reverse().join('/')
-    : draft.month
-      ? new Date(`${draft.month}-01T12:00:00Z`).toLocaleDateString('fr-FR', {
-          month: 'long',
-          year: 'numeric',
-          timeZone: 'Africa/Dakar',
-        })
-      : '—';
+  const questionnaireText = quoteQuestionnaireSummary(questionnaire, draft.questionnaireAnswers);
+  const totalTolls = totalTollCost(tollLines);
+  const quoteDate = quoteDateLabel(draft.date, draft.month);
   const businessPhone = catalogue?.settings.businessPhone ?? '';
-  const businessPhoneDigits = businessPhone.replace(/\D/g, '');
-  const displayBusinessPhone = /^221\d{9}$/u.test(businessPhoneDigits)
-    ? `+221 ${businessPhoneDigits.slice(3, 5)} ${businessPhoneDigits.slice(5, 8)} ${businessPhoneDigits.slice(8, 10)} ${businessPhoneDigits.slice(10)}`
-    : businessPhone;
+  const { digits: businessPhoneDigits, display: displayBusinessPhone } =
+    businessPhonePresentation(businessPhone);
   const preview = createAdminQuotePreview({
     draft,
     estimateInventory,
@@ -789,28 +701,20 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     }
   }
   const onTollToggle = (line: (typeof tollLines)[number], checked: boolean) =>
-    setTollLines((current) =>
-      checked
-        ? [...current.filter((existing) => existing.id !== line.id), line]
-        : current.filter((existing) => existing.id !== line.id),
-    );
+    setTollLines((current) => toggleQuoteToll(current, line, checked));
   const changeQuoteOption = (key: keyof Options, delta: number) => {
     if (key !== 'labour') {
       option(key, delta);
       return;
     }
-    setDraft((current) => {
-      const minimum = movingEstimate?.volume ? 1 : 0;
-      const labour = Math.max(
-        minimum,
-        Math.min(quoteSettings?.maxOptions ?? 20, current.options.labour + delta),
-      );
-      return {
-        ...current,
-        options: { ...current.options, labour },
-        inventory: { ...current.inventory, crew: labour },
-      };
-    });
+    setDraft((current) =>
+      changedQuoteLaborDraft(
+        current,
+        delta,
+        quoteSettings?.maxOptions ?? 20,
+        Boolean(movingEstimate?.volume),
+      ),
+    );
     setQuoteConfig((current) => ({ ...current, calcMode: 'manual' }));
   };
 
@@ -857,6 +761,13 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     }
   }
 
+  const contactCard = quoteContactCard(
+    draft,
+    editingBooking?.reference,
+    selected ?? undefined,
+    quoteSettings,
+  );
+
   return {
     location,
     navigate,
@@ -899,6 +810,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     editingLocked,
     editingBooking,
     quoteSettings,
+    contactCard,
     quoteTollPoints,
     catalogue,
     loading,

@@ -1,7 +1,21 @@
 import type { Settings } from '../../shared/domain/model';
+import { normalizePhoneNumber } from '../../shared/domain/phone-number';
 
 export type BookingField = 'date' | 'timeSlot' | 'customerName' | 'customerPhone';
 export type BookingFieldErrors = Partial<Record<BookingField, string>>;
+
+export function bookingNameError(name: string): string | undefined {
+  return name.trim().length < 2
+    ? 'Saisissez votre nom et votre prénom (au moins 2 caractères).'
+    : undefined;
+}
+
+export function bookingPhoneError(phone: string): string | undefined {
+  if (!phone.trim()) return 'Saisissez votre numéro de téléphone.';
+  return normalizePhoneNumber(phone)
+    ? undefined
+    : 'Format invalide. Ajoutez l’indicatif, par exemple +221 77 123 45 67 ou +33 6 12 34 56 78.';
+}
 
 export function bookingDateError(
   date: string,

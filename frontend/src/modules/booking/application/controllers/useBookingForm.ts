@@ -1,41 +1,46 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { messages } from '../../../shared/content/fr';
-import { referenceTierLabels, tierLabels } from '../../../shared/application/presentation/format';
+import { tierLabels, referenceTierLabels } from '../../../shared/application/presentation/format';
 import type { Booking, BookingInput, Options, Price, Quote } from '../../../shared/domain/model';
 import { inventoryNote } from '../../../moving/domain/inventory/inventory';
-import { tollPrice } from '../../../moving/domain/tolls/toll-prices';
 import {
   quoteTollsFromLines,
   type TollExtraLine,
 } from '../../../moving/domain/tolls/toll-selection';
-import { normalizedClientPhone } from '../../../shared/domain/client-identity';
 import { useApp } from '../../../shared/application/context';
 import { errorMessage } from '../../../shared/application/error-message';
 import { administrationQuoteForBooking, routes } from '../../../shared/navigation/config/routes';
 import type { RentalKitItem } from '../../../shared/domain/model';
 import { defaultRentalKit } from '../../../moving/domain/rental-kit';
-import {
-  bookingDateError,
-  bookingTimeError,
-  type BookingField,
-  type BookingFieldErrors,
-} from '../../domain/booking-validation';
-import { normalizePhoneNumber } from '../../../shared/domain/phone-number';
+import { type BookingField, type BookingFieldErrors } from '../../domain/booking-validation';
 import { blankDraft } from '../booking-draft';
 import { useBookingDraft } from '../booking-draft-context';
-export type AdminQuoteConfig = {
-  trips: number;
-  discount: number;
-  discountType: 'fcfa' | 'pct';
-  discountReason: string;
-  customPrice: number | null;
-  labourUnitPriceOverride?: number | null;
-  billingMode?: 'complete' | 'standard' | 'driver-rental';
-  menuIncluded?: boolean;
-  overtimeMinutes?: number;
-  rentalKit?: RentalKitItem[] | null;
-};
+import {
+  createBookingQuotePreview,
+  quoteTierForDistance,
+  type BookingQuoteConfig,
+} from '../services/booking-quote-preview';
+import {
+  administrativeQuestionnaireAnswers,
+  bookingFieldErrorsFromApiMessage,
+  bookingNotesLengthError,
+  canRecognizeBookingClient,
+  changeOptionCount,
+  clientBookingHistory,
+  composeBookingNotes,
+  normalizedBookingRecognitionPhone,
+  adjustBookingDraftToCatalogue,
+  repriceTollLines,
+  selectedBookingVehicle,
+  validateBookingForm,
+} from '../services/booking-form-policy';
+import {
+  administrativeBookingEditLocked,
+  bookingDraftFromExisting,
+  bookingEditAccessError,
+  bookingEditStatusError,
+} from '../services/booking-edit-policy';
 export function useBookingForm({
   mode = 'booking',
   quoteConfig,
@@ -45,7 +50,7 @@ export function useBookingForm({
   getRentalKit,
 }: {
   mode?: 'booking' | 'admin-quote';
-  quoteConfig?: AdminQuoteConfig;
+  quoteConfig?: BookingQuoteConfig;
   quoteKind?: Quote['kind'];
   onQuoteSaved?: (booking: Booking) => void;
   onAdministrativeBookingCreated?: () => void;
@@ -82,27 +87,9 @@ export function useBookingForm({
   const tiers = tierLabels(pricingSettings?.distanceBounds);
   const bounds = pricingSettings?.distanceBounds ?? [15, 25, 35];
   const distance = draft.distanceKmOverride ?? draft.route?.distanceKm;
-  const quoteTier =
-    distance == null
-      ? 0
-      : distance < bounds[0]
-        ? 0
-        : distance <= bounds[1]
-          ? 1
-          : distance <= bounds[2]
-            ? 2
-            : 3;
+  const quoteTier = quoteTierForDistance(distance, bounds);
   const catalogueVehicle = catalogue?.vehicles.find((v) => v.id === draft.vehicleId);
-  const selected = catalogueVehicle
-    ? {
-        ...catalogueVehicle,
-        prices:
-          editingBooking?.pricingSnapshot?.vehiclePrices[catalogueVehicle.id] ??
-          (editingBooking?.vehicle.id === catalogueVehicle.id
-            ? editingBooking.vehicle.prices
-            : catalogueVehicle.prices),
-      }
-    : undefined;
+  const selected = selectedBookingVehicle(catalogueVehicle, editingBooking);
   const administrativeQuote = mode === 'admin-quote' && user?.role === 'admin';
   useEffect(() => {
     if (!editId) {
@@ -111,68 +98,24 @@ export function useBookingForm({
       setEditError('');
       return;
     }
-    if (!user) {
-      if (!authLoading) {
-        setEditError('Connectez-vous à votre compte client pour modifier cette demande.');
-        setEditLoading(false);
-      }
-      return;
-    }
-    if (user.role !== 'client' && !(administrativeQuote && user.role === 'admin')) {
-      setEditError('Cette demande ne peut être modifiée que depuis un compte autorisé.');
+    const accessError = bookingEditAccessError(user, administrativeQuote, authLoading);
+    if (accessError) {
+      setEditError(accessError);
       setEditLoading(false);
       return;
     }
+    if (!user) return;
     let active = true;
     setEditLoading(true);
     setEditError('');
     void api
       .booking(editId)
       .then(async (booking) => {
-        if (!administrativeQuote && !['pending', 'confirmed', 'cancelled'].includes(booking.status))
-          throw new Error('Cette réservation ne peut plus être modifiée.');
-        if (!administrativeQuote && booking.quotes.some((quote) => quote.kind === 'final'))
-          throw new Error('Cette réservation ne peut plus être modifiée.');
+        const statusError = bookingEditStatusError(booking, administrativeQuote);
+        if (statusError) throw new Error(statusError);
         const route = await api.route(booking.from, booking.to);
         if (!active) return;
-        const base = blankDraft();
-        const workAccess = booking.workAccess;
-        setDraft({
-          ...base,
-          vehicleId: booking.vehicle.id,
-          customerName: booking.customerName,
-          customerPhone: booking.phone,
-          source: booking.source ?? '',
-          fromAddress: booking.fromAddress,
-          toAddress: booking.toAddress,
-          from: booking.from,
-          to: booking.to,
-          route,
-          distanceKmOverride:
-            administrativeQuote && Math.abs(booking.distanceKm - route.distanceKm) > 0.01
-              ? booking.distanceKm
-              : null,
-          date: booking.date ?? '',
-          noDate: !booking.date,
-          month: booking.month ?? booking.date?.slice(0, 7) ?? booking.createdAt.slice(0, 7),
-          timeSlot: booking.timeSlot,
-          estimatedTrips: Math.max(1, booking.estimate.trips),
-          options: booking.options,
-          notes: booking.notes,
-          questionnaireAnswers: Object.fromEntries(
-            (booking.questionnaireAnswers ?? []).map((answer) => [
-              answer.questionId,
-              answer.answer,
-            ]),
-          ),
-          inventory: {
-            ...(booking.inventorySnapshot?.sourceInventory ?? base.inventory),
-            fromFloor: workAccess?.fromFloor ?? booking.inventorySnapshot?.fromFloor ?? 0,
-            toFloor: workAccess?.toFloor ?? booking.inventorySnapshot?.toFloor ?? 0,
-            fromLift: workAccess?.fromLift ?? booking.inventorySnapshot?.fromLift ?? false,
-            toLift: workAccess?.toLift ?? booking.inventorySnapshot?.toLift ?? false,
-          },
-        });
+        setDraft(bookingDraftFromExisting(booking, route, administrativeQuote));
         setEditingBooking(booking);
       })
       .catch((cause: unknown) => {
@@ -186,20 +129,7 @@ export function useBookingForm({
     };
   }, [administrativeQuote, api, authLoading, editId, setDraft, user]);
   useEffect(() => {
-    setTollLines((current) => {
-      let changed = false;
-      const next = current.map((line) => {
-        const point = tollPoints.find((item) => {
-          return line.id === item.id;
-        });
-        if (!point) return line;
-        const unitPrice = tollPrice(point, draft.vehicleId);
-        if (line.unitPrice === unitPrice) return line;
-        changed = true;
-        return { ...line, unitPrice };
-      });
-      return changed ? next : current;
-    });
+    setTollLines((current) => repriceTollLines(current, tollPoints, draft.vehicleId));
   }, [draft.vehicleId, tollPoints]);
   useEffect(() => {
     if (!administrativeQuote || adminQuoteInitialized.current) return;
@@ -282,29 +212,15 @@ export function useBookingForm({
   ]);
   useEffect(() => {
     if (!catalogue) return;
-    setDraft((current) => {
-      const bookingDraft =
-        mode === 'booking' &&
-        !editingBooking &&
-        !catalogue.settings.enabledSlots.some(
-          (slot) => `${String(slot.startHour).padStart(2, '0')}:00` === current.timeSlot,
-        )
-          ? {
-              ...current,
-              timeSlot: `${String(catalogue.settings.enabledSlots[0]?.startHour ?? 8).padStart(2, '0')}:00`,
-            }
-          : current;
-      if (editingBooking?.vehicle.id === bookingDraft.vehicleId) return bookingDraft;
-      const vehicleId = catalogue.vehicles.some(
-        (v) => v.id === bookingDraft.vehicleId && v.active !== false,
-      )
-        ? bookingDraft.vehicleId
-        : (catalogue.vehicles.find((v) => v.active !== false)?.id ?? bookingDraft.vehicleId);
-      return vehicleId === bookingDraft.vehicleId ? bookingDraft : { ...bookingDraft, vehicleId };
-    });
+    setDraft((current) =>
+      adjustBookingDraftToCatalogue(current, catalogue, {
+        mode,
+        editingVehicleId: editingBooking?.vehicle.id,
+      }),
+    );
   }, [catalogue, editingBooking, mode, setDraft]);
   useEffect(() => {
-    const phone = normalizedClientPhone(draft.customerPhone);
+    const phone = normalizedBookingRecognitionPhone(draft.customerPhone);
     lookupPhone.current = phone;
     setClientRecognition((current) => (current?.phone === phone ? current : null));
     if (autofilledName.current && autofilledName.current.phone !== phone) {
@@ -314,7 +230,7 @@ export function useBookingForm({
         current.customerName === previousName ? { ...current, customerName: '' } : current,
       );
     }
-    if (!normalizePhoneNumber(draft.customerPhone) || !user) {
+    if (!canRecognizeBookingClient(draft.customerPhone, Boolean(user))) {
       setRecognizingClient(false);
       return;
     }
@@ -325,8 +241,8 @@ export function useBookingForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft.customerPhone, user?.id]);
   async function recognizeClient(phone: string) {
-    const normalizedPhone = normalizedClientPhone(phone);
-    if (!normalizePhoneNumber(phone) || !user) {
+    const normalizedPhone = normalizedBookingRecognitionPhone(phone);
+    if (!canRecognizeBookingClient(phone, Boolean(user))) {
       setClientRecognition(null);
       return;
     }
@@ -337,24 +253,16 @@ export function useBookingForm({
       bookingLookup.current ??= api.bookings();
       const bookings = await bookingLookup.current;
       if (lookupPhone.current !== normalizedPhone) return;
-      const previousBookings = bookings.filter(
-        (booking) => normalizedClientPhone(booking.phone) === normalizedPhone,
-      );
-      if (!previousBookings.length) return;
-      const latestBooking = previousBookings.reduce((latest, booking) =>
-        booking.createdAt > latest.createdAt ? booking : latest,
-      );
-      setClientRecognition({
-        phone: normalizedPhone,
-        name: latestBooking.customerName,
-        bookingCount: previousBookings.length,
-      });
+      const recognition = clientBookingHistory(bookings, normalizedPhone);
+      if (!recognition) return;
+      setClientRecognition(recognition);
       setDraft((current) => {
-        if (normalizedClientPhone(current.customerPhone) !== normalizedPhone) return current;
-        autofilledName.current = { phone: normalizedPhone, name: latestBooking.customerName };
-        return current.customerName === latestBooking.customerName
+        if (normalizedBookingRecognitionPhone(current.customerPhone) !== normalizedPhone)
+          return current;
+        autofilledName.current = { phone: normalizedPhone, name: recognition.name };
+        return current.customerName === recognition.name
           ? current
-          : { ...current, customerName: latestBooking.customerName };
+          : { ...current, customerName: recognition.name };
       });
     } catch {
       // La reconnaissance reste indicative et ne doit pas bloquer la réservation.
@@ -364,33 +272,13 @@ export function useBookingForm({
     }
   }
   function validatePublicFields(scope: 'schedule' | 'contact' | 'all') {
-    const errors: BookingFieldErrors = {};
-    if (!administrativeQuote && scope !== 'contact') {
-      if (catalogue) {
-        const dateError = bookingDateError(draft.date, catalogue.settings);
-        const timeError = bookingTimeError(
-          draft.date,
-          draft.timeSlot,
-          catalogue.settings,
-          new Date(),
-          Boolean(editingBooking && editingBooking.timeSlot === draft.timeSlot),
-        );
-        if (dateError) errors.date = dateError;
-        if (timeError) errors.timeSlot = timeError;
-      } else {
-        if (!draft.date) errors.date = 'Choisissez une date de déménagement.';
-        if (!draft.timeSlot) errors.timeSlot = 'Choisissez un créneau horaire.';
-      }
-    }
-    if (!administrativeQuote && scope !== 'schedule') {
-      if (draft.customerName.trim().length < 2)
-        errors.customerName = 'Saisissez votre nom et votre prénom (au moins 2 caractères).';
-      if (!draft.customerPhone.trim())
-        errors.customerPhone = 'Saisissez votre numéro de téléphone.';
-      else if (!normalizePhoneNumber(draft.customerPhone))
-        errors.customerPhone =
-          'Format invalide. Ajoutez l’indicatif, par exemple +221 77 123 45 67 ou +33 6 12 34 56 78.';
-    }
+    const errors = validateBookingForm({
+      draft,
+      scope,
+      administrativeQuote,
+      settings: catalogue?.settings,
+      allowExistingSlot: Boolean(editingBooking && editingBooking.timeSlot === draft.timeSlot),
+    });
     setFieldErrors(errors);
     return errors;
   }
@@ -412,12 +300,7 @@ export function useBookingForm({
   ) {
     e.preventDefault();
     if (submitLock.current) return;
-    if (
-      administrativeQuote &&
-      editingBooking &&
-      (['completed', 'cancelled'].includes(editingBooking.status) ||
-        editingBooking.quotes.some((quote) => quote.kind === 'final'))
-    ) {
+    if (administrativeQuote && editingBooking && administrativeBookingEditLocked(editingBooking)) {
       setSubmitError('Cette réservation est clôturée et ne peut plus être modifiée.');
       return;
     }
@@ -432,21 +315,17 @@ export function useBookingForm({
       navigate(`${routes.login}?retour=reservation`);
       return;
     }
-    const bookingNotes = [
-      !inventorySnapshot && !editingBooking ? inventoryNote(draft.inventory) : '',
-      administrativeQuote && draft.fromNote.trim()
-        ? `Repère départ : ${draft.fromNote.trim()}`
-        : '',
-      administrativeQuote && draft.toNote.trim() ? `Repère arrivée : ${draft.toNote.trim()}` : '',
-      administrativeQuote ? quoteWorkSummary : '',
-      draft.notes,
-    ]
-      .filter(Boolean)
-      .join(administrativeQuote ? '\n' : '\n\n');
-    if (bookingNotes.length > (administrativeQuote ? 10000 : 2000)) {
-      setSubmitError(
-        `La fiche d’appel et les précisions dépassent ${administrativeQuote ? '10 000' : '2 000'} caractères. Réduisez les précisions avant l’envoi.`,
-      );
+    const bookingNotes = composeBookingNotes({
+      inventoryNote: !inventorySnapshot && !editingBooking ? inventoryNote(draft.inventory) : '',
+      administrativeQuote,
+      fromNote: draft.fromNote,
+      toNote: draft.toNote,
+      workSummary: quoteWorkSummary,
+      notes: draft.notes,
+    });
+    const notesError = bookingNotesLengthError(bookingNotes, administrativeQuote);
+    if (notesError) {
+      setSubmitError(notesError);
       return;
     }
     submitLock.current = true;
@@ -474,32 +353,7 @@ export function useBookingForm({
         },
         notes: bookingNotes,
         questionnaireAnswers: administrativeQuote
-          ? [
-              ...activeQuestions
-                .filter(
-                  (question) =>
-                    question.active &&
-                    draft.questionnaireAnswers[question.id]?.trim() &&
-                    draft.questionnaireAnswers[question.id].trim() !== 'À poser',
-                )
-                .map((question) => ({
-                  questionId: question.id,
-                  group: question.group,
-                  question: question.label,
-                  answer: draft.questionnaireAnswers[question.id].trim(),
-                })),
-              ...[
-                ['key-ready', 'Le matériel sera-t-il prêt à être chargé ?'],
-                ['key-stairs', 'Tout le matériel passe-t-il dans les escaliers ?'],
-              ]
-                .filter(([id]) => draft.questionnaireAnswers[id]?.trim())
-                .map(([questionId, question]) => ({
-                  questionId,
-                  group: 'Questions clés',
-                  question,
-                  answer: draft.questionnaireAnswers[questionId].trim(),
-                })),
-            ]
+          ? administrativeQuestionnaireAnswers(activeQuestions, draft.questionnaireAnswers)
           : [],
         workPlan: administrativeQuote ? workPlan : undefined,
         inventorySnapshot,
@@ -568,18 +422,10 @@ export function useBookingForm({
       const message = errorMessage(e);
       if (administrativeQuote) {
         setSubmitError(message);
-      } else if (/numéro valide avec son indicatif international/i.test(message)) {
-        setFieldErrors((current) => ({ ...current, customerPhone: message }));
-      } else if (/date invalide|date à venir|au maximum .* jours/i.test(message)) {
-        setFieldErrors((current) => ({ ...current, date: message }));
-      } else if (
-        /créneau invalide|créneau n’est plus disponible|préavis|heure qui n’est pas déjà passée/i.test(
-          message,
-        )
-      ) {
-        setFieldErrors((current) => ({ ...current, timeSlot: message }));
       } else {
-        setSubmitError(message);
+        const fieldErrors = bookingFieldErrorsFromApiMessage(message);
+        if (fieldErrors) setFieldErrors((current) => ({ ...current, ...fieldErrors }));
+        else setSubmitError(message);
       }
     } finally {
       setSubmitting(false);
@@ -587,12 +433,9 @@ export function useBookingForm({
     }
   }
   function option(key: keyof Options, delta: number) {
-    setDraft((d) => ({
-      ...d,
-      options: {
-        ...d.options,
-        [key]: Math.max(0, Math.min(pricingSettings?.maxOptions ?? 0, d.options[key] + delta)),
-      },
+    setDraft((draft) => ({
+      ...draft,
+      options: changeOptionCount(draft.options, key, delta, pricingSettings?.maxOptions ?? 0),
     }));
   }
   const extras: [keyof Options, string, string][] = [
@@ -601,55 +444,15 @@ export function useBookingForm({
     ['wardrobe', messages.montageDemontageDArmoire, messages.demontageEtRemontageSurPlace],
     ['bed', messages.montageDemontageDeLit, messages.litDeuxPlaces],
   ];
-  const trips = quoteConfig?.trips ?? 1;
-  const transportUnit =
-    quoteTier === 3 ? (quoteConfig?.customPrice ?? 0) : (selected?.prices[quoteTier] ?? 0);
-  const quoteLinesRaw =
-    quoteConfig && selected && draft.route
-      ? [
-          {
-            label: `Transport ${selected.shortName || selected.name} · ${referenceTierLabels(bounds)[quoteTier].toLowerCase()} (aller-retour)`,
-            quantity: trips,
-            unitPrice: transportUnit,
-            total: transportUnit * trips,
-          },
-          ...(price?.lines.filter((line) => !line.label.startsWith('Transport ')) ?? []),
-        ]
-      : (price?.lines ?? []);
-  const quoteLines = quoteLinesRaw.map((line) =>
-    quoteConfig?.labourUnitPriceOverride && /^Manœuvre/u.test(line.label)
-      ? {
-          ...line,
-          unitPrice: quoteConfig.labourUnitPriceOverride,
-          total: line.quantity * quoteConfig.labourUnitPriceOverride,
-        }
-      : line,
-  );
-  const baseTotal =
-    quoteTier === 3 && quoteConfig?.customPrice == null
-      ? null
-      : quoteLines.reduce((sum, line) => sum + line.total, 0);
-  const rawDiscount = quoteConfig?.discount ?? 0;
-  const effectiveDiscount =
-    baseTotal === null
-      ? 0
-      : quoteConfig?.discountType === 'pct'
-        ? Math.round((baseTotal * Math.min(100, rawDiscount)) / 100)
-        : Math.min(baseTotal, rawDiscount);
-  const quotePreviewPrice = price
-    ? {
-        ...price,
-        tier: quoteTier,
-        lines: quoteLines,
-        total: baseTotal === null ? null : baseTotal - effectiveDiscount,
-        discount: effectiveDiscount,
-        discountLabel: `Remise${quoteConfig?.discountType === 'pct' && rawDiscount ? ` (${Math.min(100, rawDiscount)} %)` : ''}${quoteConfig?.discountReason?.trim() ? ` · ${quoteConfig.discountReason.trim()}` : ''}`,
-        discountType: quoteConfig?.discountType ?? 'fcfa',
-        discountValue: rawDiscount,
-        discountReason: quoteConfig?.discountReason?.trim() ?? '',
-        trips,
-      }
-    : null;
+  const quotePreviewPrice = createBookingQuotePreview({
+    price,
+    config: quoteConfig,
+    tier: quoteTier,
+    tierLabel: referenceTierLabels(bounds)[quoteTier],
+    trips: quoteConfig?.trips ?? 1,
+    selected,
+    hasRoute: Boolean(draft.route),
+  });
   return {
     catalogue,
     loading,

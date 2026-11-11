@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react';
 import { useApp } from '../../../../shared/application/context';
 import { errorMessage } from '../../../../shared/application/error-message';
 import type { ClaudeSettingsStatus } from '../../../../shared/application/ports';
+import {
+  claudeApiKeyValidationError,
+  claudeTestNotice,
+  connectedClaudeNotice,
+} from '../services/claude-settings-policy';
 
 const disconnected: ClaudeSettingsStatus = { connected: false, model: '', models: [] };
 
@@ -29,8 +34,9 @@ export function useClaudeSettingsController() {
   }, [api]);
 
   async function connect() {
-    if (!/^sk-/u.test(key.trim())) {
-      setError('Collez une clé API valide (elle commence par sk-).');
+    const validationError = claudeApiKeyValidationError(key);
+    if (validationError) {
+      setError(validationError);
       return;
     }
     setBusy(true);
@@ -40,9 +46,7 @@ export function useClaudeSettingsController() {
       const connected = await api.connectClaudeKey(key.trim());
       setStatus(connected);
       setKey('');
-      setNotice(
-        `Compte Claude connecté${connected.model ? ` · ${connected.models.find((item) => item.id === connected.model)?.name ?? connected.model}` : ''}.`,
-      );
+      setNotice(connectedClaudeNotice(connected));
     } catch (cause) {
       setError(`Clé refusée : ${errorMessage(cause)}`);
     } finally {
@@ -56,7 +60,7 @@ export function useClaudeSettingsController() {
     setNotice('');
     try {
       const result = await api.testClaude();
-      setNotice(`Claude répond : ${result.response.trim().slice(0, 20)}`);
+      setNotice(claudeTestNotice(result.response));
     } catch (cause) {
       setError(`Échec : ${errorMessage(cause)}`);
     } finally {

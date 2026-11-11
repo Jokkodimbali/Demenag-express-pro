@@ -4,10 +4,14 @@ import type { Booking } from '../../../../shared/domain/model';
 import type { AppNotification } from '../../../../shared/application/ports';
 import { useApp } from '../../../../shared/application/context';
 import { routes } from '../../../../shared/navigation/config/routes';
+import {
+  findAdminSearchResults,
+  normalizeAdminSearchQuery,
+  unreadNotificationPreview,
+  type AdminSearchResult,
+} from '../services/admin-search';
 
-export type AdminSearchResult =
-  | { kind: 'booking'; booking: Booking }
-  | { kind: 'client'; phone: string; name: string; address: string };
+export type { AdminSearchResult } from '../services/admin-search';
 
 export function useAdminLayoutModel() {
   const { api } = useApp();
@@ -23,8 +27,8 @@ export function useAdminLayoutModel() {
   const requestId = useRef(0);
   const todoRef = useRef<HTMLDivElement>(null);
   const knownNotificationIds = useRef(new Set<string>());
-  const normalizedQuery = query.trim().toLocaleLowerCase('fr');
-  const todo = notifications.filter((item) => !item.readAt).slice(0, 12);
+  const normalizedQuery = normalizeAdminSearchQuery(query);
+  const todo = unreadNotificationPreview(notifications);
 
   useEffect(() => {
     let active = true;
@@ -79,29 +83,7 @@ export function useAdminLayoutModel() {
       void Promise.all([api.bookings(), api.clientProfiles()])
         .then(([bookings, clients]) => {
           if (requestId.current !== current) return;
-          const digits = normalizedQuery.replace(/\D/g, '');
-          const bookingResults: AdminSearchResult[] = bookings
-            .filter(
-              (booking) =>
-                [
-                  booking.reference,
-                  booking.customerName,
-                  booking.fromAddress,
-                  booking.toAddress,
-                ].some((value) => value.toLocaleLowerCase('fr').includes(normalizedQuery)) ||
-                (digits.length >= 3 && booking.phone.replace(/\D/g, '').includes(digits)),
-            )
-            .slice(0, 8)
-            .map((booking) => ({ kind: 'booking', booking }));
-          const clientResults: AdminSearchResult[] = clients
-            .filter(
-              (client) =>
-                client.name.toLocaleLowerCase('fr').includes(normalizedQuery) ||
-                (digits.length >= 3 && client.phone.replace(/\D/g, '').includes(digits)),
-            )
-            .slice(0, 4)
-            .map((client) => ({ kind: 'client', ...client }));
-          setResults([...bookingResults, ...clientResults]);
+          setResults(findAdminSearchResults(bookings, clients, normalizedQuery));
           setSearching(false);
         })
         .catch(() => {
