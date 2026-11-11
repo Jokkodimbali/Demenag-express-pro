@@ -1,5 +1,5 @@
 import express from 'express';
-import { messages } from '../../../domain/messages/fr.js';
+import { messages } from '../../../domain/shared/messages/fr.js';
 import { createAccess } from './access.js';
 import { getActor } from './actor.js';
 import { registerAdminRoutes } from './admin-routes.js';

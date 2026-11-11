@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { quoteNotificationUrl } from '../src/application/services/quote-notification.ts';
-import { bookingReminder } from '../src/application/services/booking-reminder.ts';
-import { bookingConfirmationMessage } from '../src/application/services/whatsapp-templates.ts';
-import { quoteConditionsText } from '../src/application/services/whatsapp-templates.ts';
-import type { Booking, Quote, Settings } from '../src/domain/model.ts';
+import { quoteNotificationUrl } from '../src/modules/admin/quotes/application/services/quote-notification.ts';
+import { bookingReminder } from '../src/modules/booking/application/services/booking-reminder.ts';
+import { bookingConfirmationMessage } from '../src/modules/shared/messaging/application/services/whatsapp-templates.ts';
+import { quoteConditionsText } from '../src/modules/shared/messaging/application/services/whatsapp-templates.ts';
+import type { Booking, Quote, Settings } from '../src/modules/shared/domain/model.ts';
 
 const settings = {
   whatsappCountryCode: '221',
@@ -116,7 +116,7 @@ test('le modèle personnalisé remplace les variables et conserve péages et pai
 });
 
 test('le rappel automatique reprend les moyens de paiement, le QR et le numéro WhatsApp de référence', () => {
-  const reminder = bookingReminder(booking, settings, false);
+  const reminder = bookingReminder({ ...booking, date: '2099-11-10' }, settings, false);
   const message = decodeMessage(reminder.reminderHref);
 
   assert.equal(reminder.canSendReminder, true);

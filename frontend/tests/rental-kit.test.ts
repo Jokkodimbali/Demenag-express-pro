@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { defaultRentalKit } from '../src/domain/rental-kit.ts';
-import type { Vehicle } from '../src/domain/model.ts';
+import { defaultRentalKit } from '../src/modules/moving/domain/rental-kit.ts';
+import type { Vehicle } from '../src/modules/shared/domain/model.ts';
 
 const vehicle = {
   id: 'sprinter',

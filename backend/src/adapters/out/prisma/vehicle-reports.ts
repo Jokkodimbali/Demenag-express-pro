@@ -3,7 +3,7 @@ import type {
   VehicleInspectionInput,
   VehicleReportRepository,
 } from '../../../application/ports/index.js';
-import { AppError } from '../../../domain/errors.js';
+import { AppError } from '../../../domain/shared/errors.js';
 import type { Prisma, PrismaClient } from '../../../generated/prisma/client.js';
 
 const inspectionInclude = {

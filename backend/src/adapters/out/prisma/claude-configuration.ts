@@ -3,7 +3,7 @@ import type {
   ClaudeConfiguration,
   ClaudeConfigurationRepository,
 } from '../../../application/ports/index.js';
-import { AppError } from '../../../domain/errors.js';
+import { AppError } from '../../../domain/shared/errors.js';
 import type { PrismaClient } from '../../../generated/prisma/client.js';
 
 export class PrismaClaudeConfiguration implements ClaudeConfigurationRepository {

@@ -1,5 +1,5 @@
 import type { DriverRepository } from '../../../application/ports/index.js';
-import type { Driver } from '../../../domain/model.js';
+import type { Driver } from '../../../domain/shared/model.js';
 import { type Prisma, type PrismaClient } from '../../../generated/prisma/client.js';
 import { conflict } from './helpers.js';
 import { fromDriver, toDriver } from './mapping.js';

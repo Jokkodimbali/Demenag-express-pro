@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { CatalogueService } from '../src/application/services/catalogue.js';
+import { CatalogueService } from '../src/application/services/catalogue/catalogue.js';
 import type { CatalogueRepository } from '../src/application/ports/index.js';
-import type { User } from '../src/domain/model.js';
+import type { User } from '../src/domain/shared/model.js';
 
 test('Le brouillon est adressé à son administrateur et refusé aux autres rôles', async () => {
   const calls: unknown[][] = [];

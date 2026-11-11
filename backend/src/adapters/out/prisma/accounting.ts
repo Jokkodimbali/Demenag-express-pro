@@ -4,9 +4,9 @@ import type {
   AccountingRepository,
   ManualAccountingInput,
 } from '../../../application/ports/index.js';
-import type { Booking } from '../../../domain/model.js';
+import type { Booking } from '../../../domain/shared/model.js';
 import { Prisma, type PrismaClient } from '../../../generated/prisma/client.js';
-import { accountingCostsForQuote } from '../../../domain/accounting-costs.js';
+import { accountingCostsForQuote } from '../../../domain/accounting/accounting-costs.js';
 
 type FinalQuoteRow = {
   id: string;

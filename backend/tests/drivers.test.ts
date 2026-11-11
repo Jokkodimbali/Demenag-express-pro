@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { DriverService } from '../src/application/services/drivers.js';
+import { DriverService } from '../src/application/services/fleet/drivers.js';
 import type {
   BookingRepository,
   DriverRepository,
   UserRepository,
 } from '../src/application/ports/index.js';
-import type { Booking, Driver, User, UserCredentials } from '../src/domain/model.js';
+import type { Booking, Driver, User, UserCredentials } from '../src/domain/shared/model.js';
 import { driverSchema } from '../src/adapters/in/http/schemas.js';
 
 const actor: User = {

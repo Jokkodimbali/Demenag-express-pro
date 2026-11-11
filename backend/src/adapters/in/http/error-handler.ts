@@ -1,8 +1,8 @@
 import type { Express } from 'express';
 import { type NextFunction, type Request, type Response } from 'express';
 import { ZodError } from 'zod';
-import { AppError } from '../../../domain/errors.js';
-import { messages } from '../../../domain/messages/fr.js';
+import { AppError } from '../../../domain/shared/errors.js';
+import { messages } from '../../../domain/shared/messages/fr.js';
 
 type PrismaErrorDetails = {
   code: string;

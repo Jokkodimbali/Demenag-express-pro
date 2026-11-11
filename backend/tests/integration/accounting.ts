@@ -21,7 +21,8 @@ export async function verifyProvisionalQuoteCreation(
   const bookingResponse = await admin.get(`/api/bookings/${bookingId}`).set(integrationHeader);
   assert.equal(bookingResponse.status, 200, JSON.stringify(bookingResponse.body));
   const version = bookingResponse.body.version as number;
-  const initialBookingData = bookingResponse.body as import('../../src/domain/model.js').Booking;
+  const initialBookingData =
+    bookingResponse.body as import('../../src/domain/shared/model.js').Booking;
   assert.ok(
     initialBookingData.pricingSnapshot,
     'La réservation doit conserver son instantané tarifaire.',
@@ -54,7 +55,7 @@ export async function verifyProvisionalQuoteCreation(
   const savedBooking = await context.db.reservation.findUniqueOrThrow({
     where: { id: bookingId },
   });
-  const savedData = savedBooking.donnees as import('../../src/domain/model.js').Booking;
+  const savedData = savedBooking.donnees as import('../../src/domain/shared/model.js').Booking;
   const quote = savedData.quotes.at(-1);
   assert.ok(quote);
   const lineSubtotal = quote.price.lines.reduce((sum, line) => sum + line.total, 0);
@@ -140,7 +141,8 @@ export async function verifyProvisionalQuoteCreation(
   const detailedBooking = await context.db.reservation.findUniqueOrThrow({
     where: { id: bookingId },
   });
-  const detailedData = detailedBooking.donnees as import('../../src/domain/model.js').Booking;
+  const detailedData =
+    detailedBooking.donnees as import('../../src/domain/shared/model.js').Booking;
   const detailedQuote = detailedData.quotes.at(-1);
   assert.ok(detailedQuote);
   assert.equal(detailedQuote.kind, 'provisional');
@@ -230,14 +232,14 @@ export async function verifyProvisionalQuoteCreation(
     .set(integrationHeader)
     .send({ version: latestBooking.body.version });
   assert.equal(applied.status, 200, JSON.stringify(applied.body));
-  const appliedData = applied.body as import('../../src/domain/model.js').Booking;
+  const appliedData = applied.body as import('../../src/domain/shared/model.js').Booking;
   assert.deepEqual(appliedData.pricingSnapshot?.vehiclePrices.sprinter, currentVehiclePrices);
   assert.deepEqual(appliedData.vehicle.prices, currentVehiclePrices);
   const persistedApplied = await context.db.reservation.findUniqueOrThrow({
     where: { id: bookingId },
   });
   assert.deepEqual(
-    (persistedApplied.donnees as import('../../src/domain/model.js').Booking).pricingSnapshot
+    (persistedApplied.donnees as import('../../src/domain/shared/model.js').Booking).pricingSnapshot
       ?.vehiclePrices.sprinter,
     currentVehiclePrices,
     'Le remplacement explicite des tarifs doit être persisté dans la réservation.',
@@ -288,7 +290,7 @@ export async function verifyAccountingJournal(
   const booking = await context.db.reservation.findFirstOrThrow({
     where: { devis: { some: { id: quoteId } } },
   });
-  const bookingData = booking.donnees as import('../../src/domain/model.js').Booking;
+  const bookingData = booking.donnees as import('../../src/domain/shared/model.js').Booking;
   const quoteSnapshot = bookingData.quotes.find((quote) => quote.id === quoteId);
   const quoteCosts = quoteSnapshot?.accountingCosts;
   assert.ok(quoteCosts, 'Le devis final doit conserver son instantané de charges.');
@@ -463,7 +465,8 @@ export async function verifyArchivedFinalRevenue(
     where: { id: quoteId },
     include: { reservation: true },
   });
-  const bookingData = quote.reservation.donnees as import('../../src/domain/model.js').Booking;
+  const bookingData = quote.reservation
+    .donnees as import('../../src/domain/shared/model.js').Booking;
   const quoteSnapshot = bookingData.quotes.find((item) => item.id === quoteId);
   const quoteCosts = quoteSnapshot?.accountingCosts;
   assert.ok(quoteCosts);

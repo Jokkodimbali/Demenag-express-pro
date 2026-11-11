@@ -2,12 +2,12 @@ import type {
   AccountingFinanceConfiguration,
   AccountingEntry,
   ManualAccountingInput,
-} from '../../domain/model.js';
+} from '../../domain/shared/model.js';
 export type {
   AccountingFinanceConfiguration,
   AccountingEntry,
   ManualAccountingInput,
-} from '../../domain/model.js';
+} from '../../domain/shared/model.js';
 import type {
   Booking,
   Catalogue,
@@ -21,7 +21,7 @@ import type {
   User,
   UserCredentials,
   Vehicle,
-} from '../../domain/model.js';
+} from '../../domain/shared/model.js';
 export type Notification = {
   id: string;
   title: string;

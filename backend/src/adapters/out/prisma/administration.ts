@@ -2,11 +2,11 @@ import type {
   AdministrationRepository,
   AdministrationTransaction,
 } from '../../../application/ports/index.js';
-import { AppError } from '../../../domain/errors.js';
-import { messages } from '../../../domain/messages/fr.js';
-import { normalizePhoneNumber } from '../../../domain/phone-number.js';
+import { AppError } from '../../../domain/shared/errors.js';
+import { messages } from '../../../domain/shared/messages/fr.js';
+import { normalizePhoneNumber } from '../../../domain/identity/phone-number.js';
 import { Prisma, type PrismaClient } from '../../../generated/prisma/client.js';
-import type { Booking } from '../../../domain/model.js';
+import type { Booking } from '../../../domain/shared/model.js';
 import { conflict, json, safeUser } from './helpers.js';
 import { fromUser } from './mapping.js';
 function phoneKey(phone: string) {

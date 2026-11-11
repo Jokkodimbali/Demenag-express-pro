@@ -1,6 +1,6 @@
-import { AppError } from '../../../domain/errors.js';
-import { messages } from '../../../domain/messages/fr.js';
-import type { User } from '../../../domain/model.js';
+import { AppError } from '../../../domain/shared/errors.js';
+import { messages } from '../../../domain/shared/messages/fr.js';
+import type { User } from '../../../domain/shared/model.js';
 import { Prisma } from '../../../generated/prisma/client.js';
 export const json = (value: unknown) => JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
 export const safeUser = (user: User): User => ({

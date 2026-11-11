@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { messages } from '../../../../domain/messages/fr.js';
-import { normalizePhoneNumber } from '../../../../domain/phone-number.js';
+import { messages } from '../../../../domain/shared/messages/fr.js';
+import { normalizePhoneNumber } from '../../../../domain/identity/phone-number.js';
 
 export const phoneNumberSchema = z
   .string()

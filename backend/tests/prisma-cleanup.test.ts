@@ -4,7 +4,7 @@ import { PrismaRoutes } from '../src/adapters/out/prisma/routes.js';
 import { PrismaSessions } from '../src/adapters/out/prisma/sessions.js';
 import { PrismaBookings } from '../src/adapters/out/prisma/bookings.js';
 import type { PrismaClient } from '../src/generated/prisma/client.js';
-import type { RouteTicket } from '../src/domain/model.js';
+import type { RouteTicket } from '../src/domain/shared/model.js';
 
 test('les créations concurrentes de session partagent le nettoyage des expirations', async () => {
   let cleanupCount = 0;

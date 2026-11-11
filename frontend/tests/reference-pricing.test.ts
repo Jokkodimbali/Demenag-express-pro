@@ -3,13 +3,13 @@ import test from 'node:test';
 import {
   referenceLowDemandDiscount,
   referenceTransportLines,
-} from '../src/domain/reference-pricing';
+} from '../src/modules/moving/domain/pricing/reference-pricing';
 import {
   referenceLowDemandDiscount as backendLowDemandDiscount,
   referenceTransportLines as backendTransportLines,
-} from '../../backend/src/domain/reference-pricing.ts';
-import { calculatePrice } from '../../backend/src/domain/pricing.ts';
-import type { Settings, Vehicle } from '../src/domain/model';
+} from '../../backend/src/domain/pricing/reference-pricing.ts';
+import { calculatePrice } from '../../backend/src/domain/pricing/pricing.ts';
+import type { Settings, Vehicle } from '../src/modules/shared/domain/model';
 
 test('réduit les allers-retours suivants au pourcentage de référence et arrondit aux 500 FCFA', () => {
   const lines = referenceTransportLines('Transport Sprinter', 28000, 3, 60);

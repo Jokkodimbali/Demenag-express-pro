@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { isUndatedBookingForMonth } from '../src/domain/calendar';
+import { isUndatedBookingForMonth } from '../src/modules/admin/planning/domain/calendar';
 
 test('les réservations sans date suivent le mois souhaité, pas le mois de création', () => {
   const booking = {

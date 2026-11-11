@@ -1,10 +1,10 @@
 import type { BookingRepository } from '../../../application/ports/index.js';
-import { AppError } from '../../../domain/errors.js';
-import { messages } from '../../../domain/messages/fr.js';
-import type { Booking, Quote, WorkPlanReview } from '../../../domain/model.js';
+import { AppError } from '../../../domain/shared/errors.js';
+import { messages } from '../../../domain/shared/messages/fr.js';
+import type { Booking, Quote, WorkPlanReview } from '../../../domain/shared/model.js';
 import { type PrismaClient } from '../../../generated/prisma/client.js';
-import type { AccountingFinanceConfiguration } from '../../../domain/model.js';
-import { accountingCostsForQuote } from '../../../domain/accounting-costs.js';
+import type { AccountingFinanceConfiguration } from '../../../domain/shared/model.js';
+import { accountingCostsForQuote } from '../../../domain/accounting/accounting-costs.js';
 import { conflict, json } from './helpers.js';
 import { toStatus } from './mapping.js';
 const quoteData = (quote: Quote) => ({

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { Booking, Price, Quote } from '../src/domain/model';
-import { quotedServiceOptions } from '../src/application/services/quote-service-options';
+import type { Booking, Price, Quote } from '../src/modules/shared/domain/model';
+import { quotedServiceOptions } from '../src/modules/admin/quotes/application/services/quote-service-options';
 
 const price = (quantities: [number, number, number, number]): Price => ({
   lines: [

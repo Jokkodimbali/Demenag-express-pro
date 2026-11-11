@@ -12,8 +12,8 @@ import {
   restoreConfiguration,
 } from '../../backend/tests/integration/cleanup.ts';
 import { registerScenarioUsers } from '../../backend/tests/integration/accounts.ts';
-import { defaultClientQuestions } from '../src/domain/questionnaire.ts';
-import { labourMatrixScenarios } from '../src/domain/labour-price.ts';
+import { defaultClientQuestions } from '../src/modules/booking/domain/questionnaire.ts';
+import { labourMatrixScenarios } from '../src/modules/moving/domain/pricing/labour-price.ts';
 
 const expect = baseExpect.configure({ timeout: 20000 });
 

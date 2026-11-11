@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
-import { messages } from '../domain/messages/fr.js';
+import { messages } from '../domain/shared/messages/fr.js';
 dotenv.config({ path: fileURLToPath(new URL('../../.env', import.meta.url)), quiet: true });
 export function readEnv() {
   const result = z

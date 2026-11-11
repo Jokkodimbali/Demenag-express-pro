@@ -1,13 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { blankInventory, inventoryFormatHint } from '../src/domain/inventory.ts';
+import {
+  blankInventory,
+  inventoryFormatHint,
+} from '../src/modules/moving/domain/inventory/inventory.ts';
 import {
   bookingInventorySnapshot,
   estimateMovingWork,
   estimatedInventoryItemVolume,
-} from '../src/domain/moving-estimate.ts';
-import { referenceTravelMinutes } from '../src/domain/reference-traffic.ts';
-import type { Vehicle } from '../src/domain/model.ts';
+} from '../src/modules/moving/domain/estimate/moving-estimate.ts';
+import { referenceTravelMinutes } from '../src/modules/moving/domain/routing/reference-traffic.ts';
+import type { Vehicle } from '../src/modules/shared/domain/model.ts';
 
 const vehicle: Vehicle = {
   id: 'sprinter',

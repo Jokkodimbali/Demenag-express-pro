@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { TollPoint } from '../src/domain/model';
-import { quoteTollsFromLines, tollLine, tollPointForLine } from '../src/domain/toll-selection';
+import type { TollPoint } from '../src/modules/shared/domain/model';
+import {
+  quoteTollsFromLines,
+  tollLine,
+  tollPointForLine,
+} from '../src/modules/moving/domain/tolls/toll-selection';
 
 const point: TollPoint = {
   id: 'rufisque',

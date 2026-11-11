@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildPlanReport } from '../src/components/PlanQhseReport.tsx';
-import type { Booking, WorkPlanStep } from '../src/domain/model';
+import { buildPlanReport } from '../src/modules/admin/planning/components/PlanQhseReport.tsx';
+import type { Booking, WorkPlanStep } from '../src/modules/shared/domain/model';
 
 const booking = (id: string) =>
   ({

@@ -1,5 +1,5 @@
 import type { RouteRepository } from '../../../application/ports/index.js';
-import type { RouteTicket } from '../../../domain/model.js';
+import type { RouteTicket } from '../../../domain/shared/model.js';
 import { type PrismaClient } from '../../../generated/prisma/client.js';
 import { json } from './helpers.js';
 export class PrismaRoutes implements RouteRepository {

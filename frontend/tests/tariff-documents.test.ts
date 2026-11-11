@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
-import { createTariffDocument } from '../src/adapters/tariff-documents';
-import type { Catalogue, TollPoint } from '../src/domain/model';
+import { createTariffDocument } from '../src/modules/admin/settings/adapters/tariff-documents';
+import type { Catalogue, TollPoint } from '../src/modules/shared/domain/model';
 
 const catalogue = {
   vehicles: [

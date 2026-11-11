@@ -1,14 +1,17 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { Booking } from '../src/domain/model';
+import type { Booking } from '../src/modules/shared/domain/model';
 import {
   mergeTeamChanges,
   needsOf,
   normalizeCrewLead,
   slotKey,
   teamOf,
-} from '../src/application/services/team-planning';
-import { queueTeamSave, type CrewUpdateInput } from '../src/application/services/team-save-queue';
+} from '../src/modules/admin/planning/application/services/team-planning';
+import {
+  queueTeamSave,
+  type CrewUpdateInput,
+} from '../src/modules/admin/planning/application/services/team-save-queue';
 
 function booking(values: Partial<Booking> = {}) {
   return {

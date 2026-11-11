@@ -6,7 +6,7 @@ import { performance } from 'node:perf_hooks';
 import { registerErrorHandler } from '../src/adapters/in/http/error-handler.js';
 import { registerMapRoutes } from '../src/adapters/in/http/map-routes.js';
 import { registerSecurityMiddleware } from '../src/adapters/in/http/security-middleware.js';
-import type { Point, RouteTicket } from '../src/domain/model.js';
+import type { Point, RouteTicket } from '../src/domain/shared/model.js';
 
 test('1000 clients demandent un itinéraire simultanément depuis des IP distinctes', async (t) => {
   const app = express();

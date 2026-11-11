@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { quoteTotal, savedCustomTransportPrice } from '../src/application/services/quote-total.ts';
-import type { Booking, Settings } from '../src/domain/model.ts';
+import {
+  quoteTotal,
+  savedCustomTransportPrice,
+} from '../src/modules/admin/quotes/application/services/quote-total.ts';
+import type { Booking, Settings } from '../src/modules/shared/domain/model.ts';
 
 const settings = {
   maxTrips: 20,

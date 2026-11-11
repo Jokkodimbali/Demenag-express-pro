@@ -10,8 +10,8 @@ import {
   canReadBooking,
   requireActiveUser,
   requireAdministrator,
-} from '../src/domain/policies/access.js';
-import type { User } from '../src/domain/model.js';
+} from '../src/domain/security/access-policy.js';
+import type { User } from '../src/domain/shared/model.js';
 const client: User = {
   id: '8f434967-4011-4a6d-a5a8-2ba225b4682b',
   name: 'Test Client',

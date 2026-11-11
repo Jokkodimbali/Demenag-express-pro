@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import request from 'supertest';
-import type { Booking, WorkPlanStep } from '../../src/domain/model.js';
+import type { Booking, WorkPlanStep } from '../../src/domain/shared/model.js';
 import type { IntegrationContext } from './context.js';
 import { integrationHeader } from './context.js';
 
