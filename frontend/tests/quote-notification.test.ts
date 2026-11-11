@@ -116,7 +116,7 @@ test('le modèle personnalisé remplace les variables et conserve péages et pai
 });
 
 test('le rappel automatique reprend les moyens de paiement, le QR et le numéro WhatsApp de référence', () => {
-  const reminder = bookingReminder(booking, settings, false);
+  const reminder = bookingReminder({ ...booking, date: '2099-11-10' }, settings, false);
   const message = decodeMessage(reminder.reminderHref);
 
   assert.equal(reminder.canSendReminder, true);

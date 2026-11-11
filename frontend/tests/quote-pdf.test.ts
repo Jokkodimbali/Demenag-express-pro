@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
-import { downloadQuote } from '../src/modules/shared/adapters/pdf';
+import { downloadQuote } from '../src/modules/admin/quotes/adapters/quote-pdf';
 import type { Booking, Quote, Settings } from '../src/modules/shared/domain/model';
 
 const pixel =
