@@ -17,7 +17,8 @@ import { pageSizes } from '../../../shared/navigation/config/pagination';
 import { money } from '../../../shared/application/presentation/format';
 import type { Booking, User } from '../../../shared/domain/model';
 import { routes } from '../../../shared/navigation/config/routes';
-import { contactVcard } from '../domain/contact-vcard';
+import { contactVcard } from '../../../shared/domain/contact-vcard';
+import { saveContactVcards } from '../../../shared/application/services/contact-vcard-file';
 import type { Settings } from '../../../shared/domain/model';
 
 type DirectoryEntry = { phone: string; name: string; address: string };
@@ -48,16 +49,7 @@ function downloadContacts(
     .filter((contact) => contact.valid)
     .map((contact) => contact.vcard);
   if (!cards.length) return;
-  const url = URL.createObjectURL(
-    new Blob([`${cards.join('\r\n')}\r\n`], { type: 'text/vcard;charset=utf-8' }),
-  );
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.append(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 30000);
+  void saveContactVcards(cards, filename, contacts.length === 1 ? contacts[0].name : 'Clients');
 }
 function amounts(booking: Booking) {
   const final = [...booking.quotes].reverse().find((quote) => quote.kind === 'final');

@@ -8,17 +8,18 @@ import type {
   MovingLaborPlanningSettings,
   Vehicle,
 } from '../../../shared/domain/model';
+import { inventoryItems, type Inventory } from '../../../moving/domain/inventory/inventory';
 import {
-  estimatedInventoryItemVolume,
-  estimateMovingWork,
-} from '../../../moving/domain/estimate/moving-estimate';
-import {
-  blankInventory,
-  inventoryItems,
-  type Inventory,
-} from '../../../moving/domain/inventory/inventory';
-import { referenceAnnexVolume } from '../../../moving/domain/estimate/reference-inventory-note';
-import { assemblyCount } from '../../../moving/domain/inventory/inventory-count';
+  addCustomInventoryItem,
+  addCustomInventoryType,
+  assemblyLimitError,
+  clearInventoryAndAssemblyOptions,
+  estimateCallInventory,
+  historicalInventorySizeMaximum,
+  inventoryEntryWithPatch,
+  reconcileAssemblyOptions,
+  summarizeCallInventory,
+} from '../services/call-inventory-policy';
 
 const sections = [...new Set(inventoryItems.map((item) => item.section))];
 const dwellingTypes = ['Studio', 'F2', 'F3', 'F4', 'F5 et plus', 'Villa'];
@@ -83,6 +84,7 @@ export function useCallInventory({
     ),
   );
   const inventory = draft.inventory;
+  const inventorySummary = summarizeCallInventory(inventory);
   const { bookings } = useBookingCommands();
   const [historicalSizeMaximum, setHistoricalSizeMaximum] = useState<Record<string, number>>({});
   const historyRequested = useRef(false);
@@ -91,61 +93,42 @@ export function useCallInventory({
     historyRequested.current = true;
     void bookings()
       .then((bookings) => {
-        const maximum: Record<string, number> = {};
-        bookings.forEach((booking) => {
-          const source = booking.inventorySnapshot?.sourceInventory;
-          if (!source) return;
-          Object.entries(source.entries).forEach(([key, entry]) => {
-            maximum[key] = Math.max(maximum[key] ?? 0, entry.size);
-          });
-          source.variants.forEach((entry) => {
-            maximum[entry.itemKey] = Math.max(maximum[entry.itemKey] ?? 0, entry.size);
-          });
-        });
-        setHistoricalSizeMaximum(maximum);
+        setHistoricalSizeMaximum(historicalInventorySizeMaximum(bookings));
       })
       .catch(() => undefined);
   }, [audience, bookings, open]);
   const update = (next: Inventory) => {
-    if (
-      (['desk', 'wardrobe', 'bed'] as const).some((optionKey) => {
-        const nextValue =
-          draft.options[optionKey] +
-          assemblyCount(next, optionKey) -
-          assemblyCount(inventory, optionKey);
-        return nextValue < 0 || nextValue > maxOptions;
-      })
-    ) {
-      setInventoryError(
-        `Le maximum de ${maxOptions} montages par type est atteint. Ajustez les options avant de continuer.`,
-      );
+    const limitError = assemblyLimitError(next, inventory, draft.options, maxOptions);
+    if (limitError) {
+      setInventoryError(limitError);
       return;
     }
     setInventoryError('');
     const vehicle = vehicles.find((item) => item.id === selectedVehicleId);
-    const estimate = vehicle
-      ? estimateMovingWork(next, vehicle, draft.route, {
-          crew: next.crew,
-          startTime: draft.timeSlot,
-          laborPlanning,
-          fromAddress: draft.fromAddress,
-          toAddress: draft.toAddress,
-          date: draft.date,
-          month: draft.month,
-          ignoreTraffic,
-          manualLegMinutes,
-          hasToll,
-          heatOff,
-          heatRest,
-        })
-      : null;
+    const estimate = estimateCallInventory({
+      inventory: next,
+      vehicle,
+      route: draft.route,
+      startTime: draft.timeSlot,
+      laborPlanning,
+      fromAddress: draft.fromAddress,
+      toAddress: draft.toAddress,
+      date: draft.date,
+      month: draft.month,
+      ignoreTraffic,
+      manualLegMinutes,
+      hasToll,
+      heatOff,
+      heatRest,
+    });
     setDraft((current) => {
-      const options = { ...current.options };
-      for (const key of ['desk', 'wardrobe', 'bed'] as const) {
-        const difference = assemblyCount(next, key) - assemblyCount(current.inventory, key);
-        options[key] = Math.max(0, Math.min(maxOptions, options[key] + difference));
-      }
-      if (estimate && estimate.volume > 0) options.labour = estimate.crew;
+      const options = reconcileAssemblyOptions(
+        current.options,
+        next,
+        current.inventory,
+        maxOptions,
+        estimate && estimate.volume > 0 ? estimate.crew : undefined,
+      );
       return { ...current, inventory: next, options };
     });
     if (estimate?.trips) onApplyEstimate(selectedVehicleId, estimate.trips);
@@ -163,154 +146,47 @@ export function useCallInventory({
     setCustomLabel('');
     setActiveWidget(null);
     setDraft((current) => {
-      const options = { ...current.options };
-      for (const key of ['desk', 'wardrobe', 'bed'] as const) {
-        options[key] = Math.max(0, options[key] - assemblyCount(current.inventory, key));
-      }
-      return { ...current, inventory: blankInventory(), options };
+      return {
+        ...current,
+        ...clearInventoryAndAssemblyOptions(current.options, current.inventory),
+      };
     });
   };
   const addCustomItem = () => {
-    const label = customLabel.trim().toLowerCase();
-    if (!label) return;
-    update({
-      ...inventory,
-      custom: [
-        ...inventory.custom,
-        {
-          id: crypto.randomUUID(),
-          label,
-          quantity: 1,
-          format: 'medium',
-          dismantle: false,
-          origin: 'local',
-        },
-      ],
-    });
+    const next = addCustomInventoryItem(inventory, customLabel, crypto.randomUUID());
+    if (next === inventory) return;
+    update(next);
     setCustomLabel('');
   };
   const addCustomType = (type: CustomInventoryType) => {
-    const current = inventory.custom.find((item) => item.typeKey === type.k);
-    if (current) {
-      update({
-        ...inventory,
-        custom: inventory.custom.map((item) =>
-          item.id === current.id ? { ...item, quantity: Math.min(999, item.quantity + 1) } : item,
-        ),
-      });
-      return;
-    }
-    update({
-      ...inventory,
-      custom: [
-        ...inventory.custom,
-        {
-          id: crypto.randomUUID(),
-          typeKey: type.k,
-          label: type.n.trim().toLocaleLowerCase('fr-FR'),
-          quantity: 1,
-          format: 'medium',
-          dismantle: Boolean(type.dm),
-          origin: 'local',
-          cL: Number(type.L) || undefined,
-          cW: Number(type.W) || undefined,
-          cH: Number(type.H) || undefined,
-          kg: Number(type.kg) || undefined,
-          menuPriceLocal: Number(type.menuPriceLocal) || undefined,
-          menuPriceImport: Number(type.menuPriceImport) || undefined,
-          like: type.like || undefined,
-          up: Boolean(type.up),
-          frag: Boolean(type.frag),
-          notop: Boolean(type.notop),
-        },
-      ],
-    });
+    update(addCustomInventoryType(inventory, type, crypto.randomUUID()));
   };
   const setEntry = (key: string, patch: Partial<Inventory['entries'][string]>) => {
-    const item = inventoryItems.find((entry) => entry.key === key);
-    const current = inventory.entries[key] ?? {
-      quantity: 0,
-      size: item?.defaultSize ?? 1,
-      format: 'medium' as const,
-      dismantle: !!item?.defaultDismantle,
-    };
-    update({ ...inventory, entries: { ...inventory.entries, [key]: { ...current, ...patch } } });
+    update(inventoryEntryWithPatch(inventory, key, patch));
   };
-  const total =
-    Object.values(inventory.entries).reduce((sum, item) => sum + item.quantity, 0) +
-    inventory.variants.reduce((sum, item) => sum + item.quantity, 0) +
-    inventory.custom.reduce((sum, item) => sum + item.quantity, 0);
+  const total = inventorySummary.total;
   const estimateVehicle =
     vehicles.find((vehicle) => vehicle.id === selectedVehicleId) ?? vehicles[0];
-  const currentEstimate = estimateVehicle
-    ? estimateMovingWork(estimateInventory ?? inventory, estimateVehicle, draft.route, {
-        trips: quoteTrips,
-        crew: inventory.crew,
-        startTime: draft.timeSlot,
-        laborPlanning,
-        fromAddress: draft.fromAddress,
-        toAddress: draft.toAddress,
-        date: draft.date,
-        month: draft.month,
-        ignoreTraffic,
-        manualLegMinutes,
-        hasToll,
-        heatOff,
-        heatRest,
-      })
-    : null;
+  const currentEstimate = estimateCallInventory({
+    inventory: estimateInventory ?? inventory,
+    vehicle: estimateVehicle,
+    route: draft.route,
+    trips: quoteTrips,
+    startTime: draft.timeSlot,
+    laborPlanning,
+    fromAddress: draft.fromAddress,
+    toAddress: draft.toAddress,
+    date: draft.date,
+    month: draft.month,
+    ignoreTraffic,
+    manualLegMinutes,
+    hasToll,
+    heatOff,
+    heatRest,
+  });
   const hasVolume = currentEstimate ? currentEstimate.volume > 0 : total > 0;
-  const annexVolume = referenceAnnexVolume(inventory);
-  const countedObjectVolume =
-    Object.entries(inventory.entries).reduce(
-      (sum, [key, entry]) =>
-        sum +
-        estimatedInventoryItemVolume(key, entry.size, !!entry.dismantle, entry.format) *
-          entry.quantity,
-      0,
-    ) +
-    inventory.variants.reduce(
-      (sum, item) =>
-        sum +
-        estimatedInventoryItemVolume(item.itemKey, item.size, !!item.dismantle, item.format) *
-          item.quantity,
-      0,
-    ) +
-    inventory.custom.reduce(
-      (sum, item) =>
-        sum +
-        estimatedInventoryItemVolume('custom', 1, !!item.dismantle, item.format) * item.quantity,
-      0,
-    );
-  const volumeDetail = `Meubles et objets comptés ≈ ${countedObjectVolume.toFixed(1).replace('.', ',')} m³${annexVolume > 0 ? ` · effets annexes ≈ ${annexVolume.toFixed(1).replace('.', ',')} m³` : ''}`;
-  const quantityOf = (key: string) =>
-    (inventory.entries[key]?.quantity ?? 0) +
-    inventory.variants
-      .filter((item) => item.itemKey === key)
-      .reduce((sum, item) => sum + item.quantity, 0);
-  const inventoryChecks = [
-    ...(quantityOf('lit') > quantityOf('matelas')
-      ? [
-          `${quantityOf('lit') - quantityOf('matelas')} lit(s) sans matelas compté : ajoutez-les si le client les emporte.`,
-        ]
-      : []),
-    ...(quantityOf('table-manger') > 0 && quantityOf('chaise') === 0
-      ? ['Table à manger sans chaises : à vérifier avec le client.']
-      : []),
-    ...(!inventory.ready ? ['Demandez si le matériel sera prêt à être chargé.'] : []),
-    ...(!inventory.stairs ? ['Demandez si tout le matériel passe dans les escaliers.'] : []),
-    ...(inventory.stairs === 'non'
-      ? ['Objets qui ne passent pas les escaliers : prévoir démontage, corde ou monte-meuble.']
-      : []),
-    ...(inventory.stairs === 'balcon'
-      ? ['Passage par le balcon : prévoir et chiffrer le supplément correspondant.']
-      : []),
-    ...(!inventory.dwellingType
-      ? [
-          "Type de logement non précisé : les sacs d'habits, la vaisselle et le linge ne sont pas estimés.",
-        ]
-      : []),
-  ];
+  const { annexVolume, countedObjectVolume, volumeDetail, quantityOf, inventoryChecks } =
+    inventorySummary;
   return {
     customLabel,
     setCustomLabel,

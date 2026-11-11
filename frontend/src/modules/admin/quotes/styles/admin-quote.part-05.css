@@ -160,10 +160,19 @@
   padding: 0;
 }
 .admin-quote-page .call-inventory .inventory-row {
-  min-height: 52px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
   padding: 6px 8px;
   border: 0;
   border-radius: 10px;
+}
+.admin-quote-page .call-inventory .inventory-row > .inventory-item-hover-wrap {
+  display: block;
+  position: relative;
+  flex: 1 1 130px;
+  min-width: 0;
 }
 .admin-quote-page .call-inventory .inventory-row.selected {
   background: #30343a;
@@ -296,33 +305,157 @@
 .admin-quote-page .call-inventory .inventory-item-name {
   cursor: pointer;
 }
+.admin-quote-page .call-inventory .inventory-size-stepper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.admin-quote-page .call-inventory .inventory-size-label {
+  color: #aeb4bb;
+  font-size: 12px;
+  font-weight: 700;
+}
 .admin-quote-page .call-inventory .inventory-size-stepper button {
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  border: 0;
+  border-radius: 7px;
+  background: #30343a;
+  color: #fff;
+  font-size: 15px;
+  cursor: pointer;
 }
 .admin-quote-page .call-inventory .inventory-size-stepper output {
   min-width: 78px;
+  color: #d5d9de;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+.admin-quote-page .call-inventory .inventory-format-selector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #aeb4bb;
+  font-size: 12px;
+  font-weight: 700;
+}
+.admin-quote-page .call-inventory .inventory-format-selector > div {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid #3b4046;
+  border-radius: 10px;
+  background: #1e2023;
 }
 .admin-quote-page .call-inventory .inventory-format-selector button {
-  min-height: 32px;
-  padding-inline: 10px;
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #d5d9de;
   font-size: 13px;
   font-weight: 800;
+  cursor: pointer;
+}
+.admin-quote-page .call-inventory .inventory-format-selector button[aria-pressed='true'] {
+  background: #f6d73c;
+  color: #1e2023;
+}
+.admin-quote-page .call-inventory .inventory-dismantle {
+  gap: 6px;
+  cursor: pointer;
+}
+.admin-quote-page .call-inventory .inventory-dismantle input {
+  appearance: none;
+  display: grid;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  place-items: center;
+  margin: 0;
+  border: 1.5px solid #4a5057;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+.admin-quote-page .call-inventory .inventory-dismantle input:checked {
+  border-color: #f6d73c;
+  background: #f6d73c;
+}
+.admin-quote-page .call-inventory .inventory-dismantle input:checked::after {
+  color: #1e2023;
+  content: '✓';
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+}
+.admin-quote-page .call-inventory .inventory-origin-toggle {
+  display: flex;
+  gap: 3px;
+  padding: 2px;
+  border: 1px solid #3b4046;
+  border-radius: 9px;
+  background: #1e2023;
+}
+.admin-quote-page .call-inventory .inventory-origin-toggle button {
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #d5d9de;
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.admin-quote-page .call-inventory .inventory-origin-toggle button.active {
+  background: #f6d73c;
+  color: #1e2023;
 }
 .admin-quote-page .call-inventory .inventory-quantity {
+  display: flex;
+  align-items: center;
   gap: 6px;
 }
 .admin-quote-page .call-inventory .inventory-quantity button {
-  width: 44px;
-  min-height: 44px;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border: 1px solid #3b4046;
   border-radius: 9px;
+  background: #1e2023;
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+}
+.admin-quote-page .call-inventory .inventory-quantity button:last-child {
+  border: 0;
+  background: #f6d73c;
+  color: #1e2023;
 }
 .admin-quote-page .call-inventory .inventory-quantity output {
   min-width: 26px;
+  color: #6b737b;
+  font-size: 16px;
+  font-weight: 800;
+  text-align: center;
+}
+.admin-quote-page .call-inventory .inventory-row.selected .inventory-quantity output {
+  color: #f6d73c;
 }
 .admin-quote-page .call-inventory .inventory-variant-add {
-  min-width: 44px;
-  min-height: 44px;
+  height: 40px;
+  padding: 0 10px;
+  border: 1.5px solid #4a5057;
+  border-radius: 9px;
+  background: transparent;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
 }
 .admin-quote-page .moving-estimate-checks {
   display: flex;
@@ -513,6 +646,108 @@
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
   align-items: start;
   gap: 10px;
+}
+.admin-quote-phone-contact {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid #3b4046;
+  border-radius: 12px;
+  background: #1e2023;
+}
+.admin-quote-phone-contact-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.admin-quote-phone-contact-heading span:first-child {
+  color: #aeb4bb;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.admin-quote-phone-contact-heading span:last-child {
+  color: #8a9199;
+  font-size: 12px;
+}
+.admin-quote-phone-contact-names {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: 8px;
+}
+.admin-quote-phone-contact-name {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 12px;
+  border-radius: 10px;
+  background: #272a2e;
+}
+.admin-quote-phone-contact-name > div {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+}
+.admin-quote-phone-contact-name > div span {
+  color: #aeb4bb;
+  font-size: 12px;
+}
+.admin-quote-phone-contact-name > div strong {
+  overflow: hidden;
+  color: #f6d73c;
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-quote-phone-contact-name:last-child > div strong {
+  color: #fff;
+}
+.admin-quote-phone-contact-name button,
+.admin-quote-phone-contact-actions > button {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1.5px solid #4a5057;
+  border-radius: 9px;
+  background: transparent;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.admin-quote-phone-contact-name button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.admin-quote-phone-contact-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.admin-quote-phone-contact-actions > button {
+  padding-inline: 16px;
+  border: 0;
+  background: #f6d73c;
+  color: #1e2023;
+  font-size: 14px;
+}
+.admin-quote-phone-contact-actions > span {
+  flex: 1 1 220px;
+  color: #aeb4bb;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.admin-quote-phone-contact-feedback {
+  color: #f6d73c;
+  font-size: 12px;
+  line-height: 1.45;
 }
 .admin-quote-client-name {
   position: relative;

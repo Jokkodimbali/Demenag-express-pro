@@ -7,14 +7,24 @@ import { useAdminFleet } from './useAdminFleet';
 import { useAdminFleetMap } from './useAdminFleetMap';
 import { errorMessage } from '../../../../shared/application/error-message';
 import { whatsappUrl } from '../../../../shared/messaging/application/services/whatsapp';
-import { normalizePhoneNumber } from '../../../../shared/domain/phone-number';
 import { queueTeamSave } from '../../../planning/application/services/team-save-queue';
 import type { Booking, Driver, Point } from '../../../../shared/domain/model';
 import {
   activeBookings,
+  autoAssignTeamForBooking,
   availabilitySummary,
+  availabilityOf,
+  availableOn,
   blankAvailability,
+  busyBooking as findBusyBooking,
+  bookingsForTeamDay,
+  crewReplyChanges,
   dayDistance,
+  dayIndex,
+  driverRefusalPatch,
+  employeeAvailabilityCounts,
+  firstUpcomingBookingDay,
+  isSuspect,
   days,
   defaultMissionMessage,
   formatMinutes,
@@ -23,22 +33,31 @@ import {
   jobSpan,
   moveDay,
   needsOf,
+  newEmployeeValidationError,
   normalizeCrewLead,
+  orderBookingsForAutoComposition,
   overlaps,
   referenceVehicleName,
   roleName,
   roles,
+  refusalCount,
   shortDate,
   shortTimestamp,
   slotKey,
   slotTimes,
   spanOverlaps,
+  sameDayJobs as findSameDayJobs,
+  teamWeekDaySummaries,
   tags,
   teamIds,
   teamOf,
+  teamBriefRecipients,
+  teamCopyBrief,
+  updateTeamMemberRole,
+  visibleTeamMembers,
   timeMinutes,
   weekStart,
-  type AvailabilityResult,
+  weekLoad as getWeekLoad,
   type TeamRole,
 } from '../../../planning/application/services/team-planning';
 
@@ -127,6 +146,12 @@ export function useAdminFleetPageModel() {
   }, [fleetCommands]);
 
   const currentBookings = useMemo(() => activeBookings(bookings), [bookings]);
+  const busyBooking = (employeeId: string, booking: Booking, source = currentBookings) =>
+    findBusyBooking(employeeId, booking, source);
+  const sameDayJobs = (employeeId: string, booking: Booking, source = currentBookings) =>
+    findSameDayJobs(employeeId, booking, source);
+  const weekLoad = (employeeId: string, day: string) =>
+    getWeekLoad(employeeId, day, currentBookings);
   const chooseDay = useCallback((day: string) => {
     selectedDayManuallyRef.current = true;
     setSelectedDay(day);
@@ -134,21 +159,11 @@ export function useAdminFleetPageModel() {
   useEffect(() => {
     if (loading || selectedDayManuallyRef.current) return;
     const today = iso(new Date());
-    const nextBookingDay = currentBookings
-      .map((booking) => booking.date)
-      .filter((day): day is string => Boolean(day && day >= today))
-      .sort()[0];
-    const initialDay = nextBookingDay ?? today;
+    const initialDay = firstUpcomingBookingDay(currentBookings, today);
     setSelectedDay((day) => (day === initialDay ? day : initialDay));
   }, [currentBookings, loading]);
   const dayBookings = useMemo(
-    () =>
-      currentBookings
-        .filter((booking) => booking.date === selectedDay)
-        .sort((a, b) => {
-          const order = { journee: 0, matin: 1, aprem: 2 };
-          return order[slotKey(a.timeSlot)] - order[slotKey(b.timeSlot)];
-        }),
+    () => bookingsForTeamDay(currentBookings, selectedDay),
     [currentBookings, selectedDay],
   );
   useEffect(() => {
@@ -168,62 +183,6 @@ export function useAdminFleetPageModel() {
     () => new Map(employees.map((employee) => [employee.id, employee])),
     [employees],
   );
-  const dayIndex = (day: string) => (new Date(`${day}T12:00:00`).getDay() + 6) % 7;
-  const availabilityOf = (employee: Driver) =>
-    employee.availability?.length === 7 ? employee.availability : blankAvailability();
-  const busyBooking = (id: string, current: Booking, source = currentBookings) => {
-    if (!current.date) return undefined;
-    const currentSpan = jobSpan(current);
-    return source.find((booking) => {
-      if (booking.id === current.id || !booking.date || !teamIds(booking).includes(id))
-        return false;
-      const offset = dayDistance(current.date!, booking.date);
-      if (Math.abs(offset) > 1) return false;
-      return spanOverlaps(currentSpan, jobSpan(booking), offset);
-    });
-  };
-  const sameDayJobs = (id: string, current: Booking, source = currentBookings) =>
-    source.filter(
-      (booking) =>
-        booking.id !== current.id && booking.date === current.date && teamIds(booking).includes(id),
-    );
-  const weekLoad = (id: string, day: string) => {
-    const start = weekStart(day);
-    return currentBookings.filter(
-      (booking) =>
-        booking.date! >= start &&
-        booking.date! <= moveDay(start, 6) &&
-        teamIds(booking).includes(id),
-    ).length;
-  };
-  const availableOn = (employee: Driver, day: string, booking: Booking): AvailabilityResult => {
-    if (!employee.active) return { ok: false, why: 'indisponible' };
-    const availability = availabilityOf(employee)[dayIndex(day)];
-    if (!availability?.available)
-      return {
-        ok: false,
-        why: `repos le ${['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'][dayIndex(day)]}`,
-      };
-    const span = jobSpan(booking);
-    const start = timeMinutes(availability.startTime) ?? 480;
-    const end = timeMinutes(availability.endTime) || 1440;
-    const estimatedEnd = Math.min(span.e, 1440);
-    if (span.s < start || span.s >= end)
-      return {
-        ok: false,
-        why: `hors horaires : dispo ${availability.startTime}-${availability.endTime}, début ${formatMinutes(span.s)}`,
-      };
-    if (span.real && estimatedEnd > end)
-      return {
-        ok: true,
-        why: '',
-        note: `fin estimée ${formatMinutes(span.e)}, après ${availability.endTime}`,
-      };
-    return { ok: true, why: '' };
-  };
-  const refusalCount = (employee: Driver) =>
-    Math.max(0, (employee.refusals?.length ?? 0) - (employee.clearedRefusals ?? 0));
-  const isSuspect = (employee: Driver) => refusalCount(employee) >= 3;
   const saveEmployee = useCallback(
     async (employee: Driver, patch: Partial<Driver>) => {
       const next = { ...employee, ...patch };
@@ -332,9 +291,8 @@ export function useAdminFleetPageModel() {
   const addEmployee = async () => {
     const name = newEmployee.name.trim();
     const phone = newEmployee.phone.trim();
-    if (!name) return setPageError('Indiquez le nom.');
-    if (!normalizePhoneNumber(phone))
-      return setPageError('Saisissez un numéro valide avec son indicatif international.');
+    const validationError = newEmployeeValidationError(name, phone);
+    if (validationError) return setPageError(validationError);
     setPageError('');
     setCreatedEmployeeAccess(null);
     try {
@@ -446,99 +404,27 @@ export function useAdminFleetPageModel() {
     }
   };
 
-  const addDaysForWeek = useMemo(() => {
-    const start = weekStart(selectedDay);
-    return days.map((day, index) => {
-      const date = moveDay(start, index);
-      const dayJobs = currentBookings.filter((booking) => booking.date === date);
-      const complete =
-        dayJobs.length > 0 &&
-        dayJobs.every((booking) => {
-          const need = needsOf(booking);
-          const team = teamOf(booking);
-          return roles.every((role) => team[role.id].length >= need[role.id]);
-        });
-      const sent =
-        dayJobs.length > 0 &&
-        dayJobs.every((booking) =>
-          teamIds(booking).every((id) => Boolean(booking.crewBriefs?.[id])),
-        );
-      return { day, date, count: dayJobs.length, complete, sent, selected: date === selectedDay };
-    });
-  }, [currentBookings, selectedDay]);
+  const addDaysForWeek = useMemo(
+    () => teamWeekDaySummaries(currentBookings, selectedDay),
+    [currentBookings, selectedDay],
+  );
 
   const autoCompose = async () => {
     let plannedBookings = [...currentBookings];
     let added = 0;
     let missing = 0;
-    const autoJobs = dayBookings
-      .filter((booking) => booking.status !== 'completed')
-      .sort((a, b) => {
-        const slotOrder = (slot: string) => (slotKey(slot) === 'journee' ? 0 : 1);
-        return (
-          slotOrder(a.timeSlot) - slotOrder(b.timeSlot) ||
-          needsOf(b).manoeuvre - needsOf(a).manoeuvre
-        );
-      });
+    const autoJobs = orderBookingsForAutoComposition(dayBookings);
     for (const booking of autoJobs) {
       const currentBooking = plannedBookings.find((item) => item.id === booking.id) ?? booking;
-      const need = needsOf(currentBooking);
-      const crew = teamOf(currentBooking);
-      for (const role of roles) {
-        let remaining = need[role.id] - crew[role.id].length;
-        while (remaining > 0) {
-          const candidates = employees
-            .filter((employee) => {
-              if (
-                (employee.role ?? 'chauffeur') !== role.id ||
-                !employee.active ||
-                teamIds({ ...currentBooking, crew }).includes(employee.id)
-              )
-                return false;
-              if ((currentBooking.crewRefusedBy ?? []).includes(employee.id) || isSuspect(employee))
-                return false;
-              const collision = busyBooking(employee.id, currentBooking, plannedBookings);
-              if (collision || !availableOn(employee, selectedDay, currentBooking).ok) return false;
-              if (
-                role.id === 'chauffeur' &&
-                employee.authorizedVehicleIds?.length &&
-                !employee.authorizedVehicleIds.includes(currentBooking.vehicle.id)
-              )
-                return false;
-              return true;
-            })
-            .sort((a, b) => {
-              const currentTeam = teamIds({ ...currentBooking, crew });
-              const cowork = (employee: Driver) =>
-                plannedBookings.filter((item) => {
-                  const team = teamIds(item);
-                  return team.includes(employee.id) && team.some((id) => currentTeam.includes(id));
-                }).length;
-              const load = (id: string) => {
-                const start = weekStart(selectedDay);
-                return plannedBookings.filter(
-                  (item) =>
-                    item.date! >= start &&
-                    item.date! <= moveDay(start, 6) &&
-                    teamIds(item).includes(id),
-                ).length;
-              };
-              return (
-                cowork(b) - cowork(a) || load(a.id) - load(b.id) || a.name.localeCompare(b.name)
-              );
-            });
-          const choice = candidates[0];
-          if (!choice) {
-            missing += remaining;
-            break;
-          }
-          crew[role.id].push(choice.id);
-          crew.chef ||= choice.id;
-          added += 1;
-          remaining -= 1;
-        }
-      }
-      const saved = await saveTeam(currentBooking, { crew });
+      const assignment = autoAssignTeamForBooking({
+        booking: currentBooking,
+        employees,
+        date: selectedDay,
+        plannedBookings,
+      });
+      added += assignment.added;
+      missing += assignment.missing;
+      const saved = await saveTeam(currentBooking, { crew: assignment.crew });
       if (saved)
         plannedBookings = plannedBookings.map((item) => (item.id === saved.id ? saved : item));
     }
@@ -566,11 +452,7 @@ export function useAdminFleetPageModel() {
     memberId: string,
     add: boolean,
   ) => {
-    const crew = teamOf(booking);
-    crew[role] = add ? [...crew[role], memberId] : crew[role].filter((id) => id !== memberId);
-    if (!add && crew.chef === memberId) crew.chef = '';
-    if (add && !crew.chef) crew.chef = memberId;
-    await saveTeam(booking, { crew });
+    await saveTeam(booking, { crew: updateTeamMemberRole(booking, role, memberId, add) });
   };
 
   const changeReply = async (booking: Booking, member: Driver, reply: 'ok' | 'no' | '') => {
@@ -584,25 +466,11 @@ export function useAdminFleetPageModel() {
       });
       if (!confirmed) return;
     }
-    const replies = { ...(booking.crewReplies ?? {}) };
-    const crew = teamOf(booking);
-    let refusedBy = [...(booking.crewRefusedBy ?? [])];
+    const changes = crewReplyChanges(booking, member.id, reply);
     if (reply === 'no') {
-      crew.chauffeur = crew.chauffeur.filter((id) => id !== member.id);
-      crew.menuisier = crew.menuisier.filter((id) => id !== member.id);
-      crew.manoeuvre = crew.manoeuvre.filter((id) => id !== member.id);
-      if (crew.chef === member.id) crew.chef = '';
-      refusedBy = [...refusedBy, member.id];
-      await applyMemberPatch(member, {
-        refusals: [
-          ...(member.refusals ?? []),
-          { ref: booking.reference, at: new Date().toISOString() },
-        ],
-      });
+      await applyMemberPatch(member, driverRefusalPatch(member, booking, new Date().toISOString()));
     }
-    if (reply) replies[member.id] = reply;
-    else delete replies[member.id];
-    await saveTeam(booking, { crew, crewReplies: replies, crewRefusedBy: refusedBy });
+    await saveTeam(booking, changes);
   };
 
   const sendBrief = async (booking: Booking, members: Driver[]) => {
@@ -612,28 +480,16 @@ export function useAdminFleetPageModel() {
       );
       return;
     }
-    const recipients = members.flatMap((member) => {
-      const phone = normalizePhoneNumber(member.phone);
-      if (!phone) return [];
-      const key = `${booking.id}|${member.id}`;
-      const message =
-        customMessages[key] ??
-        booking.crewMessages?.[member.id] ??
-        defaultMissionMessage(
-          booking,
-          member,
-          members,
-          businessWhatsAppPhone,
-          businessWhatsAppCountry,
-        );
-      return [
-        {
-          booking,
-          member,
-          href: whatsappUrl(phone, message, catalogue?.settings),
-        },
-      ];
-    });
+    const recipients = teamBriefRecipients({
+      booking,
+      members,
+      customMessages,
+      businessPhone: businessWhatsAppPhone,
+      countryCode: businessWhatsAppCountry,
+    }).map((recipient) => ({
+      ...recipient,
+      href: whatsappUrl(recipient.phone, recipient.message, catalogue?.settings),
+    }));
     const [first, ...remaining] = recipients;
     if (!first) return setPageError('Aucun numéro de téléphone dans l’équipe.');
     const whatsappWindow = window.open(first.href, '_blank');
@@ -671,20 +527,7 @@ export function useAdminFleetPageModel() {
   };
 
   const copyBrief = async (booking: Booking, members: Driver[]) => {
-    const roleLabel = (member: Driver) => roleName(member.role ?? 'chauffeur').toLowerCase();
-    const brief = [
-      `Demenag Express · Déménagement ${booking.reference}`,
-      `${booking.date ? shortDate(booking.date) : 'Date à définir'} · ${booking.timeSlot || 'Journée'}`,
-      `Véhicule : ${referenceVehicleName(booking.vehicle.name)}`,
-      `Lieu de retrait : ${booking.fromAddress || 'à compléter'}`,
-      `Lien Google Maps : ${googleMapLink(booking.from, booking.fromAddress) || 'adresse de retrait à compléter'}`,
-      `Arrivée : ${booking.toAddress || 'à compléter'}`,
-      ...(googleMapLink(booking.to, booking.toAddress)
-        ? [`Lien Google Maps : ${googleMapLink(booking.to, booking.toAddress)}`]
-        : []),
-      `Client : ${booking.customerName || '-'} ${booking.phone || ''}`.trim(),
-      `Équipe : ${members.map((member) => `${member.name} (${roleLabel(member)})`).join(', ')}`,
-    ].join('\n');
+    const brief = teamCopyBrief(booking, members);
     const done = () => {
       setCopiedBooking(booking.id);
       window.setTimeout(() => setCopiedBooking(''), 1500);
@@ -709,24 +552,7 @@ export function useAdminFleetPageModel() {
   };
 
   const visibleEmployees = useMemo(
-    () =>
-      employees
-        .filter((employee) => filterRole === 'all' || (employee.role ?? 'chauffeur') === filterRole)
-        .sort((a, b) => {
-          if (sortByAccepted) {
-            const accepted = (employee: Driver) =>
-              bookings.filter(
-                (booking) =>
-                  booking.status !== 'cancelled' && booking.crewReplies?.[employee.id] === 'ok',
-              ).length;
-            return accepted(b) - accepted(a) || a.name.localeCompare(b.name);
-          }
-          return (
-            roles.findIndex((role) => role.id === (a.role ?? 'chauffeur')) -
-              roles.findIndex((role) => role.id === (b.role ?? 'chauffeur')) ||
-            a.name.localeCompare(b.name)
-          );
-        }),
+    () => visibleTeamMembers(employees, bookings, filterRole, sortByAccepted),
     [employees, filterRole, sortByAccepted, bookings],
   );
   const selected = employeeById.get(selectedEmployee);
@@ -765,22 +591,7 @@ export function useAdminFleetPageModel() {
       active = false;
     };
   }, [fleetCommands, selected, selectedJob]);
-  const availableCounts = roles.map((role) => ({
-    ...role,
-    available: employees.filter(
-      (employee) =>
-        (employee.role ?? 'chauffeur') === role.id &&
-        employee.active &&
-        availabilityOf(employee)[dayIndex(selectedDay)]?.available,
-    ).length,
-    resting: employees
-      .filter(
-        (employee) =>
-          (employee.role ?? 'chauffeur') === role.id &&
-          (!employee.active || !availabilityOf(employee)[dayIndex(selectedDay)]?.available),
-      )
-      .map((employee) => employee.name.split(' ')[0]),
-  }));
+  const availableCounts = employeeAvailabilityCounts(employees, selectedDay);
 
   return {
     catalogue,

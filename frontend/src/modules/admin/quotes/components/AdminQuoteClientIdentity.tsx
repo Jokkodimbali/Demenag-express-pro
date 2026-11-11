@@ -1,10 +1,16 @@
 import { ChevronDown } from 'lucide-react';
+import { useState } from 'react';
 import { uiText } from '../../../shared/content/reference-ui-text';
 import { visibleUiText } from '../../../shared/content/visible-ui-text';
 import { normalizedClientPhone } from '../../../shared/domain/client-identity';
 import { today } from '../../../shared/domain/date';
 import { sanitizePhoneInput } from '../../../shared/domain/phone-number';
+import {
+  copyContactText,
+  saveContactVcards,
+} from '../../../shared/application/services/contact-vcard-file';
 import type { Draft } from '../../../booking/application/booking-draft';
+import { adminQuoteVehicleText as quoteText } from '../content/admin-quote-vehicle';
 
 type ClientRecognition = { phone: string; name: string; bookingCount: number } | null;
 
@@ -19,6 +25,7 @@ export function AdminQuoteClientIdentity({
   editingReservation,
   clientRecognition,
   recognizingClient,
+  contactCard,
 }: {
   draft: Draft;
   setDraft: React.Dispatch<React.SetStateAction<Draft>>;
@@ -30,7 +37,35 @@ export function AdminQuoteClientIdentity({
   editingReservation: boolean;
   clientRecognition: ClientRecognition;
   recognizingClient: boolean;
+  contactCard: {
+    first: string;
+    last: string;
+    name: string;
+    valid: boolean;
+    vcard: string;
+  } | null;
 }) {
+  const [contactFeedback, setContactFeedback] = useState('');
+
+  async function copyNamePart(value: string, label: string) {
+    if (await copyContactText(value)) {
+      setContactFeedback(`${label} copié : ${value}`);
+      return;
+    }
+    setContactFeedback(`${label} : ${value}`);
+  }
+
+  async function saveContact() {
+    if (!contactCard) return;
+    const filename = `${contactCard.name.replace(/[^\p{L}\p{N}-]+/gu, '-')}.vcf`;
+    const result = await saveContactVcards([contactCard.vcard], filename, contactCard.name);
+    setContactFeedback(
+      result === 'downloaded'
+        ? `Contact « ${contactCard.name} » ${quoteText.contactReadyToImport}`
+        : '',
+    );
+  }
+
   return (
     <section className="admin-quote-card">
       <button
@@ -173,6 +208,45 @@ export function AdminQuoteClientIdentity({
               />
             </label>
           </div>
+          {!publicRequest && contactCard && (
+            <section className="admin-quote-phone-contact">
+              <div className="admin-quote-phone-contact-heading">
+                <span>{quoteText.contactInPhone}</span>
+                <span>{draft.customerPhone}</span>
+              </div>
+              <div className="admin-quote-phone-contact-names">
+                {[
+                  { label: quoteText.firstName, value: contactCard.first },
+                  { label: quoteText.lastName, value: contactCard.last },
+                ].map(({ label, value }) => (
+                  <div className="admin-quote-phone-contact-name" key={label}>
+                    <div>
+                      <span>{label}</span>
+                      <strong>{value || '—'}</strong>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={!value}
+                      onClick={() => void copyNamePart(value, label)}
+                    >
+                      {quoteText.copy}
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="admin-quote-phone-contact-actions">
+                <button type="button" onClick={() => void saveContact()}>
+                  {quoteText.saveContact}
+                </button>
+                <span>{quoteText.contactSaveNote}</span>
+              </div>
+              {contactFeedback && (
+                <span className="admin-quote-phone-contact-feedback" role="status">
+                  {contactFeedback}
+                </span>
+              )}
+            </section>
+          )}
           {recognizingClient && (
             <p className="muted" role="status">
               {uiText['verificationDuClient']}

@@ -2,15 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Route } from '../../../../shared/domain/model';
 import { useApp } from '../../../../shared/application/context';
 import { googleTrafficDuration } from '../../../../moving/maps/application/google-maps-traffic';
-
-const trafficDuration = (minutes: number) => {
-  const rounded = Math.max(5, Math.round(minutes / 5) * 5);
-  const hours = Math.floor(rounded / 60);
-  const remaining = rounded % 60;
-  return hours
-    ? `${hours} h${remaining ? ` ${String(remaining).padStart(2, '0')}` : ''}`
-    : `${remaining} min`;
-};
+import {
+  trafficDelayPresentation,
+  trafficDeparture,
+  trafficDuration,
+} from '../services/quote-traffic-presentation';
 
 export function useAdminQuoteTraffic({
   enabled,
@@ -57,12 +53,7 @@ export function useAdminQuoteTraffic({
   const refreshTraffic = useCallback(async () => {
     if (!googleMapsKey || !route) return;
     const request = ++trafficRequest.current;
-    const timeMatch = /^(\d{1,2}):(\d{2})$/u.exec(timeSlot);
-    const departure =
-      date && timeMatch
-        ? new Date(`${date}T${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}:00`)
-        : undefined;
-    const future = Boolean(departure && departure.getTime() > Date.now() + 60000);
+    const { departure, future } = trafficDeparture(date, timeSlot);
     setTrafficBusy(true);
     setTrafficError(false);
     try {
@@ -105,15 +96,11 @@ export function useAdminQuoteTraffic({
   }, [googleMapsKey, route, refreshTraffic]);
 
   const trafficDelay = traffic ? traffic.minutes - traffic.freeMinutes : 0;
-  const trafficColor = !googleMapsKey
-    ? '#6B737B'
-    : !traffic
-      ? '#AEB4BB'
-      : trafficDelay > 15
-        ? '#FF5A5F'
-        : trafficDelay > 5
-          ? '#FFD23F'
-          : '#3DDC84';
+  const trafficColor = trafficDelayPresentation(
+    Boolean(googleMapsKey),
+    trafficDelay,
+    Boolean(traffic),
+  ).color;
 
   return {
     googleMapsKey,

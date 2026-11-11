@@ -7,67 +7,25 @@ import type {
   ManualAccountingInput,
 } from '../../../../shared/application/ports';
 import { useAdministration } from '../../../application/controllers/useAdministration';
-import { completedBookingRevenueAmount } from '../services/revenue';
 import {
+  accountingCategories,
   advertisingChannels,
-  defaultAccountingFinanceConfiguration,
-  referenceFixedChargeEntries,
-  simulateAccounting,
-} from '../../domain/accounting-forecast';
-
-const categories = {
-  charge: [
-    'Salaires',
-    'Manœuvres',
-    'Menuisier',
-    'Carburant',
-    'Entretien véhicule',
-    'Assurance',
-    'Loyer',
-    'Téléphone / Internet',
-    'Publicité',
-    'Péage / Parking',
-    'Impôts et taxes',
-    'Autre charge',
-  ],
-  revenu: ['Déménagement', 'Location véhicule', 'Autre revenu'],
-} as const;
-
-function currentDate() {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Africa/Dakar',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(new Date());
-  const part = (name: string) => parts.find((item) => item.type === name)?.value ?? '';
-  return `${part('year')}-${part('month')}-${part('day')}`;
-}
-
-function shiftMonth(value: string, delta: number) {
-  const [year, month] = value.split('-').map(Number);
-  const date = new Date(Date.UTC(year, month - 1 + delta, 1));
-  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
-}
+  countFinalBookingsWithoutCostSnapshot,
+  createAccountingForecast,
+  generatedAccountingEntries,
+  normalizeAccountingConfiguration,
+  selectAccountingEntries,
+  summarizeAccountingEntries,
+  summarizeAdvertising,
+} from '../services/accounting-dashboard';
+import {
+  accountingCsvContent,
+  currentAccountingDate,
+  shiftAccountingMonth,
+} from '../services/accounting-presentation';
 
 function exportCsv(entries: AccountingEntry[], period: string) {
-  const safe = (value: string | number) => {
-    const raw = String(value);
-    const protectedValue = /^[\s]*[=+@-]/u.test(raw) && !/^-?\d+$/u.test(raw) ? `'${raw}` : raw;
-    return `"${protectedValue.replaceAll('"', '""')}"`;
-  };
-  const rows = [
-    ['Date', 'Type', 'Catégorie', 'Libellé', 'Référence devis', 'Montant FCFA'],
-    ...entries.map((entry) => [
-      entry.date,
-      entry.type === 'charge' ? 'Charge' : 'Revenu',
-      entry.category,
-      entry.label,
-      entry.reference ?? '',
-      entry.type === 'charge' ? -entry.amount : entry.amount,
-    ]),
-  ];
-  const blob = new Blob(['\uFEFF', rows.map((row) => row.map(safe).join(';')).join('\r\n')], {
+  const blob = new Blob(['\uFEFF', accountingCsvContent(entries)], {
     type: 'text/csv;charset=utf-8',
   });
   const url = URL.createObjectURL(blob);
@@ -82,11 +40,11 @@ export function useAccounting() {
   const { api } = useApp();
   const { bookings } = useAdministration();
   const requestSequence = useRef(0);
-  const [month, setMonth] = useState(() => currentDate().slice(0, 7));
+  const [month, setMonth] = useState(() => currentAccountingDate().slice(0, 7));
   const [all, setAll] = useState(false);
   const [storedEntries, setStoredEntries] = useState<AccountingEntry[]>([]);
   const [financeConfiguration, setFinanceConfiguration] = useState<AccountingFinanceConfiguration>(
-    () => defaultAccountingFinanceConfiguration(),
+    () => normalizeAccountingConfiguration(null),
   );
   const financeRef = useRef(financeConfiguration);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -98,10 +56,10 @@ export function useAccounting() {
   const [error, setError] = useState('');
   const [form, setForm] = useState<ManualAccountingInput>({
     type: 'charge',
-    category: categories.charge[0],
+    category: accountingCategories.charge[0],
     label: '',
     amount: 0,
-    date: currentDate(),
+    date: currentAccountingDate(),
   });
   const [pendingVoid, setPendingVoid] = useState<AccountingEntry | null>(null);
 
@@ -116,29 +74,9 @@ export function useAccounting() {
       ]);
       if (sequence === requestSequence.current) {
         setStoredEntries(nextEntries);
-        if (config) {
-          const defaults = defaultAccountingFinanceConfiguration();
-          const normalized = {
-            ...defaults,
-            ...config,
-            menuPrices: {
-              ...defaults.menuPrices,
-              ...(config.menuPrices ?? {}),
-            },
-            advertising: config.advertising ?? {},
-            salaries: config.salaries ?? defaults.salaries,
-            annexes: config.annexes ?? defaults.annexes,
-            vehiclePurchases: config.vehiclePurchases ?? defaults.vehiclePurchases,
-            monthlyFixedChargePostings: config.monthlyFixedChargePostings ?? [],
-            financeChat: config.financeChat ?? [],
-          };
-          financeRef.current = normalized;
-          setFinanceConfiguration(normalized);
-        } else {
-          const defaults = defaultAccountingFinanceConfiguration();
-          financeRef.current = defaults;
-          setFinanceConfiguration(defaults);
-        }
+        const normalized = normalizeAccountingConfiguration(config);
+        financeRef.current = normalized;
+        setFinanceConfiguration(normalized);
       }
     } catch (cause) {
       if (sequence === requestSequence.current) setError(errorMessage(cause));
@@ -198,109 +136,51 @@ export function useAccounting() {
     [api],
   );
 
-  const generatedEntries = useMemo(() => {
-    const advertising: AccountingEntry[] = Object.entries(financeConfiguration.advertising).flatMap(
-      ([period, channels]) =>
-        Object.entries(channels).flatMap(([channel, amount]) => {
-          const value = Math.max(0, Math.round(amount || 0));
-          if (!value) return [];
-          const [year, monthNumber] = period.split('-').map(Number);
-          const last = new Date(Math.min(new Date(year, monthNumber, 0).getTime(), Date.now()));
-          return [
-            {
-              id: `auto-ad-${period}-${channel}`,
-              type: 'charge' as const,
-              category: 'Publicité',
-              label: `Publicité ${channel} · ${last.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}`,
-              amount: value,
-              date: `${last.getFullYear()}-${String(last.getMonth() + 1).padStart(2, '0')}-${String(last.getDate()).padStart(2, '0')}`,
-              automatic: true,
-            },
-          ];
-        }),
-    );
-    return [...advertising, ...referenceFixedChargeEntries(financeConfiguration)];
-  }, [financeConfiguration]);
+  const generatedEntries = useMemo(
+    () => generatedAccountingEntries(financeConfiguration),
+    [financeConfiguration],
+  );
   const historicalFinalQuotesWithoutSnapshot = useMemo(
-    () =>
-      bookings.filter((booking) => {
-        const final = [...booking.quotes].reverse().find((quote) => quote.kind === 'final');
-        return Boolean(final && !final.accountingCosts);
-      }).length,
+    () => countFinalBookingsWithoutCostSnapshot(bookings),
     [bookings],
   );
   const allEntries = useMemo(
     () => [...storedEntries, ...generatedEntries],
     [storedEntries, generatedEntries],
   );
-  const currentMonth = currentDate().slice(0, 7);
+  const currentMonth = currentAccountingDate().slice(0, 7);
   const entries = useMemo(
     () =>
-      all
-        ? allEntries.filter(
-            (entry) =>
-              entry.date.slice(0, 7) >= financeConfiguration.start &&
-              entry.date.slice(0, 7) <= currentMonth,
-          )
-        : allEntries.filter((entry) => entry.date.slice(0, 7) === month),
+      selectAccountingEntries(allEntries, {
+        all,
+        month,
+        startMonth: financeConfiguration.start,
+        currentMonth,
+      }),
     [all, allEntries, currentMonth, financeConfiguration.start, month],
   );
-  const totals = useMemo(() => {
-    const revenue = entries
-      .filter((entry) => entry.type === 'revenu')
-      .reduce((sum, entry) => sum + entry.amount, 0);
-    const charges = entries
-      .filter((entry) => entry.type === 'charge')
-      .reduce((sum, entry) => sum + entry.amount, 0);
-    const byCategory = new Map<string, number>();
-    for (const entry of entries)
-      if (entry.type === 'charge')
-        byCategory.set(entry.category, (byCategory.get(entry.category) ?? 0) + entry.amount);
-    return {
-      revenue,
-      charges,
-      balance: revenue - charges,
-      byCategory: [...byCategory].sort((a, b) => b[1] - a[1]),
-    };
-  }, [entries]);
+  const totals = useMemo(() => summarizeAccountingEntries(entries), [entries]);
 
   const forecast = useMemo(
     () =>
-      simulateAccounting(financeConfiguration, allEntries, bookings, all ? currentMonth : month),
+      createAccountingForecast(
+        financeConfiguration,
+        allEntries,
+        bookings,
+        all ? currentMonth : month,
+      ),
     [financeConfiguration, allEntries, bookings, all, currentMonth, month],
   );
   const currentForecast = forecast.months.find((item) => item.key === (all ? currentMonth : month));
-  const advertisingSummary = useMemo(() => {
-    const monthKey = all ? currentMonth : month;
-    return advertisingChannels.map((channel) => {
-      const spend = all
-        ? Object.values(financeConfiguration.advertising).reduce(
-            (sum, values) => sum + (values[channel] ?? 0),
-            0,
-          )
-        : (financeConfiguration.advertising[monthKey]?.[channel] ?? 0);
-      const clients = bookings.filter((booking) => {
-        const createdMonth = (booking.createdAt || booking.date || '').slice(0, 7);
-        return (
-          booking.source === channel &&
-          (all || createdMonth === monthKey) &&
-          booking.status !== 'cancelled'
-        );
-      });
-      const turnover = clients.reduce(
-        (sum, booking) => sum + completedBookingRevenueAmount(booking),
-        0,
-      );
-      return {
-        channel,
-        spend,
-        clientCount: clients.length,
-        turnover,
-        costPerClient: spend && clients.length ? Math.round(spend / clients.length) : null,
-        ratio: spend ? turnover / spend : null,
-      };
-    });
-  }, [all, bookings, currentMonth, financeConfiguration.advertising, month]);
+  const advertisingSummary = useMemo(
+    () =>
+      summarizeAdvertising(financeConfiguration, bookings, advertisingChannels, {
+        all,
+        month,
+        currentMonth,
+      }),
+    [all, bookings, currentMonth, financeConfiguration, month],
+  );
 
   async function addEntry(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -365,8 +245,8 @@ export function useAccounting() {
     voidEntry,
     title,
     maxCategory,
-    categories,
-    shiftMonth,
+    categories: accountingCategories,
+    shiftMonth: shiftAccountingMonth,
     exportCsv,
   };
 }

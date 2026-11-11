@@ -5,8 +5,6 @@ export const uiText2 = {
   motDEPASSE: 'MOT DE PASSE',
   confirmezLEMOTDEPASSE: 'CONFIRMEZ LE MOT DE PASSE',
   texte2: '••••••••',
-  premiereConnexionCreezVotreMotDePasse8CaracteresMinimu:
-    'Première connexion : créez votre mot de passe (8 caractères minimum, avec une lettre et un chiffre).',
   motDePasseOublie: 'Mot de passe oublié ?',
   retourALaConnexion: 'Retour à la connexion',
   retourAMonEspace: 'Retour à mon espace',
