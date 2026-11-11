@@ -2,7 +2,7 @@ import { uiText } from '../../../shared/content/reference-ui-text';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useEffect, useRef } from 'react';
-import { liveTrafficTileUrl, mapConfiguration } from '../../../shared/maps/config/maps';
+import { liveTrafficTileUrl, mapConfiguration } from '../../../shared/config/maps';
 import type { TollPoint } from '../../../shared/domain/model';
 import { addAdminTollMarkers } from '../maps/admin-toll-markers';
 

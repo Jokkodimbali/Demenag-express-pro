@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { LogOut, Menu, UserRound, X } from 'lucide-react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { messages } from '../../../shared/content/fr';
-import { routes } from '../../../app/routing/routes';
+import { routes } from '../../../shared/navigation/config/routes';
 import { useAdminLayoutModel } from '../application/controllers/useAdminLayoutModel';
 import { useLayout } from '../../../shared/shell/application/controllers/useLayout';
 

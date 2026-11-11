@@ -3,7 +3,7 @@ import type { MovingEstimate } from '../../../../moving/domain/estimate/moving-e
 import type { Vehicle } from '../../../../shared/domain/model';
 import type { Settings } from '../../../../shared/domain/model';
 import { estimateMovingWork } from '../../../../moving/domain/estimate/moving-estimate';
-import { vehicleDimensionWarnings } from '../../../../shared/domain/vehicles/vehicle-dimensions';
+import { vehicleDimensionWarnings } from '../../../../moving/domain/vehicle-dimensions';
 import { createAdminQuotePreview } from './admin-quote-preview';
 import { simulationInput } from '../../../../booking/application/services/loading-simulation-model';
 

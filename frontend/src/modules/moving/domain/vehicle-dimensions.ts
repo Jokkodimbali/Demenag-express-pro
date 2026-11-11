@@ -1,5 +1,5 @@
-import type { Inventory } from '../../../moving/domain/inventory/inventory';
-import type { Vehicle } from '../../../shared/domain/model';
+import type { Inventory } from './inventory/inventory';
+import type { Vehicle } from '../../shared/domain/model';
 
 const formatIndexes = { small: 0, medium: 1, large: 2 } as const;
 

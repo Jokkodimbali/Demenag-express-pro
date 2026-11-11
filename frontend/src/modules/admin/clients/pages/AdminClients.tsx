@@ -8,7 +8,7 @@ import { useAdministration } from '../../application/controllers/useAdministrati
 import { useAdminClients } from '../application/controllers/useAdminClients';
 import { useApp } from '../../../shared/application/context';
 import { errorMessage } from '../../../shared/application/error-message';
-import { normalizedClientPhone } from '../../../clients/application/services/client-summary';
+import { normalizedClientPhone } from '../../../shared/domain/client-identity';
 import { normalizePhoneNumber, sanitizePhoneInput } from '../../../shared/domain/phone-number';
 import { usePagination } from '../../../shared/navigation/application/controllers/usePagination';
 import { Modal } from '../../../shared/feedback/Modal';
@@ -16,7 +16,7 @@ import { Pagination } from '../../../shared/navigation/Pagination';
 import { pageSizes } from '../../../shared/navigation/config/pagination';
 import { money } from '../../../shared/application/presentation/format';
 import type { Booking, User } from '../../../shared/domain/model';
-import { routes } from '../../../app/routing/routes';
+import { routes } from '../../../shared/navigation/config/routes';
 import { contactVcard } from '../domain/contact-vcard';
 import type { Settings } from '../../../shared/domain/model';
 

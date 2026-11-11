@@ -5,7 +5,7 @@ import { useApp } from '../../../../shared/application/context';
 import { errorMessage } from '../../../../shared/application/error-message';
 import { CatalogueService } from '../../../../catalogue/application/services/catalogue';
 import { revenueFor, sameWeek } from '../../../accounting/application/services/revenue';
-import { vehicleFromForm } from '../../../../shared/application/validation/forms';
+import { vehicleFromForm } from '../../../application/forms/vehicle-from-form';
 
 export type VehicleActivity = {
   bookings: number;

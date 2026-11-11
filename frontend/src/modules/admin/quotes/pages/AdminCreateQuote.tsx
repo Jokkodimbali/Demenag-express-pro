@@ -3,7 +3,7 @@ import { uiText } from '../../../shared/content/reference-ui-text';
 import { ChevronDown } from 'lucide-react';
 import { Suspense, lazy, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { normalizedClientPhone } from '../../../clients/application/services/client-summary';
+import { normalizedClientPhone } from '../../../shared/domain/client-identity';
 import { CallInventory } from '../../../booking/components/CallInventory';
 import { FleetVehicleImagePreview } from '../../fleet/components/FleetVehicleDimensions';
 import { AdminQuoteQuestionnaire } from '../components/AdminQuoteQuestionnaire';
@@ -12,7 +12,7 @@ import { dateLabel, money, referenceTierLabels } from '../../../shared/applicati
 import { today } from '../../../shared/domain/date';
 import { bookingInventorySnapshot, formatDuration } from '../../../moving/domain/estimate/moving-estimate';
 import { BookingConfirmation } from '../../../booking/components/BookingConfirmation';
-import { routes } from '../../../app/routing/routes';
+import { routes } from '../../../shared/navigation/config/routes';
 import { useAdminCreateQuoteModel } from '../application/controllers/useAdminCreateQuoteModel';
 import { AdminCreateQuoteAside } from '../components/AdminCreateQuoteAside';
 import { AdminQuoteVehicleBilling } from '../components/AdminQuoteVehicleBilling';
@@ -25,7 +25,7 @@ import { adminQuoteVehicleText as quoteText } from '../content/admin-quote-vehic
 import { quoteConditionsText } from '../../../shared/messaging/application/services/whatsapp-templates';
 import { normalizePhoneNumber, sanitizePhoneInput } from '../../../shared/domain/phone-number';
 
-const RouteMap = lazy(() => import('../../../shared/maps/RouteMap'));
+const RouteMap = lazy(() => import('../../../moving/maps/RouteMap'));
 
 export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: boolean }) {
   const model = useAdminCreateQuoteModel(publicRequest);

@@ -1,7 +1,7 @@
 import L from 'leaflet';
-import type { TollPoint } from '../domain/model';
-import type { TollExtraLine } from '../../moving/domain/tolls/toll-selection';
-import { tollPrice } from '../../moving/domain/tolls/toll-prices';
+import type { TollPoint } from '../../shared/domain/model';
+import type { TollExtraLine } from '../domain/tolls/toll-selection';
+import { tollPrice } from '../domain/tolls/toll-prices';
 
 const referenceAxisColors = [
   '#F6D73C',

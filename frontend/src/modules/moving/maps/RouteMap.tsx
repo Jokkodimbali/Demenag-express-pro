@@ -1,11 +1,11 @@
-import { uiText } from '../content/reference-ui-text';
+import { uiText } from '../../shared/content/reference-ui-text';
 import 'leaflet/dist/leaflet.css';
 import { Expand, LocateFixed, Search, X } from 'lucide-react';
 import { useRouteMap } from './useRouteMap';
-import { useApp } from '../application/context';
-import { messages } from '../content/fr';
-import { referenceTierLabels } from '../application/presentation/format';
-import type { TollExtraLine } from '../../moving/domain/tolls/toll-selection';
+import { useApp } from '../../shared/application/context';
+import { messages } from '../../shared/content/fr';
+import { referenceTierLabels } from '../../shared/application/presentation/format';
+import type { TollExtraLine } from '../domain/tolls/toll-selection';
 const EMPTY_TOLL_LINES: TollExtraLine[] = [];
 export default function RouteMap({
   tollLines = EMPTY_TOLL_LINES,

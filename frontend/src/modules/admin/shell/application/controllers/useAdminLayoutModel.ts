@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import type { Booking } from '../../../../shared/domain/model';
 import type { AppNotification } from '../../../../shared/application/ports';
 import { useApp } from '../../../../shared/application/context';
-import { routes } from '../../../../app/routing/routes';
+import { routes } from '../../../../shared/navigation/config/routes';
 
 export type AdminSearchResult =
   | { kind: 'booking'; booking: Booking }

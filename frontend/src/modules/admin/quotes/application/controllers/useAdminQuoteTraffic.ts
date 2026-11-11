@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Route } from '../../../../shared/domain/model';
 import { useApp } from '../../../../shared/application/context';
-import { googleTrafficDuration } from '../../../../shared/maps/application/google-maps-traffic';
+import { googleTrafficDuration } from '../../../../moving/maps/application/google-maps-traffic';
 
 const trafficDuration = (minutes: number) => {
   const rounded = Math.max(5, Math.round(minutes / 5) * 5);

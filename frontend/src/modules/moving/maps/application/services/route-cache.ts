@@ -1,5 +1,5 @@
-import type { ApplicationApi } from '../../../application/ports';
-import type { Point, RouteTicket } from '../../../domain/model';
+import type { ApplicationApi } from '../../../../shared/application/ports';
+import type { Point, RouteTicket } from '../../../../shared/domain/model';
 
 const maxCachedRoutes = 100;
 const routeCache = new Map<string, RouteTicket>();

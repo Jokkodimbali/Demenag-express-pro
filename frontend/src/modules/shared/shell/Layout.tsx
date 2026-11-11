@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { BriefcaseBusiness, ChevronDown, LogOut, UserRound } from 'lucide-react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useLayout } from './application/controllers/useLayout';
-import { routes } from '../../app/routing/routes';
+import { routes } from '../navigation/config/routes';
 import { whatsappUrl } from '../messaging/application/services/whatsapp';
 
 export function Layout() {

@@ -6,7 +6,7 @@ import { useNotificationSession } from './application/controllers/useNotificatio
 import { useNotificationActions } from './application/controllers/useNotificationActions';
 import { messages } from '../content/fr';
 import type { User } from '../domain/model';
-import { administrationQuoteForBooking, routes } from '../../app/routing/routes';
+import { administrationQuoteForBooking, routes } from '../navigation/config/routes';
 import type { AppNotification } from '../application/ports';
 
 export function NotificationCenter({ user }: { user: User | null }) {

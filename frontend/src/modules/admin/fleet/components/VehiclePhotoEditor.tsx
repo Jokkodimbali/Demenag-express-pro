@@ -1,7 +1,7 @@
 import { uiText } from '../../../shared/content/reference-ui-text';
 import { useRef, useState } from 'react';
 import { Modal } from '../../../shared/feedback/Modal';
-import { dataUrl } from '../../../shared/application/validation/forms';
+import { dataUrl } from '../../../shared/application/validation/image-data-url';
 
 type TracePoint = { x: number; y: number };
 

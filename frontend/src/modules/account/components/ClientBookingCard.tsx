@@ -5,7 +5,7 @@ import { useClientBookingPdf } from '../application/controllers/useClientBooking
 import { whatsappPaymentLine } from '../../shared/messaging/application/services/whatsapp-templates';
 import { money, referenceTierLabels } from '../../shared/application/presentation/format';
 import type { Booking } from '../../shared/domain/model';
-import { routes } from '../../app/routing/routes';
+import { routes } from '../../shared/navigation/config/routes';
 import { BookingRouteMap } from '../../booking/components/BookingRouteMap';
 import { Link } from 'react-router-dom';
 

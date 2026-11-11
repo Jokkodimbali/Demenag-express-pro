@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../../../../shared/application/context';
 import { errorMessage } from '../../../../shared/application/error-message';
-import { catalogueFromForm } from '../../../../shared/application/validation/forms';
+import { catalogueFromForm } from '../catalogue-from-form';
 import type { Catalogue, Settings } from '../../../../shared/domain/model';
 import { defaultAccountingFinanceConfiguration } from '../../../accounting/domain/accounting-forecast';
 import {

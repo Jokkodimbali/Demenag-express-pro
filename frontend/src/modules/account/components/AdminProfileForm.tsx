@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useApp } from '../../shared/application/context';
 import { useAdminProfile } from '../application/controllers/useAdminProfile';
 import { errorMessage } from '../../shared/application/error-message';
-import { dataUrl } from '../../shared/application/validation/forms';
+import { dataUrl } from '../../shared/application/validation/image-data-url';
 import { messages } from '../../shared/content/fr';
 import { PasswordForm } from '../../shared/forms/PasswordForm';
 import { visibleUiText } from '../../shared/content/visible-ui-text';

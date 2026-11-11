@@ -1,1 +1,37 @@
 export type * from '../../../../../shared/contracts.js';
+
+export type FinanceMonth = {
+  key: string;
+  revenue: number;
+  journalCharges: number;
+  salaries: number;
+  movers: number;
+  moverCount: number;
+  carpenters: number;
+  advertising: number;
+  costs: number;
+  profit: number;
+  budget: number;
+  debtDue: number;
+  debtPaid: number;
+  fleetDue: number;
+  fleetPaid: number;
+  annexDue: number;
+  annexPaid: number;
+  reserveDue: number;
+  reservePaid: number;
+  legalReserveDue: number;
+  legalReservePaid: number;
+  legalReserveBalance: number;
+  legalReserveCap: number;
+  tax: number;
+  cash: number;
+  debtLeft: number;
+  fleetAmortized: number;
+  fleetBase: number;
+  reserve: number;
+  vehiclePurchase: number;
+  carry: number;
+  net: number;
+  suarl: boolean;
+};

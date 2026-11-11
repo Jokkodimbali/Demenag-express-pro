@@ -1,4 +1,4 @@
-import type { Point } from '../../domain/model';
+import type { Point } from '../../../shared/domain/model';
 
 type GoogleTrafficResponse = {
   rows?: {

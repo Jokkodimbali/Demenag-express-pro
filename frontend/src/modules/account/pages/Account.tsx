@@ -5,7 +5,7 @@ import { useAccount } from '../application/controllers/useAccount';
 import { AdminProfileForm } from '../components/AdminProfileForm';
 import { ClientBookingCard } from '../components/ClientBookingCard';
 import { messages } from '../../shared/content/fr';
-import { routes } from '../../app/routing/routes';
+import { routes } from '../../shared/navigation/config/routes';
 import { visibleUiText } from '../../shared/content/visible-ui-text';
 export function Account() {
   const { user, bookings, loading, error, setRetry } = useAccount();

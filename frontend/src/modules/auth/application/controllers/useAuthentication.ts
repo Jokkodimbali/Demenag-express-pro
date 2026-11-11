@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../../shared/application/context';
 import { errorMessage } from '../../../shared/application/error-message';
-import { routes } from '../../../app/routing/routes';
+import { routes } from '../../../shared/navigation/config/routes';
 import { messages } from '../../../shared/content/fr';
 export function useAuthentication() {
   const { api, setUser } = useApp();

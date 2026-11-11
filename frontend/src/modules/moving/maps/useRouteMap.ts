@@ -1,16 +1,16 @@
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { liveTrafficTileUrl, mapConfiguration } from './config/maps';
+import { liveTrafficTileUrl, mapConfiguration } from '../../shared/config/maps';
 import { addReferenceTollMarkers, addTollMarkers } from './toll-markers';
 import { addRouteLine } from './route-line';
-import { messages } from '../content/fr';
-import type { Point, TollPoint } from '../domain/model';
-import { tollLine, type TollExtraLine } from '../../moving/domain/tolls/toll-selection';
-import { tollsOnRoute } from '../../moving/domain/tolls/tolls-on-route';
+import { messages } from '../../shared/content/fr';
+import type { Point, TollPoint } from '../../shared/domain/model';
+import { tollLine, type TollExtraLine } from '../domain/tolls/toll-selection';
+import { tollsOnRoute } from '../domain/tolls/tolls-on-route';
 import { useRouteMapCommands } from './application/controllers/useRouteMapCommands';
-import { useApp } from '../application/context';
-import { errorMessage } from '../application/error-message';
+import { useApp } from '../../shared/application/context';
+import { errorMessage } from '../../shared/application/error-message';
 type Side = 'from' | 'to';
 const EMPTY_TOLL_LINES: TollExtraLine[] = [];
 const pin = (side: Side) =>

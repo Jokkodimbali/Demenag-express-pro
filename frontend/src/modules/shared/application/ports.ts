@@ -17,11 +17,11 @@ import type {
   TollPointInput,
   User,
   Driver,
+  FinanceMonth,
   VehicleInspectionPhotos,
   WorkPlanCompliance,
   WorkPlanReview,
 } from '../domain/model';
-import type { FinanceMonth } from '../../admin/accounting/domain/accounting-forecast';
 export type {
   AccountingEntry,
   AccountingFinanceConfiguration,

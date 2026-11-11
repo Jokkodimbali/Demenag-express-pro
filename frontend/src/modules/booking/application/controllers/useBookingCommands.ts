@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { getCachedRoute } from '../../../shared/maps/application/services/route-cache';
+import { getCachedRoute } from '../../../moving/maps/application/services/route-cache';
 import { useApp } from '../../../shared/application/context';
 
 export function useBookingCommands() {

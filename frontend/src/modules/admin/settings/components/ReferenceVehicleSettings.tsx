@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useState } from 'react';
 import { useApp } from '../../../shared/application/context';
 import { errorMessage } from '../../../shared/application/error-message';
-import { vehicleFromForm } from '../../../shared/application/validation/forms';
+import { vehicleFromForm } from '../../application/forms/vehicle-from-form';
 import { CatalogueService } from '../../../catalogue/application/services/catalogue';
 import { useBookingCommands } from '../../../booking/application/controllers/useBookingCommands';
 import { messages } from '../../../shared/content/fr';

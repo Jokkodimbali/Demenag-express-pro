@@ -2,7 +2,7 @@ import { uiText } from '../../shared/content/reference-ui-text';
 import { Link } from 'react-router-dom';
 import type { Booking, Settings } from '../../shared/domain/model';
 import { money } from '../../shared/application/presentation/format';
-import { routes } from '../../app/routing/routes';
+import { routes } from '../../shared/navigation/config/routes';
 import { whatsappUrl } from '../../shared/messaging/application/services/whatsapp';
 import { bookingConfirmationMessage } from '../../shared/messaging/application/services/whatsapp-templates';
 

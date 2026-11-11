@@ -23,7 +23,7 @@ import {
 import type { BookingInventorySnapshot, MovingLaborPlanningSettings } from '../../../shared/domain/model';
 import type { Route, Vehicle } from '../../../shared/domain/model';
 import { referenceTravelMinutes } from '../routing/reference-traffic';
-import { vehicleDimensionWarnings } from '../../../shared/domain/vehicles/vehicle-dimensions';
+import { vehicleDimensionWarnings } from '../../../moving/domain/vehicle-dimensions';
 
 export const defaultMovingLaborPlanning: MovingLaborPlanningSettings = {
   maxHandlingHours: 3,

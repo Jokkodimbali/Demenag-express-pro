@@ -3,7 +3,7 @@ import { useAdministration } from '../../application/controllers/useAdministrati
 import { useApp } from '../../../shared/application/context';
 import { ReferenceCalendar } from '../components/ReferenceCalendar';
 import { messages } from '../../../shared/content/fr';
-import { routes } from '../../../app/routing/routes';
+import { routes } from '../../../shared/navigation/config/routes';
 import { useCalendarEmployees } from '../application/controllers/useCalendarEmployees';
 
 export function AdminPlanning() {

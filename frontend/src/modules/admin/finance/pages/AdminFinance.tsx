@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAdministration } from '../../application/controllers/useAdministration';
 import { DefinitiveQuotes } from '../components/DefinitiveQuotes';
 import { messages } from '../../../shared/content/fr';
-import { administrationQuoteForBooking, routes } from '../../../app/routing/routes';
+import { administrationQuoteForBooking, routes } from '../../../shared/navigation/config/routes';
 
 export function AdminFinance() {
   const { bookings, loading, error } = useAdministration();

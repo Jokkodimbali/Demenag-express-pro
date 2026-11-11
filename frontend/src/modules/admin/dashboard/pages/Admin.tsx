@@ -3,7 +3,7 @@ import { uiText } from '../../../shared/content/reference-ui-text';
 import { useEffect, useState } from 'react';
 import { MessageCircle, Search, X } from 'lucide-react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { administrationQuoteForBooking, routes } from '../../../app/routing/routes';
+import { administrationQuoteForBooking, routes } from '../../../shared/navigation/config/routes';
 import { useAdministration } from '../../application/controllers/useAdministration';
 import { ConfirmationDialog } from '../../../shared/feedback/ConfirmationDialog';
 import { useApp } from '../../../shared/application/context';

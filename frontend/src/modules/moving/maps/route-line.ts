@@ -1,5 +1,5 @@
 import L from 'leaflet';
-import type { Point } from '../domain/model';
+import type { Point } from '../../shared/domain/model';
 
 export function addRouteLine(map: L.Map, points: Point[], dashed = false) {
   return L.featureGroup([

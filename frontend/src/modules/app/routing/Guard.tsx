@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
-import { routes } from './routes';
+import { routes } from '../../shared/navigation/config/routes';
 import { useApp } from '../../shared/application/context';
 import { messages } from '../../shared/content/fr';
 import type { Role } from '../../shared/domain/model';

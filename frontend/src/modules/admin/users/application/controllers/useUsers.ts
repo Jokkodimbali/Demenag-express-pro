@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { User } from '../../../../shared/domain/model';
 import { useApp } from '../../../../shared/application/context';
 import { errorMessage } from '../../../../shared/application/error-message';
-import { userFromForm } from '../../../../shared/application/validation/forms';
+import { userFromForm } from '../user-from-form';
 export function useUsers() {
   const { api, user: actor } = useApp();
   const [users, setUsers] = useState<User[]>([]);

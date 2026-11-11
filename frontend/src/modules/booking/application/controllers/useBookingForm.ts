@@ -6,10 +6,10 @@ import type { Booking, BookingInput, Options, Price, Quote } from '../../../shar
 import { inventoryNote } from '../../../moving/domain/inventory/inventory';
 import { tollPrice } from '../../../moving/domain/tolls/toll-prices';
 import { quoteTollsFromLines, type TollExtraLine } from '../../../moving/domain/tolls/toll-selection';
-import { normalizedClientPhone } from '../../../clients/application/services/client-summary';
+import { normalizedClientPhone } from '../../../shared/domain/client-identity';
 import { blankDraft, useApp } from '../../../shared/application/context';
 import { errorMessage } from '../../../shared/application/error-message';
-import { administrationQuoteForBooking, routes } from '../../../app/routing/routes';
+import { administrationQuoteForBooking, routes } from '../../../shared/navigation/config/routes';
 import { clearAdminQuoteDraft } from '../../../admin/quotes/application/admin-quote-draft-storage';
 import type { RentalKitItem } from '../../../shared/domain/model';
 import { defaultRentalKit } from '../../../moving/domain/rental-kit';

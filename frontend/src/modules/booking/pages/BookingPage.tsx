@@ -7,15 +7,15 @@ import { BookingSummary } from '../components/BookingSummary';
 import { BookingConfirmation } from '../components/BookingConfirmation';
 import { CallInventory } from '../components/CallInventory';
 import { CustomerDetails } from '../components/CustomerDetails';
-import { normalizedClientPhone } from '../../clients/application/services/client-summary';
+import { normalizedClientPhone } from '../../shared/domain/client-identity';
 import { ScheduleOptions } from '../components/ScheduleOptions';
 import { VehicleSelector } from '../components/VehicleSelector';
 import { messages } from '../../shared/content/fr';
 import { money } from '../../shared/application/presentation/format';
-import { routes } from '../../app/routing/routes';
+import { routes } from '../../shared/navigation/config/routes';
 import { bookingInventorySnapshot, estimateMovingWork } from '../../moving/domain/estimate/moving-estimate';
 import type { VehicleTransition } from '../../moving/domain/vehicle-transition';
-const RouteMap = lazy(() => import('../../shared/maps/RouteMap'));
+const RouteMap = lazy(() => import('../../moving/maps/RouteMap'));
 export function BookingPage() {
   const [mobileBookingStep, setMobileBookingStep] = useState(1);
   const [mobileBookingError, setMobileBookingError] = useState('');

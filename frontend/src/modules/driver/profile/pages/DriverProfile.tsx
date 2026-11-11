@@ -5,7 +5,7 @@ import { PasswordForm } from '../../../shared/forms/PasswordForm';
 import { PhotoPicker } from '../../../shared/forms/PhotoPicker';
 import { useDriverWorkspace } from '../../workspace/application/controllers/useDriverWorkspace';
 import { messages } from '../../../shared/content/fr';
-import { routes } from '../../../app/routing/routes';
+import { routes } from '../../../shared/navigation/config/routes';
 import { visibleUiText } from '../../../shared/content/visible-ui-text';
 
 export function DriverProfile() {

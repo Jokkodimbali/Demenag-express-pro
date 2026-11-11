@@ -8,7 +8,7 @@ import { AccountingFinanceSections } from '../components/AccountingFinanceSectio
 import { ReferenceAccountingOverview } from '../components/ReferenceAccountingOverview';
 import { ReferenceMonthlyCharges } from '../components/ReferenceMonthlyCharges';
 import { money } from '../../../shared/application/presentation/format';
-import { administrationQuoteForBooking } from '../../../app/routing/routes';
+import { administrationQuoteForBooking } from '../../../shared/navigation/config/routes';
 
 export function AdminAccounting() {
   const [downloadError, setDownloadError] = useState('');

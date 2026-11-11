@@ -1,21 +1,10 @@
-import type {
-  Catalogue,
-  ClientQuestion,
-  Driver,
-  QuoteInput,
-  Settings,
-  User,
-  Vehicle,
-} from '../../domain/model';
-import { messages } from '../../content/fr';
-import { vehicleCapacity } from '../../domain/vehicles/vehicle-capacity';
+import type { Catalogue, ClientQuestion, Settings } from '../../../shared/domain/model';
 import { createLabourPriceMatrix } from '../../../moving/domain/pricing/labour-price';
 import { referenceInventoryAliases, referenceInventoryKey } from '../../../moving/domain/inventory/inventory-assembly';
 import { referenceAssemblyPriceDefaults } from '../../../../../../shared/reference-tariff-defaults.js';
-import { normalizePaymentQr } from '../../../account/payments/application/services/payment-qr';
+import { normalizePaymentQr } from '../../../shared/application/validation/payment-qr';
+import { dataUrl } from '../../../shared/application/validation/image-data-url';
 
-const role = (value: FormDataEntryValue | null): User['role'] =>
-  value === 'admin' ? 'admin' : 'client';
 const integer = (value: FormDataEntryValue | null) => Number(value);
 const tuple = (values: number[]): [number, number, number] => [values[0], values[1], values[2]];
 const normalizeBusinessPhone = (value: string) => {
@@ -45,98 +34,6 @@ export function questionnaireFromForm(data: FormData, existing: ClientQuestion[]
       active: field('active') !== 'false' && current?.active !== false,
     };
   });
-}
-
-export function userFromForm(data: FormData): Omit<User, 'id'> {
-  return {
-    name: String(data.get('name')),
-    phone: String(data.get('phone')),
-    role: role(data.get('role')),
-    active: data.get('active') === 'on',
-  };
-}
-
-export function quoteFromForm(
-  data: FormData,
-  version: number,
-  extraLines: QuoteInput['extraLines'],
-  options: NonNullable<QuoteInput['options']>,
-  tolls: NonNullable<QuoteInput['tolls']> = [],
-  billingMode: NonNullable<QuoteInput['billingMode']> = 'complete',
-  menuIncluded = false,
-): QuoteInput {
-  return {
-    kind: data.get('kind') === 'final' ? 'final' : 'provisional',
-    trips: integer(data.get('trips')),
-    customPrice: data.get('customPrice') ? integer(data.get('customPrice')) : null,
-    discount: integer(data.get('discount')),
-    discountType: data.get('discountType') === 'pct' ? 'pct' : 'fcfa',
-    discountReason: String(data.get('discountReason') ?? ''),
-    notes: String(data.get('notes')),
-    extraLines,
-    tolls,
-    options,
-    version,
-    billingMode,
-    menuIncluded,
-  };
-}
-
-export async function dataUrl(file: FormDataEntryValue | null, fallback: string): Promise<string> {
-  if (!(file instanceof File) || file.size === 0) return fallback;
-  if (file.size > 2_500_000) throw new Error(messages.imageTropVolumineuse);
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () =>
-      typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error());
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
-
-export async function driverFromForm(
-  data: FormData,
-  existing: Driver,
-): Promise<Omit<Driver, 'userId'>> {
-  const photo =
-    data.get('removePhoto') === 'on' ? '' : await dataUrl(data.get('photo'), existing.photo ?? '');
-  return {
-    ...existing,
-    name: String(data.get('name')),
-    phone: String(data.get('phone')),
-    photo: photo || null,
-    active: data.get('active') === 'on',
-    vehicleId: String(data.get('vehicleId')) || null,
-  };
-}
-
-export async function vehicleFromForm(data: FormData, existing: Vehicle): Promise<Vehicle> {
-  const length = String(data.get('length'));
-  const height = String(data.get('height'));
-  const width = String(data.get('width'));
-  const wheelWidth = String(data.get('wheelWidth'));
-  return {
-    ...existing,
-    name: String(data.get('name')).trim(),
-    shortName: String(
-      data.get('shortName') ||
-        existing.shortName ||
-        String(data.get('name')).trim().split(/\s+/).at(-1),
-    ).trim(),
-    volume: vehicleCapacity(length, height, width, wheelWidth),
-    length,
-    height,
-    width,
-    wheelWidth,
-    active: data.get('active') === 'on',
-    image: await imageValue(data.get('image'), existing.image),
-    interior: await imageValue(data.get('interior'), existing.interior),
-  };
-}
-
-async function imageValue(value: FormDataEntryValue | null, fallback: string) {
-  if (typeof value === 'string') return value || fallback;
-  return dataUrl(value, fallback);
 }
 
 export async function catalogueFromForm(data: FormData, catalogue: Catalogue): Promise<Catalogue> {

@@ -4,7 +4,7 @@ import { AdminLayout } from '../../admin/shell/components/AdminLayout';
 import { Layout } from '../../shared/shell/Layout';
 import { messages } from '../../shared/content/fr';
 import { Guard } from './Guard';
-import { routes } from './routes';
+import { routes } from '../../shared/navigation/config/routes';
 const Auth = lazy(() => import('../../auth/pages/Auth').then((m) => ({ default: m.Auth })));
 const Home = lazy(() => import('../../public-home/pages/Home').then((m) => ({ default: m.Home })));
 const Account = lazy(() => import('../../account/pages/Account').then((m) => ({ default: m.Account })));

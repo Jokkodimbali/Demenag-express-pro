@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Booking, Driver, DriverAvailabilityDay } from '../../../../shared/domain/model';
 import { useApp } from '../../../../shared/application/context';
 import { errorMessage } from '../../../../shared/application/error-message';
-import { dataUrl } from '../../../../shared/application/validation/forms';
+import { dataUrl } from '../../../../shared/application/validation/image-data-url';
 
 export function useDriverWorkspace(loadBookings = true) {
   const { api, user, setUser } = useApp();

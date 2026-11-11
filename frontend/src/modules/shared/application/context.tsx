@@ -8,7 +8,6 @@ import {
   type ReactNode,
 } from 'react';
 import type { Catalogue, TollPoint, User } from '../domain/model';
-import { blankDraft, type Draft } from '../../booking/application/booking-draft';
 import { errorMessage } from './error-message';
 import type {
   AccountingDocumentExporter,
@@ -17,8 +16,6 @@ import type {
   QuoteExporter,
   TariffDocumentExporter,
 } from './ports';
-export { blankDraft } from '../../booking/application/booking-draft';
-export type { Draft } from '../../booking/application/booking-draft';
 type AppContextValue = {
   api: ApplicationApi;
   exportQuote: QuoteExporter;
@@ -35,8 +32,6 @@ type AppContextValue = {
   loading: boolean;
   error: string;
   reload: () => void;
-  draft: Draft;
-  setDraft: React.Dispatch<React.SetStateAction<Draft>>;
   confirmation: ConfirmationRequest | null;
   requestConfirmation: (request: ConfirmationRequest) => Promise<boolean>;
   resolveConfirmation: (confirmed: boolean) => void;
@@ -70,7 +65,6 @@ export function AppProvider({
     [loading, setLoading] = useState(true),
     [error, setError] = useState(''),
     [retry, setRetry] = useState(0);
-  const [draft, setDraft] = useState(blankDraft);
   const [tollPoints, setTollPoints] = useState<TollPoint[]>([]);
   const [confirmation, setConfirmation] = useState<ConfirmationRequest | null>(null);
   const confirmationResolver = useRef<((confirmed: boolean) => void) | null>(null);
@@ -114,10 +108,6 @@ export function AppProvider({
               whatsappPhone: c.settings.whatsappPhone || c.settings.businessPhone || '',
             },
           });
-          setDraft((draft) => ({
-            ...draft,
-            vehicleId: draft.vehicleId || blankDraft(c).vehicleId,
-          }));
         }
       })
       .catch((e: unknown) => {
@@ -159,8 +149,6 @@ export function AppProvider({
         loading,
         error,
         reload: () => setRetry((n) => n + 1),
-        draft,
-        setDraft,
         confirmation,
         requestConfirmation,
         resolveConfirmation,

@@ -3,13 +3,13 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { MapPin, Pencil, Save, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { mapConfiguration } from '../../shared/maps/config/maps';
+import { mapConfiguration } from '../../shared/config/maps';
 import type { Booking, Point, TollPoint } from '../../shared/domain/model';
 import { useApp } from '../../shared/application/context';
 import { useBookingCommands } from '../application/controllers/useBookingCommands';
 import { errorMessage } from '../../shared/application/error-message';
-import { addRouteLine } from '../../shared/maps/route-line';
-import { addTollMarkers } from '../../shared/maps/toll-markers';
+import { addRouteLine } from '../../moving/maps/route-line';
+import { addTollMarkers } from '../../moving/maps/toll-markers';
 import { tollsOnRoute } from '../../moving/domain/tolls/tolls-on-route';
 
 export function BookingRouteMap({

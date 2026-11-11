@@ -9,7 +9,7 @@ import { Modal } from '../../../shared/feedback/Modal';
 import { Pagination } from '../../../shared/navigation/Pagination';
 import { pageSizes } from '../../../shared/navigation/config/pagination';
 import { messages } from '../../../shared/content/fr';
-import { routes } from '../../../app/routing/routes';
+import { routes } from '../../../shared/navigation/config/routes';
 import { sanitizePhoneInput } from '../../../shared/domain/phone-number';
 export function Users() {
   const {

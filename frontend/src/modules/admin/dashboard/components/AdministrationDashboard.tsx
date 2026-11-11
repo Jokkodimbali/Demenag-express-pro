@@ -7,7 +7,7 @@ import {
   revenueFor,
   sameWeek,
 } from '../../accounting/application/services/revenue';
-import { clientIdentifier } from '../../../clients/application/services/client-summary';
+import { clientIdentifier } from '../../../shared/domain/client-identity';
 import { messages } from '../../../shared/content/fr';
 import { dateLabel, money } from '../../../shared/application/presentation/format';
 import type { Booking, Vehicle } from '../../../shared/domain/model';

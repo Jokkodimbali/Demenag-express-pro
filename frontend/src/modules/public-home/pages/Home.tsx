@@ -2,7 +2,7 @@ import { uiText } from '../../shared/content/reference-ui-text';
 import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../../shared/application/context';
 import { money, tierLabels } from '../../shared/application/presentation/format';
-import { routes } from '../../app/routing/routes';
+import { routes } from '../../shared/navigation/config/routes';
 
 export function Home() {
   const { catalogue, draft, setDraft, loading, error, reload } = useApp();

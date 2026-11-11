@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useApp } from '../../../application/context';
+import { useApp } from '../../../../shared/application/context';
 
 export function useRouteMapCommands() {
   const { api } = useApp();
