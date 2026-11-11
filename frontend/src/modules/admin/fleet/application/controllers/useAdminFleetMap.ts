@@ -1,4 +1,5 @@
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { useEffect, useRef } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type { useAdminFleet } from './useAdminFleet';
@@ -90,9 +91,12 @@ export function useAdminFleetMap({
     mapRef.current = map;
     tileRef.current = tile;
     layerRef.current = layer;
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(mapElement);
     const resize = window.setTimeout(() => map.invalidateSize(), 150);
     return () => {
       window.clearTimeout(resize);
+      observer.disconnect();
       map.remove();
       mapRef.current = null;
       tileRef.current = null;

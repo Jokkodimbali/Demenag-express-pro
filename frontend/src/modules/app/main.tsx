@@ -22,7 +22,7 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
 }
 const api = createHttpApi();
 const exportQuote: QuoteExporter = async (booking, quote, settings) => {
-  const { downloadQuote } = await import('../shared/adapters/pdf');
+  const { downloadQuote } = await import('./adapters/pdf');
   return downloadQuote(booking, quote, settings);
 };
 const exportAccounting: AccountingDocumentExporter = async (
@@ -36,7 +36,7 @@ const exportAccounting: AccountingDocumentExporter = async (
   await exportAccountingPdf(document, config, months, entries, endMonth);
 };
 const exportPlanningWeek: PlanningWeekExporter = async (bookings, drivers, anchor, filtered) => {
-  const { downloadPlanningWeekPdf } = await import('../shared/adapters/pdf');
+  const { downloadPlanningWeekPdf } = await import('./adapters/pdf');
   await downloadPlanningWeekPdf(bookings, drivers, anchor, filtered);
 };
 const exportTariffDocument: TariffDocumentExporter = async (catalogue, kind, share, tollPoints) => {

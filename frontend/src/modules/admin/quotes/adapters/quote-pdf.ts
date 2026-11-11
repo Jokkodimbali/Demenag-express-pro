@@ -2,14 +2,15 @@ import { assetDataUrl } from '../../../shared/adapters/pdf-assets';
 import { addPdfImage, cleanPdfText, pdfParagraph } from './quote-pdf-render';
 import { drawQuoteSignature } from './quote-pdf-signature';
 import { drawQuoteTerms } from './quote-pdf-terms';
-import { dateLabel, money, referenceTierLabels } from '../../../shared/application/presentation/format';
+import {
+  dateLabel,
+  money,
+  referenceTierLabels,
+} from '../../../shared/application/presentation/format';
 import { referenceDwellingVolume } from '../../../moving/domain/estimate/reference-inventory-note';
 import { defaultQuoteTerms } from '../../../moving/domain/quote-terms';
 import type { Booking, Quote, Settings } from '../../../shared/domain/model';
-import {
-  durationLabel,
-  quotePdfNotes,
-} from './quote-pdf-text';
+import { durationLabel, quotePdfNotes } from './quote-pdf-text';
 
 export async function downloadQuote(
   booking: Booking,

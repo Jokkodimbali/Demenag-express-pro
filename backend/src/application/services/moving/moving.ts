@@ -1,11 +1,14 @@
-import { isAvailableBookingSlot, transition, validateDate } from '../../../domain/moving/booking.js';
+import {
+  isAvailableBookingSlot,
+  transition,
+  validateDate,
+} from '../../../domain/moving/booking.js';
 import { AppError, requireValue } from '../../../domain/shared/errors.js';
 import { messages } from '../../../domain/shared/messages/fr.js';
 import type {
   Booking,
   BookingInput,
   BookingStatus,
-  BookingPricingSnapshot,
   Options,
   Point,
   QuoteInput,
@@ -16,6 +19,7 @@ import type {
 } from '../../../domain/shared/model.js';
 import {
   canReadBooking,
+  isAssignedToBooking,
   requireActiveUser,
   requireAdministrator,
   requireNotDriver,
@@ -40,6 +44,11 @@ import { createRouteTicket } from './moving-routing.js';
 import { normalizePhone } from '../identity/auth.js';
 import { movingPriceInput } from './moving-price-input.js';
 import { repriceProvisionalQuote } from './reprice-provisional-quote.js';
+import {
+  applyCurrentPricingSnapshot,
+  capturePricingSnapshot as captureMovingPricingSnapshot,
+} from './moving-pricing-snapshot.js';
+import { notifyAssignedDriver as publishAssignedDriverNotification } from './moving-driver-notification.js';
 import {
   deleteBooking,
   listTrashedBookings,
@@ -423,7 +432,7 @@ export class MovingService implements MovingUseCases {
     const driver = await this.drivers.findByUserId(user.id);
     if (!driver?.active) throw new AppError(404, messages.profilChauffeurIntrouvable);
     const bookings = await this.bookings.list(undefined, undefined, false);
-    return bookings.filter((booking) => this.isAssignedToDriver(booking, driver.id));
+    return bookings.filter((booking) => isAssignedToBooking(booking, driver.id));
   }
   async get(user: User, id: string) {
     requireActiveUser(user);
@@ -647,37 +656,20 @@ export class MovingService implements MovingUseCases {
     return updated;
   }
   private async notifyAssignedDriver(booking: Booking, title: string, message: string) {
-    if (!booking.driverId) return;
-    const driver = await this.drivers.find(booking.driverId);
-    if (!driver?.userId) return;
-    try {
-      await this.notifications?.publish(
-        {
-          id: this.ids.next(),
-          title,
-          message,
-          createdAt: this.clock.now().toISOString(),
-          bookingId: booking.id,
-        },
-        { userIds: [driver.userId] },
-      );
-    } catch (error) {
-      console.error('Notification chauffeur non envoyée après une action de réservation :', error);
-    }
+    return publishAssignedDriverNotification(
+      this.drivers,
+      this.notifications,
+      this.ids,
+      this.clock,
+      booking,
+      title,
+      message,
+    );
   }
   private async assignedDriver(user: User, booking: Booking) {
     const driver = await this.drivers.findByUserId(user.id);
     if (!driver?.active) return null;
-    return this.isAssignedToDriver(booking, driver.id) ? driver : null;
-  }
-  private isAssignedToDriver(booking: Booking, driverId: string) {
-    const crew = booking.crew;
-    return (
-      booking.driverId === driverId ||
-      Boolean(crew?.chauffeur.includes(driverId)) ||
-      Boolean(crew?.menuisier.includes(driverId)) ||
-      Boolean(crew?.manoeuvre.includes(driverId))
-    );
+    return isAssignedToBooking(booking, driver.id) ? driver : null;
   }
   async schedule(user: User, id: string, date: string | null, timeSlot: string, version: number) {
     requireActiveUser(user);
@@ -969,61 +961,27 @@ export class MovingService implements MovingUseCases {
     );
   }
   async applyCurrentPricingSnapshot(user: User, id: string, version: number) {
-    requireAdministrator(user);
-    const booking = await this.get(user, id);
-    if (booking.version !== version)
-      throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
-    requireValue(
-      !['completed', 'cancelled'].includes(booking.status) &&
-        !booking.quotes.some((quote) => quote.kind === 'final'),
-      messages.cetteReservationEstCloturee,
-    );
-    const catalogue = await this.catalogue.get();
-    const pricingSnapshot = await this.capturePricingSnapshot(
-      Object.fromEntries(
-        catalogue.vehicles.map((item) => [item.id, [...item.prices] as [number, number, number]]),
-      ),
-    );
-    const vehicle = catalogue.vehicles.find((item) => item.id === booking.vehicle.id);
-    if (!vehicle) throw new AppError(400, messages.vehiculeInconnu);
-    const estimate = calculatePrice(
-      vehicle,
-      catalogue.settings,
-      booking.distanceKm,
-      booking.options,
-      booking.estimate.trips,
-      null,
-      0,
-      [],
-      booking.workAccess,
-      undefined,
-      'fcfa',
-      '',
-      booking.date,
-    );
-    return this.bookings.update(
-      { ...booking, vehicle, pricingSettings: catalogue.settings, pricingSnapshot, estimate },
+    return applyCurrentPricingSnapshot(
+      {
+        bookings: this.bookings,
+        catalogue: this.catalogue,
+        accounting: this.accounting,
+        clock: this.clock,
+        getBooking: (actor, bookingId) => this.get(actor, bookingId),
+      },
+      user,
+      id,
       version,
+    );
+  }
+  private capturePricingSnapshot(vehiclePrices: Record<string, [number, number, number]>) {
+    return captureMovingPricingSnapshot(
+      { catalogue: this.catalogue, accounting: this.accounting, clock: this.clock },
+      { vehiclePrices },
     );
   }
   async delete(user: User, id: string) {
     return deleteBooking(this.bookings, user, id);
-  }
-  private async capturePricingSnapshot(
-    vehiclePrices: Record<string, [number, number, number]>,
-  ): Promise<BookingPricingSnapshot> {
-    const [points, accounting] = await Promise.all([
-      this.catalogue.listTollPoints(),
-      this.accounting?.configuration() ?? Promise.resolve(null),
-    ]);
-    return {
-      capturedAt: this.clock.now().toISOString(),
-      vehiclePrices,
-      tollPoints: points.map((point) => ({ ...point, vehiclePrices: { ...point.vehiclePrices } })),
-      accounting: accounting
-        ? { moverCostPerMove: accounting.moverCostPerMove, menuPrices: accounting.menuPrices }
-        : null,
-    };
   }
   async trashed(user: User) {
     return listTrashedBookings(this.bookings, user);

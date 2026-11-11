@@ -15,24 +15,24 @@ import {
   referenceMovingEstimateNote,
 } from '../../../../moving/domain/estimate/reference-inventory-note';
 import { referenceTierLabels } from '../../../../shared/application/presentation/format';
-import { today } from '../../../../shared/domain/date';
-import { labourUnitPrice, labourUnitPriceOverrideFromQuote } from '../../../../moving/domain/pricing/labour-price';
+import {
+  labourUnitPrice,
+  labourUnitPriceOverrideFromQuote,
+} from '../../../../moving/domain/pricing/labour-price';
 import { useAdminQuoteTraffic } from './useAdminQuoteTraffic';
 import type { Booking, Options, Price, Quote } from '../../../../shared/domain/model';
-import { bookingInventorySnapshot, estimateMovingWork } from '../../../../moving/domain/estimate/moving-estimate';
+import {
+  bookingInventorySnapshot,
+  estimateMovingWork,
+} from '../../../../moving/domain/estimate/moving-estimate';
 import { defaultClientQuestions } from '../../../../booking/domain/questionnaire';
 import { quoteNotificationUrl } from '../services/quote-notification';
-import { whatsappNumber, whatsappUrl } from '../../../../shared/messaging/application/services/whatsapp';
-import {
-  quoteConditionsText,
-  whatsappPaymentLine,
-} from '../../../../shared/messaging/application/services/whatsapp-templates';
+import { quoteConditionsText } from '../../../../shared/messaging/application/services/whatsapp-templates';
 import { createAdminQuotePreview } from '../services/admin-quote-preview';
-import {
-  cheaperCompatibleVehicle,
-  vehicleFitWarnings,
-} from '../services/quote-vehicle-fit';
+import { cheaperCompatibleVehicle, vehicleFitWarnings } from '../services/quote-vehicle-fit';
 import { fitConfirmationCopy } from '../services/quote-fit-confirmation';
+import { quoteReminder } from '../services/quote-reminder';
+import { startQuoteWhatsAppSubmission } from '../services/quote-whatsapp-submission';
 import { errorMessage } from '../../../../shared/application/error-message';
 
 export function useAdminCreateQuoteModel(publicRequest: boolean) {
@@ -649,85 +649,36 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const availableMenuLines = preview.availableMenuLines;
   const menuIncluded = preview.menuIncluded;
   const savedQuote = editingBooking?.quotes.filter((quote) => quote.kind === quoteKind).at(-1);
-  const canSendQuoteWhatsApp = Boolean(
-    whatsappNumber(draft.customerPhone, catalogue?.settings.whatsappCountryCode ?? '221').length >=
-    10,
-  );
-  const reminderDays = draft.date
-    ? Math.round(
-        (+new Date(`${draft.date}T12:00:00Z`) - +new Date(`${today()}T12:00:00Z`)) / 86400000,
-      )
-    : -1;
-  const reminderCanSend = Boolean(
-    editingBooking && draft.date && reminderDays >= 0 && canSendQuoteWhatsApp,
-  );
-  const reminderDisabledReason = !editingBooking
-    ? 'Enregistrez le devis pour envoyer un rappel'
-    : !canSendQuoteWhatsApp
-      ? 'Ajoutez le numéro du client'
-      : !draft.date
-        ? 'Choisissez la date du rendez-vous'
-        : reminderDays < 0
-          ? 'La date du rendez-vous est passée'
-          : '';
-  const reminderWhen =
-    reminderDays === 0
-      ? 'aujourd’hui'
-      : reminderDays === 1
-        ? 'demain'
-        : reminderDays % 7 === 0
-          ? `dans ${reminderDays / 7} semaine${reminderDays > 7 ? 's' : ''}`
-          : `dans ${reminderDays} jours`;
-  const reminderDateLabel = draft.date
-    ? new Date(`${draft.date}T12:00:00Z`).toLocaleDateString('fr-FR', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-        timeZone: 'Africa/Dakar',
-      })
-    : '';
-  const reminderPayment = whatsappPaymentLine(catalogue?.settings);
-  const reminderConditions = quoteConditionsText(estimateInventory, quoteConfig.billingMode);
-  const balconyPrice = Math.max(0, Math.round(Number(estimateInventory.balcPx) || 0));
-  const reminderHref = editingBooking
-    ? whatsappUrl(
-        draft.customerPhone,
-        `Bonjour ${draft.customerName}, petit rappel de Demenag Express : votre déménagement (${editingBooking.reference}) est prévu ${reminderWhen}, le ${reminderDateLabel}${draft.timeSlot && draft.timeSlot !== 'À définir' ? ` à ${draft.timeSlot}` : ''}.\n${draft.fromAddress ? `Départ : ${draft.fromAddress}\n` : ''}${draft.toAddress ? `Arrivée : ${draft.toAddress}\n` : ''}${reminderConditions || 'Merci de préparer vos affaires pour le chargement.'}${reminderPayment ? `\n${reminderPayment}` : ''}\nPour toute question, contactez-nous au ${catalogue?.settings.whatsappPhone || catalogue?.settings.businessPhone || ''}. À bientôt !`,
-        catalogue?.settings,
-      )
-    : '';
+  const {
+    canSendQuoteWhatsApp,
+    reminderDays,
+    reminderWhen,
+    reminderCanSend,
+    reminderDisabledReason,
+    reminderHref,
+    balconyPrice,
+  } = quoteReminder({
+    draft,
+    booking: editingBooking,
+    settings: catalogue?.settings,
+    inventory: estimateInventory,
+    billingMode: quoteConfig.billingMode,
+  });
   function sendCurrentQuoteOnWhatsApp() {
-    if (!canSendQuoteWhatsApp) {
-      setStageError('Numéro WhatsApp du client invalide.');
-      setOpenQuoteSections((current) => ({ ...current, client: true }));
-      return;
-    }
-    if (quoteKind === 'final' && estimateInventory.stairs === 'balcon' && balconyPrice <= 0) {
-      setStageError('Passage par le balcon : fixez le supplément avant le devis final.');
-      return;
-    }
-    if (quoteKind === 'final' && previewTier === 3 && !(Number(quoteConfig.customPrice) > 0)) {
-      setStageError(
-        `Distance au-delà de ${bounds[2]} km : fixez le prix par aller-retour avant le devis final.`,
-      );
-      return;
-    }
-    if (quoteKind === 'final' && (!draft.date || draft.noDate)) {
-      setStageError(
-        'Un devis sans date reste provisoire. Choisissez une date pour passer en final.',
-      );
-      return;
-    }
-    const form = document.getElementById('admin-quote-form') as HTMLFormElement | null;
-    if (!form?.reportValidity()) return;
-    whatsappWindow.current = window.open('about:blank', '_blank');
-    if (!whatsappWindow.current) {
-      setStageError('Autorisez les fenêtres pour ouvrir WhatsApp après l’enregistrement du devis.');
-      return;
-    }
-    sendWhatsAppAfterSave.current = true;
-    setStageError('');
-    form.requestSubmit();
+    startQuoteWhatsAppSubmission({
+      canSendQuoteWhatsApp,
+      quoteKind,
+      stairs: estimateInventory.stairs,
+      balconyPrice,
+      previewTier,
+      customPrice: quoteConfig.customPrice,
+      maximumDistance: bounds[2],
+      draft,
+      setStageError,
+      openClientSection: () => setOpenQuoteSections((current) => ({ ...current, client: true })),
+      whatsappWindow,
+      sendWhatsAppAfterSave,
+    });
   }
   async function downloadCurrentQuote() {
     const pdfSettings = quoteSettings ?? catalogue?.settings;
@@ -1019,11 +970,9 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     savedQuote,
     canSendQuoteWhatsApp,
     reminderDays,
+    reminderWhen,
     reminderCanSend,
     reminderDisabledReason,
-    reminderWhen,
-    reminderDateLabel,
-    reminderPayment,
     reminderHref,
     sendCurrentQuoteOnWhatsApp,
     downloadCurrentQuote,

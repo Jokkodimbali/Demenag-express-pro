@@ -15,7 +15,10 @@ import {
   tripLabel,
   loadingRules,
 } from '../../../moving/application/services/loading-simulation-model';
-import type { SimPlan, SimView } from '../../../moving/application/services/loading-simulation-model';
+import type {
+  SimPlan,
+  SimView,
+} from '../../../moving/application/services/loading-simulation-model';
 import { useLoadingSimulationPdfExporter } from '../../../booking/application/loading-simulation-pdf-context';
 import { useLoadingSimulationPreferences } from '../application/controllers/useLoadingSimulationPreferences';
 import { visibleUiText } from '../../../shared/content/visible-ui-text';

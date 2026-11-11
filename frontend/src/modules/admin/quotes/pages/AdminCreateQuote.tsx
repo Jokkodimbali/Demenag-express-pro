@@ -3,14 +3,19 @@ import { uiText } from '../../../shared/content/reference-ui-text';
 import { ChevronDown } from 'lucide-react';
 import { Suspense, lazy, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { normalizedClientPhone } from '../../../shared/domain/client-identity';
 import { CallInventory } from '../../../booking/components/CallInventory';
 import { FleetVehicleImagePreview } from '../../fleet/components/FleetVehicleDimensions';
 import { AdminQuoteQuestionnaire } from '../components/AdminQuoteQuestionnaire';
 import { TollRateSelector } from '../../../moving/tolls/components/TollRateSelector';
-import { dateLabel, money, referenceTierLabels } from '../../../shared/application/presentation/format';
-import { today } from '../../../shared/domain/date';
-import { bookingInventorySnapshot, formatDuration } from '../../../moving/domain/estimate/moving-estimate';
+import {
+  dateLabel,
+  money,
+  referenceTierLabels,
+} from '../../../shared/application/presentation/format';
+import {
+  bookingInventorySnapshot,
+  formatDuration,
+} from '../../../moving/domain/estimate/moving-estimate';
 import { BookingConfirmation } from '../../../booking/components/BookingConfirmation';
 import { routes } from '../../../shared/navigation/config/routes';
 import { useAdminCreateQuoteModel } from '../application/controllers/useAdminCreateQuoteModel';
@@ -20,10 +25,11 @@ import { AdminQuoteSettings } from '../components/AdminQuoteSettings';
 import { AdminQuoteSaveBar } from '../components/AdminQuoteSaveBar';
 import { AdminQuoteStepHeading } from '../components/AdminQuoteStepHeading';
 import { AdminQuoteStep } from '../components/AdminQuoteStep';
+import { AdminQuoteClientIdentity } from '../components/AdminQuoteClientIdentity';
 import { LoadingSimulation } from '../components/LoadingSimulation';
 import { adminQuoteVehicleText as quoteText } from '../content/admin-quote-vehicle';
 import { quoteConditionsText } from '../../../shared/messaging/application/services/whatsapp-templates';
-import { normalizePhoneNumber, sanitizePhoneInput } from '../../../shared/domain/phone-number';
+import { normalizePhoneNumber } from '../../../shared/domain/phone-number';
 
 const RouteMap = lazy(() => import('../../../moving/maps/RouteMap'));
 
@@ -419,165 +425,18 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             nextLabel="Suivant : trajet →"
             collapsible={!publicRequest}
           >
-            <section className="admin-quote-card">
-              <button
-                className="admin-quote-section-toggle"
-                type="button"
-                aria-expanded={openQuoteSections.client}
-                aria-controls="admin-quote-client-fields"
-                onClick={() => toggleQuoteSection('client')}
-              >
-                <ChevronDown size={16} aria-hidden="true" />
-                <span>
-                  {state.editingBooking
-                    ? `DEVIS POUR ${state.editingBooking.reference}`
-                    : publicRequest
-                      ? 'VOS INFORMATIONS'
-                      : 'NOUVEAU DEVIS · CLIENT EN AGENCE'}
-                </span>
-              </button>
-              {openQuoteSections.client && (
-                <div id="admin-quote-client-fields">
-                  <div className="admin-quote-identity">
-                    <div className="admin-quote-client-name">
-                      <input
-                        required
-                        maxLength={100}
-                        value={draft.customerName}
-                        onChange={(event) =>
-                          setDraft((current) => ({ ...current, customerName: event.target.value }))
-                        }
-                        placeholder={uiText['nomDuClient']}
-                        aria-label={uiText['nomDuClient']}
-                      />
-                    </div>
-                    <div>
-                      <input
-                        required
-                        type="tel"
-                        inputMode="tel"
-                        maxLength={25}
-                        value={draft.customerPhone}
-                        onChange={(event) =>
-                          setDraft((current) => ({
-                            ...current,
-                            customerPhone: sanitizePhoneInput(event.target.value),
-                          }))
-                        }
-                        placeholder={visibleUiText.text123}
-                        aria-label={uiText['telephone']}
-                      />
-                    </div>
-                    {!publicRequest && (
-                      <div className="admin-quote-source">
-                        <span>{uiText['commentLECLIENTNOUSACONNUS']}</span>
-                        <div>
-                          {[
-                            'Facebook',
-                            'YouTube',
-                            'Instagram',
-                            'Snapchat',
-                            'TikTok',
-                            'Autre pub',
-                            'Bouche-à-oreille',
-                            'Client fidèle',
-                            'Autre',
-                          ].map((source) => {
-                            const selected = draft.source === source;
-                            return (
-                              <button
-                                type="button"
-                                key={source}
-                                className={selected ? 'selected' : ''}
-                                onClick={() =>
-                                  setDraft((current) => ({
-                                    ...current,
-                                    source: selected ? '' : source,
-                                  }))
-                                }
-                              >
-                                {source}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                    <div className="admin-quote-date-control">
-                      {!draft.noDate && (
-                        <input
-                          type="date"
-                          min={editingReservation ? undefined : today()}
-                          value={draft.date}
-                          aria-label={uiText['datePrevue']}
-                          onChange={(event) =>
-                            setDraft((current) => ({
-                              ...current,
-                              date: event.target.value,
-                              month: event.target.value
-                                ? event.target.value.slice(0, 7)
-                                : current.month,
-                            }))
-                          }
-                        />
-                      )}
-                      {draft.noDate && state.administrativeQuote && (
-                        <input
-                          type="month"
-                          required
-                          value={draft.month}
-                          aria-label={uiText['moisSouhaite']}
-                          onChange={(event) =>
-                            setDraft((current) => ({ ...current, month: event.target.value }))
-                          }
-                        />
-                      )}
-                      {state.administrativeQuote && (
-                        <label className="admin-quote-no-date">
-                          <input
-                            type="checkbox"
-                            checked={Boolean(draft.noDate)}
-                            onChange={(event) =>
-                              setDraft((current) => ({
-                                ...current,
-                                noDate: event.target.checked,
-                                date: event.target.checked ? '' : current.date,
-                                timeSlot: event.target.checked ? '' : current.timeSlot,
-                              }))
-                            }
-                          />
-                          <span>{uiText['dateADefinirMoisSeulement']}</span>
-                        </label>
-                      )}
-                    </div>
-                    <label className="admin-quote-start-time">
-                      <span>{uiText['debut']}</span>
-                      <input
-                        type="time"
-                        required={Boolean(draft.date)}
-                        value={draft.timeSlot}
-                        onChange={(event) =>
-                          setDraft((current) => ({ ...current, timeSlot: event.target.value }))
-                        }
-                      />
-                    </label>
-                  </div>
-                  {recognizingClient && (
-                    <p className="muted" role="status">
-                      {uiText['verificationDuClient']}
-                    </p>
-                  )}
-                  {clientRecognition &&
-                    clientRecognition.phone === normalizedClientPhone(draft.customerPhone) && (
-                      <p className="client-recognition">
-                        {uiText['clientDejaConnu']}
-                        {clientRecognition.name} · {clientRecognition.bookingCount}{' '}
-                        {uiText['reservationS']}
-                      </p>
-                    )}
-                </div>
-              )}
-            </section>
+            <AdminQuoteClientIdentity
+              draft={draft}
+              setDraft={setDraft}
+              expanded={openQuoteSections.client}
+              onToggle={() => toggleQuoteSection('client')}
+              editingReference={state.editingBooking?.reference}
+              publicRequest={publicRequest}
+              administrativeQuote={state.administrativeQuote}
+              editingReservation={editingReservation}
+              clientRecognition={clientRecognition}
+              recognizingClient={recognizingClient}
+            />
           </AdminQuoteStep>
           <AdminQuoteStep
             number={2}
@@ -1070,9 +929,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                 crew={movingEstimate?.crew ?? 2}
                 estimate={movingEstimate}
                 setDraft={setDraft}
-                onTripsChange={(trips) =>
-                  setQuoteConfig((current) => ({ ...current, trips }))
-                }
+                onTripsChange={(trips) => setQuoteConfig((current) => ({ ...current, trips }))}
                 onPlanNeeds={model.setSimulationNeeds}
               />
               {model.inventoryCount === 0 && (
