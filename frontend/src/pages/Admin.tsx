@@ -91,10 +91,6 @@ export function Admin() {
   const [successToast, setSuccessToast] = useState(
     () => (location.state as { successMessage?: string } | null)?.successMessage ?? '',
   );
-  const quoteHandoff = location.state as {
-    initialTollLines?: { id: string; label: string; quantity: number; unitPrice: number }[];
-    quoteError?: string;
-  } | null;
   const periodBookings = bookings.filter((booking) => {
     if (period === 'all') return true;
     if (!booking.date) return false;
@@ -192,16 +188,10 @@ export function Admin() {
     if (!selectedBookingId) return;
     navigate(administrationQuoteForBooking(selectedBookingId), {
       replace: true,
-      state: quoteHandoff,
     });
-  }, [navigate, quoteHandoff, selectedBookingId]);
+  }, [navigate, selectedBookingId]);
   return (
     <>
-      {quoteHandoff?.quoteError && (
-        <p className="alert error" role="alert">
-          {quoteHandoff.quoteError}
-        </p>
-      )}
       {actionError && (
         <p className="alert error" role="alert">
           {actionError}

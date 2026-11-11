@@ -37,12 +37,6 @@
   .summary h3 {
     font-size: 20px;
   }
-  .booking-card-main {
-    gap: 12px;
-  }
-  .booking-card-main > img {
-    width: 80px;
-  }
 }
 @media (max-width: 850px) {
   .driver-management {
@@ -128,7 +122,6 @@
     justify-content: center;
   }
   .driver-course-panel,
-  .booking-trip-history,
   .vehicle-report-form {
     padding: 12px;
   }
@@ -437,38 +430,6 @@
   }
   .workspace-page {
     padding-top: 30px;
-  }
-  .booking-card-main {
-    flex-wrap: wrap;
-    align-items: flex-start;
-  }
-  .booking-card-main > img {
-    width: 75px;
-  }
-  .booking-card-main > div:nth-child(2) {
-    flex-basis: calc(100% - 90px);
-  }
-  .booking-card-main p {
-    font-size: 10px;
-    align-items: flex-start;
-  }
-  .booking-amount {
-    width: 100%;
-    text-align: left;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: 10px;
-  }
-  .booking-amount > span {
-    margin: 0;
-  }
-  .card-actions > .button {
-    font-size: 10px;
-    padding: 10px;
-  }
-  .booking-card-top {
-    gap: 8px;
   }
   .pagination {
     align-items: flex-start;

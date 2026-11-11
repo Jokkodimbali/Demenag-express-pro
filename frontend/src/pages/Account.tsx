@@ -8,7 +8,7 @@ import { messages } from '../content/fr';
 import { routes } from '../routing/routes';
 import { visibleUiText } from '../content/visible-ui-text';
 export function Account() {
-  const { user, bookings, setBookings, loading, error, setRetry } = useAccount();
+  const { user, bookings, loading, error, setRetry } = useAccount();
   if (user?.role === 'admin')
     return (
       <section className="container workspace-page">
@@ -56,15 +56,7 @@ export function Account() {
         <div className="reference-client-empty">{uiText['aucuneReservationPourCeNumero']}</div>
       )}
       {!loading &&
-        bookings.map((booking) => (
-          <ClientBookingCard
-            key={booking.id}
-            booking={booking}
-            onChange={(next) =>
-              setBookings((rows) => rows.map((row) => (row.id === next.id ? next : row)))
-            }
-          />
-        ))}
+        bookings.map((booking) => <ClientBookingCard key={booking.id} booking={booking} />)}
     </section>
   );
 }

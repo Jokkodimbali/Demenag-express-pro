@@ -9,13 +9,7 @@ import { routes } from '../routing/routes';
 import { BookingRouteMap } from './BookingRouteMap';
 import { Link } from 'react-router-dom';
 
-export function ClientBookingCard({
-  booking,
-  onChange,
-}: {
-  booking: Booking;
-  onChange: (booking: Booking) => void;
-}) {
+export function ClientBookingCard({ booking }: { booking: Booking }) {
   const { catalogue } = useApp();
   const { pdf, busy, error } = useClientBookingPdf(booking);
   const provisionalQuote = booking.quotes.filter((quote) => quote.kind === 'provisional').at(-1);

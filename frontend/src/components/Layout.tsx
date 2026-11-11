@@ -33,6 +33,16 @@ export function Layout() {
       if (noticeTimer.current) clearTimeout(noticeTimer.current);
     };
   }, []);
+  useEffect(() => {
+    function closeOnOutsidePointer(event: PointerEvent) {
+      const menu = accountMenuRef.current;
+      if (menu?.open && event.target instanceof Node && !menu.contains(event.target)) {
+        menu.removeAttribute('open');
+      }
+    }
+    document.addEventListener('pointerdown', closeOnOutsidePointer);
+    return () => document.removeEventListener('pointerdown', closeOnOutsidePointer);
+  }, []);
 
   const accountRoute =
     user?.role === 'admin'

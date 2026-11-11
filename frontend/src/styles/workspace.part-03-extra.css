@@ -659,8 +659,7 @@
 .teams-address-update strong {
   color: #ff9f5a;
 }
-.admin-reminder-disabled,
-.booking-reminder-disabled {
+.admin-reminder-disabled {
   color: var(--muted);
   font-size: 0.75rem;
 }

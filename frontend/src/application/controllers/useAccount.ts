@@ -31,5 +31,5 @@ export function useAccount() {
       active = false;
     };
   }, [api, retry]);
-  return { user, bookings, setBookings, loading, error, setRetry };
+  return { user, bookings, loading, error, setRetry };
 }
