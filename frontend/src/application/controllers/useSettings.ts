@@ -4,7 +4,10 @@ import { errorMessage } from '../error-message';
 import { catalogueFromForm } from '../validation/forms';
 import type { Catalogue, Settings } from '../../domain/model';
 import { defaultAccountingFinanceConfiguration } from '../../domain/accounting-forecast';
-import { resetAccountingChargesToReference, resetCatalogueTariffsToReference } from '../../domain/reference-tariff-defaults';
+import {
+  resetAccountingChargesToReference,
+  resetCatalogueTariffsToReference,
+} from '../../domain/reference-tariff-defaults';
 export function useSettings() {
   const { api, catalogue, setCatalogue } = useApp();
   const [busy, setBusy] = useState(false),

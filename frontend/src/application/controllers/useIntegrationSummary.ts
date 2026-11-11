@@ -13,7 +13,9 @@ export function useIntegrationSummary() {
       if (claude.status === 'fulfilled') setClaudeConnected(claude.value.connected);
       if (maps.status === 'fulfilled') setMapsConfigured(Boolean(maps.value.trim()));
     });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [api]);
 
   return { claudeConnected, mapsConfigured, setClaudeConnected, setMapsConfigured };

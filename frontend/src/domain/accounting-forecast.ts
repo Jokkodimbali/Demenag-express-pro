@@ -4,7 +4,10 @@ import type {
   AccountingFinanceConfiguration,
   Booking,
 } from './model';
-import { createReferenceAccountingConfiguration, referenceAssemblyPayrollDefaults } from '../../../shared/reference-tariff-defaults.js';
+import {
+  createReferenceAccountingConfiguration,
+  referenceAssemblyPayrollDefaults,
+} from '../../../shared/reference-tariff-defaults.js';
 
 export const advertisingChannels = [
   'Facebook',

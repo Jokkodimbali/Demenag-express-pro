@@ -3,43 +3,43 @@ export const referenceAssemblyPriceDefaults = {
     local: 5200,
     import: 7800,
     sz: {
-      '1': {
+      1: {
         local: 2600,
         import: 3900,
       },
-      '2': {
+      2: {
         local: 5200,
         import: 7800,
       },
-      '3': {
+      3: {
         local: 6500,
         import: 9100,
       },
-      '4': {
+      4: {
         local: 9100,
         import: 13000,
       },
-      '5': {
+      5: {
         local: 13000,
         import: 15600,
       },
-      '6': {
+      6: {
         local: 15600,
         import: 19500,
       },
-      '7': {
+      7: {
         local: 19500,
         import: 23400,
       },
-      '8': {
+      8: {
         local: 22100,
         import: 26000,
       },
-      '9': {
+      9: {
         local: 24700,
         import: 27300,
       },
-      '10': {
+      10: {
         local: 27300,
         import: 31200,
       },
@@ -61,47 +61,47 @@ export const referenceAssemblyPriceDefaults = {
     local: 5200,
     import: 6500,
     sz: {
-      '2': {
+      2: {
         local: 5200,
         import: 6500,
       },
-      '3': {
+      3: {
         local: 6500,
         import: 7800,
       },
-      '4': {
+      4: {
         local: 6500,
         import: 9100,
       },
-      '5': {
+      5: {
         local: 6500,
         import: 9100,
       },
-      '6': {
+      6: {
         local: 6500,
         import: 9100,
       },
-      '7': {
+      7: {
         local: 6500,
         import: 9100,
       },
-      '8': {
+      8: {
         local: 6500,
         import: 9100,
       },
-      '9': {
+      9: {
         local: 6500,
         import: 9100,
       },
-      '10': {
+      10: {
         local: 7800,
         import: 13000,
       },
-      '11': {
+      11: {
         local: 7800,
         import: 13000,
       },
-      '12': {
+      12: {
         local: 7800,
         import: 13000,
       },
@@ -131,19 +131,19 @@ export const referenceAssemblyPriceDefaults = {
     local: 3900,
     import: 6500,
     sz: {
-      '1': {
+      1: {
         local: 3250,
         import: 3900,
       },
-      '2': {
+      2: {
         local: 3900,
         import: 6500,
       },
-      '3': {
+      3: {
         local: 6500,
         import: 13000,
       },
-      '4': {
+      4: {
         local: 0,
         import: 0,
       },
@@ -153,19 +153,19 @@ export const referenceAssemblyPriceDefaults = {
     local: 0,
     import: 0,
     sz: {
-      '1': {
+      1: {
         local: 0,
         import: 0,
       },
-      '2': {
+      2: {
         local: 0,
         import: 0,
       },
-      '3': {
+      3: {
         local: 0,
         import: 0,
       },
-      '4': {
+      4: {
         local: 0,
         import: 0,
       },
@@ -175,35 +175,35 @@ export const referenceAssemblyPriceDefaults = {
     local: 5200,
     import: 6500,
     sz: {
-      '1': {
+      1: {
         local: 3900,
         import: 6500,
       },
-      '2': {
+      2: {
         local: 5200,
         import: 6500,
       },
-      '3': {
+      3: {
         local: 6500,
         import: 9100,
       },
-      '4': {
+      4: {
         local: 6500,
         import: 13000,
       },
-      '5': {
+      5: {
         local: 6500,
         import: 13000,
       },
-      '6': {
+      6: {
         local: 6500,
         import: 13000,
       },
-      '7': {
+      7: {
         local: 6500,
         import: 13000,
       },
-      '8': {
+      8: {
         local: 6500,
         import: 13000,
       },

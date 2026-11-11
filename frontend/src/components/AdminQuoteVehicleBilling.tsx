@@ -29,35 +29,35 @@ export function AdminQuoteVehicleBilling({
         <section className="admin-quote-billing admin-quote-card" aria-label={t.billing}>
           <h3>{t.billing}</h3>
           <div className="admin-quote-billing-options" role="group" aria-label={t.billing}>
-          <button
-            type="button"
-            aria-pressed={quoteConfig.billingMode !== 'driver-rental'}
-            className={quoteConfig.billingMode !== 'driver-rental' ? 'active' : ''}
-            onClick={() =>
-              setQuoteConfig((current) => ({
-                ...current,
-                billingMode: current.billingMode === 'standard' ? 'standard' : 'complete',
-                overtimeMinutes: 0,
-              }))
-            }
-          >
-            {t.complete}
-          </button>
-          <button
-            type="button"
-            aria-pressed={quoteConfig.billingMode === 'driver-rental'}
-            className={quoteConfig.billingMode === 'driver-rental' ? 'active' : ''}
-            onClick={() =>
-              setQuoteConfig((current) => ({
-                ...current,
-                billingMode: 'driver-rental',
-                menuIncluded: false,
-                overtimeMinutes: 0,
-              }))
-            }
-          >
-            {t.driverRental}
-          </button>
+            <button
+              type="button"
+              aria-pressed={quoteConfig.billingMode !== 'driver-rental'}
+              className={quoteConfig.billingMode !== 'driver-rental' ? 'active' : ''}
+              onClick={() =>
+                setQuoteConfig((current) => ({
+                  ...current,
+                  billingMode: current.billingMode === 'standard' ? 'standard' : 'complete',
+                  overtimeMinutes: 0,
+                }))
+              }
+            >
+              {t.complete}
+            </button>
+            <button
+              type="button"
+              aria-pressed={quoteConfig.billingMode === 'driver-rental'}
+              className={quoteConfig.billingMode === 'driver-rental' ? 'active' : ''}
+              onClick={() =>
+                setQuoteConfig((current) => ({
+                  ...current,
+                  billingMode: 'driver-rental',
+                  menuIncluded: false,
+                  overtimeMinutes: 0,
+                }))
+              }
+            >
+              {t.driverRental}
+            </button>
           </div>
         </section>
       )}

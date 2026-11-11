@@ -32,7 +32,11 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
         <strong>{visibleUiText.text125}</strong>
         <div className="admin-quote-reference-setting">
           <span>Formule</span>
-          <div className="admin-quote-formula-options" role="group" aria-label={visibleUiText.text213}>
+          <div
+            className="admin-quote-formula-options"
+            role="group"
+            aria-label={visibleUiText.text213}
+          >
             <button
               type="button"
               aria-pressed={quoteConfig.billingMode === 'driver-rental'}

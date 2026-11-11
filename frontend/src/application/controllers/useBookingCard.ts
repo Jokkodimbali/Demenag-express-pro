@@ -59,17 +59,13 @@ export function useBookingCard({
     }));
   const quotePreviewTotal = useMemo(() => {
     if (!quoteSettings) return null;
-    const currentVehicle = catalogue?.vehicles.find((item) => item.id === b.vehicle.id) ?? b.vehicle;
+    const currentVehicle =
+      catalogue?.vehicles.find((item) => item.id === b.vehicle.id) ?? b.vehicle;
     const vehicle = {
       ...currentVehicle,
       prices: b.pricingSnapshot?.vehiclePrices[b.vehicle.id] ?? b.vehicle.prices,
     };
-    return quoteTotal(
-      { ...b, vehicle },
-      quoteSettings,
-      quoteDraft,
-      billableExtraLines,
-    );
+    return quoteTotal({ ...b, vehicle }, quoteSettings, quoteDraft, billableExtraLines);
   }, [b, billableExtraLines, catalogue?.vehicles, quoteDraft, quoteSettings]);
   useEffect(() => {
     setQuoteDraft({

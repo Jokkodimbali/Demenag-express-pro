@@ -235,7 +235,9 @@ export async function downloadQuote(
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.text(
-    cleanPdfText(`${price.trips} aller(s)-retour(s)${isFinal ? '' : ' estimé(s)'} · ${booking.vehicle.shortName || booking.vehicle.name}`),
+    cleanPdfText(
+      `${price.trips} aller(s)-retour(s)${isFinal ? '' : ' estimé(s)'} · ${booking.vehicle.shortName || booking.vehicle.name}`,
+    ),
     margin + 5,
     y + 15,
   );
