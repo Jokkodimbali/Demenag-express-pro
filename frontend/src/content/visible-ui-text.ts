@@ -201,7 +201,8 @@ export const visibleUiText = {
   text191: 'Champs : ',
   text192: 'Exemple :',
   text193: 'Grille tarifaire client',
-  text194: 'Une page simple à envoyer aux clients : transport par véhicule et distance, manœuvres et étages, démontage local/importé, location avec chauffeur, bon à savoir et contact.',
+  text194:
+    'Une page simple à envoyer aux clients : transport par véhicule et distance, manœuvres et étages, démontage local/importé, location avec chauffeur, bon à savoir et contact.',
   text195: 'Télécharger la grille',
   text196: 'Envoyer…',
   pricingAgentDownload: 'Télécharger le PDF',
@@ -210,8 +211,7 @@ export const visibleUiText = {
     'PDF complet généré à partir de vos tarifs actuels : formules, véhicules, transport par tranche, manœuvres et étages, menuisier local/importé par taille, péages, location et dépassement, exemples chiffrés, réponses types et données structurées. À donner à votre agent IA pour qu’il réponde aux clients.',
   text199: 'Aller aux paramètres',
   text200: 'Aller à :',
-  text201:
-    'Les sauvegardes et la remise à zéro des données sont dans l’onglet Données.',
+  text201: 'Les sauvegardes et la remise à zéro des données sont dans l’onglet Données.',
   text202: 'Location avec chauffeur · dépassement du planning (par heure)',
   text203: 'Contact',
   text204: 'Exporter tous les contacts',
@@ -246,13 +246,19 @@ export const visibleUiText = {
   pricingResetConfirmDescription:
     'Remet les valeurs par défaut : transport par véhicule (Trafic 15 000, Sprinter 28 000, Master 25 000 sous 15 km), manœuvre 6 500 FCFA (+500 par étage), grille menuisier client, allers-retours suivants à 60 %, jours creux −10 %, dépassement 10 000 FCFA/h ; paie manœuvre 5 000 FCFA, grille de paie menuisier, vidange, assurance, véhicules, dette et objectif. Les salaires, employés, péages et devis déjà enregistrés ne changent pas.',
   pricingResetConfirmLabel: 'Réinitialiser',
-  pricingResetSuccess: 'Prix et charges remis par défaut. Les devis déjà enregistrés gardent leurs prix.',
+  pricingResetSuccess:
+    'Prix et charges remis par défaut. Les devis déjà enregistrés gardent leurs prix.',
+  assemblyResetButton: 'Revenir à la grille par défaut',
+  assemblyResetConfirmTitle: 'Revenir à la grille par défaut ?',
+  assemblyResetConfirmDescription:
+    'Les prix client du démontage / montage reviennent à la grille d’origine (paie du menuisier + 30 %) et le manœuvre à 6 500 FCFA. Les devis déjà enregistrés gardent leurs prix.',
+  assemblyResetConfirmLabel: 'Rétablir',
+  assemblyResetSuccess: 'Grille client rétablie.',
   pricingManoeuvreIncludedHours: 'Heures comprises dans le prix d’un manœuvre',
   pricingManoeuvreOvertimeHourly: 'Au-delà, prix par heure et par manœuvre (0 = désactivé)',
   pricingAutomaticDiscounts: 'REMISES AUTOMATIQUES',
   pricingFollowingTrips: 'Allers-retours suivants, en % du 1er (100 = pas de dégressif)',
   pricingLowDemand: 'Remise jour creux sur le transport (lundi à jeudi, du 6 au 24 du mois)',
-  pricingAssemblyReset: 'Revenir à la grille par défaut',
   calculationRows: [
     'Inventaire',
     'Volume',

@@ -1,4 +1,5 @@
 import type { AccountingFinanceConfiguration, Booking, Price } from './model.js';
+import referenceAssemblyPayrollDefaults from '../../../shared/reference-assembly-payroll-prices.js';
 
 const aliases: Record<string, string> = {
   'table-basse': 'tbasse',
@@ -21,7 +22,8 @@ function menuUnitPrice(
   origin: 'local' | 'import',
   size?: number,
 ) {
-  const prices = config?.menuPrices?.[aliases[key] ?? key];
+  const normalizedKey = aliases[key] ?? key;
+  const prices = config?.menuPrices?.[normalizedKey] ?? referenceAssemblyPayrollDefaults[normalizedKey];
   const sized = size == null ? undefined : prices?.sz?.[String(size)]?.[origin];
   if (sized != null) return asInt(sized);
   return asInt(prices?.[origin] ?? (origin === 'import' ? 10_000 : 5_000));

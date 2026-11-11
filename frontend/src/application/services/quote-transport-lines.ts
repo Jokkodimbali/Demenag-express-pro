@@ -20,7 +20,6 @@ export function quoteTransportLines(input: {
     input.trips,
     input.followingTripPercent,
   );
-  if (lines.length === 1 && lines[0]) lines[0].label += ' (aller-retour)';
   const total = lines.reduce((sum, line) => sum + line.total, 0);
   const discount = referenceLowDemandDiscount(total, input.date, input.lowDemandPercent);
   if (discount > 0)

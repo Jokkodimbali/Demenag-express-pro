@@ -57,8 +57,10 @@ test('la fatigue reprend le poids et les distances ISO calculés avec les régla
   } as Parameters<typeof fatigueAdvice>[3];
 
   const result = fatigueAdvice([], inventory, 4, estimate);
-  assert.deepEqual(result.rows.slice(0, 4), [
+  assert.deepEqual(result.rows.slice(0, 6), [
     ['Poids total à porter', '≈ 1 234 kg'],
+    ['Durée totale prévue', 'Non calculée'],
+    ['Effort départ · arrivée', '200 · 200 W/m²'],
     ['Masse portée par manœuvre', '≈ 617 kg'],
     ['Limite ISO 11228-1 au départ', '2 553 kg / jour (47 m équivalents)'],
     ['Limite ISO 11228-1 à l’arrivée', '1 935 kg / jour (62 m équivalents)'],

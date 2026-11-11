@@ -62,7 +62,7 @@ export async function restoreConfiguration(
           },
         });
     },
-    { timeout: 30000 },
+    { maxWait: 15000, timeout: 120000 },
   );
 }
 

@@ -18,6 +18,7 @@ export async function configureDeterministicPricing(context: IntegrationContext)
       nombreMaximalTrajets: 20,
       preavisReservationHeures: 0,
       delaiMaximumJours: 366,
+      planificationManoeuvre: { lowDemandDiscountPercent: 10 },
       creneauxOuverts: [
         { label: 'Matin (8h – 12h)', startHour: 8 },
         { label: 'Après-midi (13h – 17h)', startHour: 13 },
@@ -36,7 +37,14 @@ export async function configureDeterministicPricing(context: IntegrationContext)
 }
 
 export function createBookingInput(context: IntegrationContext, routeId: string) {
-  const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+  const workDate = new Date();
+  workDate.setUTCHours(12, 0, 0, 0);
+  for (let daysAhead = 1; daysAhead <= 31; daysAhead += 1) {
+    workDate.setUTCDate(workDate.getUTCDate() + 1);
+    const dayOfWeek = workDate.getUTCDay();
+    const dayOfMonth = workDate.getUTCDate();
+    if (dayOfWeek >= 1 && dayOfWeek <= 4 && dayOfMonth >= 6 && dayOfMonth <= 24) break;
+  }
   return {
     vehicleId: 'sprinter',
     routeId,
@@ -44,8 +52,8 @@ export function createBookingInput(context: IntegrationContext, routeId: string)
     customerPhone: context.phone(0),
     fromAddress: 'Ouakam Dakar',
     toAddress: 'Almadies Dakar',
-    date: tomorrow,
-    timeSlot: '09:30',
+    date: workDate.toISOString().slice(0, 10),
+    timeSlot: '08:00',
     options: { labour: 1, desk: 0, wardrobe: 0, bed: 1 },
     notes: 'Test isolé',
     requestId: crypto.randomUUID(),

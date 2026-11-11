@@ -56,10 +56,20 @@ export async function verifyProvisionalQuoteCreation(
   assert.equal(quote.price.discountValue, 10);
   assert.equal(quote.price.discount, expectedDiscount);
   assert.equal(quote.price.total, lineSubtotal - expectedDiscount);
-  const transportLine = quote.price.lines.find((line) => line.label.startsWith('Transport'));
-  assert.ok(transportLine);
-  assert.equal(transportLine.quantity, 2);
-  assert.equal(transportLine.total, transportLine.unitPrice * 2);
+  const transportLines = quote.price.lines.filter(
+    (line) =>
+      line.label.startsWith('Transport') || line.label.startsWith('Allers-retours suivants'),
+  );
+  assert.equal(
+    transportLines.reduce((sum, line) => sum + line.quantity, 0),
+    2,
+    'Les lignes de transport doivent représenter les deux trajets facturés.',
+  );
+  assert.equal(
+    transportLines.reduce((sum, line) => sum + line.total, 0),
+    transportLines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0),
+    'Les montants unitaires doivent appliquer la réduction des trajets suivants.',
+  );
   const manualExtraLine = quote.price.lines.find((line) => line.label === 'Manutention spéciale');
   assert.ok(manualExtraLine);
   assert.equal(manualExtraLine.quantity, 2);

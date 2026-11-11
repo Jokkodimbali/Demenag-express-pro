@@ -2,7 +2,8 @@ import { toVehicle, toSettings } from '../src/adapters/out/prisma/mapping.js';
 import '../src/config/env.js';
 import { readEnv } from '../src/config/env.js';
 import { createPrisma } from '../src/adapters/out/prisma/client.js';
-import { createReferenceLabourPriceMatrix, referenceAssemblyPriceDefaults, referenceVehiclePrices } from '../../shared/reference-tariff-defaults.js';
+import { createReferenceAccountingConfiguration, createReferenceLabourPriceMatrix, referenceAssemblyPriceDefaults, referenceVehiclePrices } from '../../shared/reference-tariff-defaults.js';
+import { Prisma } from '../src/generated/prisma/client.js';
 const db = createPrisma(readEnv().DATABASE_URL);
 const vehicles = [
   {
@@ -89,6 +90,14 @@ try {
             { label: 'Soir (17h – 20h)', startHour: 17 },
           ],
         }),
+      },
+    }),
+    db.configurationComptable.upsert({
+      where: { identifiant: 'main' },
+      update: {},
+      create: {
+        identifiant: 'main',
+        donnees: createReferenceAccountingConfiguration() as Prisma.InputJsonValue,
       },
     }),
   ]);

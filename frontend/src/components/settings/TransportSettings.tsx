@@ -4,6 +4,7 @@ import { FleetVehicleDimensions } from '../FleetVehicleDimensions';
 import { useApp } from '../../application/context';
 import { errorMessage } from '../../application/error-message';
 import { labourUnitPrice } from '../../domain/labour-price';
+import { referenceAssemblyPriceDefaults } from '../../../../shared/reference-assembly-price-defaults.js';
 import { defaultMovingLaborPlanning } from '../../domain/moving-estimate';
 import { CatalogueService } from '../../application/services/catalogue';
 import type { Catalogue, LabourMatrixScenario } from '../../domain/model';
@@ -21,6 +22,7 @@ import { QuoteTermsSettings } from './QuoteTermsSettings';
 import { ClaudeSettings } from './ClaudeSettings';
 import { InventoryCatalogSettings } from './InventoryCatalogSettings';
 import { TariffDocumentsSettings } from './TariffDocumentsSettings';
+import { AssemblyResetButton } from './AssemblyResetButton';
 import { useIntegrationSummary } from '../../application/controllers/useIntegrationSummary';
 import type { CustomInventoryType } from '../../domain/model';
 
@@ -187,7 +189,8 @@ export function TransportSettings({
   const [resetTariffsStatus, setResetTariffsStatus] = useState('');
   const [resetTariffsError, setResetTariffsError] = useState('');
   const { api, setCatalogue, requestConfirmation } = useApp();
-  const { claudeConnected, mapsConfigured, setClaudeConnected, setMapsConfigured } = useIntegrationSummary();
+  const { claudeConnected, mapsConfigured, setClaudeConnected, setMapsConfigured } =
+    useIntegrationSummary();
   const selected = scenarios.find((entry) => entry.id === scenario)!;
   const customConfigured = catalogue.settings.montageP?.custom;
   const customPricing =
@@ -198,12 +201,21 @@ export function TransportSettings({
     .filter((item) => item.key !== 'climatiseur')
     .map((item) => {
       const key = referenceInventoryKey(item.key);
-      const configured =
+      const configuredValue =
         catalogue.settings.montageP?.[key] ?? catalogue.settings.montageP?.[item.key];
-      const pricing =
-        typeof configured === 'number'
-          ? { local: configured, import: Math.round(configured * 1.5) }
-          : (configured ?? {});
+      const configured =
+        typeof configuredValue === 'number'
+          ? { local: configuredValue, import: Math.round(configuredValue * 1.5) }
+          : configuredValue;
+      const referencePricing =
+        referenceAssemblyPriceDefaults[key as keyof typeof referenceAssemblyPriceDefaults];
+      const pricing = (configured ?? referencePricing ?? {}) as {
+        local?: number;
+        import?: number;
+        u?: number;
+        uI?: number;
+        sz?: Record<string, { local?: number; import?: number }>;
+      };
       const range = item.sizeLabel ? (sizeRanges[key] ?? [1, (item.defaultSize ?? 1) + 3]) : null;
       return { item, key, pricing, range };
     });
@@ -302,23 +314,6 @@ export function TransportSettings({
       setResettingTariffs(false);
     }
   }
-  async function resetAssemblyPrices() {
-    const confirmed = await requestConfirmation({
-      titleId: 'reference-assembly-reset-confirmation',
-      eyebrow: 'Tarifs du menuisier',
-      title: 'Revenir à la grille par défaut ?',
-      description: 'Les prix client du démontage / montage reviennent à la grille d’origine (paie du menuisier + 30 %) et le manœuvre à 6 500 FCFA. Les devis déjà enregistrés gardent leurs prix.',
-      confirmLabel: 'Rétablir',
-    });
-    if (!confirmed) return;
-    setResetTariffsStatus('');
-    setResetTariffsError('');
-    try {
-      if (await onResetAssembly()) setResetTariffsStatus('Grille client rétablie.');
-    } catch (cause) {
-      setResetTariffsError(errorMessage(cause));
-    }
-  }
   const group = (
     key: string,
     number: number,
@@ -381,7 +376,17 @@ export function TransportSettings({
           disabled={resettingTariffs}
           onClick={() => void resetReferenceTariffs()}
         >
-          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            aria-hidden="true"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
             <path d="M3 3v5h5" />
           </svg>
@@ -395,7 +400,11 @@ export function TransportSettings({
           {resetTariffsStatus}
         </p>
       )}
-      {resetTariffsError && <p role="alert" className="alert error">{resetTariffsError}</p>}
+      {resetTariffsError && (
+        <p role="alert" className="alert error">
+          {resetTariffsError}
+        </p>
+      )}
       <p className="reference-settings-data-hint">{visibleUiText.text201}</p>
       <div className="reference-settings-grid">
         {group(
@@ -469,20 +478,48 @@ export function TransportSettings({
                 </label>
                 <label>
                   <span>{visibleUiText.pricingManoeuvreIncludedHours}</span>
-                  <input style={inputStyle} type="number" min="1" name="movingLaborPlanning.manoeuvreOvertimeThresholdHours" defaultValue={planning.manoeuvreOvertimeThresholdHours} />
+                  <input
+                    style={inputStyle}
+                    type="number"
+                    min="1"
+                    name="movingLaborPlanning.manoeuvreOvertimeThresholdHours"
+                    defaultValue={planning.manoeuvreOvertimeThresholdHours}
+                  />
                 </label>
                 <label>
                   <span>{visibleUiText.pricingManoeuvreOvertimeHourly}</span>
-                  <input style={inputStyle} type="number" min="0" name="movingLaborPlanning.manoeuvreOvertimeHourlyRate" defaultValue={planning.manoeuvreOvertimeHourlyRate} />
+                  <input
+                    style={inputStyle}
+                    type="number"
+                    min="0"
+                    name="movingLaborPlanning.manoeuvreOvertimeHourlyRate"
+                    defaultValue={planning.manoeuvreOvertimeHourlyRate}
+                  />
                 </label>
-                <span className="reference-settings-kicker">{visibleUiText.pricingAutomaticDiscounts}</span>
+                <span className="reference-settings-kicker">
+                  {visibleUiText.pricingAutomaticDiscounts}
+                </span>
                 <label>
                   <span>{visibleUiText.pricingFollowingTrips}</span>
-                  <input style={inputStyle} type="number" min="10" max="100" name="movingLaborPlanning.followingTripDiscountPercent" defaultValue={planning.followingTripDiscountPercent} />
+                  <input
+                    style={inputStyle}
+                    type="number"
+                    min="10"
+                    max="100"
+                    name="movingLaborPlanning.followingTripDiscountPercent"
+                    defaultValue={planning.followingTripDiscountPercent}
+                  />
                 </label>
                 <label>
                   <span>{visibleUiText.pricingLowDemand}</span>
-                  <input style={inputStyle} type="number" min="0" max="50" name="movingLaborPlanning.lowDemandDiscountPercent" defaultValue={planning.lowDemandDiscountPercent} />
+                  <input
+                    style={inputStyle}
+                    type="number"
+                    min="0"
+                    max="50"
+                    name="movingLaborPlanning.lowDemandDiscountPercent"
+                    defaultValue={planning.lowDemandDiscountPercent}
+                  />
                 </label>
               </div>
               <input type="hidden" name="assembly" value={catalogue.settings.assemblyPrice} />
@@ -491,9 +528,7 @@ export function TransportSettings({
                 <span className="reference-settings-kicker">
                   {uiText['demontageMONTAGEPARMEUBLEPRIXCLIENT']}
                 </span>
-                <button type="button" onClick={() => void resetAssemblyPrices()}>
-                  {visibleUiText.pricingAssemblyReset}
-                </button>
+                <AssemblyResetButton onReset={onResetAssembly} />
               </div>
               <div className="reference-settings-assembly-columns">
                 {assemblyColumns.map((sections, columnIndex) => (
@@ -510,8 +545,8 @@ export function TransportSettings({
                         </strong>
                         <div className="reference-settings-price-matrix">
                           {sectionRows.map(({ item, key, pricing, range }) => {
-                            const local = pricing.local ?? catalogue.settings.assemblyPrice;
-                            const imported = pricing.import ?? Math.round(local * 1.5);
+                            const local = pricing.local ?? 0;
+                            const imported = pricing.import ?? local;
                             const sizeLabel = item.sizeLabel ?? '';
                             return (
                               <div className="reference-settings-item-group" key={key}>
@@ -707,7 +742,6 @@ export function TransportSettings({
                 </div>
               </div>
             </section>
-
           </>,
         )}
         {group(
@@ -760,24 +794,24 @@ export function TransportSettings({
                       type="number"
                       min={
                         key === 'wbgtAdj'
-                                  ? -10
-                                  : key === 'heat'
+                          ? -10
+                          : key === 'heat'
+                            ? 0
+                            : key === 'maxDayHours'
+                              ? 1
+                              : key === 'maxMoversPerVehicle'
+                                ? 2
+                                : key === 'cubicMetersPerHourPerMover'
+                                  ? 0.1
+                                  : key === 'pauseMinutes'
                                     ? 0
-                                    : key === 'maxDayHours'
-                                      ? 1
-                                      : key === 'maxMoversPerVehicle'
-                                        ? 2
-                                        : key === 'cubicMetersPerHourPerMover'
-                                          ? 0.1
-                                          : key === 'pauseMinutes'
-                                            ? 0
-                                            : key === 'handlingCalibration'
-                                              ? 0.5
-                                              : key === 'carryDistanceMeters'
-                                                ? 1
-                                                : key === 'defaultStartHour'
-                                                  ? 0
-                                                  : 0.5
+                                    : key === 'handlingCalibration'
+                                      ? 0.5
+                                      : key === 'carryDistanceMeters'
+                                        ? 1
+                                        : key === 'defaultStartHour'
+                                          ? 0
+                                          : 0.5
                       }
                       max={
                         [
@@ -792,27 +826,27 @@ export function TransportSettings({
                             ? 200
                             : key === 'maxTotalHours'
                               ? 48
-                          : key === 'wbgtAdj'
-                                        ? 10
-                                        : key === 'heat'
-                                          ? 1
-                                          : key === 'maxHandlingHours'
-                                            ? 12
-                                            : key === 'maxDayHours'
-                                              ? 16
-                                              : key === 'defaultStartHour'
-                                                ? 23
-                                                : key === 'maxMoversPerVehicle'
-                                                  ? 20
-                                                  : key === 'cubicMetersPerHourPerMover'
-                                                    ? 50
-                                                    : key === 'teamVolumePerMover'
-                                                      ? 100
-                                                      : key === 'handlingCalibration'
-                                                        ? 5
-                                                        : key === 'carryDistanceMeters'
-                                                          ? 200
-                                                          : 180
+                              : key === 'wbgtAdj'
+                                ? 10
+                                : key === 'heat'
+                                  ? 1
+                                  : key === 'maxHandlingHours'
+                                    ? 12
+                                    : key === 'maxDayHours'
+                                      ? 16
+                                      : key === 'defaultStartHour'
+                                        ? 23
+                                        : key === 'maxMoversPerVehicle'
+                                          ? 20
+                                          : key === 'cubicMetersPerHourPerMover'
+                                            ? 50
+                                            : key === 'teamVolumePerMover'
+                                              ? 100
+                                              : key === 'handlingCalibration'
+                                                ? 5
+                                                : key === 'carryDistanceMeters'
+                                                  ? 200
+                                                  : 180
                       }
                       required
                       step={

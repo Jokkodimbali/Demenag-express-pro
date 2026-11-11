@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { PrismaRoutes } from '../src/adapters/out/prisma/routes.js';
 import { PrismaSessions } from '../src/adapters/out/prisma/sessions.js';
+import { PrismaBookings } from '../src/adapters/out/prisma/bookings.js';
 import type { PrismaClient } from '../src/generated/prisma/client.js';
 import type { RouteTicket } from '../src/domain/model.js';
 
@@ -67,4 +68,42 @@ test('les enregistrements concurrents d’itinéraire partagent le nettoyage des
 
   assert.equal(cleanupCount, 1);
   assert.equal(createdRoutes, 100);
+});
+
+test('la mise à jour d’une réservation synchronise les colonnes indexées avec son instantané', async () => {
+  let persisted: Record<string, unknown> | undefined;
+  const db = {
+    $transaction: async <T>(work: (tx: unknown) => Promise<T>) =>
+      work({
+        reservation: {
+          findUnique: async () => ({ donnees: null }),
+          updateMany: async ({ data }: { data: Record<string, unknown> }) => {
+            persisted = data;
+            return { count: 1 };
+          },
+        },
+        devis: { upsert: async () => undefined },
+      }),
+  } as unknown as PrismaClient;
+  const repository = new PrismaBookings(db);
+  const booking = {
+    id: 'booking-id',
+    userId: 'user-id',
+    reference: 'DEM-UPDATED',
+    vehicle: { id: 'vehicle-updated' },
+    date: '2026-11-15',
+    timeSlot: '09:00',
+    status: 'confirmed',
+    driverId: null,
+    quotes: [],
+    version: 4,
+  } as unknown as Parameters<PrismaBookings['update']>[0];
+
+  await repository.update(booking, 4);
+
+  assert.equal(persisted?.reference, 'DEM-UPDATED');
+  assert.equal(persisted?.vehiculeId, 'vehicle-updated');
+  assert.equal((persisted?.date as Date).toISOString(), '2026-11-15T00:00:00.000Z');
+  assert.equal(persisted?.creneau, '09:00');
+  assert.equal(persisted?.statut, 'confirmee');
 });

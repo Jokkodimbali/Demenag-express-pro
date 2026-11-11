@@ -17,6 +17,7 @@ import {
   canReadBooking,
   requireActiveUser,
   requireAdministrator,
+  requireNotDriver,
 } from '../../domain/policies/access.js';
 import { calculatePrice } from '../../domain/pricing.js';
 import { fallbackWorkPlan } from './fallback-work-plan.js';
@@ -407,7 +408,7 @@ export class MovingService implements MovingUseCases {
   }
   async status(user: User, id: string, next: BookingStatus, version: number) {
     requireActiveUser(user);
-    requireValue(user.role !== 'driver', 'Le chauffeur ne peut pas modifier la réservation.');
+    requireNotDriver(user);
     const booking = await this.bookings.find(id);
     if (!booking) throw new AppError(404, messages.reservationIntrouvable);
     if (!canReadBooking(user, booking.userId))
@@ -621,6 +622,7 @@ export class MovingService implements MovingUseCases {
   async schedule(user: User, id: string, date: string | null, timeSlot: string, version: number) {
     requireActiveUser(user);
     const booking = await this.get(user, id);
+    requireNotDriver(user);
     requireValue(
       user.role === 'admin' ||
         (user.role === 'client' && ['pending', 'confirmed'].includes(booking.status)),
@@ -671,6 +673,7 @@ export class MovingService implements MovingUseCases {
   async updateNotes(user: User, id: string, notes: string, version: number) {
     requireActiveUser(user);
     const booking = await this.get(user, id);
+    requireNotDriver(user);
     requireValue(
       user.role === 'admin' ||
         (user.role === 'client' && ['pending', 'confirmed'].includes(booking.status)),

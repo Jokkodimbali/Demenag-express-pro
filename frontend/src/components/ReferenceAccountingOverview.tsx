@@ -317,10 +317,16 @@ export function ReferenceAccountingOverview({
       .join(' ; ');
     const assemblyRates = Object.entries(config.menuPrices)
       .slice(0, 30)
-      .map(
-        ([item, prices]) =>
-          `${item} local ${money(prices.local ?? 0)} / importé ${money(prices.import ?? 0)}`,
-      )
+      .map(([item, prices]) => {
+        const sizes = Object.entries(prices.sz ?? {})
+          .sort(([left], [right]) => Number(left) - Number(right))
+          .map(
+            ([size, rates]) =>
+              `${size} unité${size === '1' ? '' : 's'} local ${money(rates.local ?? prices.local ?? 0)} / importé ${money(rates.import ?? prices.import ?? 0)}`,
+          )
+          .join(', ');
+        return `${item} local ${money(prices.local ?? 0)} / importé ${money(prices.import ?? 0)}${sizes ? ` · tailles : ${sizes}` : ''}`;
+      })
       .join(' ; ');
     const prompt = [
       'Tu es conseiller financier d’une petite entreprise de déménagement à Dakar (Sénégal), monnaie FCFA. Réponds en français, en texte brut sans markdown, de façon précise et chiffrée, à partir des données ci-dessous.',

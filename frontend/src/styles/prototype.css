@@ -173,6 +173,162 @@
 .inventory-heading + .inventory-content {
   margin-top: 14px;
 }
+.mobile-booking-bar {
+  display: none;
+}
+
+@media (max-width: 759px) {
+  .booking-section {
+    padding-bottom: calc(110px + env(safe-area-inset-bottom));
+  }
+  .booking-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .booking-mobile-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 12px 14px;
+    border: 1px solid #3b4046;
+    border-radius: 12px;
+    background: #1e2023;
+  }
+  .booking-mobile-progress > span {
+    color: #aeb4bb;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .booking-mobile-progress > strong {
+    font-size: 15px;
+  }
+  .booking-mobile-progress > div {
+    height: 4px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #3b4046;
+  }
+  .booking-mobile-progress > div > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: #f6d73c;
+    transition: width 180ms ease;
+  }
+  .booking-fields {
+    display: block;
+  }
+  .vehicle-card {
+    display: grid;
+    grid-template-columns: 108px minmax(0, 1fr);
+    align-items: center;
+    column-gap: 10px;
+    row-gap: 3px;
+    padding: 8px 32px 8px 8px;
+  }
+  .vehicle-card .vehicle-image-stage {
+    grid-row: 1 / 3;
+    width: 108px;
+    aspect-ratio: 1.6;
+  }
+  .vehicle-card strong {
+    align-self: end;
+    font-size: 13px;
+  }
+  .vehicle-card > span:last-child {
+    align-self: start;
+    font-size: 11px;
+  }
+  .vehicle-card .vehicle-check {
+    top: 50%;
+    right: 8px;
+    transform: translateY(-50%);
+  }
+  .booking-mobile-step {
+    display: none;
+  }
+  .booking-layout[data-mobile-step='1'] [data-booking-step='1'],
+  .booking-layout[data-mobile-step='2'] [data-booking-step='2'],
+  .booking-layout[data-mobile-step='3'] [data-booking-step='3'],
+  .booking-layout[data-mobile-step='4'] [data-booking-step='4'],
+  .booking-layout[data-mobile-step='4'] [data-booking-step='5'] {
+    display: block;
+  }
+  .booking-mobile-summary {
+    width: 100%;
+  }
+  .booking-mobile-summary .summary {
+    position: static;
+    max-width: none;
+    margin-top: 16px;
+  }
+  .booking-mobile-summary .summary > button {
+    display: none;
+  }
+  .mobile-booking-bar {
+    position: fixed;
+    z-index: 100;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+    border-top: 1px solid #3b4046;
+    background: #272a2e;
+    box-shadow: 0 -6px 20px rgb(0 0 0 / 35%);
+  }
+  .mobile-booking-bar > div {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+  }
+  .mobile-booking-bar small:not(.mobile-booking-error) {
+    color: #aeb4bb;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+  }
+  .mobile-booking-bar strong {
+    overflow: hidden;
+    color: #f6d73c;
+    font-family: Anton, sans-serif;
+    font-size: 22px;
+    line-height: 1.15;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mobile-booking-bar .button {
+    min-height: 52px;
+    flex: 0 0 auto;
+    padding: 0 16px;
+    border-radius: 12px;
+    font-size: 14px;
+  }
+  .mobile-booking-bar .button.secondary {
+    width: 48px;
+    padding: 0;
+  }
+  .mobile-booking-error {
+    position: absolute;
+    right: 14px;
+    bottom: calc(100% + 1px);
+    left: 14px;
+    padding: 8px 10px;
+    border: 1px solid #77343a;
+    border-radius: 9px;
+    background: #272a2e;
+    color: #ff9da3;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+}
 .inventory-loading-conditions {
   display: flex;
   flex-direction: column;

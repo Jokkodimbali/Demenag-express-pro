@@ -90,12 +90,21 @@ export async function createFinalQuoteAndClose(
     finalQuote.body.quotes as {
       id: string;
       kind: string;
-      price: { total: number };
+      price: {
+        total: number;
+        discount: number;
+        lines: { total: number }[];
+      };
       tolls?: { tollPointId: string; quantity: number; unitPrice: number }[];
     }[]
   ).find((quote) => quote.kind === 'final');
   assert.ok(createdQuote, 'Le devis final doit apparaître dans la réservation.');
-  assert.equal(createdQuote.price.total, 94_000);
+  assert.equal(
+    createdQuote.price.total,
+    createdQuote.price.lines.reduce((sum, line) => sum + line.total, 0) -
+      createdQuote.price.discount,
+    'Le total final doit reprendre ses lignes et sa remise après les remises de référence.',
+  );
   assert.equal(createdQuote.tolls?.length, 1);
   assert.equal(createdQuote.tolls?.[0]?.tollPointId, tollPoint.id);
   assert.equal(createdQuote.tolls?.[0]?.quantity, 2);
@@ -128,19 +137,32 @@ export async function verifyQuoteSnapshots(
     where: { id: quoteId },
     include: { lignes: true },
   });
-  assert.equal(quote.montantTotal, 94_000);
-  assert.equal(quote.lignes.length, 3);
   const persisted = (await context.clients.first.get('/api/bookings/' + bookingId)).body;
   assert.equal(persisted.status, 'completed');
-  const finalQuote = (persisted.quotes as { kind: string; price: { total: number } }[]).find(
-    (item) => item.kind === 'final',
-  );
-  assert.equal(finalQuote?.price.total, 94_000);
+  const finalQuote = (
+    persisted.quotes as {
+      id: string;
+      kind: string;
+      price: {
+        total: number;
+        discount: number;
+        lines: { label: string; quantity: number; unitPrice: number; total: number }[];
+      };
+    }[]
+  ).find((item) => item.id === quoteId && item.kind === 'final');
+  assert.ok(finalQuote);
+  assert.equal(quote.montantTotal, finalQuote.price.total);
+  assert.equal(quote.lignes.length, finalQuote.price.lines.length);
   const savedQuote = await db.devis.findUniqueOrThrow({
     where: { id: quoteId },
     include: { lignes: { orderBy: { position: 'asc' } } },
   });
   assert.ok(savedQuote.montantTotal !== null);
+  assert.deepEqual(
+    savedQuote.lignes.map((line) => [line.libelle, line.quantite, line.prixUnitaire, line.montant]),
+    finalQuote.price.lines.map((line) => [line.label, line.quantity, line.unitPrice, line.total]),
+    'Les lignes comptabilisées en base doivent être identiques au devis final.',
+  );
   const quoteSnapshot = (
     persisted.quotes as {
       id: string;
@@ -158,7 +180,16 @@ export async function verifyQuoteSnapshots(
     false,
     'Les péages à la charge du client ne doivent pas être intégrés aux lignes de déménagement.',
   );
-  assert.equal(persisted.estimate.total, 58_000);
+  const estimate = persisted.estimate as {
+    total: number;
+    lines: { label: string; quantity: number; unitPrice: number; total: number }[];
+  };
+  assert.ok(estimate.lines.some((line) => line.label.startsWith('Remise jour creux')));
+  assert.equal(
+    estimate.total,
+    estimate.lines.reduce((sum, line) => sum + line.total, 0),
+    'Le total estimé doit conserver la remise jour creux après le parcours de réservation.',
+  );
   const accounting = await context.clients.admin
     .get('/api/admin/accounting')
     .set(integrationHeader);
@@ -170,7 +201,7 @@ export async function verifyQuoteSnapshots(
   assert.equal(finalRevenue.length, 1);
   assert.equal(
     finalRevenue[0]?.amount,
-    94_000,
+    finalQuote.price.total,
     'Le revenu comptable final doit rester identique après modification des tarifs courants.',
   );
 

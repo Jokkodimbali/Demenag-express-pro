@@ -33,7 +33,36 @@ export async function createAndAuthorizeBooking(context: IntegrationContext, rou
   const created = await first.post('/api/bookings').set(integrationHeader).send(input);
   assert.equal(created.status, 201, JSON.stringify(created.body));
   const bookingId = created.body.id;
-  assert.equal(created.body.estimate.total, 58_000, JSON.stringify(created.body.pricingSettings));
+  const estimate = created.body.estimate as {
+    total: number;
+    lines: { label: string; quantity: number; unitPrice: number; total: number }[];
+  };
+  const lowDemandDiscount = estimate.lines.find((line) =>
+    line.label.startsWith('Remise jour creux'),
+  );
+  assert.ok(lowDemandDiscount, 'Le scénario doit créer une remise jour creux de référence.');
+  assert.ok(lowDemandDiscount.unitPrice < 0);
+  assert.equal(lowDemandDiscount.total, lowDemandDiscount.quantity * lowDemandDiscount.unitPrice);
+  assert.equal(
+    estimate.total,
+    estimate.lines.reduce((sum, line) => sum + line.total, 0),
+    'Le total du devis doit inclure la remise jour creux négative.',
+  );
+  const storedProvisionalQuote = await db.devis.findFirstOrThrow({
+    where: { reservationId: bookingId, nature: 'provisoire' },
+    include: { lignes: { orderBy: { position: 'asc' } } },
+  });
+  assert.equal(storedProvisionalQuote.montantTotal, estimate.total);
+  assert.deepEqual(
+    storedProvisionalQuote.lignes.map((line) => [
+      line.libelle,
+      line.quantite,
+      line.prixUnitaire,
+      line.montant,
+    ]),
+    estimate.lines.map((line) => [line.label, line.quantity, line.unitPrice, line.total]),
+    'La ligne négative de remise doit être persistée à l’identique en base.',
+  );
   const duplicate = await first.post('/api/bookings').set(integrationHeader).send(input);
   assert.equal(duplicate.body.id, bookingId);
   assert.equal(
@@ -277,7 +306,7 @@ export async function advanceBookingToInProgress(
     driver.patch('/api/bookings/' + bookingId + '/status').send({ status: 'cancelled', version }),
     driver
       .patch('/api/bookings/' + bookingId + '/schedule')
-      .send({ date: null, timeSlot: '', version }),
+      .send({ date: assigned.body.date, timeSlot: assigned.body.timeSlot, version }),
     driver.patch('/api/bookings/' + bookingId + '/notes').send({ notes: 'Interdit', version }),
     driver
       .patch(`/api/bookings/${bookingId}/work-plan/plan-1/review`)

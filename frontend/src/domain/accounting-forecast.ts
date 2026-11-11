@@ -4,6 +4,7 @@ import type {
   AccountingFinanceConfiguration,
   Booking,
 } from './model';
+import { createReferenceAccountingConfiguration, referenceAssemblyPayrollDefaults } from '../../../shared/reference-tariff-defaults.js';
 
 export const advertisingChannels = [
   'Facebook',
@@ -35,7 +36,8 @@ export function accountingMenuPrice(
   origin: 'local' | 'import',
   size?: number,
 ) {
-  const price = config.menuPrices?.[accountingItemKey(itemKey)];
+  const key = accountingItemKey(itemKey);
+  const price = config.menuPrices?.[key] ?? referenceAssemblyPayrollDefaults[key];
   const sized = size == null ? undefined : price?.sz?.[String(size)]?.[origin];
   if (sized != null) return asInt(sized);
   const base = price?.[origin] ?? (origin === 'import' ? 10_000 : 5_000);
@@ -52,45 +54,7 @@ const monthAfter = (month: string) => {
 export function defaultAccountingFinanceConfiguration(
   now = new Date(),
 ): AccountingFinanceConfiguration {
-  const month = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Africa/Dakar',
-    year: 'numeric',
-    month: '2-digit',
-  })
-    .formatToParts(now)
-    .reduce(
-      (result, part) => ({ ...result, [part.type]: part.value }),
-      {} as Record<string, string>,
-    );
-  const currentMonth = `${month.year}-${month.month}`;
-  return {
-    regime: 'informel',
-    suarlFrom: '',
-    isRate: 0,
-    start: currentMonth,
-    debt: 0,
-    debtMonths: 1,
-    fleetValue: 0,
-    fleetYears: 7,
-    newVehicleTarget: 0,
-    profitCapPercent: 0,
-    moverCostPerMove: 0,
-    monthlyProfitTarget: 0,
-    averageMovingPrice: 0,
-    vehicleCount: 0,
-    oilChangeCost: 0,
-    oilChangeIntervalMonths: 1,
-    vehicleInsuranceAnnual: 0,
-    legalReservePercent: 10,
-    legalReserveCapitalPercent: 20,
-    monthlyFixedChargePostings: [],
-    financeChat: [],
-    menuPrices: {},
-    salaries: [],
-    annexes: [],
-    vehiclePurchases: [],
-    advertising: {},
-  };
+  return createReferenceAccountingConfiguration(now);
 }
 
 const referenceFixedChargeDetails: Record<AccountingFixedChargeKey, readonly [string, string]> = {

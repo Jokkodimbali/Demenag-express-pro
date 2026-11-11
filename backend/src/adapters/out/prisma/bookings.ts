@@ -320,6 +320,10 @@ export class PrismaBookings implements BookingRepository {
           where: { id: booking.id, version: expectedVersion, supprimeLe: null },
           data: {
             donnees: json(next),
+            reference: next.reference,
+            vehiculeId: next.vehicle.id,
+            date: next.date ? new Date(next.date + 'T00:00:00Z') : null,
+            creneau: next.timeSlot,
             statut: toStatus[next.status],
             chauffeurId: next.driverId ?? null,
             version: { increment: 1 },
