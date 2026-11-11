@@ -1,7 +1,7 @@
 import { liveBookingPrice } from '../application/services/live-booking-price';
 import { uiText } from '../content/reference-ui-text';
 import { useApp } from '../application/context';
-import { useBookingCard } from '../application/controllers/useBookingCard';
+import { useClientBookingPdf } from '../application/controllers/useClientBookingPdf';
 import { whatsappPaymentLine } from '../application/services/whatsapp-templates';
 import { money, referenceTierLabels } from '../application/presentation/format';
 import type { Booking } from '../domain/model';
@@ -17,7 +17,7 @@ export function ClientBookingCard({
   onChange: (booking: Booking) => void;
 }) {
   const { catalogue } = useApp();
-  const { pdf, busy, error } = useBookingCard({ booking, onChange });
+  const { pdf, busy, error } = useClientBookingPdf(booking);
   const provisionalQuote = booking.quotes.filter((quote) => quote.kind === 'provisional').at(-1);
   const finalQuote = booking.quotes.filter((quote) => quote.kind === 'final').at(-1);
   const displayedEstimate = liveBookingPrice(booking, catalogue).total;

@@ -3,10 +3,8 @@ import { uiText } from '../content/reference-ui-text';
 import { useEffect, useState } from 'react';
 import { MessageCircle, Search, X } from 'lucide-react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { routes } from '../routing/routes';
+import { administrationQuoteForBooking, routes } from '../routing/routes';
 import { useAdministration } from '../application/controllers/useAdministration';
-import { useBookingCommands } from '../application/controllers/useBookingCommands';
-import { BookingCard } from '../components/BookingCard';
 import { ConfirmationDialog } from '../components/ConfirmationDialog';
 import { useApp } from '../application/context';
 import { messages } from '../content/fr';
@@ -76,10 +74,8 @@ function referenceMoney(value: number | null) {
 }
 
 export function Admin() {
-  const { bookings, setBookings, loading, error, recordBookingReminder, removeBooking } =
-    useAdministration();
+  const { bookings, loading, error, recordBookingReminder, removeBooking } = useAdministration();
   const { catalogue } = useApp();
-  const bookingCommands = useBookingCommands();
   const [params] = useSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -92,8 +88,9 @@ export function Admin() {
   const [deleteTarget, setDeleteTarget] = useState<Booking | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState('');
-  const [successToast, setSuccessToast] = useState('');
-  const [fullDetail, setFullDetail] = useState<Booking | null>(null);
+  const [successToast, setSuccessToast] = useState(
+    () => (location.state as { successMessage?: string } | null)?.successMessage ?? '',
+  );
   const quoteHandoff = location.state as {
     initialTollLines?: { id: string; label: string; quantity: number; unitPrice: number }[];
     quoteError?: string;
@@ -192,32 +189,12 @@ export function Admin() {
   }
   const selectedBookingId = params.get('detail');
   useEffect(() => {
-    if (!selectedBookingId) {
-      setFullDetail(null);
-      return;
-    }
-    let active = true;
-    setFullDetail(null);
-    void bookingCommands
-      .booking(selectedBookingId)
-      .then((booking) => {
-        if (active) setFullDetail(booking);
-      })
-      .catch((reason: unknown) => {
-        if (active)
-          setActionError(
-            reason instanceof Error ? reason.message : 'Le dossier n’a pas pu être chargé.',
-          );
-      });
-    return () => {
-      active = false;
-    };
-  }, [bookingCommands, selectedBookingId]);
-  const selectedBooking = selectedBookingId
-    ? fullDetail?.id === selectedBookingId
-      ? fullDetail
-      : (bookings.find((booking) => booking.id === selectedBookingId) ?? null)
-    : null;
+    if (!selectedBookingId) return;
+    navigate(administrationQuoteForBooking(selectedBookingId), {
+      replace: true,
+      state: quoteHandoff,
+    });
+  }, [navigate, quoteHandoff, selectedBookingId]);
   return (
     <>
       {quoteHandoff?.quoteError && (
@@ -355,29 +332,6 @@ export function Admin() {
           <p className="panel loading" role="status">
             {messages.chargementDesReservations}
           </p>
-        ) : selectedBooking ? (
-          <div className="admin-booking-detail">
-            <button
-              className="button secondary small"
-              onClick={() => navigate(routes.administration)}
-            >
-              {uiText['retourAuxReservations']}
-            </button>
-            <BookingCard
-              admin
-              editInitially={params.get('edit') === 'quote'}
-              initialTollLines={quoteHandoff?.initialTollLines}
-              booking={selectedBooking}
-              onChange={(next) => {
-                setFullDetail(next);
-                setBookings((rows) => rows.map((row) => (row.id === next.id ? next : row)));
-              }}
-              onDeleted={() => {
-                setBookings((rows) => rows.filter((row) => row.id !== selectedBooking.id));
-                navigate(routes.administration, { replace: true });
-              }}
-            />
-          </div>
         ) : (
           <>
             <div
@@ -615,7 +569,7 @@ export function Admin() {
             </span>
           </>
         )}
-        {!loading && !selectedBooking && bookingsPage.total > 0 && (
+        {!loading && bookingsPage.total > 0 && (
           <Pagination
             page={bookingsPage.page}
             pageCount={bookingsPage.pageCount}
