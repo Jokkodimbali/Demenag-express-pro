@@ -6,7 +6,7 @@ import type {
 } from '../../../application/ports/index.js';
 import type { Booking } from '../../../domain/model.js';
 import { Prisma, type PrismaClient } from '../../../generated/prisma/client.js';
-import { captureAccountingCosts } from '../../../domain/accounting-costs.js';
+import { accountingCostsForQuote } from '../../../domain/accounting-costs.js';
 
 type FinalQuoteRow = {
   id: string;
@@ -89,9 +89,7 @@ export class PrismaAccounting implements AccountingRepository {
         },
       ];
       if (!quoteSnapshot) return entries;
-      const costs =
-        quoteSnapshot.accountingCosts ??
-        captureAccountingCosts(booking, quoteSnapshot.price, configuration);
+      const costs = accountingCostsForQuote(booking, quoteSnapshot, configuration);
       if (costs.moverAmount > 0)
         entries.push({
           id: `auto-labour-${quote.id}`,

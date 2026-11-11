@@ -35,6 +35,7 @@ export const httpRoutes = {
     `/bookings/${id}/work-plan/${stepId}/review`,
   bookingDriverFinished: (id: string) => `/bookings/${id}/driver-finished`,
   bookingRoute: (id: string) => `/bookings/${id}/route`,
+  bookingApplyCurrentPricing: (id: string) => `/bookings/${id}/pricing-snapshot/apply-current`,
   driver: {
     profile: '/driver/profile',
     profilePhoto: '/driver/profile/photo',

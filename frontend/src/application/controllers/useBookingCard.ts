@@ -45,7 +45,7 @@ export function useBookingCard({
     menuIncluded: last?.menuIncluded ?? false,
     options: quotedServiceOptions(b, last),
   }));
-  const quoteSettings = catalogue?.settings ?? b.pricingSettings;
+  const quoteSettings = b.pricingSettings ?? catalogue?.settings;
   const tollPointIds = new Set(tollPoints.map((point) => point.id));
   const billableExtraLines = extraLines.filter((line) => !tollPointIds.has(line.id));
   const quoteTolls = extraLines
@@ -59,9 +59,13 @@ export function useBookingCard({
     }));
   const quotePreviewTotal = useMemo(() => {
     if (!quoteSettings) return null;
-    const vehicle = catalogue?.vehicles.find((item) => item.id === b.vehicle.id) ?? b.vehicle;
+    const currentVehicle = catalogue?.vehicles.find((item) => item.id === b.vehicle.id) ?? b.vehicle;
+    const vehicle = {
+      ...currentVehicle,
+      prices: b.pricingSnapshot?.vehiclePrices[b.vehicle.id] ?? b.vehicle.prices,
+    };
     return quoteTotal(
-      vehicle === b.vehicle ? b : { ...b, vehicle },
+      { ...b, vehicle },
       quoteSettings,
       quoteDraft,
       billableExtraLines,

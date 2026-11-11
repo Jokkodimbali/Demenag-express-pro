@@ -9,6 +9,9 @@ type Props = {
   trips: number;
   movingEstimate: Pick<MovingEstimate, 'crew' | 'endTime'> | null;
   driverRental: boolean;
+  submitting: boolean;
+  disabled: boolean;
+  editingReservation: boolean;
 };
 
 export function AdminQuoteSaveBar({
@@ -17,6 +20,9 @@ export function AdminQuoteSaveBar({
   trips,
   movingEstimate,
   driverRental,
+  submitting,
+  disabled,
+  editingReservation,
 }: Props) {
   return (
     <div className="admin-quote-save-bar" aria-live="polite">
@@ -40,6 +46,19 @@ export function AdminQuoteSaveBar({
           </div>
         </>
       )}
+      <span className="admin-quote-save-bar-break" aria-hidden="true" />
+      <button
+        type="submit"
+        form="admin-quote-form"
+        className="button primary admin-quote-submit admin-quote-save-bar-submit"
+        disabled={disabled}
+      >
+        {submitting
+          ? 'Enregistrement…'
+          : editingReservation
+            ? 'Enregistrer les modifications'
+            : 'Enregistrer'}
+      </button>
     </div>
   );
 }

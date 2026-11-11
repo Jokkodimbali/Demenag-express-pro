@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { createServer } from 'node:http';
 import request from 'supertest';
 import type { PrismaClient } from '../../src/generated/prisma/client.js';
 import { createPrisma } from '../../src/adapters/out/prisma/client.js';
@@ -12,7 +13,7 @@ export const integrationHeader = {
 };
 export const integrationPassword = 'Integration-test-2026!';
 
-export function createIntegrationContext(url: string) {
+export async function createIntegrationContext(url: string) {
   const db = createPrisma(url);
   const prefix = 'Test ' + randomUUID();
   const routing: RoutingProvider = {
@@ -31,28 +32,40 @@ export function createIntegrationContext(url: string) {
     origin: 'http://localhost:5173',
     production: false,
   });
+  const server = createServer(app);
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      server.removeListener('error', reject);
+      resolve();
+    });
+  });
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('Serveur de test indisponible.');
+  const baseUrl = `http://127.0.0.1:${address.port}`;
   const seed = Math.floor(Math.random() * 8_000_000) + 1_000_000;
 
   return {
     db,
-    app,
+    app: baseUrl,
+    server,
     prefix,
     testUserIds: [] as string[],
     testPhones: [] as string[],
     testAccountingEntryIds: [] as string[],
     phone: (n: number) => '77' + String(seed + n).padStart(7, '0'),
     clients: {
-      first: request.agent(app),
-      second: request.agent(app),
-      admin: request.agent(app),
-      driver: request.agent(app),
+      first: request.agent(baseUrl),
+      second: request.agent(baseUrl),
+      admin: request.agent(baseUrl),
+      driver: request.agent(baseUrl),
     },
     driverId: null as string | null,
     driverPassword: '',
   };
 }
 
-export type IntegrationContext = ReturnType<typeof createIntegrationContext>;
+export type IntegrationContext = Awaited<ReturnType<typeof createIntegrationContext>>;
 
 export interface OriginalConfiguration {
   settings: Awaited<ReturnType<PrismaClient['parametreApplication']['findUniqueOrThrow']>>;

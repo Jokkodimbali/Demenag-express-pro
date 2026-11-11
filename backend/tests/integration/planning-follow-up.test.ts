@@ -12,7 +12,7 @@ test(
   async () => {
     const url = process.env.TEST_DATABASE_URL;
     if (!url) return;
-    const context = createIntegrationContext(url);
+    const context = await createIntegrationContext(url);
     const routeIds: string[] = [];
     try {
       await registerScenarioUsers(context);
@@ -33,6 +33,9 @@ test(
     } finally {
       await deleteScenarioData(context, routeIds);
       await context.db.$disconnect();
+      await new Promise<void>((resolve, reject) =>
+        context.server.close((error) => (error ? reject(error) : resolve())),
+      );
     }
   },
 );

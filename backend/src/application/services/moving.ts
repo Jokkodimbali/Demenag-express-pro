@@ -5,6 +5,7 @@ import type {
   Booking,
   BookingInput,
   BookingStatus,
+  BookingPricingSnapshot,
   Options,
   Point,
   QuoteInput,
@@ -100,7 +101,7 @@ export class MovingService implements MovingUseCases {
       user.role === 'admin' || input.distanceKmOverride == null,
       'La distance personnalisée est réservée à l’administration.',
     );
-    const { route, vehicle, estimate, settings } = await movingPriceInput(
+    const { route, vehicle, estimate, settings, vehiclePrices } = await movingPriceInput(
       this.catalogue,
       this.routes,
       this.clock,
@@ -127,6 +128,7 @@ export class MovingService implements MovingUseCases {
         );
     }
     const id = this.ids.next();
+    const pricingSnapshot = await this.capturePricingSnapshot(vehiclePrices);
     const provisionalQuote =
       user.role === 'client'
         ? (() => {
@@ -180,6 +182,7 @@ export class MovingService implements MovingUseCases {
               })
             : [],
         pricingSettings: settings,
+        pricingSnapshot,
         estimate,
         quotes: provisionalQuote ? [provisionalQuote] : [],
         status: 'pending',
@@ -209,7 +212,12 @@ export class MovingService implements MovingUseCases {
       'Le véhicule ne peut plus être changé après l’affectation d’un chauffeur.',
     );
     requireValue(Boolean(input.date), 'Choisissez une date.');
-    const { route, vehicle, estimate, settings } = await movingPriceInput(
+    const {
+      route,
+      vehicle: currentVehicle,
+      settings,
+      vehiclePrices,
+    } = await movingPriceInput(
       this.catalogue,
       this.routes,
       this.clock,
@@ -228,6 +236,28 @@ export class MovingService implements MovingUseCases {
         'Ce créneau n’est plus disponible. Choisissez un autre horaire.',
       );
     }
+    const pricingSettings = booking.pricingSettings ?? settings;
+    const pricingSnapshot =
+      booking.pricingSnapshot ?? (await this.capturePricingSnapshot(vehiclePrices));
+    const vehicle = {
+      ...currentVehicle,
+      prices: pricingSnapshot.vehiclePrices[input.vehicleId] ?? currentVehicle.prices,
+    };
+    const estimate = calculatePrice(
+      vehicle,
+      pricingSettings,
+      route.distanceKm,
+      input.options,
+      input.trips ?? 1,
+      null,
+      0,
+      [],
+      input.workAccess ?? booking.workAccess,
+      undefined,
+      'fcfa',
+      '',
+      input.date,
+    );
     const provisional = booking.quotes.filter((quote) => quote.kind === 'provisional').at(-1);
     const nextQuote = {
       id: provisional?.id ?? this.ids.next(),
@@ -258,6 +288,8 @@ export class MovingService implements MovingUseCases {
         options: input.options,
         workAccess: input.workAccess ?? booking.workAccess,
         notes: input.notes,
+        pricingSettings,
+        pricingSnapshot,
         estimate,
         quotes: [...booking.quotes.filter((quote) => quote.kind !== 'provisional'), nextQuote],
       },
@@ -274,7 +306,12 @@ export class MovingService implements MovingUseCases {
         !booking.quotes.some((quote) => quote.kind === 'final'),
       messages.cetteReservationEstCloturee,
     );
-    const { route, vehicle, estimate, settings } = await movingPriceInput(
+    const {
+      route,
+      vehicle: currentVehicle,
+      settings,
+      vehiclePrices,
+    } = await movingPriceInput(
       this.catalogue,
       this.routes,
       this.clock,
@@ -284,6 +321,28 @@ export class MovingService implements MovingUseCases {
       input.workAccess,
       input.trips ?? 1,
       input.distanceKmOverride,
+      input.date,
+    );
+    const pricingSettings = booking.pricingSettings ?? settings;
+    const pricingSnapshot =
+      booking.pricingSnapshot ?? (await this.capturePricingSnapshot(vehiclePrices));
+    const vehicle = {
+      ...currentVehicle,
+      prices: pricingSnapshot.vehiclePrices[input.vehicleId] ?? currentVehicle.prices,
+    };
+    const estimate = calculatePrice(
+      vehicle,
+      pricingSettings,
+      route.distanceKm,
+      input.options,
+      input.trips ?? 1,
+      null,
+      0,
+      [],
+      input.workAccess ?? booking.workAccess,
+      undefined,
+      'fcfa',
+      '',
       input.date,
     );
     if (input.date && input.date !== booking.date)
@@ -321,7 +380,8 @@ export class MovingService implements MovingUseCases {
         options: input.options,
         workAccess: input.workAccess ?? booking.workAccess,
         notes: input.notes,
-        pricingSettings: settings,
+        pricingSettings,
+        pricingSnapshot,
         questionnaireAnswers: input.questionnaireAnswers ?? booking.questionnaireAnswers,
         workPlan:
           input.workPlan !== undefined
@@ -749,11 +809,16 @@ export class MovingService implements MovingUseCases {
       this.routing.reverse(from),
       this.routing.reverse(to),
     ]);
-    const vehicle =
+    const currentVehicle =
       catalogue.vehicles.find((item) => item.id === booking.vehicle.id) ?? booking.vehicle;
+    const vehicle = {
+      ...currentVehicle,
+      prices: booking.pricingSnapshot?.vehiclePrices[booking.vehicle.id] ?? booking.vehicle.prices,
+    };
+    const pricingSettings = booking.pricingSettings ?? catalogue.settings;
     const estimate = calculatePrice(
       vehicle,
-      catalogue.settings,
+      pricingSettings,
       route.distanceKm,
       booking.options,
       1,
@@ -776,7 +841,7 @@ export class MovingService implements MovingUseCases {
       const repriced = repriceProvisionalQuote(
         booking,
         latestQuote,
-        catalogue.settings,
+        pricingSettings,
         route.distanceKm,
       );
       quotes = quotes.map((quote) =>
@@ -903,8 +968,62 @@ export class MovingService implements MovingUseCases {
       input,
     );
   }
+  async applyCurrentPricingSnapshot(user: User, id: string, version: number) {
+    requireAdministrator(user);
+    const booking = await this.get(user, id);
+    if (booking.version !== version)
+      throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
+    requireValue(
+      !['completed', 'cancelled'].includes(booking.status) &&
+        !booking.quotes.some((quote) => quote.kind === 'final'),
+      messages.cetteReservationEstCloturee,
+    );
+    const catalogue = await this.catalogue.get();
+    const pricingSnapshot = await this.capturePricingSnapshot(
+      Object.fromEntries(
+        catalogue.vehicles.map((item) => [item.id, [...item.prices] as [number, number, number]]),
+      ),
+    );
+    const vehicle = catalogue.vehicles.find((item) => item.id === booking.vehicle.id);
+    if (!vehicle) throw new AppError(400, messages.vehiculeInconnu);
+    const estimate = calculatePrice(
+      vehicle,
+      catalogue.settings,
+      booking.distanceKm,
+      booking.options,
+      booking.estimate.trips,
+      null,
+      0,
+      [],
+      booking.workAccess,
+      undefined,
+      'fcfa',
+      '',
+      booking.date,
+    );
+    return this.bookings.update(
+      { ...booking, vehicle, pricingSettings: catalogue.settings, pricingSnapshot, estimate },
+      version,
+    );
+  }
   async delete(user: User, id: string) {
     return deleteBooking(this.bookings, user, id);
+  }
+  private async capturePricingSnapshot(
+    vehiclePrices: Record<string, [number, number, number]>,
+  ): Promise<BookingPricingSnapshot> {
+    const [points, accounting] = await Promise.all([
+      this.catalogue.listTollPoints(),
+      this.accounting?.configuration() ?? Promise.resolve(null),
+    ]);
+    return {
+      capturedAt: this.clock.now().toISOString(),
+      vehiclePrices,
+      tollPoints: points.map((point) => ({ ...point, vehiclePrices: { ...point.vehiclePrices } })),
+      accounting: accounting
+        ? { moverCostPerMove: accounting.moverCostPerMove, menuPrices: accounting.menuPrices }
+        : null,
+    };
   }
   async trashed(user: User) {
     return listTrashedBookings(this.bookings, user);

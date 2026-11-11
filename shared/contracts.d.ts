@@ -509,6 +509,7 @@ export type Booking = {
   questionnaireAnswers?: ClientQuestionAnswer[];
   status: BookingStatus;
   pricingSettings?: Settings;
+  pricingSnapshot?: BookingPricingSnapshot;
   estimate: Price;
   quotes: Quote[];
   trips?: BookingTrip[];
@@ -518,6 +519,12 @@ export type Booking = {
   driverFinishedAt?: string | null;
   createdAt: string;
   version: number;
+};
+export type BookingPricingSnapshot = {
+  capturedAt: string;
+  vehiclePrices: Record<string, [number, number, number]>;
+  tollPoints: TollPoint[];
+  accounting: Pick<AccountingFinanceConfiguration, 'moverCostPerMove' | 'menuPrices'> | null;
 };
 export type BookingInput = {
   vehicleId: string;

@@ -4,7 +4,7 @@ import { messages } from '../../../domain/messages/fr.js';
 import type { Booking, Quote, WorkPlanReview } from '../../../domain/model.js';
 import { type PrismaClient } from '../../../generated/prisma/client.js';
 import type { AccountingFinanceConfiguration } from '../../../domain/model.js';
-import { captureAccountingCosts } from '../../../domain/accounting-costs.js';
+import { accountingCostsForQuote } from '../../../domain/accounting-costs.js';
 import { conflict, json } from './helpers.js';
 import { toStatus } from './mapping.js';
 const quoteData = (quote: Quote) => ({
@@ -227,8 +227,7 @@ export class PrismaBookings implements BookingRepository {
             if (quote.montantTotal === null) return [];
             const quoteSnapshot = booking.quotes?.find((item) => item.id === quote.id);
             const costs = quoteSnapshot
-              ? (quoteSnapshot.accountingCosts ??
-                captureAccountingCosts(booking, quoteSnapshot.price, configuration))
+              ? accountingCostsForQuote(booking, quoteSnapshot, configuration)
               : null;
             const date = new Date(`${quote.creeLe.toISOString().slice(0, 10)}T00:00:00Z`);
             return [

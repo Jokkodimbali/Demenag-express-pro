@@ -149,7 +149,8 @@ test('le PDF reprend les coordonnées et applique l’activation des conditions 
   assert.match(enabledText, /NINEA-TEST-2026/);
   assert.match(enabledText, /RCCM-TEST-2026/);
   assert.match(enabledText, /21 jours/);
-  assert.match(enabledText, /Acompte à la réservation \(20 %\)/);
+  assert.match(enabledText, /Acompte à la réservation : 10 000 FCFA \(20 %\)/);
+  assert.match(enabledText, /Solde le jour du déménagement : 40 000 FCFA/);
   assert.match(enabledText, new RegExp(clause));
 
   const disabledText = await extractPdfText(
@@ -196,3 +197,25 @@ test('le PDF conserve le mois demandé lorsque la réservation est sans date pr�
   );
   assert.match(text, /décembre 2026/);
 });
+
+for (const [billingMode, expected] of [
+  ['complete', 'Formule Complète'],
+  ['standard', 'Formule Standard'],
+  ['driver-rental', 'Formule Économique - location avec chauffeur'],
+] as const) {
+  test(`le PDF présente la formule ${billingMode} comme la référence`, async () => {
+    const quote: Quote = {
+      id: `quote-${billingMode}`,
+      reference: `DV-2026-${billingMode}`,
+      kind: 'provisional',
+      createdAt: '2026-11-03T00:00:00.000Z',
+      notes: '',
+      price: booking.estimate,
+      tolls: [],
+      billingMode,
+    };
+    const text = await extractPdfText(await downloadQuote(booking, quote, settings));
+    assert.ok(text.includes(expected), `${billingMode}: ${text}`);
+    assert.match(text, /Émis le 3 novembre 2026/);
+  });
+}

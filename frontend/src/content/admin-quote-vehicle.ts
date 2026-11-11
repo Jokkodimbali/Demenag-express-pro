@@ -38,6 +38,8 @@ export const adminQuoteVehicleText = {
   stepInventory: 'INVENTAIRE',
   stepVehicle: 'VÉHICULE ET ÉQUIPE',
   stepOptions: 'PRIX ET OPTIONS',
+  stepFormula: 'FORMULE ET PRIX',
+  stepPlanning: 'PLANNING ET 3D',
   stepReview: 'VÉRIFIER ET ENVOYER',
   vehicle: 'VÉHICULE',
   fromPrice: '· dès',

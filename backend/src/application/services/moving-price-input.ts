@@ -34,6 +34,9 @@ export async function movingPriceInput(
     route: effectiveRoute,
     settings: catalogue.settings,
     vehicle,
+    vehiclePrices: Object.fromEntries(
+      catalogue.vehicles.map((item) => [item.id, [...item.prices] as [number, number, number]]),
+    ),
     estimate: calculatePrice(
       vehicle,
       catalogue.settings,

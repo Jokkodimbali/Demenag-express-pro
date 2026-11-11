@@ -32,6 +32,7 @@ import {
   vehicleFitWarnings,
 } from '../../application/services/quote-vehicle-fit';
 import { fitConfirmationCopy } from '../../application/services/quote-fit-confirmation';
+import { errorMessage } from '../../application/error-message';
 
 export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const location = useLocation();
@@ -84,16 +85,25 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const [resetVersion, setResetVersion] = useState(0);
   const [pdfError, setPdfError] = useState('');
   const [stageError, setStageError] = useState('');
+  const [pricingSnapshotBusy, setPricingSnapshotBusy] = useState(false);
+  const [pricingSnapshotError, setPricingSnapshotError] = useState('');
   const [reminderNotice, setReminderNotice] = useState('');
   const whatsappWindow = useRef<Window | null>(null);
   const sendWhatsAppAfterSave = useRef(false);
   const [openQuoteSections, setOpenQuoteSections] = useState({
-    client: publicRequest,
+    client: true,
     route: false,
     tolls: false,
     options: false,
   });
-  const { exportQuote, catalogue: appCatalogue, user, api, requestConfirmation } = useApp();
+  const {
+    exportQuote,
+    catalogue: appCatalogue,
+    tollPoints: appTollPoints,
+    user,
+    api,
+    requestConfirmation,
+  } = useApp();
   const bookingCommands = useBookingCommands();
   const state = useBookingForm({
     mode: publicRequest && user?.role !== 'admin' ? 'booking' : 'admin-quote',
@@ -143,6 +153,16 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       state.editingBooking.quotes.some((quote) => quote.kind === 'final')),
   );
   const editingBooking = state.editingBooking;
+  const quoteSettings = editingBooking?.pricingSettings ?? state.catalogue?.settings;
+  const savedTollPrices = new Map(
+    editingBooking?.pricingSnapshot?.tollPoints.map((point) => [point.id, point]) ?? [],
+  );
+  const quoteTollPoints = appTollPoints.map((point) => {
+    const saved = savedTollPrices.get(point.id);
+    return saved
+      ? { ...point, heavyPrice: saved.heavyPrice, vehiclePrices: saved.vehiclePrices }
+      : point;
+  });
   const {
     catalogue,
     loading,
@@ -167,6 +187,16 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     editLoading,
     editError,
   } = state;
+  const quoteVehicle = selected
+    ? {
+        ...selected,
+        prices:
+          editingBooking?.pricingSnapshot?.vehiclePrices[selected.id] ??
+          (editingBooking?.vehicle.id === selected.id
+            ? editingBooking.vehicle.prices
+            : selected.prices),
+      }
+    : null;
   const route = draft.route ?? undefined;
   const {
     googleMapsKey,
@@ -211,7 +241,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     setStageError('');
     setPdfError('');
     setReminderNotice('');
-    setOpenQuoteSections({ client: false, route: false, tolls: false, options: false });
+    setOpenQuoteSections({ client: true, route: false, tolls: false, options: false });
     setResetVersion((current) => current + 1);
     window.scrollTo({ top: 0 });
     navigate(location.pathname, { replace: true, state: null });
@@ -387,8 +417,8 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     draft.route && draft.distanceKmOverride != null
       ? { ...draft.route, distanceKm: draft.distanceKmOverride }
       : draft.route;
-  const labourPrice = catalogue
-    ? labourUnitPrice(catalogue.settings, {
+  const labourPrice = quoteSettings
+    ? labourUnitPrice(quoteSettings, {
         fromFloor: draft.inventory.fromFloor,
         toFloor: draft.inventory.toFloor,
         fromLift: draft.inventory.fromLift,
@@ -400,7 +430,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         trips: quoteConfig.trips,
         crew: draft.inventory.crew,
         startTime: draft.timeSlot,
-        laborPlanning: catalogue?.settings.movingLaborPlanning,
+        laborPlanning: quoteSettings?.movingLaborPlanning,
         ignoreTraffic: quoteConfig.trafficOff,
         manualLegMinutes: quoteConfig.calcMode === 'manual' ? quoteConfig.legMinutes : 0,
         date: draft.date,
@@ -430,7 +460,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         toAddress: draft.toAddress,
         startTime: draft.timeSlot,
         hasToll: tollLines.some((line) => line.quantity * line.unitPrice > 0),
-        settings: catalogue?.settings,
+        settings: quoteSettings,
         estimate: movingEstimate,
       })
     : null;
@@ -489,7 +519,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     ? referenceMovingEstimateNote(
         movingEstimate,
         draft.route?.distanceKm ?? 0,
-        catalogue?.settings.movingLaborPlanning?.maxDayHours,
+        quoteSettings?.movingLaborPlanning?.maxDayHours,
       )
     : '';
   const questionnaireText = [
@@ -527,14 +557,61 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     draft,
     estimateInventory,
     config: quoteConfig,
-    vehicle: selected ?? null,
+    vehicle: quoteVehicle,
     estimate: movingEstimate,
-    settings: catalogue?.settings,
+    settings: quoteSettings,
     price,
     extras,
     labourPrice,
+    applySnapshotLabourPrice: Boolean(editingBooking?.pricingSnapshot),
     simulationNeeds,
   });
+  const formulaPrices = {
+    economic: createAdminQuotePreview({
+      draft,
+      estimateInventory,
+      config: {
+        ...quoteConfig,
+        billingMode: 'driver-rental',
+        menuIncluded: false,
+        overtimeMinutes: 0,
+      },
+      vehicle: quoteVehicle,
+      estimate: movingEstimate,
+      settings: quoteSettings,
+      price,
+      extras,
+      labourPrice,
+      applySnapshotLabourPrice: Boolean(editingBooking?.pricingSnapshot),
+      simulationNeeds,
+    }).total,
+    standard: createAdminQuotePreview({
+      draft,
+      estimateInventory,
+      config: { ...quoteConfig, billingMode: 'standard', overtimeMinutes: 0 },
+      vehicle: quoteVehicle,
+      estimate: movingEstimate,
+      settings: quoteSettings,
+      price,
+      extras,
+      labourPrice,
+      applySnapshotLabourPrice: Boolean(editingBooking?.pricingSnapshot),
+      simulationNeeds,
+    }).total,
+    complete: createAdminQuotePreview({
+      draft,
+      estimateInventory,
+      config: { ...quoteConfig, billingMode: 'complete', overtimeMinutes: 0 },
+      vehicle: quoteVehicle,
+      estimate: movingEstimate,
+      settings: quoteSettings,
+      price,
+      extras,
+      labourPrice,
+      applySnapshotLabourPrice: Boolean(editingBooking?.pricingSnapshot),
+      simulationNeeds,
+    }).total,
+  };
   const {
     tier: previewTier,
     rentalKit,
@@ -546,12 +623,11 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     discountLabel: previewDiscountLabel,
     total: previewTotal,
   } = preview;
-  const bounds = catalogue?.settings.distanceBounds ?? [15, 25, 35];
+  const bounds = quoteSettings?.distanceBounds ?? [15, 25, 35];
   const tiers = referenceTierLabels(bounds);
   const effectiveDistance = draft.distanceKmOverride ?? draft.route?.distanceKm;
   const availableMenuLines = preview.availableMenuLines;
   const menuIncluded = preview.menuIncluded;
-  const inventoryMenuOptions = preview.menuOptions;
   const savedQuote = editingBooking?.quotes.filter((quote) => quote.kind === quoteKind).at(-1);
   const canSendQuoteWhatsApp = Boolean(
     whatsappNumber(draft.customerPhone, catalogue?.settings.whatsappCountryCode ?? '221').length >=
@@ -634,7 +710,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     form.requestSubmit();
   }
   async function downloadCurrentQuote() {
-    const pdfSettings = catalogue?.settings;
+    const pdfSettings = quoteSettings ?? catalogue?.settings;
     if (!pdfSettings || !selected) return;
     setPdfError('');
     try {
@@ -756,7 +832,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       const minimum = movingEstimate?.volume ? 1 : 0;
       const labour = Math.max(
         minimum,
-        Math.min(catalogue?.settings.maxOptions ?? 20, current.options.labour + delta),
+        Math.min(quoteSettings?.maxOptions ?? 20, current.options.labour + delta),
       );
       return {
         ...current,
@@ -771,7 +847,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     const warnings =
       quoteConfig.calcMode === 'manual' || !selected || !catalogue
         ? []
-        : vehicleFitWarnings(estimateInventory, selected, catalogue.settings);
+        : vehicleFitWarnings(estimateInventory, selected, quoteSettings ?? catalogue.settings);
     if (!warnings.length) return true;
     const copy = fitConfirmationCopy(warnings);
     const confirmed = await requestConfirmation({
@@ -791,6 +867,23 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
 
   function toggleQuoteSection(section: keyof typeof openQuoteSections) {
     setOpenQuoteSections((current) => ({ ...current, [section]: !current[section] }));
+  }
+
+  async function applyCurrentPricingSnapshot() {
+    if (!editingBooking || user?.role !== 'admin' || pricingSnapshotBusy) return;
+    setPricingSnapshotBusy(true);
+    setPricingSnapshotError('');
+    try {
+      const updated = await api.applyCurrentPricingSnapshot(
+        editingBooking.id,
+        editingBooking.version,
+      );
+      state.setEditingBooking(updated);
+    } catch (reason) {
+      setPricingSnapshotError(errorMessage(reason));
+    } finally {
+      setPricingSnapshotBusy(false);
+    }
   }
 
   return {
@@ -813,6 +906,9 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     setPdfError,
     stageError,
     setStageError,
+    pricingSnapshotBusy,
+    pricingSnapshotError,
+    applyCurrentPricingSnapshot,
     reminderNotice,
     setReminderNotice,
     whatsappWindow,
@@ -830,6 +926,8 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     state,
     editingLocked,
     editingBooking,
+    quoteSettings,
+    quoteTollPoints,
     catalogue,
     loading,
     error,
@@ -896,6 +994,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     previewDiscount,
     previewDiscountLabel,
     previewTotal,
+    formulaPrices,
     savedQuote,
     canSendQuoteWhatsApp,
     reminderDays,

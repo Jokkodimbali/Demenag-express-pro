@@ -13,13 +13,16 @@ export function TollRateSelector({
   onToggle,
   vehicleId,
   roundTrips = 1,
+  points: providedPoints,
 }: {
   lines: TollExtraLine[];
   onToggle: (line: TollExtraLine, selected: boolean) => void;
   vehicleId?: string;
   roundTrips?: number;
+  points?: TollPoint[];
 }) {
   const { tollPoints, draft, catalogue } = useApp();
+  const availableTollPoints = providedPoints ?? tollPoints;
   const selectedVehicleId = vehicleId ?? draft.vehicleId;
   const vehicle = catalogue?.vehicles.find((item) => item.id === selectedVehicleId);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
@@ -30,7 +33,7 @@ export function TollRateSelector({
     return count ? `${count} coché${count > 1 ? 's' : ''}` : '';
   };
   const groups = new Map<string, Map<string, TollPoint[]>>();
-  for (const point of tollPoints) {
+  for (const point of availableTollPoints) {
     const region = point.region || 'Sans région';
     const axis = point.axis || 'Autre route';
     const axes = groups.get(region) ?? new Map<string, TollPoint[]>();
@@ -107,7 +110,7 @@ export function TollRateSelector({
   return (
     <div className="toll-rate-selector">
       <p className="toll-rate-instruction">{uiText['1AllerRetour2Passages']}</p>
-      {tollPoints.length === 0 ? (
+      {availableTollPoints.length === 0 ? (
         <p className="caption">{uiText['aucunPeageEnregistreAjoutezLesDansLOngletPeages']}</p>
       ) : (
         <div className="toll-rate-list">

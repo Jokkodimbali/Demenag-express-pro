@@ -23,6 +23,7 @@ export function createAdminQuotePreview(input: {
   price: Price | null;
   extras: ExtraOption[];
   labourPrice: number;
+  applySnapshotLabourPrice?: boolean;
   simulationNeeds: { blankets: number; straps: number } | null;
 }) {
   const {
@@ -35,6 +36,7 @@ export function createAdminQuotePreview(input: {
     price,
     extras,
     labourPrice,
+    applySnapshotLabourPrice = false,
   } = input;
   const bounds = settings?.distanceBounds ?? [15, 25, 35];
   const distance = draft.distanceKmOverride ?? draft.route?.distanceKm;
@@ -109,20 +111,20 @@ export function createAdminQuotePreview(input: {
       .filter(
         (line) =>
           !line.label.startsWith('Transport ') &&
+          !line.label.startsWith('Allers-retours suivants') &&
+          !line.label.startsWith('Remise jour creux') &&
           (config.billingMode === 'complete' ||
             (config.billingMode === 'driver-rental' && config.menuIncluded) ||
             !line.label.startsWith('Menuisier ·')) &&
           !(config.billingMode === 'driver-rental' && /^Man[œo]uvre/iu.test(line.label)),
       )
-      .map((line) =>
-        line.label.startsWith('Manœuvre') && config.labourUnitPriceOverride
-          ? {
-              ...line,
-              unitPrice: config.labourUnitPriceOverride,
-              total: line.quantity * config.labourUnitPriceOverride,
-            }
-          : line,
-      ),
+      .map((line) => {
+        if (!line.label.startsWith('Manœuvre')) return line;
+        const unitPrice =
+          config.labourUnitPriceOverride ||
+          (applySnapshotLabourPrice ? labourPrice : line.unitPrice);
+        return { ...line, unitPrice, total: line.quantity * unitPrice };
+      }),
   ];
   const availableMenuLines = settings ? inventoryAssemblyLines(draft.inventory, settings) : [];
   const includeMenu =

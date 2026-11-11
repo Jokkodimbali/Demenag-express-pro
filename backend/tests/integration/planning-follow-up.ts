@@ -162,13 +162,19 @@ export async function verifyPlanningFollowUp(context: IntegrationContext, bookin
     .patch(path(steps[1]!.id))
     .set(integrationHeader)
     .send(body(version, { status: 'late', actualTime: '10:05' }));
-  assert.equal(driverReview.status, 200, JSON.stringify(driverReview.body));
-  version = driverReview.body.version as number;
+  assert.equal(driverReview.status, 403);
+  assert.equal((await savedPlan(context, bookingId)).plan[1]?.review.status, 'pending');
+  const adminReview = await admin
+    .patch(path(steps[1]!.id))
+    .set(integrationHeader)
+    .send(body(version, { status: 'late', actualTime: '10:05' }));
+  assert.equal(adminReview.status, 200, JSON.stringify(adminReview.body));
+  version = adminReview.body.version as number;
   persisted = await savedPlan(context, bookingId);
   assert.equal(persisted.plan[1]?.review.status, 'late');
   assert.equal(persisted.plan[1]?.review.reason, '');
   assert.equal(persisted.plan[1]?.review.actualTime, '10:05');
-  assert.equal(persisted.plan[1]?.review.checkedBy, (await driver.get('/api/auth/me')).body.name);
+  assert.equal(persisted.plan[1]?.review.checkedBy, (await admin.get('/api/auth/me')).body.name);
 
   const concurrent = await Promise.all([
     admin

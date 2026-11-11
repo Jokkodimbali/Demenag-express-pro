@@ -58,15 +58,20 @@ export async function createQuote(
     );
   }
   const catalogue = await catalogueRepository.get();
-  const vehicle =
+  const currentVehicle =
     catalogue.vehicles.find((item) => item.id === booking.vehicle.id) ?? booking.vehicle;
+  const vehicle = {
+    ...currentVehicle,
+    prices: booking.pricingSnapshot?.vehiclePrices[booking.vehicle.id] ?? booking.vehicle.prices,
+  };
+  const pricingSettings = booking.pricingSettings ?? catalogue.settings;
   const requestedOptions = input.options ?? booking.options;
   const billingMode = input.billingMode ?? 'complete';
   const options = subtractInventoryAssemblyOptions(requestedOptions, sourceInventory);
   const menuIncluded = input.menuIncluded ?? false;
   const inventoryLines =
     billingMode === 'complete' || (billingMode === 'driver-rental' && menuIncluded)
-      ? inventoryAssemblyLines(sourceInventory, catalogue.settings)
+      ? inventoryAssemblyLines(sourceInventory, pricingSettings)
       : [];
   const pricingOptions =
     billingMode === 'driver-rental'
@@ -76,9 +81,17 @@ export async function createQuote(
         : options;
   const quoteSettings =
     input.kind === 'final'
-      ? { ...catalogue.settings, maxTrips: Math.max(catalogue.settings.maxTrips, input.trips) }
-      : catalogue.settings;
-  const tollPoints = await catalogueRepository.listTollPoints();
+      ? { ...pricingSettings, maxTrips: Math.max(pricingSettings.maxTrips, input.trips) }
+      : pricingSettings;
+  const savedTollPrices = new Map(
+    booking.pricingSnapshot?.tollPoints.map((point) => [point.id, point]) ?? [],
+  );
+  const tollPoints = (await catalogueRepository.listTollPoints()).map((point) => {
+    const saved = savedTollPrices.get(point.id);
+    return saved
+      ? { ...point, heavyPrice: saved.heavyPrice, vehiclePrices: saved.vehiclePrices }
+      : point;
+  });
   const tolls = (input.tolls ?? []).map((line) => {
     const point = tollPoints.find((item) => item.id === line.tollPointId);
     requireValue(point, 'Un péage sélectionné n’existe plus dans le catalogue.');
@@ -100,9 +113,9 @@ export async function createQuote(
   const overtimeMinutes =
     billingMode === 'driver-rental' ? Math.max(0, Math.round(input.overtimeMinutes ?? 0)) : 0;
   const overtimeCharge = Math.round(
-    (overtimeMinutes * (catalogue.settings.rentalOvertimeHourlyRate ?? 10000)) / 60,
+    (overtimeMinutes * (pricingSettings.rentalOvertimeHourlyRate ?? 10000)) / 60,
   );
-  const rentalOvertimeHourlyRate = catalogue.settings.rentalOvertimeHourlyRate ?? 10000;
+  const rentalOvertimeHourlyRate = pricingSettings.rentalOvertimeHourlyRate ?? 10000;
   const additionalLines = [
     ...inventoryLines,
     ...input.extraLines,
@@ -146,11 +159,24 @@ export async function createQuote(
   );
   requireValue(
     input.kind !== 'final' || price.tier !== 3 || Number(input.customPrice) > 0,
-    `Distance au-delà de ${catalogue.settings.distanceBounds[2]} km : fixez le prix par aller-retour avant le devis final.`,
+    `Distance au-delà de ${pricingSettings.distanceBounds[2]} km : fixez le prix par aller-retour avant le devis final.`,
   );
   const quoteId = ids.next();
   const accountingConfiguration =
     input.kind === 'final' ? ((await accounting?.configuration()) ?? null) : null;
+  const quoteAccountingConfiguration = accountingConfiguration
+    ? {
+        moverCostPerMove:
+          booking.pricingSnapshot?.accounting?.moverCostPerMove ??
+          accountingConfiguration.moverCostPerMove,
+        menuPrices:
+          booking.pricingSnapshot?.accounting?.menuPrices ?? accountingConfiguration.menuPrices,
+      }
+    : (booking.pricingSnapshot?.accounting ?? null);
+  const accountingCosts =
+    input.kind === 'final'
+      ? captureAccountingCosts(booking, price, quoteAccountingConfiguration, billingMode)
+      : undefined;
   const quote = {
     id: quoteId,
     reference: `DV-${clock.now().getUTCFullYear()}-${quoteId.slice(0, 8).toUpperCase()}`,
@@ -190,9 +216,7 @@ export async function createQuote(
       overtimeMinutes,
       rentalOvertimeHourlyRate,
     },
-    ...(input.kind === 'final'
-      ? { accountingCosts: captureAccountingCosts(booking, price, accountingConfiguration) }
-      : {}),
+    ...(accountingCosts ? { accountingCosts } : {}),
   };
   return bookings.update(
     {

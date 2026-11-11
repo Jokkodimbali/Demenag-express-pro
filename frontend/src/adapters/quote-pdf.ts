@@ -2,7 +2,6 @@ import { assetDataUrl } from './pdf-assets';
 import { addPdfImage, cleanPdfText, pdfParagraph } from './quote-pdf-render';
 import { drawQuoteSignature } from './quote-pdf-signature';
 import { drawQuoteTerms } from './quote-pdf-terms';
-import { messages } from '../content/fr';
 import { dateLabel, money, referenceTierLabels } from '../application/presentation/format';
 import { referenceDwellingVolume } from '../domain/reference-inventory-note';
 import { defaultQuoteTerms } from '../domain/quote-terms';
@@ -55,28 +54,32 @@ export async function downloadQuote(
     }
   }
 
-  // En-tête : logo et coordonnées à gauche, titre et référence à droite.
+  // En-tête du document de référence.
   const logo = settings.invoiceLogo || (await assetDataUrl('/assets/logo.png'));
-  addPdfImage(doc, logo, margin, y, 18, 18);
+  doc.setFillColor(30, 32, 35);
+  doc.rect(0, 0, pageWidth, 40, 'F');
+  addPdfImage(doc, logo, margin, 9, 22, 22);
   pdfParagraph(
     doc,
     settings.businessName || 'DEMENAG EXPRESS PRO MTH',
-    margin + 22,
-    y + 7,
+    margin + 27,
+    19,
     91,
-    15,
+    16,
     true,
+    [255, 255, 255],
   );
   pdfParagraph(
     doc,
-    `${settings.businessAddress || 'Dakar, Sénégal'}  ·  ${settings.businessPhone}`,
-    margin + 22,
-    y + 13,
+    `${settings.businessAddress || 'Dakar, Sénégal'}  ·  ${settings.businessPhone}${settings.businessEmail ? `  ·  ${settings.businessEmail}` : ''}`,
+    margin + 27,
+    25.5,
     100,
-    8,
+    9,
+    false,
+    [174, 180, 187],
   );
   const legalDetails = [
-    settings.businessEmail,
     settings.businessNinea ? `NINEA ${settings.businessNinea}` : '',
     settings.businessRccm ? `RCCM ${settings.businessRccm}` : '',
   ].filter(Boolean);
@@ -84,38 +87,45 @@ export async function downloadQuote(
     pdfParagraph(
       doc,
       legalDetails.join('  ·  '),
-      margin + 22,
-      y + 18,
+      margin + 27,
+      31,
       100,
       7.5,
       false,
-      [92, 99, 106],
+      [174, 180, 187],
     );
+  const documentKind = documentQuote?.kind === 'final' ? 'DEVIS FINAL' : 'DEVIS PROVISOIRE';
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(18);
-  doc.setTextColor(35, 37, 40);
-  doc.text(documentQuote?.kind === 'final' ? 'DEVIS FINAL' : 'DEVIS PROVISOIRE', right, y + 2, {
-    align: 'right',
-  });
+  doc.setFontSize(9.5);
+  const badgeWidth = doc.getTextWidth(cleanPdfText(documentKind)) + 10;
+  if (documentQuote?.kind === 'final') doc.setFillColor(255, 255, 255);
+  else doc.setFillColor(246, 215, 60);
+  doc.roundedRect(right - badgeWidth, 10, badgeWidth, 8, 4, 4, 'F');
+  doc.setTextColor(30, 32, 35);
+  doc.text(documentKind, right - badgeWidth / 2, 15.3, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.setTextColor(255, 255, 255);
+  doc.text(`N° ${documentQuote?.reference || booking.reference}`, right, 26.5, { align: 'right' });
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
-  doc.setTextColor(94, 101, 108);
+  doc.setFontSize(9);
+  doc.setTextColor(174, 180, 187);
   doc.text(
-    `Réf. ${documentQuote?.reference || booking.reference}  ·  ${dateLabel(new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Dakar' }).format(new Date()))}`,
+    `Émis le ${dateLabel((documentQuote?.createdAt || booking.createdAt).slice(0, 10))}`,
     right,
-    y + 9,
+    31.5,
     { align: 'right' },
   );
 
-  y = 38;
-  const segmentWidth = contentWidth / 3;
+  y = 40;
+  const segmentWidth = pageWidth / 3;
   [
     [12, 107, 53],
     [246, 215, 60],
     [227, 38, 47],
   ].forEach((color, index) => {
     doc.setFillColor(color[0], color[1], color[2]);
-    doc.rect(margin + index * segmentWidth, y, segmentWidth, 1.4, 'F');
+    doc.rect(index * segmentWidth, y, segmentWidth, 1.4, 'F');
   });
 
   y = 49;
@@ -141,10 +151,10 @@ export async function downloadQuote(
   pdfParagraph(
     doc,
     documentQuote?.billingMode === 'driver-rental'
-      ? 'Location avec chauffeur'
+      ? 'Formule Économique · location avec chauffeur'
       : documentQuote?.billingMode === 'standard'
         ? 'Formule Standard'
-        : 'Déménagement complet',
+        : 'Formule Complète',
     infoX[2]!,
     y + 13,
     infoWidth,
@@ -222,6 +232,14 @@ export async function downloadQuote(
   doc.setTextColor(...totalForeground);
   doc.setFontSize(11);
   doc.text(isFinal ? 'TOTAL À PAYER' : 'ESTIMATION PROVISOIRE', margin + 5, y + 10);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text(
+    cleanPdfText(`${price.trips} aller(s)-retour(s)${isFinal ? '' : ' estimé(s)'} · ${booking.vehicle.shortName || booking.vehicle.name}`),
+    margin + 5,
+    y + 15,
+  );
+  doc.setFont('helvetica', 'bold');
   doc.setFontSize(17);
   const totalLabel =
     price.tier === 3 &&
@@ -244,6 +262,14 @@ export async function downloadQuote(
       true,
     );
     y += 2;
+    y = pdfParagraph(
+      doc,
+      `Péages estimés à votre charge : ${pdfMoney(tollTotal)} · Budget total à prévoir : ${pdfMoney((price.total ?? 0) + tollTotal)}`,
+      margin,
+      y,
+      contentWidth,
+      9,
+    );
   }
 
   const paymentModes = [
@@ -321,8 +347,8 @@ export async function downloadQuote(
     documentQuote?.billingMode === 'driver-rental'
       ? `Location avec chauffeur : les manœuvres sont fournies et encadrées par le client. Le montant comprend le transport et les prestations de montage sélectionnées${documentQuote.providedCrew ? ` ; ${documentQuote.providedCrew} manœuvre(s) sont à prévoir côté client` : ''}.`
       : documentQuote?.kind === 'final'
-        ? messages.montantEtabliSurLaBaseDuNombreReel
-        : `Devis temporaire, calculé sur ${price.trips} aller(s)-retour(s) estimé(s). Le transport est facturé par aller-retour effectué ; le devis final, basé sur le nombre réel d'allers-retours, sera envoyé par Demenag Express à la fin du déménagement.`;
+        ? `Devis final établi sur la base du nombre réel d'allers-retours effectués (${price.trips}), au tarif de la tranche de distance appliquée.`
+        : `Devis temporaire, calculé sur ${price.trips} aller(s)-retour(s) estimé(s). Le transport est facturé par aller-retour effectué : le devis final, basé sur le nombre réel d'allers-retours, sera envoyé par Demenag Express à la fin du déménagement.`;
   y = pdfParagraph(doc, explanation, margin, y, contentWidth, 8.5, false, [92, 99, 106]);
   if (documentQuote?.billingMode === 'driver-rental') {
     const hourlyRate =
@@ -344,7 +370,7 @@ export async function downloadQuote(
   const validityDays = settings.quoteValidityDays ?? 15;
   if (documentQuote?.kind !== 'final' && validityDays > 0) {
     const issueDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Dakar' }).format(
-      new Date(),
+      new Date(documentQuote?.createdAt || booking.createdAt),
     );
     const expiry = new Date(`${issueDate}T12:00:00Z`);
     expiry.setUTCDate(expiry.getUTCDate() + validityDays);
@@ -360,10 +386,11 @@ export async function downloadQuote(
     );
   }
   const depositPercent = settings.bookingDepositPercent ?? 0;
-  if (depositPercent > 0)
+  if (depositPercent > 0) {
+    const deposit = Math.round(((price.total ?? 0) * depositPercent) / 100 / 500) * 500;
     y = pdfParagraph(
       doc,
-      `Acompte à la réservation (${depositPercent} %) : ${money(Math.round(((price.total ?? 0) * depositPercent) / 100))}.`,
+      `Acompte à la réservation : ${money(deposit)} (${depositPercent} %) · Solde le jour du déménagement : ${money((price.total ?? 0) - deposit)}.`,
       margin,
       y,
       contentWidth,
@@ -371,6 +398,7 @@ export async function downloadQuote(
       false,
       [92, 99, 106],
     );
+  }
   const terms = (settings.quoteTerms || defaultQuoteTerms).trim();
   // Espaces de signature et cachet comme sur le document de référence.
   let signatureY = y + 8;

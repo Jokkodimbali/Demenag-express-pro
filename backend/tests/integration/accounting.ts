@@ -21,6 +21,15 @@ export async function verifyProvisionalQuoteCreation(
   const bookingResponse = await admin.get(`/api/bookings/${bookingId}`).set(integrationHeader);
   assert.equal(bookingResponse.status, 200, JSON.stringify(bookingResponse.body));
   const version = bookingResponse.body.version as number;
+  const initialBookingData = bookingResponse.body as import('../../src/domain/model.js').Booking;
+  assert.ok(
+    initialBookingData.pricingSnapshot,
+    'La réservation doit conserver son instantané tarifaire.',
+  );
+  const originalVehicle = await context.db.vehicule.findUniqueOrThrow({
+    where: { id: 'sprinter' },
+  });
+  const currentVehiclePrices = originalVehicle.tarifs as [number, number, number];
   const tollPoint = await context.db.pointPeage.findFirstOrThrow();
   const tollVehiclePrices = tollPoint.tarifsVehicules as Record<string, number>;
   const tollUnitPrice = tollVehiclePrices.sprinter ?? tollPoint.tarifLourd;
@@ -51,6 +60,11 @@ export async function verifyProvisionalQuoteCreation(
   const lineSubtotal = quote.price.lines.reduce((sum, line) => sum + line.total, 0);
   const expectedDiscount = Math.round((lineSubtotal * 10) / 100);
   assert.equal(quote.kind, 'provisional');
+  assert.equal(
+    quote.price.lines.find((line) => line.label.startsWith('Transport'))?.unitPrice,
+    initialBookingData.pricingSnapshot?.vehiclePrices.sprinter?.[1],
+    'Un devis rouvre le tarif véhicule mémorisé même si le catalogue a changé.',
+  );
   assert.equal(quote.price.trips, 2);
   assert.equal(quote.price.discountType, 'pct');
   assert.equal(quote.price.discountValue, 10);
@@ -207,6 +221,26 @@ export async function verifyProvisionalQuoteCreation(
     await context.db.devis.count({ where: { reservationId: bookingId } }),
     3,
     'Une requête périmée ne doit pas ajouter un devis en base.',
+  );
+
+  const latestBooking = await admin.get(`/api/bookings/${bookingId}`).set(integrationHeader);
+  assert.equal(latestBooking.status, 200, JSON.stringify(latestBooking.body));
+  const applied = await admin
+    .post(`/api/bookings/${bookingId}/pricing-snapshot/apply-current`)
+    .set(integrationHeader)
+    .send({ version: latestBooking.body.version });
+  assert.equal(applied.status, 200, JSON.stringify(applied.body));
+  const appliedData = applied.body as import('../../src/domain/model.js').Booking;
+  assert.deepEqual(appliedData.pricingSnapshot?.vehiclePrices.sprinter, currentVehiclePrices);
+  assert.deepEqual(appliedData.vehicle.prices, currentVehiclePrices);
+  const persistedApplied = await context.db.reservation.findUniqueOrThrow({
+    where: { id: bookingId },
+  });
+  assert.deepEqual(
+    (persistedApplied.donnees as import('../../src/domain/model.js').Booking).pricingSnapshot
+      ?.vehiclePrices.sprinter,
+    currentVehiclePrices,
+    'Le remplacement explicite des tarifs doit être persisté dans la réservation.',
   );
 }
 
