@@ -4,6 +4,9 @@ import { BrowserRouter } from 'react-router-dom';
 import { createHttpApi } from '../shared/adapters/http-api';
 import { AppProvider } from '../shared/application/context';
 import { AppConfirmation } from '../shared/feedback/AppConfirmation';
+import { BookingDraftProvider } from '../booking/application/booking-draft-context';
+import { LoadingSimulationPdfProvider } from '../booking/application/loading-simulation-pdf-context';
+import { generateLoadingSimulationPdf } from '../booking/adapters/loading-simulation-pdf';
 import type {
   AccountingDocumentExporter,
   PlanningWeekExporter,
@@ -50,8 +53,12 @@ createRoot(document.getElementById('root')!).render(
         exportPlanningWeek={exportPlanningWeek}
         exportTariffDocument={exportTariffDocument}
       >
-        <AppRoutes />
-        <AppConfirmation />
+        <BookingDraftProvider>
+          <LoadingSimulationPdfProvider exporter={generateLoadingSimulationPdf}>
+            <AppRoutes />
+            <AppConfirmation />
+          </LoadingSimulationPdfProvider>
+        </BookingDraftProvider>
       </AppProvider>
     </BrowserRouter>
   </StrictMode>,

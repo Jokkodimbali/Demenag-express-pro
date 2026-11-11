@@ -10,6 +10,7 @@ import { tollLine, type TollExtraLine } from '../domain/tolls/toll-selection';
 import { tollsOnRoute } from '../domain/tolls/tolls-on-route';
 import { useRouteMapCommands } from './application/controllers/useRouteMapCommands';
 import { useApp } from '../../shared/application/context';
+import { useBookingDraft } from '../../booking/application/booking-draft-context';
 import { errorMessage } from '../../shared/application/error-message';
 type Side = 'from' | 'to';
 const EMPTY_TOLL_LINES: TollExtraLine[] = [];
@@ -25,7 +26,8 @@ export function useRouteMap(
   onTollToggle?: (line: TollExtraLine, selected: boolean) => void,
   referenceQuoteMap = false,
 ) {
-  const { draft, setDraft, tollPoints } = useApp();
+  const { tollPoints } = useApp();
+  const { draft, setDraft } = useBookingDraft();
   const { searchAddresses, reverseGeocode, calculateRoute: loadRoute } = useRouteMapCommands();
   const [active, setActive] = useState<Side>('from'),
     [full, setFull] = useState(false),

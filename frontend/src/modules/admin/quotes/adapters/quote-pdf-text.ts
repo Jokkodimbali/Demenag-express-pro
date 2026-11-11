@@ -1,5 +1,5 @@
 import { referenceInventoryNote } from '../../../moving/domain/estimate/reference-inventory-note';
-import type { Booking } from '../../../shared/domain/model';
+import type { Booking, Quote } from '../../../shared/domain/model';
 
 export function notesForPdf(value: string | null | undefined): string {
   const notes = value ?? '';
@@ -17,6 +17,27 @@ export function notesForPdf(value: string | null | undefined): string {
     `Accès : A · ${access(departure[1])} ; B · ${access(arrival[1])}`,
     ...lines.slice(3),
   ].join('\n');
+}
+
+export function quotePdfNotes(booking: Booking, quote: Quote | undefined) {
+  const rawNotes = notesForPdf(quote ? quote.notes : booking.notes);
+  const conditionsMatch =
+    /CONDITIONS DE CHARGEMENT\s*\n([\s\S]*?Ces conditions doivent être respectées le jour du déménagement\. Sinon, le déménagement n’aura pas lieu\.)/u.exec(
+      rawNotes,
+    );
+  const loadingConditions = conditionsMatch?.[0] ?? '';
+  const sourceNotes = loadingConditions ? rawNotes.replace(loadingConditions, '').trim() : rawNotes;
+  const addressNotes = addressNotesFrom(
+    booking.inventorySnapshot
+      ? withoutInventoryBlock(
+          sourceNotes,
+          booking.inventorySnapshot,
+          booking.fromAddress,
+          booking.toAddress,
+        )
+      : sourceNotes,
+  );
+  return { loadingConditions, addressNotes };
 }
 
 export function addressNotesFrom(value: string): { from: string; to: string; remaining: string } {

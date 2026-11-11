@@ -1,6 +1,6 @@
-import type { Inventory } from '../../moving/domain/inventory/inventory';
-import type { MovingEstimate } from '../../moving/domain/estimate/moving-estimate';
-import { referenceAnnexVolume } from '../../moving/domain/estimate/reference-inventory-note';
+import type { Inventory } from './inventory/inventory';
+import type { MovingEstimate } from './estimate/moving-estimate';
+import { referenceAnnexVolume } from './estimate/reference-inventory-note';
 
 export type SimulationLine = {
   k: string;

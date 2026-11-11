@@ -1,20 +1,5 @@
-import type { Draft } from '../application/booking-draft';
-import type { MovingEstimate } from '../../moving/domain/estimate/moving-estimate';
-import type { Vehicle } from '../../shared/domain/model';
-import { loadingRules, type SimPlan } from '../application/services/loading-simulation-model';
-
-type PdfEquipment = { key: string; name: string; quantity: string; why: string; norm: string };
-type PdfInput = {
-  plan: SimPlan;
-  draft: Draft;
-  vehicle?: Vehicle;
-  blanketLengthCm: number;
-  blanketWidthCm: number;
-  stock: number;
-  estimate?: MovingEstimate | null;
-  details: { equipment: PdfEquipment[] };
-  imageDataUrl: (path: string) => Promise<string | null>;
-};
+import type { LoadingSimulationPdfInput } from '../application/contracts/loading-simulation-pdf';
+import { loadingRules } from '../../moving/application/services/loading-simulation-model';
 
 function pdfLines(
   pdf: InstanceType<(typeof import('jspdf'))['jsPDF']>,
@@ -38,7 +23,7 @@ export async function generateLoadingSimulationPdf({
   estimate,
   details,
   imageDataUrl,
-}: PdfInput): Promise<boolean> {
+}: LoadingSimulationPdfInput): Promise<boolean> {
   try {
     if (!window.DemSim) return false;
     try {

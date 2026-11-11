@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useBookingForm } from '../../../../booking/application/controllers/useBookingForm';
-import { blankDraft, useApp } from '../../../../shared/application/context';
+import { useApp } from '../../../../shared/application/context';
+import { blankDraft } from '../../../../booking/application/booking-draft';
 import { useBookingCommands } from '../../../../booking/application/controllers/useBookingCommands';
 import {
   readAdminQuoteDraft,
@@ -115,6 +116,9 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     mode: publicRequest && user?.role !== 'admin' ? 'booking' : 'admin-quote',
     quoteConfig,
     quoteKind,
+    onAdministrativeBookingCreated: () => {
+      void clearAdminQuoteDraft(api);
+    },
     getRentalKit: () => rentalKit,
     onQuoteSaved: (booking) => {
       if (!sendWhatsAppAfterSave.current) return;

@@ -7,10 +7,9 @@ import { inventoryNote } from '../../../moving/domain/inventory/inventory';
 import { tollPrice } from '../../../moving/domain/tolls/toll-prices';
 import { quoteTollsFromLines, type TollExtraLine } from '../../../moving/domain/tolls/toll-selection';
 import { normalizedClientPhone } from '../../../shared/domain/client-identity';
-import { blankDraft, useApp } from '../../../shared/application/context';
+import { useApp } from '../../../shared/application/context';
 import { errorMessage } from '../../../shared/application/error-message';
 import { administrationQuoteForBooking, routes } from '../../../shared/navigation/config/routes';
-import { clearAdminQuoteDraft } from '../../../admin/quotes/application/admin-quote-draft-storage';
 import type { RentalKitItem } from '../../../shared/domain/model';
 import { defaultRentalKit } from '../../../moving/domain/rental-kit';
 import {
@@ -20,6 +19,8 @@ import {
   type BookingFieldErrors,
 } from '../../domain/booking-validation';
 import { normalizePhoneNumber } from '../../../shared/domain/phone-number';
+import { blankDraft } from '../booking-draft';
+import { useBookingDraft } from '../booking-draft-context';
 export type AdminQuoteConfig = {
   trips: number;
   discount: number;
@@ -37,16 +38,18 @@ export function useBookingForm({
   quoteConfig,
   quoteKind,
   onQuoteSaved,
+  onAdministrativeBookingCreated,
   getRentalKit,
 }: {
   mode?: 'booking' | 'admin-quote';
   quoteConfig?: AdminQuoteConfig;
   quoteKind?: Quote['kind'];
   onQuoteSaved?: (booking: Booking) => void;
+  onAdministrativeBookingCreated?: () => void;
   getRentalKit?: () => RentalKitItem[];
 } = {}) {
-  const { catalogue, tollPoints, loading, error, reload, api, user, authLoading, draft, setDraft } =
-    useApp();
+  const { catalogue, tollPoints, loading, error, reload, api, user, authLoading } = useApp();
+  const { draft, setDraft } = useBookingDraft();
   const navigate = useNavigate();
   const location = useLocation();
   const editId = new URLSearchParams(location.search).get('modifier');
@@ -504,7 +507,7 @@ export function useBookingForm({
           ? await api.updateAdminBooking(editingBooking.id, input, editingBooking.version)
           : await api.updateClientBooking(editingBooking.id, input, editingBooking.version)
         : await api.createBooking(input);
-      if (administrativeQuote) void clearAdminQuoteDraft(api);
+      if (administrativeQuote) onAdministrativeBookingCreated?.();
       bookingLookup.current = null;
       setDraft(blankDraft());
       if (editingBooking && !administrativeQuote) {

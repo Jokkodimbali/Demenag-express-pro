@@ -1,4 +1,5 @@
 import { uiText } from '../../shared/content/reference-ui-text';
+import { visibleUiText } from '../../shared/content/visible-ui-text';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -337,7 +338,7 @@ export function BookingPage() {
             </small>
           )}
           <div>
-            <small>ESTIMATION PROVISOIRE</small>
+            <small>{visibleUiText.bookingProvisionalEstimateLabel}</small>
             <strong>{price ? money(price.total) : messages.aCalculer}</strong>
           </div>
           {isMobileBooking && mobileBookingStep > 1 && (

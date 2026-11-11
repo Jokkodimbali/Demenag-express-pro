@@ -31,7 +31,7 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
       <section className="admin-quote-reference-settings" aria-label={visibleUiText.text124}>
         <strong>{visibleUiText.text125}</strong>
         <div className="admin-quote-reference-setting">
-          <span>Formule</span>
+          <span>{visibleUiText.quoteFormulaLabel}</span>
           <div
             className="admin-quote-formula-options"
             role="group"
@@ -50,9 +50,9 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
                 }))
               }
             >
-              <strong>Économique</strong>
+              <strong>{visibleUiText.quoteEconomicFormula}</strong>
               <b>{money(formulaPrices.economic)}</b>
-              <small>Vos porteurs</small>
+              <small>{visibleUiText.quoteMoversLabel}</small>
             </button>
             <button
               type="button"
@@ -67,9 +67,9 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
                 }))
               }
             >
-              <strong>Standard</strong>
+              <strong>{visibleUiText.quoteStandardFormula}</strong>
               <b>{money(formulaPrices.standard)}</b>
-              <small>Avec nos manœuvres · conseillée</small>
+              <small>{visibleUiText.quoteRecommendedMovers}</small>
             </button>
             <button
               type="button"
@@ -83,9 +83,9 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
                 }))
               }
             >
-              <strong>Complète</strong>
+              <strong>{visibleUiText.quoteCompleteFormula}</strong>
               <b>{money(formulaPrices.complete)}</b>
-              <small>+ menuisier</small>
+              <small>{visibleUiText.quoteCarpenterIncluded}</small>
             </button>
           </div>
         </div>
@@ -322,7 +322,7 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
           </label>
         )}
         <span className="admin-quote-reference-settings-note">
-          Matériel et passage apparaissent dans l’encadré « Conditions de chargement » du devis PDF.
+          {visibleUiText.quoteLoadingConditionsNote}
         </span>
       </section>
     </>

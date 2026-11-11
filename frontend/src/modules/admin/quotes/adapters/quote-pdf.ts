@@ -7,10 +7,8 @@ import { referenceDwellingVolume } from '../../../moving/domain/estimate/referen
 import { defaultQuoteTerms } from '../../../moving/domain/quote-terms';
 import type { Booking, Quote, Settings } from '../../../shared/domain/model';
 import {
-  addressNotesFrom,
   durationLabel,
-  notesForPdf,
-  withoutInventoryBlock,
+  quotePdfNotes,
 } from './quote-pdf-text';
 
 export async function downloadQuote(
@@ -22,23 +20,7 @@ export async function downloadQuote(
   const documentQuote = quote;
   const doc = new jsPDF({ format: 'a4', unit: 'mm' });
   const price = documentQuote?.price || booking.estimate;
-  const rawNotes = notesForPdf(documentQuote ? documentQuote.notes : booking.notes);
-  const conditionsMatch =
-    /CONDITIONS DE CHARGEMENT\s*\n([\s\S]*?Ces conditions doivent être respectées le jour du déménagement\. Sinon, le déménagement n’aura pas lieu\.)/u.exec(
-      rawNotes,
-    );
-  const loadingConditions = conditionsMatch?.[0] ?? '';
-  const sourceNotes = loadingConditions ? rawNotes.replace(loadingConditions, '').trim() : rawNotes;
-  const addressNotes = addressNotesFrom(
-    booking.inventorySnapshot
-      ? withoutInventoryBlock(
-          sourceNotes,
-          booking.inventorySnapshot,
-          booking.fromAddress,
-          booking.toAddress,
-        )
-      : sourceNotes,
-  );
+  const { loadingConditions, addressNotes } = quotePdfNotes(booking, documentQuote);
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 16;
   const contentWidth = pageWidth - margin * 2;

@@ -8,7 +8,7 @@ import {
   handlingAdvice,
   simulationLineWeight,
   type SimulationLine,
-} from '../src/modules/booking/domain/loading-simulation-details';
+} from '../src/modules/moving/domain/loading-simulation-details';
 
 test('les masses des objets composés suivent les pièces et le démontage du modèle', () => {
   const salon: SimulationLine = { k: 'salon', q: 1, s: 5, g: 'm', dm: false, n: 'Salon' };

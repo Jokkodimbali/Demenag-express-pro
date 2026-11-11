@@ -171,7 +171,7 @@ function ClientRow({
         {value.references.length > 0 && (
           <details className="reference-client-booking-list">
             <summary aria-label={`Voir les identifiants des ${value.moves} déménagements`}>
-              Identifiants <span aria-hidden="true">▾</span>
+              {visibleUiText.clientMoveIdentifiers} <span aria-hidden="true">▾</span>
             </summary>
             <div>
               {value.references.map((reference) => (
@@ -216,7 +216,7 @@ function ClientRow({
             aria-label={`Supprimer ${value.name}`}
             onClick={onHide}
           >
-            ×
+            {visibleUiText.clientRemoveSymbol}
           </button>
         </div>
       </td>

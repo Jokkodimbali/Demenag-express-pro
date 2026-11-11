@@ -3,6 +3,7 @@ import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import { money } from '../../../shared/application/presentation/format';
 import { useApp } from '../../../shared/application/context';
+import { useBookingDraft } from '../../../booking/application/booking-draft-context';
 import type { TollPoint } from '../../../shared/domain/model';
 import { tollPrice } from '../../domain/tolls/toll-prices';
 
@@ -21,7 +22,8 @@ export function TollRateSelector({
   roundTrips?: number;
   points?: TollPoint[];
 }) {
-  const { tollPoints, draft, catalogue } = useApp();
+  const { tollPoints, catalogue } = useApp();
+  const { draft } = useBookingDraft();
   const availableTollPoints = providedPoints ?? tollPoints;
   const selectedVehicleId = vehicleId ?? draft.vehicleId;
   const vehicle = catalogue?.vehicles.find((item) => item.id === selectedVehicleId);

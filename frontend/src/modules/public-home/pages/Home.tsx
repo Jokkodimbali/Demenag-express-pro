@@ -1,11 +1,13 @@
 import { uiText } from '../../shared/content/reference-ui-text';
 import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../../shared/application/context';
+import { useBookingDraft } from '../../booking/application/booking-draft-context';
 import { money, tierLabels } from '../../shared/application/presentation/format';
 import { routes } from '../../shared/navigation/config/routes';
 
 export function Home() {
-  const { catalogue, draft, setDraft, loading, error, reload } = useApp();
+  const { catalogue, loading, error, reload } = useApp();
+  const { draft, setDraft } = useBookingDraft();
   const navigate = useNavigate();
   const vehicle = catalogue?.vehicles.find((item) => item.id === draft.vehicleId);
   const tiers = tierLabels(catalogue?.settings.distanceBounds);

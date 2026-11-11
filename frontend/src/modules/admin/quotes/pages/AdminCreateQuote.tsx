@@ -20,7 +20,7 @@ import { AdminQuoteSettings } from '../components/AdminQuoteSettings';
 import { AdminQuoteSaveBar } from '../components/AdminQuoteSaveBar';
 import { AdminQuoteStepHeading } from '../components/AdminQuoteStepHeading';
 import { AdminQuoteStep } from '../components/AdminQuoteStep';
-import { LoadingSimulation } from '../../../booking/components/LoadingSimulation';
+import { LoadingSimulation } from '../components/LoadingSimulation';
 import { adminQuoteVehicleText as quoteText } from '../content/admin-quote-vehicle';
 import { quoteConditionsText } from '../../../shared/messaging/application/services/whatsapp-templates';
 import { normalizePhoneNumber, sanitizePhoneInput } from '../../../shared/domain/phone-number';
@@ -1070,13 +1070,14 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                 crew={movingEstimate?.crew ?? 2}
                 estimate={movingEstimate}
                 setDraft={setDraft}
-                setQuoteConfig={setQuoteConfig}
+                onTripsChange={(trips) =>
+                  setQuoteConfig((current) => ({ ...current, trips }))
+                }
                 onPlanNeeds={model.setSimulationNeeds}
               />
               {model.inventoryCount === 0 && (
                 <span className="admin-quote-plan-empty">
-                  Remplissez l’inventaire pour voir la simulation de chargement et la fatigue de
-                  l’équipe.
+                  {visibleUiText.quoteLoadingSimulationHint}
                 </span>
               )}
             </AdminQuoteStep>

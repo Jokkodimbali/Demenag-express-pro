@@ -1,8 +1,8 @@
-import type { Inventory } from '../../../moving/domain/inventory/inventory';
-import { inventoryItems } from '../../../moving/domain/inventory/inventory';
-import { estimatedInventoryItemVolume } from '../../../moving/domain/estimate/moving-estimate';
+import type { Inventory } from '../../domain/inventory/inventory';
+import { inventoryItems } from '../../domain/inventory/inventory';
+import { estimatedInventoryItemVolume } from '../../domain/estimate/moving-estimate';
 import type { Vehicle } from '../../../shared/domain/model';
-import { referenceAnnexVolume } from '../../../moving/domain/estimate/reference-inventory-note';
+import { referenceAnnexVolume } from '../../domain/estimate/reference-inventory-note';
 
 export type SimBox = {
   step: number;

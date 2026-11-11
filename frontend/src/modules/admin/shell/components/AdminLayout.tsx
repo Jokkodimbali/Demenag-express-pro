@@ -120,13 +120,13 @@ export function AdminLayout() {
           <button
             className="admin-mobile-menu-toggle"
             type="button"
-            aria-label="Ouvrir le menu administration"
+            aria-label={visibleUiText.adminOpenMenuLabel}
             aria-expanded={mobileMenuOpen}
             aria-controls="admin-mobile-menu"
             onClick={() => setMobileMenuOpen(true)}
           >
             <Menu size={19} aria-hidden="true" />
-            <span>Menu</span>
+            <span>{visibleUiText.adminMenuButtonLabel}</span>
           </button>
         </div>
         <div className="admin-reference-navigation">
@@ -275,7 +275,7 @@ export function AdminLayout() {
             id="admin-mobile-menu"
             role="dialog"
             aria-modal="true"
-            aria-label="Menu administration"
+            aria-label={visibleUiText.adminDialogLabel}
             onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="admin-mobile-menu-header">
@@ -295,7 +295,7 @@ export function AdminLayout() {
               <button
                 type="button"
                 className="admin-mobile-menu-close"
-                aria-label="Fermer le menu administration"
+                aria-label={visibleUiText.adminCloseMenuLabel}
                 onClick={() => setMobileMenuOpen(false)}
               >
                 <X size={20} aria-hidden="true" />

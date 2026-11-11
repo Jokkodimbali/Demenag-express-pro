@@ -1,25 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
-import type { Draft } from '../application/booking-draft';
-import type { AdminQuoteConfig } from '../../admin/quotes/application/admin-quote-draft-storage';
-import type { MovingEstimate } from '../../moving/domain/estimate/moving-estimate';
+import type { Draft } from '../../../booking/application/booking-draft';
+import type { MovingEstimate } from '../../../moving/domain/estimate/moving-estimate';
 import {
   crewPosts,
   equipmentAdvice,
   fatigueAdvice,
   handlingAdvice,
-} from '../domain/loading-simulation-details';
-import type { Vehicle } from '../../shared/domain/model';
+} from '../../../moving/domain/loading-simulation-details';
+import type { Vehicle } from '../../../shared/domain/model';
 import {
   simulationInput,
   format,
   tripLabel,
   loadingRules,
-} from '../application/services/loading-simulation-model';
-import type { SimPlan, SimView } from '../application/services/loading-simulation-model';
-import { generateLoadingSimulationPdf } from './loading-simulation-pdf';
+} from '../../../moving/application/services/loading-simulation-model';
+import type { SimPlan, SimView } from '../../../moving/application/services/loading-simulation-model';
+import { useLoadingSimulationPdfExporter } from '../../../booking/application/loading-simulation-pdf-context';
 import { useLoadingSimulationPreferences } from '../application/controllers/useLoadingSimulationPreferences';
-import { visibleUiText } from '../../shared/content/visible-ui-text';
+import { visibleUiText } from '../../../shared/content/visible-ui-text';
 
 const scripts = new Map<string, Promise<void>>();
 function loadScript(src: string) {
@@ -48,20 +47,21 @@ export function LoadingSimulation({
   crew,
   estimate,
   setDraft,
-  setQuoteConfig,
+  onTripsChange,
   onPlanNeeds,
 }: {
   draft: Draft;
   vehicles: Vehicle[];
-  quoteConfig: AdminQuoteConfig;
+  quoteConfig: { trips: number; calcMode: 'auto' | 'manual' };
   crew: number;
   estimate?: MovingEstimate | null;
   setDraft: Dispatch<SetStateAction<Draft>>;
-  setQuoteConfig: Dispatch<SetStateAction<AdminQuoteConfig>>;
+  onTripsChange: (trips: number) => void;
   onPlanNeeds?: Dispatch<SetStateAction<{ blankets: number; straps: number } | null>>;
 }) {
   const { blanketLengthCm, blanketWidthCm, blanketStock, saveBlanketStock, imageDataUrl } =
     useLoadingSimulationPreferences();
+  const exportPdf = useLoadingSimulationPdfExporter();
   const quoteBlanketLengthCm = draft.inventory.blanketLengthCm ?? blanketLengthCm;
   const quoteBlanketWidthCm = draft.inventory.blanketWidthCm ?? blanketWidthCm;
   const quoteBlanketSizeDiffers =
@@ -268,7 +268,7 @@ export function LoadingSimulation({
   async function downloadPlan() {
     if (!plan) return;
     setPdfError('');
-    const created = await generateLoadingSimulationPdf({
+    const created = await exportPdf({
       plan,
       draft,
       vehicle,
@@ -825,10 +825,7 @@ export function LoadingSimulation({
                               : Math.max(1, plan.trips.length),
                         }));
                         if (quoteConfig.calcMode !== 'manual')
-                          setQuoteConfig((current) => ({
-                            ...current,
-                            trips: Math.max(1, plan.trips.length),
-                          }));
+                          onTripsChange(Math.max(1, plan.trips.length));
                       }}
                     >
                       {visibleUiText.text55}

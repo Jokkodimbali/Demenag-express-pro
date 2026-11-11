@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
-import { useApp } from '../../../shared/application/context';
-import { errorMessage } from '../../../shared/application/error-message';
+import { useApp } from '../../../../shared/application/context';
+import { errorMessage } from '../../../../shared/application/error-message';
 
 export function useLoadingSimulationPreferences() {
   const { api, catalogue, setCatalogue } = useApp();
