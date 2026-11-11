@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAdministration } from '../application/controllers/useAdministration';
 import { DefinitiveQuotes } from '../components/AdministrationDashboard';
 import { messages } from '../content/fr';
-import { routes } from '../routing/routes';
+import { administrationQuoteForBooking, routes } from '../routing/routes';
 
 export function AdminFinance() {
   const { bookings, loading, error } = useAdministration();
@@ -33,14 +33,8 @@ export function AdminFinance() {
       ) : (
         <DefinitiveQuotes
           bookings={bookings}
-          onSelect={(booking) =>
-            navigate(`${routes.administrationBookings}?q=${booking.reference}&detail=${booking.id}`)
-          }
-          onEdit={(booking) =>
-            navigate(
-              `${routes.administrationBookings}?q=${booking.reference}&detail=${booking.id}&edit=quote`,
-            )
-          }
+          onSelect={(booking) => navigate(administrationQuoteForBooking(booking.id))}
+          onEdit={(booking) => navigate(administrationQuoteForBooking(booking.id))}
         />
       )}
     </div>

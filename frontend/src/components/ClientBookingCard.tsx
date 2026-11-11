@@ -1,7 +1,7 @@
 import { liveBookingPrice } from '../application/services/live-booking-price';
 import { uiText } from '../content/reference-ui-text';
 import { useApp } from '../application/context';
-import { useBookingCard } from '../application/controllers/useBookingCard';
+import { useClientBookingPdf } from '../application/controllers/useClientBookingPdf';
 import { whatsappPaymentLine } from '../application/services/whatsapp-templates';
 import { money, referenceTierLabels } from '../application/presentation/format';
 import type { Booking } from '../domain/model';
@@ -9,15 +9,9 @@ import { routes } from '../routing/routes';
 import { BookingRouteMap } from './BookingRouteMap';
 import { Link } from 'react-router-dom';
 
-export function ClientBookingCard({
-  booking,
-  onChange,
-}: {
-  booking: Booking;
-  onChange: (booking: Booking) => void;
-}) {
+export function ClientBookingCard({ booking }: { booking: Booking }) {
   const { catalogue } = useApp();
-  const { pdf, busy, error } = useBookingCard({ booking, onChange });
+  const { pdf, busy, error } = useClientBookingPdf(booking);
   const provisionalQuote = booking.quotes.filter((quote) => quote.kind === 'provisional').at(-1);
   const finalQuote = booking.quotes.filter((quote) => quote.kind === 'final').at(-1);
   const displayedEstimate = liveBookingPrice(booking, catalogue).total;

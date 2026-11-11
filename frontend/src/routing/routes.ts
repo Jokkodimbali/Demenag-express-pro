@@ -22,3 +22,7 @@ export const routes = {
   driverVehicleCheck: '/chauffeur/vehicule',
   driverProfile: '/chauffeur/profil',
 } as const;
+
+export function administrationQuoteForBooking(bookingId: string) {
+  return `${routes.administrationCreateQuote}?modifier=${encodeURIComponent(bookingId)}`;
+}

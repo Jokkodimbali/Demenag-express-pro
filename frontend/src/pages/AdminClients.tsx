@@ -167,7 +167,26 @@ function ClientRow({
         />
       </td>
       <td data-label="Déménagements" className="reference-client-number">
-        {value.moves}
+        <span>{value.moves}</span>
+        {value.references.length > 0 && (
+          <details className="reference-client-booking-list">
+            <summary aria-label={`Voir les identifiants des ${value.moves} déménagements`}>
+              Identifiants <span aria-hidden="true">▾</span>
+            </summary>
+            <div>
+              {value.references.map((reference) => (
+                <button
+                  className="reference-client-history"
+                  key={reference}
+                  type="button"
+                  onClick={() => onHistory(reference)}
+                >
+                  {reference}
+                </button>
+              ))}
+            </div>
+          </details>
+        )}
       </td>
       <td data-label="Montant total" className="reference-client-amount">
         <strong>{money(value.total)}</strong>
@@ -191,17 +210,6 @@ function ClientRow({
           >
             {visibleUiText.text203}
           </button>
-          {value.references.map((reference) => (
-            <button
-              className="reference-client-history"
-              key={reference}
-              type="button"
-              title={`Ouvrir le rendez-vous ${reference}`}
-              onClick={() => onHistory(reference)}
-            >
-              {reference}
-            </button>
-          ))}
           <button
             className="reference-client-delete"
             title={uiText['supprimer']}

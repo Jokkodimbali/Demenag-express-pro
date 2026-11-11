@@ -363,15 +363,29 @@
   align-items: flex-start;
   gap: 14px;
 }
-.admin-workspace:has(.admin-quote-page) .admin-reference-heading > div {
+.admin-workspace:has(.admin-quote-page) .admin-reference-heading > .admin-reference-title {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  align-items: flex-end;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 52px;
+  gap: 8px;
 }
 .admin-workspace:has(.admin-quote-page) .admin-reference-heading h1 {
   margin: 0;
 }
-.admin-workspace:has(.admin-quote-page) .admin-tabs {
+@media (max-width: 759px) {
+  .admin-workspace:has(.admin-quote-page) .admin-reference-heading {
+    align-items: stretch;
+    gap: 14px;
+  }
+  .admin-workspace:has(.admin-quote-page) .admin-reference-heading .admin-reference-title {
+    min-height: 52px;
+    flex-direction: row;
+    align-items: flex-end;
+  }
+}
+.admin-workspace:has(.admin-quote-page) .admin-reference-navigation .admin-tabs {
   align-self: flex-start;
   width: max-content;
   margin-bottom: 0;
@@ -380,7 +394,7 @@
   border: 1px solid #3b4046;
   padding: 5px;
 }
-.admin-workspace:has(.admin-quote-page) .admin-tabs a {
+.admin-workspace:has(.admin-quote-page) .admin-reference-navigation .admin-tabs a {
   border-radius: 10px;
 }
 .admin-quote-layout {

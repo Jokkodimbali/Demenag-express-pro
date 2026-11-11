@@ -37,6 +37,12 @@ import { errorMessage } from '../../application/error-message';
 export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const location = useLocation();
   const navigate = useNavigate();
+  const quoteHandoff = location.state as {
+    initialTollLines?: { id: string; label: string; quantity: number; unitPrice: number }[];
+    quoteError?: string;
+  } | null;
+  const quoteHandoffError = quoteHandoff?.quoteError ?? '';
+  const quoteHandoffApplied = useRef('');
   const initialClient = (
     location.state as {
       initialClient?: { name: string; phone: string; address: string };
@@ -408,6 +414,16 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       })),
     );
   }, [state.editingBooking, setTollLines]);
+  useEffect(() => {
+    if (
+      !state.editingBooking ||
+      !quoteHandoff?.initialTollLines?.length ||
+      quoteHandoffApplied.current === location.key
+    )
+      return;
+    quoteHandoffApplied.current = location.key;
+    setTollLines(quoteHandoff.initialTollLines);
+  }, [location.key, quoteHandoff, setTollLines, state.editingBooking]);
   const inventoryText = referenceInventoryNote(
     estimateInventory,
     draft.fromAddress,
@@ -889,6 +905,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   return {
     location,
     navigate,
+    quoteHandoffError,
     initialClient,
     editingReservation,
     startNewRequest,

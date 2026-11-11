@@ -6,7 +6,7 @@ import { useNotificationSession } from '../application/controllers/useNotificati
 import { useNotificationActions } from '../application/controllers/useNotificationActions';
 import { messages } from '../content/fr';
 import type { User } from '../domain/model';
-import { routes } from '../routing/routes';
+import { administrationQuoteForBooking, routes } from '../routing/routes';
 import type { AppNotification } from '../application/ports';
 
 export function NotificationCenter({ user }: { user: User | null }) {
@@ -127,9 +127,7 @@ export function NotificationCenter({ user }: { user: User | null }) {
   if (!user) return null;
   const destination = (bookingId?: string) => {
     if (user.role === 'admin')
-      return bookingId
-        ? `${routes.administrationBookings}?detail=${bookingId}`
-        : routes.administrationBookings;
+      return bookingId ? administrationQuoteForBooking(bookingId) : routes.administrationBookings;
     return user.role === 'driver' ? routes.driverWorkspace : routes.account;
   };
   return (

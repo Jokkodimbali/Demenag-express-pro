@@ -33,6 +33,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
   const {
     editingReservation,
     editingBooking,
+    quoteHandoffError,
     resetVersion,
     quoteConfig,
     setQuoteConfig,
@@ -189,6 +190,11 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
     );
   return (
     <div className={`admin-quote-page${publicRequest ? ' reference-request-page' : ''}`}>
+      {quoteHandoffError && (
+        <p className="alert error" role="alert">
+          {quoteHandoffError}
+        </p>
+      )}
       {publicRequest && (
         <div className="reference-request-heading">
           <div>

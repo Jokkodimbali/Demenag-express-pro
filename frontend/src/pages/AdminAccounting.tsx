@@ -8,7 +8,7 @@ import { AccountingFinanceSections } from '../components/AccountingFinanceSectio
 import { ReferenceAccountingOverview } from '../components/ReferenceAccountingOverview';
 import { ReferenceMonthlyCharges } from '../components/ReferenceMonthlyCharges';
 import { money } from '../application/presentation/format';
-import { routes } from '../routing/routes';
+import { administrationQuoteForBooking } from '../routing/routes';
 
 export function AdminAccounting() {
   const [downloadError, setDownloadError] = useState('');
@@ -265,9 +265,7 @@ export function AdminAccounting() {
                   · {entry.category} {entry.automatic && <b>{accountingText.auto}</b>}
                 </span>
                 {entry.bookingId && (
-                  <Link
-                    to={`${routes.administrationBookings}?q=${encodeURIComponent(entry.bookingReference ?? '')}&detail=${entry.bookingId}`}
-                  >
+                  <Link to={administrationQuoteForBooking(entry.bookingId)}>
                     {accountingText.viewBooking}
                   </Link>
                 )}

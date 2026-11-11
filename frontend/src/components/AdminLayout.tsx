@@ -1,9 +1,12 @@
 import { visibleUiText } from '../content/visible-ui-text';
 import { uiText } from '../content/reference-ui-text';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { LogOut, Menu, UserRound, X } from 'lucide-react';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { messages } from '../content/fr';
 import { routes } from '../routing/routes';
 import { useAdminLayoutModel } from '../application/controllers/useAdminLayoutModel';
+import { useLayout } from '../application/controllers/useLayout';
 
 const groups = [
   {
@@ -40,6 +43,9 @@ const groups = [
 ];
 export function AdminLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user, logout } = useLayout();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const {
     query,
     setQuery,
@@ -59,38 +65,72 @@ export function AdminLayout() {
     toggleTodo,
     markAllNotificationsRead,
   } = useAdminLayoutModel();
+  useEffect(() => setMobileMenuOpen(false), [location.pathname, location.search]);
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileMenuOpen(false);
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [mobileMenuOpen]);
+  const renderNavigationGroups = (mobile = false) => (
+    <nav
+      className={mobile ? 'admin-tab-groups admin-mobile-tab-groups' : 'admin-tab-groups'}
+      aria-label={messages.navigationAdministration}
+    >
+      {groups.map((group) => (
+        <div className="admin-tab-group" key={group.label}>
+          <span>{group.label}</span>
+          <div className="admin-tabs">
+            {group.sections.map(({ to, label }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end
+                onClick={(event) => {
+                  if (mobile) setMobileMenuOpen(false);
+                  if (to !== routes.administrationCreateQuote) return;
+                  event.preventDefault();
+                  navigate(to, { state: { resetQuote: crypto.randomUUID() } });
+                }}
+                className={({ isActive }) => (isActive ? 'active' : '')}
+              >
+                {label}
+              </NavLink>
+            ))}
+          </div>
+        </div>
+      ))}
+    </nav>
+  );
   return (
     <section className="container workspace-page admin-workspace">
       <header className="admin-reference-heading">
-        <div>
-          <span>{uiText['administration']}</span>
-          <h1>{uiText['tableauDEBORD']}</h1>
+        <div className="admin-reference-title">
+          <div className="admin-reference-title-copy">
+            <span>{uiText['administration']}</span>
+            <h1>{uiText['tableauDEBORD']}</h1>
+          </div>
+          <button
+            className="admin-mobile-menu-toggle"
+            type="button"
+            aria-label="Ouvrir le menu administration"
+            aria-expanded={mobileMenuOpen}
+            aria-controls="admin-mobile-menu"
+            onClick={() => setMobileMenuOpen(true)}
+          >
+            <Menu size={19} aria-hidden="true" />
+            <span>Menu</span>
+          </button>
         </div>
         <div className="admin-reference-navigation">
-          <nav className="admin-tab-groups" aria-label={messages.navigationAdministration}>
-            {groups.map((group) => (
-              <div className="admin-tab-group" key={group.label}>
-                <span>{group.label}</span>
-                <div className="admin-tabs">
-                  {group.sections.map(({ to, label }) => (
-                    <NavLink
-                      key={to}
-                      to={to}
-                      end
-                      onClick={(event) => {
-                        if (to !== routes.administrationCreateQuote) return;
-                        event.preventDefault();
-                        navigate(to, { state: { resetQuote: crypto.randomUUID() } });
-                      }}
-                      className={({ isActive }) => (isActive ? 'active' : '')}
-                    >
-                      {label}
-                    </NavLink>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </nav>
+          {renderNavigationGroups()}
           <div className="admin-global-actions">
             <div className="admin-global-search">
               <input
@@ -228,6 +268,47 @@ export function AdminLayout() {
           </div>
         </div>
       </header>
+      {mobileMenuOpen && (
+        <div className="admin-mobile-menu-backdrop" onMouseDown={() => setMobileMenuOpen(false)}>
+          <aside
+            className="admin-mobile-menu"
+            id="admin-mobile-menu"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu administration"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="admin-mobile-menu-header">
+              <div className="admin-mobile-profile">
+                {user?.photo ? (
+                  <img src={user.photo} alt="" />
+                ) : (
+                  <span className="admin-mobile-profile-icon">
+                    <UserRound size={20} aria-hidden="true" />
+                  </span>
+                )}
+                <span>
+                  <strong>{user?.name || 'Administrateur'}</strong>
+                  <small>{user?.phone || 'Administrateur'}</small>
+                </span>
+              </div>
+              <button
+                type="button"
+                className="admin-mobile-menu-close"
+                aria-label="Fermer le menu administration"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <X size={20} aria-hidden="true" />
+              </button>
+            </div>
+            {renderNavigationGroups(true)}
+            <button type="button" className="admin-mobile-logout" onClick={() => void logout()}>
+              <LogOut size={17} aria-hidden="true" />
+              {uiText['deconnexion']}
+            </button>
+          </aside>
+        </div>
+      )}
       <Outlet />
     </section>
   );

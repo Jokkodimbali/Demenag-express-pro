@@ -9,7 +9,7 @@ import { quoteTollsFromLines, type TollExtraLine } from '../domain/toll-selectio
 import { normalizedClientPhone } from './services/client-summary';
 import { blankDraft, useApp } from './context';
 import { errorMessage } from './error-message';
-import { routes } from '../routing/routes';
+import { administrationQuoteForBooking, routes } from '../routing/routes';
 import { clearAdminQuoteDraft } from './admin-quote-draft-storage';
 import type { RentalKitItem } from '../domain/model';
 import { defaultRentalKit } from '../domain/rental-kit';
@@ -543,17 +543,16 @@ export function useBookingForm({
             providedCrew: draft.options.labour,
           });
           onQuoteSaved?.(savedQuoteBooking);
-          navigate(`${routes.administrationBookings}?q=${booking.reference}&detail=${booking.id}`);
+          navigate(`${routes.administrationBookings}?q=${encodeURIComponent(booking.reference)}`, {
+            state: { successMessage: `Devis ${booking.reference} enregistré.` },
+          });
         } catch (reason) {
-          navigate(
-            `${routes.administrationBookings}?q=${booking.reference}&detail=${booking.id}&edit=quote`,
-            {
-              state: {
-                initialTollLines: tollLines,
-                quoteError: `${editingBooking ? 'Réservation mise à jour' : 'Réservation créée'}, mais le devis n’a pas été enregistré : ${errorMessage(reason)}`,
-              },
+          navigate(administrationQuoteForBooking(booking.id), {
+            state: {
+              initialTollLines: tollLines,
+              quoteError: `${editingBooking ? 'Réservation mise à jour' : 'Réservation créée'}, mais le devis n’a pas été enregistré : ${errorMessage(reason)}`,
             },
-          );
+          });
         }
         return;
       }
