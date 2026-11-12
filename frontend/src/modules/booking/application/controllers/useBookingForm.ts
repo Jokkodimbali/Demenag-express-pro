@@ -185,8 +185,9 @@ export function useBookingForm({
           toLift: draft.inventory.toLift,
         },
         administrativeQuote ? (quoteConfig?.trips ?? 1) : draft.estimatedTrips,
-        administrativeQuote ? draft.distanceKmOverride : null,
-        draft.noDate ? null : draft.date,
+        draft.distanceKmOverride,
+        draft.noDate || !draft.date ? null : draft.date,
+        administrativeQuote,
       )
       .then(setPrice)
       .catch((e: unknown) => {

@@ -49,7 +49,7 @@ export function registerBookingRoutes(
         p.options,
         p.workAccess,
         p.trips,
-        undefined,
+        p.distanceKmOverride,
         p.workDate,
       ),
     );

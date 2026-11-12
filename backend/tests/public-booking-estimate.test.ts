@@ -82,13 +82,14 @@ test('a booking keeps its inventory and admin edits preserve or clear planning s
   const client: User = { id: 'client-1', name: 'Client', phone: '+221770000003', role: 'client' };
   const options = { labour: 0, desk: 0, wardrobe: 0, bed: 0 };
   const inventory = { itemCount: 12, totalVolumeM3: 18 } as BookingInventorySnapshot;
-  const estimate = await service.estimate('sprinter', route.id, options, undefined, 2);
-  assert.equal(estimate.total, 74000);
+  const estimate = await service.estimate('sprinter', route.id, options, undefined, 2, 14);
+  assert.equal(estimate.total, 60000);
   assert.equal(estimate.trips, 2);
 
   const input = {
     vehicleId: 'sprinter',
     routeId: route.id,
+    distanceKmOverride: 14,
     trips: 2,
     customerName: 'Client',
     customerPhone: client.phone,
@@ -105,11 +106,12 @@ test('a booking keeps its inventory and admin edits preserve or clear planning s
   assert.ok(saved);
   assert.equal((saved as Booking).fromAddress, input.fromAddress);
   assert.equal((saved as Booking).toAddress, input.toAddress);
-  assert.equal((saved as Booking).estimate.total, 74000);
+  assert.equal((saved as Booking).distanceKm, 14);
+  assert.equal((saved as Booking).estimate.total, 60000);
   assert.deepEqual((saved as Booking).inventorySnapshot, inventory);
   assert.equal((saved as Booking).quotes.length, 1);
   assert.equal((saved as Booking).quotes[0]?.kind, 'provisional');
-  assert.equal((saved as Booking).quotes[0]?.price.total, 74000);
+  assert.equal((saved as Booking).quotes[0]?.price.total, 60000);
   assert.equal((saved as Booking).quotes[0]?.price.trips, 2);
 
   const administrator: User = {

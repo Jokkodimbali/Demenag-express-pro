@@ -106,10 +106,6 @@ export class MovingService implements MovingUseCases {
       user.role === 'client' || user.role === 'admin',
       'La création d’une réservation est réservée au client et à l’administration.',
     );
-    requireValue(
-      user.role === 'admin' || input.distanceKmOverride == null,
-      'La distance personnalisée est réservée à l’administration.',
-    );
     const { route, vehicle, estimate, settings, vehiclePrices } = await movingPriceInput(
       this.catalogue,
       this.routes,
@@ -119,7 +115,7 @@ export class MovingService implements MovingUseCases {
       input.options,
       input.workAccess,
       input.trips ?? 1,
-      user.role === 'admin' ? input.distanceKmOverride : undefined,
+      input.distanceKmOverride ?? undefined,
       input.date,
     );
     if (user.role !== 'admin')
@@ -204,10 +200,6 @@ export class MovingService implements MovingUseCases {
   async updateClientRequest(user: User, id: string, input: BookingInput, version: number) {
     requireActiveUser(user);
     requireValue(user.role === 'client', 'Action réservée au client de la réservation.');
-    requireValue(
-      input.distanceKmOverride == null,
-      'La distance personnalisée est réservée à l’administration.',
-    );
     const booking = await this.get(user, id);
     if (booking.version !== version)
       throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
@@ -235,7 +227,7 @@ export class MovingService implements MovingUseCases {
       input.options,
       input.workAccess,
       input.trips ?? 1,
-      undefined,
+      input.distanceKmOverride ?? undefined,
       input.date,
     );
     if (input.date) validateDate(input.date, this.clock.now(), settings, input.timeSlot);

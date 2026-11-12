@@ -19,6 +19,7 @@ type GoogleMapsSdk = {
         callback: (response: GoogleTrafficResponse, status: string) => void,
       ) => void;
     };
+    DirectionsService?: new () => unknown;
   };
 };
 declare global {
@@ -33,7 +34,8 @@ let sdkPromise: Promise<boolean> | null = null;
 let sdkKey = '';
 
 async function ensureGoogleMaps(key: string): Promise<boolean> {
-  if (window.google?.maps?.DistanceMatrixService) return true;
+  if (!key.trim()) return false;
+  if (window.google?.maps?.DistanceMatrixService || window.google?.maps?.DirectionsService) return true;
   if (sdkKey !== key) {
     sdkKey = key;
     sdkPromise = null;
@@ -51,7 +53,7 @@ async function ensureGoogleMaps(key: string): Promise<boolean> {
       };
       const timeout = window.setTimeout(() => finish(false), 15000);
       window[callbackName] = () => {
-        finish(Boolean(window.google?.maps?.DistanceMatrixService));
+        finish(Boolean(window.google?.maps?.DistanceMatrixService || window.google?.maps?.DirectionsService));
       };
       window.gm_authFailure = () => finish(false);
       const script = document.createElement('script');
@@ -62,6 +64,10 @@ async function ensureGoogleMaps(key: string): Promise<boolean> {
     });
   }
   return sdkPromise;
+}
+
+export function googleTrafficMapsReady(key: string) {
+  return ensureGoogleMaps(key.trim());
 }
 
 export async function googleTrafficDuration(

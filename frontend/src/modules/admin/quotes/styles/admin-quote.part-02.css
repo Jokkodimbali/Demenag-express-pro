@@ -820,3 +820,33 @@
 .admin-quote-paper-line strong {
   white-space: nowrap;
 }
+.reference-route-alternatives {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.reference-route-alternatives button {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--border, #3b4046);
+  border-radius: 10px;
+  background: #1e2023;
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.reference-route-alternatives button.selected {
+  border-color: #f6d73c;
+  background: #f6d73c;
+  color: #1e2023;
+}
+
+.reference-route-alternatives button span {
+  font-size: 12px;
+  opacity: 0.8;
+}

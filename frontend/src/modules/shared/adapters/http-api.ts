@@ -234,11 +234,20 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
       trips,
       distanceKmOverride,
       workDate,
+      administrativeQuote = false,
     ) =>
       request(
-        distanceKmOverride == null ? httpRoutes.estimates : httpRoutes.adminEstimates,
+        administrativeQuote ? httpRoutes.adminEstimates : httpRoutes.estimates,
         'POST',
-        { vehicleId, routeId, options, workAccess, trips, distanceKmOverride, workDate },
+        {
+          vehicleId,
+          routeId,
+          options,
+          workAccess,
+          trips,
+          ...(distanceKmOverride == null ? {} : { distanceKmOverride }),
+          workDate,
+        },
         signal,
       ),
   };

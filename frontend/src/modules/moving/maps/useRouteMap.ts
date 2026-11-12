@@ -12,6 +12,7 @@ import { useRouteMapCommands } from './application/controllers/useRouteMapComman
 import { useApp } from '../../shared/application/context';
 import { errorMessage } from '../../shared/application/error-message';
 import type { RouteMapDraft, RouteMapDraftUpdater } from './route-map-state';
+import { referenceRouteAlternatives, type ReferenceRouteAlternative } from './application/services/reference-route-alternatives';
 type Side = 'from' | 'to';
 const EMPTY_TOLL_LINES: TollExtraLine[] = [];
 const pin = (side: Side) =>
@@ -27,6 +28,7 @@ export function useRouteMap(
   tollLines: TollExtraLine[] = EMPTY_TOLL_LINES,
   onTollToggle?: (line: TollExtraLine, selected: boolean) => void,
   referenceQuoteMap = false,
+  googleMapsKey = '',
 ) {
   const { tollPoints } = useApp();
   const { searchAddresses, reverseGeocode, calculateRoute: loadRoute } = useRouteMapCommands();
@@ -35,6 +37,8 @@ export function useRouteMap(
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
     [searching, setSearching] = useState<Side | null>(null);
+  const [routeAlternatives, setRouteAlternatives] = useState<ReferenceRouteAlternative[]>([]);
+  const [selectedAlternative, setSelectedAlternative] = useState(0);
   const [results, setResults] = useState<{
     side: Side;
     items: { label: string; point: Point }[];
@@ -75,6 +79,8 @@ export function useRouteMap(
     setBusy(false);
     setSearching(null);
     setError('');
+    setRouteAlternatives([]);
+    setSelectedAlternative(0);
     setDraft((d) => ({
       ...d,
       [side]: point,
@@ -99,6 +105,27 @@ export function useRouteMap(
       setError('');
       setDraft((d) => ({ ...d, route: null, distanceKmOverride: null }));
       try {
+        if (referenceQuoteMap) {
+          const alternatives = await referenceRouteAlternatives(from, to, googleMapsKey);
+          if (id !== routeRequest.current) return;
+          setRouteAlternatives(alternatives);
+          setSelectedAlternative(0);
+          if (alternatives.length) {
+            const selected = alternatives[0];
+            const ticket = await loadRoute(from, to);
+            if (id === routeRequest.current) {
+              setDraft((d) => ({
+                ...d,
+                route: { ...selected, id: ticket.id, expiresAt: ticket.expiresAt },
+                distanceKmOverride: selected.distanceKm,
+              }));
+            }
+            return;
+          }
+          const fallback = await loadRoute(from, to);
+          if (id === routeRequest.current) setDraft((d) => ({ ...d, route: fallback }));
+          return;
+        }
         const result = await loadRoute(from, to);
         if (id === routeRequest.current) setDraft((d) => ({ ...d, route: result }));
       } catch (e) {
@@ -107,8 +134,29 @@ export function useRouteMap(
         if (id === routeRequest.current) setBusy(false);
       }
     },
-    [loadRoute, setDraft],
+    [googleMapsKey, loadRoute, referenceQuoteMap, setDraft],
   );
+  const chooseRouteAlternative = useCallback(async (index: number) => {
+    const alternative = routeAlternatives[index];
+    if (!alternative) return;
+    const requestId = ++routeRequest.current;
+    setSelectedAlternative(index);
+    setBusy(true);
+    setError('');
+    try {
+      const ticket = await loadRoute(alternative.from, alternative.to);
+      if (requestId !== routeRequest.current) return;
+      setDraft((current) => ({
+        ...current,
+        route: { ...alternative, id: ticket.id, expiresAt: ticket.expiresAt },
+        distanceKmOverride: alternative.distanceKm,
+      }));
+    } catch (cause) {
+      if (requestId === routeRequest.current) setError(errorMessage(cause));
+    } finally {
+      if (requestId === routeRequest.current) setBusy(false);
+    }
+  }, [loadRoute, routeAlternatives, setDraft]);
   useLayoutEffect(() => {
     if (!host.current) return;
     const routeCounter = routeRequest;
@@ -239,6 +287,18 @@ export function useRouteMap(
     }
   }, [draft.route]);
   useEffect(() => {
+    if (!referenceQuoteMap || !map.current || routeAlternatives.length < 2) return;
+    const mapInstance = map.current;
+    const otherLines = routeAlternatives.map((alternative, index) => {
+      if (index === selectedAlternative) return null;
+      return L.polyline(alternative.geometry, { color: '#7c8a99', weight: 5, opacity: 0.8 })
+        .bindTooltip(`${alternative.durationMinutes} min · ${String(alternative.distanceKm).replace('.', ',')} km`, { sticky: true })
+        .on('click', () => chooseRouteAlternative(index))
+        .addTo(mapInstance);
+    }).filter((layer): layer is L.Polyline => layer !== null);
+    return () => { otherLines.forEach((layer) => layer.remove()); };
+  }, [chooseRouteAlternative, referenceQuoteMap, routeAlternatives, selectedAlternative]);
+  useEffect(() => {
     if (from && to) void calculateRoute(from, to);
   }, [calculateRoute, from, to]);
   useEffect(() => {
@@ -328,6 +388,8 @@ export function useRouteMap(
     setBusy(false);
     setSearching(null);
     setError('');
+    setRouteAlternatives([]);
+    setSelectedAlternative(0);
     setActive('from');
     setDraft((current) => ({
       ...current,
@@ -363,6 +425,9 @@ export function useRouteMap(
     canChooseTolls,
     tollLines,
     toggleToll,
+    routeAlternatives,
+    selectedAlternative,
+    chooseRouteAlternative,
     active,
     setActive,
     full,

@@ -240,6 +240,7 @@ export interface PricingRepository {
     trips?: number,
     distanceKmOverride?: number | null,
     workDate?: string | null,
+    administrativeQuote?: boolean,
   ): Promise<Price>;
 }
 export interface NotificationRepository {

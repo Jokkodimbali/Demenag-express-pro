@@ -17,6 +17,8 @@ export default function RouteMap({
   toNote,
   onNoteChange,
   adminQuote = false,
+  googleMapsKey = '',
+  referenceRouting = false,
 }: {
   tollLines?: TollExtraLine[];
   draft: RouteMapDraft;
@@ -26,6 +28,8 @@ export default function RouteMap({
   toNote?: string;
   onNoteChange?: (side: 'from' | 'to', value: string) => void;
   adminQuote?: boolean;
+  googleMapsKey?: string;
+  referenceRouting?: boolean;
 }) {
   const { catalogue } = useApp();
   const {
@@ -33,6 +37,9 @@ export default function RouteMap({
     canChooseTolls,
     tollLines: selectedTolls,
     toggleToll,
+    routeAlternatives,
+    selectedAlternative,
+    chooseRouteAlternative,
     active,
     setActive,
     full,
@@ -49,7 +56,14 @@ export default function RouteMap({
     route,
     clear,
     locate,
-  } = useRouteMap(draft, setDraft, tollLines, onTollToggle, adminQuote);
+  } = useRouteMap(
+    draft,
+    setDraft,
+    tollLines,
+    onTollToggle,
+    adminQuote || referenceRouting,
+    googleMapsKey,
+  );
   const mapDistance = draft.distanceKmOverride ?? draft.route?.distanceKm;
   const bounds = catalogue?.settings.distanceBounds ?? [15, 25, 35];
   const mapTier =
@@ -261,6 +275,22 @@ export default function RouteMap({
           </div>
         )}
       </div>
+      {referenceRouting && draft.route && routeAlternatives.length > 1 && (
+        <div className="reference-route-alternatives" aria-label="Itinéraires alternatifs">
+          {routeAlternatives.map((alternative, index) => (
+            <button
+              key={`${alternative.distanceKm}-${alternative.durationMinutes}-${index}`}
+              type="button"
+              aria-pressed={selectedAlternative === index}
+              className={selectedAlternative === index ? 'selected' : ''}
+              onClick={() => chooseRouteAlternative(index)}
+            >
+              <strong>{alternative.durationMinutes} min · {String(alternative.distanceKm).replace('.', ',')} km</strong>
+              {alternative.via && <span>par {alternative.via}</span>}
+            </button>
+          ))}
+        </div>
+      )}
       {adminQuote && (
         <div className="admin-quote-pin-actions">
           <button

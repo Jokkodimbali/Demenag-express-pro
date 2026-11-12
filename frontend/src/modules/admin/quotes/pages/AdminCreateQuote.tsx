@@ -477,6 +477,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                       key={resetVersion}
                       draft={draft}
                       setDraft={updateRouteDraft}
+                      googleMapsKey={googleMapsKey}
                       {...(!publicRequest ? { tollLines, onTollToggle } : {})}
                       adminQuote
                       fromNote={draft.fromNote}

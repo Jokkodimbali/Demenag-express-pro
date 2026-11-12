@@ -184,6 +184,7 @@ export const estimateSchema = z.object({
   trips: z.number().int().min(1).max(20).optional(),
   workAccess: workAccessSchema.optional(),
   workDate: z.iso.date().nullable().optional(),
+  distanceKmOverride: z.number().min(0).max(100000).optional(),
 });
 export const adminEstimateSchema = estimateSchema.extend({
   distanceKmOverride: z.number().min(0).max(100000),

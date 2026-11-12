@@ -16,7 +16,7 @@ export function buildBookingSubmission(input: {
   return {
     vehicleId: draft.vehicleId,
     routeId: input.routeId,
-    distanceKmOverride: input.administrativeQuote ? draft.distanceKmOverride : undefined,
+    distanceKmOverride: draft.distanceKmOverride,
     trips: input.administrativeQuote ? input.quoteTrips : draft.estimatedTrips,
     customerName: draft.customerName,
     customerPhone: draft.customerPhone,
