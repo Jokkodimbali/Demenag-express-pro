@@ -38,7 +38,7 @@ const ReferenceComponent = (
       state: { data: { tarifs: Record<string, unknown>; peages: unknown[] } };
       calc: (quote: ReferenceQuote) => {
         total: number;
-        lines: Array<{ pu: number; amount: number }>;
+        lines: Array<{ qty: number; pu: number; amount: number }>;
       };
       lineKg: (line: {
         k: string;
@@ -72,6 +72,23 @@ const vehicle = {
   shortName: 'Sprinter',
   prices: [30000, 37000, 44000],
 } as Vehicle;
+const vehicles: Record<string, Vehicle> = {
+  sprinter: vehicle,
+  trafic: {
+    ...vehicle,
+    id: 'trafic',
+    name: 'Trafic',
+    shortName: 'Trafic',
+    prices: [20000, 25000, 30000],
+  },
+  master: {
+    ...vehicle,
+    id: 'master',
+    name: 'Master',
+    shortName: 'Master',
+    prices: [25000, 31000, 37000],
+  },
+};
 const tariffs = {
   sprinter: vehicle.prices,
   trafic: [20000, 25000, 30000],
@@ -82,8 +99,10 @@ const tariffs = {
   montage: 15000,
 };
 
-for (const scenario of [
+const quoteScenarios = [
   {
+    name: 'Sprinter, juste sous 15 km',
+    vehicle: 'sprinter',
     km: 14.9,
     trips: 1,
     man: 2,
@@ -95,6 +114,8 @@ for (const scenario of [
     discountType: 'fcfa' as const,
   },
   {
+    name: 'Sprinter, seuil 15 km, deux trajets et accès avec étages',
+    vehicle: 'sprinter',
     km: 15,
     trips: 2,
     man: 3,
@@ -106,6 +127,8 @@ for (const scenario of [
     discountType: 'fcfa' as const,
   },
   {
+    name: 'Sprinter, seuil 25 km, remise en pourcentage',
+    vehicle: 'sprinter',
     km: 25,
     trips: 3,
     man: 1,
@@ -117,6 +140,8 @@ for (const scenario of [
     discountType: 'pct' as const,
   },
   {
+    name: 'Sprinter, juste au-dessus de 25 km sans manœuvre',
+    vehicle: 'sprinter',
     km: 25.1,
     trips: 1,
     man: 0,
@@ -128,6 +153,8 @@ for (const scenario of [
     discountType: 'fcfa' as const,
   },
   {
+    name: 'Sprinter, seuil 35 km avec ascenseur',
+    vehicle: 'sprinter',
     km: 35,
     trips: 1,
     man: 2,
@@ -139,6 +166,8 @@ for (const scenario of [
     discountType: 'fcfa' as const,
   },
   {
+    name: 'Sprinter, au-dessus de 35 km avec prix personnalisé',
+    vehicle: 'sprinter',
     km: 35.1,
     trips: 2,
     man: 1,
@@ -149,12 +178,67 @@ for (const scenario of [
     discount: 0,
     discountType: 'fcfa' as const,
   },
-]) {
-  test(`prix du trajet ${scenario.km} km identique à la référence`, () => {
+  {
+    name: 'Trafic, quatre manœuvres et remise fixe',
+    vehicle: 'trafic',
+    km: 8,
+    trips: 1,
+    man: 4,
+    fromFloor: 0,
+    fromLift: false,
+    toFloor: 2,
+    toLift: false,
+    discount: 7000,
+    discountType: 'fcfa' as const,
+  },
+  {
+    name: 'Master, trois trajets, accès difficiles et remise en pourcentage',
+    vehicle: 'master',
+    km: 21,
+    trips: 3,
+    man: 2,
+    fromFloor: 5,
+    fromLift: false,
+    toFloor: 3,
+    toLift: true,
+    discount: 15,
+    discountType: 'pct' as const,
+  },
+  {
+    name: 'Trafic, seuil 25 km, deux trajets sans manœuvre',
+    vehicle: 'trafic',
+    km: 25,
+    trips: 2,
+    man: 0,
+    fromFloor: 0,
+    fromLift: false,
+    toFloor: 0,
+    toLift: false,
+    discount: 12000,
+    discountType: 'fcfa' as const,
+  },
+  {
+    name: 'Master, plus de 35 km, prix personnalisé et trois manœuvres',
+    vehicle: 'master',
+    km: 42,
+    trips: 1,
+    man: 3,
+    fromFloor: 1,
+    fromLift: false,
+    toFloor: 2,
+    toLift: false,
+    discount: 5,
+    discountType: 'pct' as const,
+  },
+] as const;
+
+for (const [index, scenario] of quoteScenarios.entries()) {
+  test(`devis ${index + 1}/10 : ${scenario.name}`, () => {
+    const selectedVehicle = vehicles[scenario.vehicle];
     const reference = new ReferenceComponent();
     reference.state = { data: { tarifs: tariffs, peages: [] } };
     const ref = reference.calc({
-      vehicle: 'sprinter',
+      vehicle: scenario.vehicle,
       km: scenario.km,
       trips: scenario.trips,
       man: scenario.man,
@@ -177,7 +261,7 @@ for (const scenario of [
     };
     const options = { labour: scenario.man, desk: 0, wardrobe: 0, bed: 0 };
     const backend = calculatePrice(
-      vehicle,
+      selectedVehicle,
       settings,
       scenario.km,
       options,
@@ -191,7 +275,7 @@ for (const scenario of [
     );
     const previewBooking = {
       estimate: { tier: backend.tier },
-      vehicle,
+      vehicle: selectedVehicle,
       workAccess,
     } as Booking;
     const preview = quoteTotal(
@@ -206,8 +290,19 @@ for (const scenario of [
       },
       [],
     );
-    assert.equal(backend.total, ref.total);
-    assert.equal(preview, ref.total);
+    assert.equal(backend.total, ref.total, 'total du backend');
+    assert.equal(preview, ref.total, 'total de l’aperçu affiché sur le site');
+    const appLines = backend.lines.map(({ quantity, unitPrice, total }) => [
+      quantity,
+      unitPrice,
+      total,
+    ]);
+    const referenceLines = ref.lines.map(({ qty, pu, amount }) => [qty, pu, amount]);
+    assert.equal(
+      JSON.stringify(appLines),
+      JSON.stringify(referenceLines),
+      `lignes différentes : site=${JSON.stringify(appLines)}, référence=${JSON.stringify(referenceLines)}`,
+    );
   });
 }
 

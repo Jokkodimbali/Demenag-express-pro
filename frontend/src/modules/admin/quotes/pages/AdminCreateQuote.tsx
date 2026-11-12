@@ -1,7 +1,7 @@
 import { visibleUiText } from '../../../shared/content/visible-ui-text';
 import { uiText } from '../../../shared/content/reference-ui-text';
 import { ChevronDown } from 'lucide-react';
-import { Suspense, lazy, useEffect, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CallInventory } from '../../../booking/components/CallInventory';
 import { FleetVehicleImagePreview } from '../../fleet/components/FleetVehicleDimensions';
@@ -30,6 +30,7 @@ import { LoadingSimulation } from '../components/LoadingSimulation';
 import { adminQuoteVehicleText as quoteText } from '../content/admin-quote-vehicle';
 import { quoteConditionsText } from '../../../shared/messaging/application/services/whatsapp-templates';
 import { normalizePhoneNumber } from '../../../shared/domain/phone-number';
+import type { RouteMapDraftUpdater } from '../../../moving/maps/route-map-state';
 
 const RouteMap = lazy(() => import('../../../moving/maps/RouteMap'));
 
@@ -100,6 +101,10 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
     changeQuoteOption,
     toggleQuoteSection,
   } = model;
+  const updateRouteDraft = useCallback<RouteMapDraftUpdater>(
+    (update) => setDraft((current) => ({ ...current, ...update(current) })),
+    [setDraft],
+  );
   useEffect(() => setActiveStep(1), [resetVersion]);
   const openStep = (step: number) => {
     if (step === 1) setOpenQuoteSections((current) => ({ ...current, client: true }));
@@ -471,9 +476,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                     <RouteMap
                       key={resetVersion}
                       draft={draft}
-                      setDraft={(update) =>
-                        setDraft((current) => ({ ...current, ...update(current) }))
-                      }
+                      setDraft={updateRouteDraft}
                       {...(!publicRequest ? { tollLines, onTollToggle } : {})}
                       adminQuote
                       fromNote={draft.fromNote}

@@ -1,7 +1,7 @@
 import { uiText } from '../../shared/content/reference-ui-text';
 import { visibleUiText } from '../../shared/content/visible-ui-text';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
-import { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useBookingForm } from '../application/controllers/useBookingForm';
 import { BookingSummary } from '../components/BookingSummary';
@@ -19,6 +19,7 @@ import {
   estimateMovingWork,
 } from '../../moving/domain/estimate/moving-estimate';
 import type { VehicleTransition } from '../../moving/domain/vehicle-transition';
+import type { RouteMapDraftUpdater } from '../../moving/maps/route-map-state';
 const RouteMap = lazy(() => import('../../moving/maps/RouteMap'));
 export function BookingPage() {
   const [mobileBookingStep, setMobileBookingStep] = useState(1);
@@ -80,6 +81,10 @@ export function BookingPage() {
     editLoading,
     editError,
   } = state;
+  const updateRouteDraft = useCallback<RouteMapDraftUpdater>(
+    (update) => setDraft((current) => ({ ...current, ...update(current) })),
+    [setDraft],
+  );
   const bookingsClosed = catalogue?.settings.bookingsEnabled === false && !editingBooking;
   const quoteTrips = Math.max(
     1,
@@ -219,12 +224,7 @@ export function BookingPage() {
                     <Suspense
                       fallback={<div className="map loading">{messages.chargementDeLaCarte}</div>}
                     >
-                      <RouteMap
-                        draft={draft}
-                        setDraft={(update) =>
-                          setDraft((current) => ({ ...current, ...update(current) }))
-                        }
-                      />
+                      <RouteMap draft={draft} setDraft={updateRouteDraft} />
                     </Suspense>
                   </section>
                 </div>
