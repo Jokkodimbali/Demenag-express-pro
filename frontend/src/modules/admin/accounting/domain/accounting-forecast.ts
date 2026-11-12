@@ -5,6 +5,7 @@ import type {
   Booking,
   FinanceMonth,
 } from '../../../shared/domain/model';
+import { accountingCostCategories } from '../../../shared/domain/accounting-cost-categories';
 export type { FinanceMonth } from '../../../shared/domain/model';
 import {
   createReferenceAccountingConfiguration,
@@ -262,7 +263,10 @@ export function simulateAccounting(
       (booking) => booking.status === 'completed' && booking.date?.slice(0, 7) === month,
     );
     const labourEntries = monthEntries.filter(
-      (entry) => entry.type === 'charge' && entry.category === 'Manœuvres' && entry.automatic,
+      (entry) =>
+        entry.type === 'charge' &&
+        entry.category === accountingCostCategories.movers &&
+        entry.automatic,
     );
     const journalMoverCount = labourEntries.reduce((sum, entry) => sum + (entry.quantity ?? 0), 0);
     const representedBookings = new Set(
@@ -283,10 +287,14 @@ export function simulateAccounting(
       }, 0);
     const moverCount = journalMoverCount + unrepresentedMoverCount;
     const movers = monthEntries
-      .filter((entry) => entry.type === 'charge' && entry.category === 'Manœuvres')
+      .filter(
+        (entry) => entry.type === 'charge' && entry.category === accountingCostCategories.movers,
+      )
       .reduce((sum, entry) => sum + entry.amount, 0);
     const carpenters = monthEntries
-      .filter((entry) => entry.type === 'charge' && entry.category === 'Menuisier')
+      .filter(
+        (entry) => entry.type === 'charge' && entry.category === accountingCostCategories.carpenter,
+      )
       .reduce((sum, entry) => sum + entry.amount, 0);
     const salaries = monthEntries.some((entry) => referenceFixedChargeKey(entry) === 'sal')
       ? fixedCharge('sal')

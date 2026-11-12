@@ -442,6 +442,14 @@ export function bookingsForTeamDay(bookings: readonly Booking[], selectedDay: st
     .sort((left, right) => order[slotKey(left.timeSlot)] - order[slotKey(right.timeSlot)]);
 }
 
+export function bookingsWithCrewForDay(bookings: readonly Booking[], selectedDay: string) {
+  return bookings.filter((booking) => booking.date === selectedDay && Boolean(booking.crew));
+}
+
+export function sortEmployeesByName<T extends Pick<Driver, 'name'>>(employees: T[]) {
+  return [...employees].sort((left, right) => left.name.localeCompare(right.name));
+}
+
 export function updateTeamMemberRole(
   booking: Booking,
   role: TeamRole,

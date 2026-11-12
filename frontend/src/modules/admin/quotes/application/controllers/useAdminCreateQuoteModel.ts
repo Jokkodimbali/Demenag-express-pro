@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useBookingForm } from '../../../../booking/application/controllers/useBookingForm';
 import { useApp } from '../../../../shared/application/context';
@@ -9,23 +9,37 @@ import {
   saveAdminQuoteDraft,
   clearAdminQuoteDraft,
   type AdminQuoteConfig,
-} from '../admin-quote-draft-storage';
+} from '../services/admin-quote-draft-storage';
 import {
   referenceInventoryNote,
   referenceMovingEstimateNote,
 } from '../../../../moving/domain/estimate/reference-inventory-note';
 import { referenceTierLabels } from '../../../../shared/application/presentation/format';
 import { useAdminQuoteTraffic } from './useAdminQuoteTraffic';
-import type { Booking, Options, Price, Quote } from '../../../../shared/domain/model';
-import { bookingInventorySnapshot } from '../../../../moving/domain/estimate/moving-estimate';
+import type { Options, Quote } from '../../../../shared/domain/model';
 import { defaultClientQuestions } from '../../../../booking/domain/questionnaire';
 import { quoteNotificationUrl } from '../services/quote-notification';
-import { quoteConditionsText } from '../../../../shared/messaging/application/services/whatsapp-templates';
 import { createAdminQuotePreview } from '../services/admin-quote-preview';
-import { cheaperCompatibleVehicle, vehicleFitWarnings } from '../services/quote-vehicle-fit';
+import {
+  adminQuoteVehicleFitWarnings,
+  cheaperCompatibleVehicle,
+} from '../services/quote-vehicle-fit';
 import { fitConfirmationCopy } from '../services/quote-fit-confirmation';
 import { quoteReminder } from '../services/quote-reminder';
 import { quoteContactCard } from '../services/quote-contact-card';
+import { quoteAccountingConfirmation } from '../services/quote-accounting-confirmation';
+import { automaticQuoteEstimateUpdates } from '../services/automatic-quote-estimate';
+import { buildAdminQuotePdfDocument } from '../services/admin-quote-pdf-document';
+import { defaultAdminQuoteConfig } from '../services/admin-quote-config';
+import { buildAdminQuoteSubmission } from '../services/admin-quote-submission';
+import {
+  adminQuoteIsLocked,
+  latestBookingQuote,
+  latestQuoteOfKind,
+  quotePdfFilename,
+  quoteTollPointsWithSavedPrices,
+  quoteVehicleWithSavedPrices,
+} from '../services/admin-quote-edit-policy';
 import { startQuoteWhatsAppSubmission } from '../services/quote-whatsapp-submission';
 import {
   businessPhonePresentation,
@@ -78,23 +92,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const restoredDraft = useRef(false);
   const skipInitialSave = useRef(false);
   const draftSaveQueue = useRef(Promise.resolve());
-  const [quoteConfig, setQuoteConfig] = useState<AdminQuoteConfig>({
-    trips: 1,
-    calcMode: 'auto',
-    legMinutes: 0,
-    trafficOff: false,
-    heatOff: false,
-    heatRest: 0,
-    discount: 0,
-    discountType: 'fcfa',
-    discountReason: '',
-    customPrice: null,
-    labourUnitPriceOverride: null,
-    billingMode: 'complete',
-    menuIncluded: false,
-    overtimeMinutes: 0,
-    rentalKit: null,
-  });
+  const [quoteConfig, setQuoteConfig] = useState<AdminQuoteConfig>(defaultAdminQuoteConfig);
   const [simulationNeeds, setSimulationNeeds] = useState<{
     blankets: number;
     straps: number;
@@ -128,36 +126,38 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     mode: publicRequest && user?.role !== 'admin' ? 'booking' : 'admin-quote',
     quoteConfig,
     quoteKind,
+    buildAdministrativeQuoteSubmission: buildAdminQuoteSubmission,
     onAdministrativeBookingCreated: () => {
       void clearAdminQuoteDraft(api);
     },
     getRentalKit: () => rentalKit,
-    onQuoteSaved: (booking) => {
-      if (!sendWhatsAppAfterSave.current) return;
-      sendWhatsAppAfterSave.current = false;
-      const quote = booking.quotes.filter((item) => item.kind === quoteKind).at(-1);
-      if (!quote) {
+    onQuoteSaved: async (booking) => {
+      const savedQuote = latestQuoteOfKind(booking.quotes, quoteKind);
+      if (!savedQuote) {
         whatsappWindow.current?.close();
         whatsappWindow.current = null;
         return;
       }
-      const href = quoteNotificationUrl(
-        booking,
-        quote,
-        booking.pricingSettings ?? appCatalogue?.settings,
-      );
-      if (whatsappWindow.current) whatsappWindow.current.location.replace(href);
-      else window.location.assign(href);
-      whatsappWindow.current = null;
+      if (sendWhatsAppAfterSave.current) {
+        sendWhatsAppAfterSave.current = false;
+        const href = quoteNotificationUrl(
+          booking,
+          savedQuote,
+          booking.pricingSettings ?? appCatalogue?.settings,
+        );
+        if (whatsappWindow.current) whatsappWindow.current.location.replace(href);
+        else window.location.assign(href);
+        whatsappWindow.current = null;
+      }
       void (async () => {
         try {
           const settings = booking.pricingSettings ?? appCatalogue?.settings;
           if (settings) {
-            const blob = await exportQuote(booking, quote, settings);
+            const blob = await exportQuote(booking, savedQuote, settings);
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `Devis-${quote.kind === 'final' ? 'final' : 'provisoire'}-${quote.reference}.pdf`;
+            link.download = quotePdfFilename(savedQuote, booking.reference);
             document.body.append(link);
             link.click();
             link.remove();
@@ -167,24 +167,19 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
           setPdfError('Le devis est enregistré, mais le PDF n’a pas pu être téléchargé.');
         }
       })();
+      if (savedQuote.kind !== 'final') return;
+      try {
+        const entries = await api.accountingEntries();
+        return quoteAccountingConfirmation(booking, savedQuote, entries);
+      } catch {
+        return `Devis final ${savedQuote.reference} enregistré. Consultez la comptabilité pour vérifier son journal.`;
+      }
     },
   });
-  const editingLocked = Boolean(
-    state.editingBooking &&
-    (['completed', 'cancelled'].includes(state.editingBooking.status) ||
-      state.editingBooking.quotes.some((quote) => quote.kind === 'final')),
-  );
+  const editingLocked = adminQuoteIsLocked(state.editingBooking);
   const editingBooking = state.editingBooking;
   const quoteSettings = editingBooking?.pricingSettings ?? state.catalogue?.settings;
-  const savedTollPrices = new Map(
-    editingBooking?.pricingSnapshot?.tollPoints.map((point) => [point.id, point]) ?? [],
-  );
-  const quoteTollPoints = appTollPoints.map((point) => {
-    const saved = savedTollPrices.get(point.id);
-    return saved
-      ? { ...point, heavyPrice: saved.heavyPrice, vehiclePrices: saved.vehiclePrices }
-      : point;
-  });
+  const quoteTollPoints = quoteTollPointsWithSavedPrices(appTollPoints, editingBooking);
   const {
     catalogue,
     loading,
@@ -209,16 +204,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     editLoading,
     editError,
   } = state;
-  const quoteVehicle = selected
-    ? {
-        ...selected,
-        prices:
-          editingBooking?.pricingSnapshot?.vehiclePrices[selected.id] ??
-          (editingBooking?.vehicle.id === selected.id
-            ? editingBooking.vehicle.prices
-            : selected.prices),
-      }
-    : null;
+  const quoteVehicle = quoteVehicleWithSavedPrices(selected ?? null, editingBooking);
   const route = draft.route ?? undefined;
   const {
     googleMapsKey,
@@ -239,23 +225,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     if (!resetAdminQuote) return;
     void clearAdminQuoteDraft(api);
     setDraft(blankDraft(appCatalogue ?? undefined));
-    setQuoteConfig({
-      trips: 1,
-      calcMode: 'auto',
-      legMinutes: 0,
-      trafficOff: false,
-      heatOff: false,
-      heatRest: 0,
-      discount: 0,
-      discountType: 'fcfa',
-      discountReason: '',
-      customPrice: null,
-      labourUnitPriceOverride: null,
-      billingMode: 'complete',
-      menuIncluded: false,
-      overtimeMinutes: 0,
-      rentalKit: null,
-    });
+    setQuoteConfig(defaultAdminQuoteConfig());
     setTollLines([]);
     setQuoteKind('provisional');
     setQuestionnaireOpen(false);
@@ -277,31 +247,18 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       customerName: user?.role === 'client' ? user.name : '',
       customerPhone: user?.role === 'client' ? user.phone : '',
     }));
-    setQuoteConfig({
-      trips: 1,
-      calcMode: 'auto',
-      legMinutes: 0,
-      trafficOff: false,
-      heatOff: false,
-      heatRest: 0,
-      discount: 0,
-      discountType: 'fcfa',
-      discountReason: '',
-      customPrice: null,
-      labourUnitPriceOverride: null,
-      billingMode: 'complete',
-      menuIncluded: false,
-      overtimeMinutes: 0,
-      rentalKit: null,
-    });
+    setQuoteConfig(defaultAdminQuoteConfig());
     navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
   }, [location.pathname, location.search, navigate, setDraft, startNewRequest, user]);
   const canCreateFinal = canCreateFinalQuote(editingBooking, draft.date, Boolean(draft.noDate));
   useEffect(() => {
-    const lastQuote = state.editingBooking?.quotes.at(-1);
+    const lastQuote = latestBookingQuote(state.editingBooking);
     if (lastQuote) setQuoteKind(lastQuote.kind);
   }, [state.editingBooking]);
-  const estimateInventory = quoteEstimateInventory(draft.inventory, draft.questionnaireAnswers);
+  const estimateInventory = useMemo(
+    () => quoteEstimateInventory(draft.inventory, draft.questionnaireAnswers),
+    [draft.inventory, draft.questionnaireAnswers],
+  );
   useEffect(() => {
     if (editingReservation || publicRequest || resetAdminQuote || user?.role !== 'admin') {
       restoredDraft.current = true;
@@ -391,39 +348,74 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     draft.fromAddress,
     draft.toAddress,
   );
-  const pricingRoute = routeForQuotePricing(draft.route, draft.distanceKmOverride ?? null);
+  const pricingRoute = useMemo(
+    () => routeForQuotePricing(draft.route, draft.distanceKmOverride ?? null),
+    [draft.distanceKmOverride, draft.route],
+  );
   const labourPrice = labourPriceForQuote(quoteSettings, draft);
-  const movingEstimate = estimateAdminQuoteWork({
-    inventory: estimateInventory,
-    vehicle: selected,
-    route: pricingRoute,
-    draft,
-    config: quoteConfig,
-    settings: quoteSettings,
-    tollLines,
-  });
+  const movingEstimate = useMemo(
+    () =>
+      estimateAdminQuoteWork({
+        inventory: estimateInventory,
+        vehicle: selected,
+        route: pricingRoute,
+        draft,
+        config: quoteConfig,
+        settings: quoteSettings,
+        tollLines,
+      }),
+    [estimateInventory, selected, pricingRoute, draft, quoteConfig, quoteSettings, tollLines],
+  );
   const selectedVehicleId = selected?.id ?? '';
   const movingEstimateVolume = movingEstimate?.volume ?? 0;
   const movingEstimateCrew = movingEstimate?.crew ?? 0;
   const movingEstimateTrips = movingEstimate?.trips ?? 0;
-  const cheaperVehicle = selected
-    ? cheaperCompatibleVehicle({
-        inventory: estimateInventory,
-        current: selected,
-        vehicles: catalogue?.vehicles ?? [],
-        route: pricingRoute
-          ? { distanceKm: pricingRoute.distanceKm, durationMinutes: pricingRoute.durationMinutes }
-          : null,
-        date: draft.date,
-        month: draft.month,
-        fromAddress: draft.fromAddress,
-        toAddress: draft.toAddress,
-        startTime: draft.timeSlot,
-        hasToll: quoteHasPaidTolls(tollLines),
-        settings: quoteSettings,
-        estimate: movingEstimate,
-      })
-    : null;
+  const automaticEstimateUpdates = automaticQuoteEstimateUpdates({
+    config: quoteConfig,
+    draft,
+    selectedVehicleId,
+    estimatedVolume: movingEstimateVolume,
+    estimatedCrew: movingEstimateCrew,
+    estimatedTrips: movingEstimateTrips,
+  });
+  const cheaperVehicle = useMemo(
+    () =>
+      selected
+        ? cheaperCompatibleVehicle({
+            inventory: estimateInventory,
+            current: selected,
+            vehicles: catalogue?.vehicles ?? [],
+            route: pricingRoute
+              ? {
+                  distanceKm: pricingRoute.distanceKm,
+                  durationMinutes: pricingRoute.durationMinutes,
+                }
+              : null,
+            date: draft.date,
+            month: draft.month,
+            fromAddress: draft.fromAddress,
+            toAddress: draft.toAddress,
+            startTime: draft.timeSlot,
+            hasToll: quoteHasPaidTolls(tollLines),
+            settings: quoteSettings,
+            estimate: movingEstimate,
+          })
+        : null,
+    [
+      catalogue?.vehicles,
+      draft.date,
+      draft.fromAddress,
+      draft.month,
+      draft.timeSlot,
+      draft.toAddress,
+      estimateInventory,
+      movingEstimate,
+      pricingRoute,
+      quoteSettings,
+      selected,
+      tollLines,
+    ],
+  );
   const readyAnswer = draft.questionnaireAnswers['key-ready'];
   const stairsAnswer = draft.questionnaireAnswers['key-stairs'];
   const inventoryEstimateKey = JSON.stringify({
@@ -433,33 +425,27 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     stairs: estimateInventory.stairs,
   });
   useEffect(() => {
-    if (quoteConfig.calcMode === 'manual') return;
-    if (!selectedVehicleId || movingEstimateVolume <= 0) return;
-    setDraft((current) => {
-      if (current.options.labour === movingEstimateCrew) return current;
-      return {
-        ...current,
-        options: { ...current.options, labour: movingEstimateCrew },
-      };
-    });
+    const estimatedLabour = automaticEstimateUpdates.labour;
+    const estimatedTrips = automaticEstimateUpdates.trips;
+    if (estimatedLabour !== null)
+      setDraft((current) =>
+        current.options.labour === estimatedLabour
+          ? current
+          : { ...current, options: { ...current.options, labour: estimatedLabour } },
+      );
+    if (estimatedTrips !== null)
+      setQuoteConfig((current) =>
+        current.trips === estimatedTrips ? current : { ...current, trips: estimatedTrips },
+      );
   }, [
-    draft.inventory,
+    automaticEstimateUpdates.labour,
+    automaticEstimateUpdates.trips,
+    inventoryEstimateKey,
     readyAnswer,
     stairsAnswer,
     draft.timeSlot,
-    selectedVehicleId,
-    movingEstimateCrew,
-    movingEstimateVolume,
     setDraft,
-    quoteConfig.calcMode,
   ]);
-  useEffect(() => {
-    if (quoteConfig.calcMode === 'manual') return;
-    if (!selectedVehicleId || movingEstimateTrips <= 0) return;
-    setQuoteConfig((current) =>
-      current.trips === movingEstimateTrips ? current : { ...current, trips: movingEstimateTrips },
-    );
-  }, [inventoryEstimateKey, selectedVehicleId, movingEstimateTrips, quoteConfig.calcMode]);
   const configuredQuestions = catalogue?.settings.questionnaire;
   const questionnaire = configuredQuestions?.length ? configuredQuestions : defaultClientQuestions;
   const inventoryCount = inventoryItemCount(draft.inventory);
@@ -560,7 +546,9 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const effectiveDistance = draft.distanceKmOverride ?? draft.route?.distanceKm;
   const availableMenuLines = preview.availableMenuLines;
   const menuIncluded = preview.menuIncluded;
-  const savedQuote = editingBooking?.quotes.filter((quote) => quote.kind === quoteKind).at(-1);
+  const savedQuote = editingBooking
+    ? latestQuoteOfKind(editingBooking.quotes, quoteKind)
+    : undefined;
   const {
     canSendQuoteWhatsApp,
     reminderDays,
@@ -597,101 +585,35 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     if (!pdfSettings || !selected) return;
     setPdfError('');
     try {
-      const currentPrice: Price = {
-        lines: previewLines.map((line) => ({ ...line })),
-        total: previewTotal ?? previewSubtotal - previewDiscount,
+      const pdfDocument = buildAdminQuotePdfDocument({
+        now: new Date().toISOString(),
+        booking: editingBooking,
+        draft,
+        vehicle: selected,
+        settings: pdfSettings,
+        quoteKind,
+        savedQuote,
+        config: quoteConfig,
+        lines: previewLines,
+        total: previewTotal,
+        subtotal: previewSubtotal,
         discount: previewDiscount,
         discountLabel: previewDiscountLabel,
-        discountType: quoteConfig.discountType,
-        discountValue: quoteConfig.discount,
-        discountReason: quoteConfig.discountReason,
         tier: previewTier,
-        trips: quoteConfig.trips,
-        currency: 'XOF',
-      };
-      const quote: Quote = {
-        id: savedQuote?.id ?? 'preview',
-        reference: savedQuote?.reference ?? 'DEVIS-EN-COURS',
-        kind: quoteKind,
-        createdAt: savedQuote?.createdAt ?? new Date().toISOString(),
-        price: currentPrice,
-        notes: [
-          draft.fromNote.trim() ? `Repère départ : ${draft.fromNote.trim()}` : '',
-          draft.toNote.trim() ? `Repère arrivée : ${draft.toNote.trim()}` : '',
-          visibleInventoryText,
-          estimateText,
-          questionnaireText,
-          quoteConditionsText(estimateInventory, quoteConfig.billingMode),
-          draft.notes,
-        ]
-          .filter(Boolean)
-          .join('\n'),
-        options: draft.options,
-        billingMode: quoteConfig.billingMode,
-        menuIncluded: quoteConfig.billingMode === 'driver-rental' && quoteConfig.menuIncluded,
-        rentalKit: quoteConfig.billingMode === 'driver-rental' ? rentalKit : [],
-        overtimeMinutes:
-          quoteConfig.billingMode === 'driver-rental' ? quoteConfig.overtimeMinutes : 0,
-        providedCrew: movingEstimate?.crew ?? draft.options.labour,
-        tolls: tollLines.map((line) => ({
-          tollPointId: line.id,
-          label: line.label,
-          quantity: line.quantity,
-          unitPrice: line.unitPrice,
-        })),
-      };
-      const previewBooking: Booking = {
-        ...(editingBooking ?? {
-          id: 'preview',
-          reference: 'DEVIS-EN-COURS',
-          userId: '',
-          customerName: '',
-          phone: '',
-          vehicle: selected,
-          fromAddress: '',
-          toAddress: '',
-          from: [0, 0],
-          to: [0, 0],
-          distanceKm: 0,
-          date: null,
-          timeSlot: '',
-          options: draft.options,
-          notes: '',
-          status: 'pending',
-          estimate: currentPrice,
-          quotes: [],
-          createdAt: new Date().toISOString(),
-          version: 1,
-        }),
-        customerName: draft.customerName,
-        phone: draft.customerPhone,
-        vehicle: selected,
-        fromAddress: draft.fromAddress,
-        toAddress: draft.toAddress,
-        from: draft.route?.from ?? editingBooking?.from ?? [0, 0],
-        to: draft.route?.to ?? editingBooking?.to ?? [0, 0],
-        distanceKm: effectiveDistance ?? editingBooking?.distanceKm ?? 0,
-        date: draft.date || null,
-        month: draft.month,
-        timeSlot: draft.timeSlot,
-        options: draft.options,
-        notes: quote.notes,
-        status: quoteKind === 'final' ? 'completed' : (editingBooking?.status ?? 'pending'),
-        pricingSettings: pdfSettings,
-        inventorySnapshot:
-          movingEstimate &&
-          (visibleInventoryText || estimateInventory.ready || estimateInventory.stairs)
-            ? bookingInventorySnapshot(estimateInventory, movingEstimate)
-            : undefined,
-        estimate: currentPrice,
-        quotes: editingBooking?.quotes ?? [],
-      };
-      const blob = await exportQuote(previewBooking, quote, pdfSettings);
+        estimateInventory,
+        estimate: movingEstimate,
+        visibleInventoryText,
+        estimateText,
+        questionnaireText,
+        rentalKit,
+        tolls: tollLines,
+        effectiveDistance,
+      });
+      const blob = await exportQuote(pdfDocument.booking, pdfDocument.quote, pdfSettings);
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      const filenameKind = quoteKind === 'final' ? 'final' : 'provisoire';
-      link.download = `Devis-${filenameKind}-${quote.reference || editingBooking?.reference || 'demande'}.pdf`;
+      link.download = pdfDocument.filename;
       document.body.append(link);
       link.click();
       link.remove();
@@ -719,10 +641,12 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   };
 
   async function confirmVehicleFit() {
-    const warnings =
-      quoteConfig.calcMode === 'manual' || !selected || !catalogue
-        ? []
-        : vehicleFitWarnings(estimateInventory, selected, quoteSettings ?? catalogue.settings);
+    const warnings = adminQuoteVehicleFitWarnings({
+      manualMode: quoteConfig.calcMode === 'manual',
+      inventory: estimateInventory,
+      vehicle: selected ?? null,
+      settings: quoteSettings ?? catalogue?.settings,
+    });
     if (!warnings.length) return true;
     const copy = fitConfirmationCopy(warnings);
     const confirmed = await requestConfirmation({

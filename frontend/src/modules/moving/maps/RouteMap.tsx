@@ -6,9 +6,12 @@ import { useApp } from '../../shared/application/context';
 import { messages } from '../../shared/content/fr';
 import { referenceTierLabels } from '../../shared/application/presentation/format';
 import type { TollExtraLine } from '../domain/tolls/toll-selection';
+import type { RouteMapDraft, RouteMapDraftUpdater } from './route-map-state';
 const EMPTY_TOLL_LINES: TollExtraLine[] = [];
 export default function RouteMap({
   tollLines = EMPTY_TOLL_LINES,
+  draft,
+  setDraft,
   onTollToggle,
   fromNote,
   toNote,
@@ -16,6 +19,8 @@ export default function RouteMap({
   adminQuote = false,
 }: {
   tollLines?: TollExtraLine[];
+  draft: RouteMapDraft;
+  setDraft: RouteMapDraftUpdater;
   onTollToggle?: (line: TollExtraLine, selected: boolean) => void;
   fromNote?: string;
   toNote?: string;
@@ -24,7 +29,6 @@ export default function RouteMap({
 }) {
   const { catalogue } = useApp();
   const {
-    draft,
     routeTolls,
     canChooseTolls,
     tollLines: selectedTolls,
@@ -45,7 +49,7 @@ export default function RouteMap({
     route,
     clear,
     locate,
-  } = useRouteMap(tollLines, onTollToggle, adminQuote);
+  } = useRouteMap(draft, setDraft, tollLines, onTollToggle, adminQuote);
   const mapDistance = draft.distanceKmOverride ?? draft.route?.distanceKm;
   const bounds = catalogue?.settings.distanceBounds ?? [15, 25, 35];
   const mapTier =

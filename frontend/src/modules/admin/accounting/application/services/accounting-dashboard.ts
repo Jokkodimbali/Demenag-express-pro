@@ -3,6 +3,7 @@ import type {
   AccountingFinanceConfiguration,
   Booking,
 } from '../../../../shared/domain/model';
+import { accountingCostCategories } from '../../../../shared/domain/accounting-cost-categories';
 import { completedBookingRevenueAmount } from './revenue';
 import {
   advertisingChannels,
@@ -16,8 +17,8 @@ export { advertisingChannels };
 export const accountingCategories = {
   charge: [
     'Salaires',
-    'Manœuvres',
-    'Menuisier',
+    accountingCostCategories.movers,
+    accountingCostCategories.carpenter,
     'Carburant',
     'Entretien véhicule',
     'Assurance',

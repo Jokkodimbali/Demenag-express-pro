@@ -10,8 +10,8 @@ import { tollLine, type TollExtraLine } from '../domain/tolls/toll-selection';
 import { tollsOnRoute } from '../domain/tolls/tolls-on-route';
 import { useRouteMapCommands } from './application/controllers/useRouteMapCommands';
 import { useApp } from '../../shared/application/context';
-import { useBookingDraft } from '../../booking/application/booking-draft-context';
 import { errorMessage } from '../../shared/application/error-message';
+import type { RouteMapDraft, RouteMapDraftUpdater } from './route-map-state';
 type Side = 'from' | 'to';
 const EMPTY_TOLL_LINES: TollExtraLine[] = [];
 const pin = (side: Side) =>
@@ -22,12 +22,13 @@ const pin = (side: Side) =>
     iconAnchor: [17, 34],
   });
 export function useRouteMap(
+  draft: RouteMapDraft,
+  setDraft: RouteMapDraftUpdater,
   tollLines: TollExtraLine[] = EMPTY_TOLL_LINES,
   onTollToggle?: (line: TollExtraLine, selected: boolean) => void,
   referenceQuoteMap = false,
 ) {
   const { tollPoints } = useApp();
-  const { draft, setDraft } = useBookingDraft();
   const { searchAddresses, reverseGeocode, calculateRoute: loadRoute } = useRouteMapCommands();
   const [active, setActive] = useState<Side>('from'),
     [full, setFull] = useState(false),

@@ -1,5 +1,5 @@
-import type { Draft } from '../../../booking/application/booking-draft';
-import type { RentalKitItem } from '../../../shared/domain/model';
+import type { Draft } from '../../../../booking/application/booking-draft';
+import type { RentalKitItem } from '../../../../shared/domain/model';
 
 export type AdminQuoteConfig = {
   trips: number;

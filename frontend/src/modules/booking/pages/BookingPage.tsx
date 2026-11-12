@@ -219,7 +219,12 @@ export function BookingPage() {
                     <Suspense
                       fallback={<div className="map loading">{messages.chargementDeLaCarte}</div>}
                     >
-                      <RouteMap />
+                      <RouteMap
+                        draft={draft}
+                        setDraft={(update) =>
+                          setDraft((current) => ({ ...current, ...update(current) }))
+                        }
+                      />
                     </Suspense>
                   </section>
                 </div>

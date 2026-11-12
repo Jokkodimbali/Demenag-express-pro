@@ -1,4 +1,4 @@
-import type { User } from '../../../shared/domain/model';
+import type { User } from '../../../../shared/domain/model';
 
 const role = (value: FormDataEntryValue | null): User['role'] =>
   value === 'admin' ? 'admin' : 'client';

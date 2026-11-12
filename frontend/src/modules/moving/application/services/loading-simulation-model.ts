@@ -222,3 +222,21 @@ export function simulationInput(
     blk: { L: blanketLengthCm / 100, W: blanketWidthCm / 100 },
   };
 }
+
+export function loadingSimulationWarnings(
+  inventory: Inventory,
+  vehicle: Vehicle,
+  stock: number,
+  blanketLengthCm: number,
+  blanketWidthCm: number,
+): string[] | null {
+  if (typeof window === 'undefined') return null;
+  const engine = window.DemSim;
+  if (!engine) return null;
+  try {
+    return engine.plan(simulationInput(inventory, vehicle, stock, blanketLengthCm, blanketWidthCm))
+      .out;
+  } catch {
+    return null;
+  }
+}

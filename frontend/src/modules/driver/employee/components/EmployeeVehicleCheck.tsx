@@ -2,7 +2,7 @@ import { uiText } from '../../../shared/content/reference-ui-text';
 import { useEffect, useState } from 'react';
 import { useApp } from '../../../shared/application/context';
 import { useEmployeeCommands } from '../application/controllers/useEmployeeCommands';
-import { showHeaderSuccess } from '../../workspace/application/header-notice';
+import { showHeaderSuccess } from '../../workspace/application/services/header-notice';
 import { errorMessage } from '../../../shared/application/error-message';
 import type { VehicleInspection } from '../../../shared/application/ports';
 import type { Driver } from '../../../shared/domain/model';

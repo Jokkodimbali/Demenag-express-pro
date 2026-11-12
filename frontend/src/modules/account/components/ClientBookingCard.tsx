@@ -1,42 +1,29 @@
-import { liveBookingPrice } from '../../moving/application/services/live-booking-price';
 import { uiText } from '../../shared/content/reference-ui-text';
 import { useApp } from '../../shared/application/context';
 import { useClientBookingPdf } from '../application/controllers/useClientBookingPdf';
-import { whatsappPaymentLine } from '../../shared/messaging/application/services/whatsapp-templates';
-import { money, referenceTierLabels } from '../../shared/application/presentation/format';
+import { money } from '../../shared/application/presentation/format';
 import type { Booking } from '../../shared/domain/model';
 import { routes } from '../../shared/navigation/config/routes';
 import { BookingRouteMap } from '../../booking/components/BookingRouteMap';
 import { Link } from 'react-router-dom';
+import { clientBookingCardModel } from '../application/services/client-booking-card';
 
 export function ClientBookingCard({ booking }: { booking: Booking }) {
   const { catalogue } = useApp();
   const { pdf, busy, error } = useClientBookingPdf(booking);
-  const provisionalQuote = booking.quotes.filter((quote) => quote.kind === 'provisional').at(-1);
-  const finalQuote = booking.quotes.filter((quote) => quote.kind === 'final').at(-1);
-  const displayedEstimate = liveBookingPrice(booking, catalogue).total;
-  const referenceDate = booking.date ? booking.date.split('-').reverse().join('/') : '—';
-  const distanceBounds = catalogue?.settings.distanceBounds ??
-    booking.pricingSettings?.distanceBounds ?? [15, 25, 35];
-  const tierIndex =
-    booking.distanceKm < distanceBounds[0]
-      ? 0
-      : booking.distanceKm <= distanceBounds[1]
-        ? 1
-        : booking.distanceKm <= distanceBounds[2]
-          ? 2
-          : 3;
-  const distanceTier = referenceTierLabels(distanceBounds)[tierIndex];
-  const isFinal = booking.status === 'completed';
-  const canEdit = ['pending', 'confirmed', 'cancelled'].includes(booking.status) && !finalQuote;
-  const paymentText = whatsappPaymentLine(catalogue?.settings).split(' Le QR code')[0];
-  const tolls = finalQuote?.tolls ?? [];
-  const tollTotal = tolls.reduce((total, toll) => total + toll.unitPrice * toll.quantity, 0);
-  const mapsUrl = new URL('https://www.google.com/maps/dir/');
-  mapsUrl.searchParams.set('api', '1');
-  mapsUrl.searchParams.set('origin', booking.from.join(','));
-  mapsUrl.searchParams.set('destination', booking.to.join(','));
-  mapsUrl.searchParams.set('travelmode', 'driving');
+  const {
+    provisionalQuote,
+    finalQuote,
+    displayedEstimate,
+    referenceDate,
+    distanceTier,
+    isFinal,
+    canEdit,
+    paymentText,
+    tolls,
+    tollTotal,
+    mapsUrl,
+  } = clientBookingCardModel(booking, catalogue);
 
   return (
     <article className="reference-client-card">
@@ -75,7 +62,7 @@ export function ClientBookingCard({ booking }: { booking: Booking }) {
               ' · ' +
               distanceTier}
           </span>
-          <a href={mapsUrl.toString()} target="_blank" rel="noopener noreferrer">
+          <a href={mapsUrl} target="_blank" rel="noopener noreferrer">
             {uiText['ouvrirDansGoogleMaps']}
           </a>
         </div>

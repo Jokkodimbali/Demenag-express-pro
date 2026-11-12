@@ -6,8 +6,10 @@ import { useApp } from '../../../../shared/application/context';
 import { routes } from '../../../../shared/navigation/config/routes';
 import {
   findAdminSearchResults,
+  markAdminNotificationsRead,
   normalizeAdminSearchQuery,
   unreadNotificationPreview,
+  upsertAdminNotification,
   type AdminSearchResult,
 } from '../services/admin-search';
 
@@ -49,7 +51,7 @@ export function useAdminLayoutModel() {
         knownNotificationIds.current.add(item.id);
         if (!item.readAt) setNotificationCount((count) => count + 1);
       }
-      setNotifications((current) => [item, ...current.filter((value) => value.id !== item.id)]);
+      setNotifications((current) => upsertAdminNotification(current, item));
     };
     window.addEventListener('demenag:notification', onNotification);
     return () => {
@@ -119,9 +121,7 @@ export function useAdminLayoutModel() {
   async function markAllNotificationsRead() {
     try {
       await api.markAllNotificationsRead();
-      setNotifications((current) =>
-        current.map((item) => ({ ...item, readAt: item.readAt ?? new Date().toISOString() })),
-      );
+      setNotifications((current) => markAdminNotificationsRead(current, new Date().toISOString()));
       setNotificationCount(0);
       setTodoOpen(false);
     } catch {

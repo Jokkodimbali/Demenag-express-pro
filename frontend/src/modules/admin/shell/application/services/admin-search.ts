@@ -1,4 +1,5 @@
 import type { Booking } from '../../../../shared/domain/model';
+import type { AppNotification } from '../../../../shared/application/ports';
 
 export type AdminSearchResult =
   | { kind: 'booking'; booking: Booking }
@@ -41,4 +42,18 @@ export function unreadNotificationPreview<T extends { readAt?: string | null }>(
   notifications: readonly T[],
 ) {
   return notifications.filter((notification) => !notification.readAt).slice(0, 12);
+}
+
+export function upsertAdminNotification(
+  notifications: AppNotification[],
+  notification: AppNotification,
+) {
+  return [notification, ...notifications.filter((item) => item.id !== notification.id)];
+}
+
+export function markAdminNotificationsRead(notifications: AppNotification[], readAt: string) {
+  return notifications.map((notification) => ({
+    ...notification,
+    readAt: notification.readAt ?? readAt,
+  }));
 }
