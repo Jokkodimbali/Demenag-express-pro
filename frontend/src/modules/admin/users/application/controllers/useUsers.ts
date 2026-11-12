@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import type { User } from '../../../../shared/domain/model';
 import { useApp } from '../../../../shared/application/context';
 import { errorMessage } from '../../../../shared/application/error-message';
-import { userFromForm } from '../user-from-form';
+import { userFromForm } from '../mappers/user-from-form';
+import { mergeUserDirectory } from '../services/user-directory';
 export function useUsers() {
   const { api, user: actor } = useApp();
   const [users, setUsers] = useState<User[]>([]);
@@ -16,20 +17,7 @@ export function useUsers() {
     Promise.all([api.users(), api.drivers()])
       .then(([rows, drivers]) => {
         if (!alive) return;
-        const accounts = new Map(rows.map((row) => [row.id, row]));
-        for (const driver of drivers) {
-          if (!driver.userId) continue;
-          const account = accounts.get(driver.userId);
-          accounts.set(driver.userId, {
-            id: driver.userId,
-            name: driver.name,
-            phone: driver.phone,
-            role: 'driver',
-            active: driver.active && account?.active !== false,
-            photo: driver.photo,
-          });
-        }
-        setUsers([...accounts.values()]);
+        setUsers(mergeUserDirectory(rows, drivers));
       })
       .catch((e: unknown) => {
         if (alive) setError(errorMessage(e));

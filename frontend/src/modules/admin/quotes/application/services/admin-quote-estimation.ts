@@ -1,5 +1,5 @@
 import type { Draft } from '../../../../booking/application/booking-draft';
-import type { AdminQuoteConfig } from '../admin-quote-draft-storage';
+import type { AdminQuoteConfig } from './admin-quote-draft-storage';
 import type { Inventory } from '../../../../moving/domain/inventory/inventory';
 import type { TollExtraLine } from '../../../../moving/domain/tolls/toll-selection';
 import type { RouteTicket, Settings, Vehicle } from '../../../../shared/domain/model';

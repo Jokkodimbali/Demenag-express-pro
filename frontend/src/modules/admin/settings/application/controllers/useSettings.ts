@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../../../../shared/application/context';
 import { errorMessage } from '../../../../shared/application/error-message';
-import { catalogueFromForm } from '../catalogue-from-form';
+import { catalogueFromForm } from '../mappers/catalogue-from-form';
 import type { Catalogue, Settings } from '../../../../shared/domain/model';
 import { defaultAccountingFinanceConfiguration } from '../../../accounting/domain/accounting-forecast';
+import { CatalogueService } from '../../../../catalogue/application/services/catalogue';
 import {
   resetAccountingChargesToReference,
   resetCatalogueTariffsToReference,
@@ -12,7 +13,9 @@ export function useSettings() {
   const { api, catalogue, setCatalogue } = useApp();
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
-    [saved, setSaved] = useState(false);
+    [saved, setSaved] = useState(false),
+    [vehicleDimensionsBusy, setVehicleDimensionsBusy] = useState(false),
+    [vehicleDimensionsError, setVehicleDimensionsError] = useState('');
   const catalogueRef = useRef(catalogue);
   catalogueRef.current = catalogue;
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -147,6 +150,22 @@ export function useSettings() {
     await api.saveAccountingConfiguration(resetAccountingChargesToReference(currentFinance));
     return true;
   }
+  async function saveVehicleDimensions(vehicle: Catalogue['vehicles'][number]) {
+    const current = catalogueRef.current;
+    if (!current) throw new Error('Le catalogue des véhicules est indisponible.');
+    setVehicleDimensionsBusy(true);
+    setVehicleDimensionsError('');
+    try {
+      const updated = await new CatalogueService(api).saveVehicle(current, vehicle);
+      catalogueRef.current = updated;
+      setCatalogue(updated);
+    } catch (cause) {
+      setVehicleDimensionsError(errorMessage(cause));
+      throw cause;
+    } finally {
+      setVehicleDimensionsBusy(false);
+    }
+  }
   return {
     catalogue,
     busy,
@@ -158,5 +177,8 @@ export function useSettings() {
     updateSettings,
     replaceCatalogue,
     resetReferenceDefaults,
+    saveVehicleDimensions,
+    vehicleDimensionsBusy,
+    vehicleDimensionsError,
   };
 }

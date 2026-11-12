@@ -3,7 +3,6 @@ import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import { money } from '../../../shared/application/presentation/format';
 import { useApp } from '../../../shared/application/context';
-import { useBookingDraft } from '../../../booking/application/booking-draft-context';
 import type { TollPoint } from '../../../shared/domain/model';
 import { tollPrice } from '../../domain/tolls/toll-prices';
 
@@ -18,15 +17,13 @@ export function TollRateSelector({
 }: {
   lines: TollExtraLine[];
   onToggle: (line: TollExtraLine, selected: boolean) => void;
-  vehicleId?: string;
+  vehicleId: string;
   roundTrips?: number;
   points?: TollPoint[];
 }) {
   const { tollPoints, catalogue } = useApp();
-  const { draft } = useBookingDraft();
   const availableTollPoints = providedPoints ?? tollPoints;
-  const selectedVehicleId = vehicleId ?? draft.vehicleId;
-  const vehicle = catalogue?.vehicles.find((item) => item.id === selectedVehicleId);
+  const vehicle = catalogue?.vehicles.find((item) => item.id === vehicleId);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const selectedCount = (points: TollPoint[]) =>
     points.filter((point) => lines.some((line) => line.id === point.id)).length;
@@ -53,7 +50,7 @@ export function TollRateSelector({
     const selectedLine = lines.find((line) => line.id === point.id);
     const selected = Boolean(selectedLine);
     const quantity = selectedLine?.quantity ?? 0;
-    const unitPrice = tollPrice(point, selectedVehicleId);
+    const unitPrice = tollPrice(point, vehicleId);
     const vehicleLabel = vehicle?.shortName ?? vehicle?.name ?? 'Véhicule';
     const pointLabel = /^péage/i.test(point.name) ? point.name : `Péage · ${point.name}`;
     const line: TollExtraLine = {

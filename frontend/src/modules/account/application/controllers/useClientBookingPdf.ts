@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { liveBookingPrice } from '../../../moving/application/services/live-booking-price';
 import { messages } from '../../../shared/content/fr';
 import type { Booking, Quote } from '../../../shared/domain/model';
 import { useApp } from '../../../shared/application/context';
+import { clientBookingPdfDocument } from '../services/client-booking-pdf';
 
 export function useClientBookingPdf(booking: Booking) {
   const { catalogue, exportQuote } = useApp();
@@ -16,17 +16,12 @@ export function useClientBookingPdf(booking: Booking) {
     setError('');
     setBusy(true);
     try {
-      const price =
-        quote?.kind === 'final' ? quote.price : liveBookingPrice(booking, catalogue, quote);
-      const blob = await exportQuote(
-        { ...booking, estimate: price },
-        quote ? { ...quote, price } : undefined,
-        settings,
-      );
+      const pdfDocument = clientBookingPdfDocument(booking, catalogue, quote);
+      const blob = await exportQuote(pdfDocument.booking, pdfDocument.quote, settings);
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `Devis-${quote?.kind === 'final' ? 'final' : 'provisoire'}-${quote?.reference || booking.reference}.pdf`;
+      link.download = pdfDocument.filename;
       document.body.append(link);
       link.click();
       link.remove();

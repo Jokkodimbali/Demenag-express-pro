@@ -17,6 +17,24 @@ export function shiftAccountingMonth(value: string, delta: number) {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
+export function accountingMonthTitle(value: string) {
+  return new Date(`${value}-01T12:00:00Z`).toLocaleDateString('fr-FR', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+export function largestAccountingCategoryAmount(byCategory: readonly [string, number][]) {
+  return byCategory[0]?.[1] ?? 1;
+}
+
+export function accountingEntryForSubmission<T extends { label: string; category: string }>(
+  input: T,
+): T {
+  return { ...input, label: input.label.trim() || input.category };
+}
+
 function safeCsvCell(value: string | number) {
   const raw = String(value);
   const protectedValue = /^[\s]*[=+@-]/u.test(raw) && !/^-?\d+$/u.test(raw) ? `'${raw}` : raw;

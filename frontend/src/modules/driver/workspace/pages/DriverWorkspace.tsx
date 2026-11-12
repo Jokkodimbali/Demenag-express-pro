@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useApp } from '../../../shared/application/context';
 import { useDriverWorkspace } from '../application/controllers/useDriverWorkspace';
 import { useEmployeeCommands } from '../../employee/application/controllers/useEmployeeCommands';
-import { showHeaderSuccess } from '../application/header-notice';
+import { showHeaderSuccess } from '../application/services/header-notice';
 import { errorMessage } from '../../../shared/application/error-message';
 import type { DriverAvailabilityDay } from '../../../shared/domain/model';
 import { EmployeeVehicleCheck } from '../../employee/components/EmployeeVehicleCheck';

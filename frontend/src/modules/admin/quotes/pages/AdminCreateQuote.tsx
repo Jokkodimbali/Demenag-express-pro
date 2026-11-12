@@ -470,6 +470,10 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                   >
                     <RouteMap
                       key={resetVersion}
+                      draft={draft}
+                      setDraft={(update) =>
+                        setDraft((current) => ({ ...current, ...update(current) }))
+                      }
                       {...(!publicRequest ? { tollLines, onTollToggle } : {})}
                       adminQuote
                       fromNote={draft.fromNote}
@@ -668,6 +672,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                   <div id="admin-quote-toll-fields">
                     <TollRateSelector
                       lines={tollLines}
+                      vehicleId={draft.vehicleId}
                       onToggle={onTollToggle}
                       roundTrips={quoteConfig.trips}
                       points={quoteTollPoints}

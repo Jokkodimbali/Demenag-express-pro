@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Route } from '../../../../shared/domain/model';
 import { useApp } from '../../../../shared/application/context';
-import { googleTrafficDuration } from '../../../../moving/maps/application/google-maps-traffic';
+import { googleTrafficDuration } from '../../../../moving/maps/application/services/google-maps-traffic';
 import {
   trafficDelayPresentation,
   trafficDeparture,

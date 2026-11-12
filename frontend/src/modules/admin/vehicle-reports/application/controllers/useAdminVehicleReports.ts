@@ -3,15 +3,12 @@ import type { Booking, Driver } from '../../../../shared/domain/model';
 import type { VehicleReports } from '../../../../shared/application/ports';
 import { errorMessage } from '../../../../shared/application/error-message';
 import { useApp } from '../../../../shared/application/context';
+import {
+  employeeProofsForBookings,
+  isVehicleReportNotification,
+} from '../services/employee-proofs';
 
-export type AdminEmployeeProof = NonNullable<Booking['employeeProofs']>[number] & {
-  bookingId: string;
-  mission: string;
-  missionOption: string;
-  employeeName: string;
-  vehicleId: string;
-  vehicleName: string;
-};
+export type { AdminEmployeeProof } from '../services/employee-proofs';
 
 export function useAdminVehicleReports() {
   const { api } = useApp();
@@ -27,11 +24,7 @@ export function useAdminVehicleReports() {
   useEffect(() => {
     const refreshOnReport = (event: Event) => {
       const notification = (event as CustomEvent<{ title?: string }>).detail;
-      if (
-        notification?.title === 'Contrôle véhicule reçu' ||
-        notification?.title === 'Panne signalée'
-      )
-        setRetry((value) => value + 1);
+      if (isVehicleReportNotification(notification?.title)) setRetry((value) => value + 1);
     };
     window.addEventListener('demenag:notification', refreshOnReport);
     return () => window.removeEventListener('demenag:notification', refreshOnReport);
@@ -63,20 +56,7 @@ export function useAdminVehicleReports() {
   }, [api, retry]);
 
   const proofs = useMemo(() => {
-    const staff = new Map(drivers.map((driver) => [driver.id, driver.name]));
-    return bookings.flatMap((booking) =>
-      (booking.employeeProofs ?? [])
-        .filter((proof) => proof.image)
-        .map((proof) => ({
-          ...proof,
-          bookingId: booking.id,
-          mission: `${booking.reference} · ${(booking.customerName || '').split(' ')[0]}`,
-          missionOption: `${booking.reference} · ${booking.customerName || ''}`,
-          employeeName: staff.get(proof.employeeId) ?? '-',
-          vehicleId: booking.vehicle.id,
-          vehicleName: booking.vehicle.shortName || booking.vehicle.name,
-        })),
-    );
+    return employeeProofsForBookings(bookings, drivers);
   }, [bookings, drivers]);
 
   const updateProof = useCallback(

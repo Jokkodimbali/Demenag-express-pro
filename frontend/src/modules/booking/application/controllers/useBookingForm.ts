@@ -4,18 +4,16 @@ import { messages } from '../../../shared/content/fr';
 import { tierLabels, referenceTierLabels } from '../../../shared/application/presentation/format';
 import type { Booking, BookingInput, Options, Price, Quote } from '../../../shared/domain/model';
 import { inventoryNote } from '../../../moving/domain/inventory/inventory';
-import {
-  quoteTollsFromLines,
-  type TollExtraLine,
-} from '../../../moving/domain/tolls/toll-selection';
+import { type TollExtraLine } from '../../../moving/domain/tolls/toll-selection';
 import { useApp } from '../../../shared/application/context';
 import { errorMessage } from '../../../shared/application/error-message';
 import { administrationQuoteForBooking, routes } from '../../../shared/navigation/config/routes';
 import type { RentalKitItem } from '../../../shared/domain/model';
-import { defaultRentalKit } from '../../../moving/domain/rental-kit';
 import { type BookingField, type BookingFieldErrors } from '../../domain/booking-validation';
 import { blankDraft } from '../booking-draft';
 import { useBookingDraft } from '../booking-draft-context';
+import { buildBookingSubmission } from '../services/booking-submission';
+import type { AdministrativeQuoteSubmissionBuilder } from '../contracts/admin-quote-submission';
 import {
   createBookingQuotePreview,
   quoteTierForDistance,
@@ -48,13 +46,15 @@ export function useBookingForm({
   onQuoteSaved,
   onAdministrativeBookingCreated,
   getRentalKit,
+  buildAdministrativeQuoteSubmission,
 }: {
   mode?: 'booking' | 'admin-quote';
   quoteConfig?: BookingQuoteConfig;
   quoteKind?: Quote['kind'];
-  onQuoteSaved?: (booking: Booking) => void;
+  onQuoteSaved?: (booking: Booking) => Promise<string | void> | string | void;
   onAdministrativeBookingCreated?: () => void;
   getRentalKit?: () => RentalKitItem[];
+  buildAdministrativeQuoteSubmission?: AdministrativeQuoteSubmissionBuilder;
 } = {}) {
   const { catalogue, tollPoints, loading, error, reload, api, user, authLoading } = useApp();
   const { draft, setDraft } = useBookingDraft();
@@ -146,6 +146,29 @@ export function useBookingForm({
     if (!draft.route) {
       setEstimating(false);
       return;
+    }
+    const routeExpiresAt = Date.parse(draft.route.expiresAt);
+    if (!Number.isFinite(routeExpiresAt) || routeExpiresAt <= Date.now() + 30_000) {
+      const staleRouteId = draft.route.id;
+      let active = true;
+      setEstimating(true);
+      void api
+        .route(draft.route.from, draft.route.to)
+        .then((freshRoute) => {
+          if (!active) return;
+          setDraft((current) =>
+            current.route?.id === staleRouteId ? { ...current, route: freshRoute } : current,
+          );
+        })
+        .catch((cause: unknown) => {
+          if (active) setEstimateError(errorMessage(cause));
+        })
+        .finally(() => {
+          if (active) setEstimating(false);
+        });
+      return () => {
+        active = false;
+      };
     }
     const controller = new AbortController();
     setEstimating(true);
@@ -331,34 +354,19 @@ export function useBookingForm({
     submitLock.current = true;
     setSubmitting(true);
     try {
-      const input: BookingInput = {
-        vehicleId: draft.vehicleId,
+      const input = buildBookingSubmission({
+        draft,
         routeId: draft.route.id,
-        distanceKmOverride: administrativeQuote ? draft.distanceKmOverride : undefined,
-        trips: administrativeQuote ? (quoteConfig?.trips ?? 1) : draft.estimatedTrips,
-        customerName: draft.customerName,
-        customerPhone: draft.customerPhone,
-        source: administrativeQuote ? draft.source : undefined,
-        fromAddress: draft.fromAddress,
-        toAddress: draft.toAddress,
-        date: draft.date,
-        month: draft.date ? draft.date.slice(0, 7) : draft.month,
-        timeSlot: draft.date ? draft.timeSlot : '',
-        options: administrativeQuote && quoteOptions ? quoteOptions : draft.options,
-        workAccess: {
-          fromFloor: draft.inventory.fromFloor,
-          toFloor: draft.inventory.toFloor,
-          fromLift: draft.inventory.fromLift,
-          toLift: draft.inventory.toLift,
-        },
+        administrativeQuote,
+        quoteTrips: quoteConfig?.trips ?? 1,
+        options: administrativeQuote ? quoteOptions : undefined,
         notes: bookingNotes,
         questionnaireAnswers: administrativeQuote
           ? administrativeQuestionnaireAnswers(activeQuestions, draft.questionnaireAnswers)
           : [],
-        workPlan: administrativeQuote ? workPlan : undefined,
+        workPlan,
         inventorySnapshot,
-        requestId: draft.requestId,
-      };
+      });
       const booking = editingBooking
         ? administrativeQuote
           ? await api.updateAdminBooking(editingBooking.id, input, editingBooking.version)
@@ -366,45 +374,41 @@ export function useBookingForm({
         : await api.createBooking(input);
       if (administrativeQuote) onAdministrativeBookingCreated?.();
       bookingLookup.current = null;
-      setDraft(blankDraft());
       if (editingBooking && !administrativeQuote) {
+        setDraft(blankDraft());
         navigate(routes.account);
         return;
       }
       if (administrativeQuote) {
         try {
-          const savedQuoteBooking = await api.quote(booking.id, {
+          if (!buildAdministrativeQuoteSubmission)
+            throw new Error('Le service de création du devis administratif est indisponible.');
+          const quoteInput = buildAdministrativeQuoteSubmission({
+            draft,
             kind: quoteKind ?? 'provisional',
-            trips: quoteConfig?.trips ?? 1,
-            customPrice: quoteTier === 3 ? (quoteConfig?.customPrice ?? null) : null,
-            labourUnitPriceOverride: quoteConfig?.labourUnitPriceOverride ?? null,
-            discount: quoteConfig?.discount ?? 0,
-            discountType: quoteConfig?.discountType ?? 'fcfa',
-            discountReason: quoteConfig?.discountReason ?? '',
+            config: quoteConfig,
+            catalogue: catalogue ?? null,
+            fallbackVehicle: booking.vehicle,
+            tier: quoteTier,
+            version: booking.version,
             notes: bookingNotes,
             extraLines: quoteExtraLines,
-            tolls: quoteTollsFromLines(tollLines),
-            options: administrativeQuote && quoteOptions ? quoteOptions : draft.options,
-            version: booking.version,
-            billingMode: quoteConfig?.billingMode ?? 'complete',
-            menuIncluded: quoteConfig?.menuIncluded ?? false,
-            rentalKit:
-              quoteConfig?.billingMode === 'driver-rental'
-                ? (quoteConfig.rentalKit ??
-                  getRentalKit?.() ??
-                  defaultRentalKit(
-                    catalogue?.vehicles.find((vehicle) => vehicle.id === draft.vehicleId) ??
-                      booking.vehicle,
-                    draft.options.labour,
-                    catalogue?.settings.rentalKitConfiguration,
-                  ))
-                : [],
-            overtimeMinutes: quoteConfig?.overtimeMinutes ?? 0,
-            providedCrew: draft.options.labour,
+            tollLines,
+            options: quoteOptions,
+            getRentalKit,
           });
-          onQuoteSaved?.(savedQuoteBooking);
+          const savedQuoteBooking = await api.quote(booking.id, quoteInput);
+          let successMessage: string | void;
+          try {
+            successMessage = await onQuoteSaved?.(savedQuoteBooking);
+          } catch {
+            successMessage = undefined;
+          }
+          setDraft(blankDraft());
           navigate(`${routes.administrationBookings}?q=${encodeURIComponent(booking.reference)}`, {
-            state: { successMessage: `Devis ${booking.reference} enregistré.` },
+            state: {
+              successMessage: successMessage ?? `Devis ${booking.reference} enregistré.`,
+            },
           });
         } catch (reason) {
           navigate(administrationQuoteForBooking(booking.id), {
@@ -416,6 +420,7 @@ export function useBookingForm({
         }
         return;
       }
+      setDraft(blankDraft());
       setDone(booking);
       document.getElementById('reserver')?.scrollIntoView({ behavior: 'smooth' });
     } catch (e) {

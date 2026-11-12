@@ -2,7 +2,7 @@ import type { Booking, ClientQuestion } from '../../../../shared/domain/model';
 import type { Draft } from '../../../../booking/application/booking-draft';
 import type { TollExtraLine } from '../../../../moving/domain/tolls/toll-selection';
 import type { Inventory } from '../../../../moving/domain/inventory/inventory';
-import type { AdminQuoteConfig } from '../admin-quote-draft-storage';
+import type { AdminQuoteConfig } from './admin-quote-draft-storage';
 import { labourUnitPriceOverrideFromQuote } from '../../../../moving/domain/pricing/labour-price';
 
 export function inventoryItemCount(inventory: Inventory) {

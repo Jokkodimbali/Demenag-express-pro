@@ -19,6 +19,9 @@ export function Settings() {
     updateSettings,
     replaceCatalogue,
     resetReferenceDefaults,
+    saveVehicleDimensions,
+    vehicleDimensionsBusy,
+    vehicleDimensionsError,
   } = useSettings();
   if (!catalogue) return null;
   async function saveInventoryCatalog(
@@ -47,6 +50,9 @@ export function Settings() {
         onResetTariffs={resetTariffsToReference}
         onResetAssembly={resetAssemblyToReference}
         resetRevision={resetRevision}
+        onSaveVehicleDimensions={saveVehicleDimensions}
+        vehicleDimensionsBusy={vehicleDimensionsBusy}
+        vehicleDimensionsError={vehicleDimensionsError}
       />
       {error && (
         <p role="alert" className="alert error">

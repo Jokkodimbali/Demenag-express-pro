@@ -1,4 +1,4 @@
-import type { AdminQuoteConfig } from '../admin-quote-draft-storage';
+import type { AdminQuoteConfig } from './admin-quote-draft-storage';
 import type { Draft } from '../../../../booking/application/booking-draft';
 import type { Inventory } from '../../../../moving/domain/inventory/inventory';
 import type { MovingEstimate } from '../../../../moving/domain/estimate/moving-estimate';

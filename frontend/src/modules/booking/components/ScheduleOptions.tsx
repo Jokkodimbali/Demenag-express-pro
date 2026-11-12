@@ -174,6 +174,7 @@ export function ScheduleOptions({
         <div className="booking-toll-options">
           <TollRateSelector
             lines={tollLines}
+            vehicleId={draft.vehicleId}
             onToggle={(line, selected) =>
               setTollLines((current) =>
                 selected

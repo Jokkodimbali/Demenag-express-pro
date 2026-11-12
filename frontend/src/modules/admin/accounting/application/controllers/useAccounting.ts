@@ -20,11 +20,14 @@ import {
 } from '../services/accounting-dashboard';
 import {
   accountingCsvContent,
+  accountingEntryForSubmission,
+  accountingMonthTitle,
   currentAccountingDate,
+  largestAccountingCategoryAmount,
   shiftAccountingMonth,
 } from '../services/accounting-presentation';
 
-function exportCsv(entries: AccountingEntry[], period: string) {
+function downloadCsv(entries: AccountingEntry[], period: string) {
   const blob = new Blob(['\uFEFF', accountingCsvContent(entries)], {
     type: 'text/csv;charset=utf-8',
   });
@@ -33,7 +36,7 @@ function exportCsv(entries: AccountingEntry[], period: string) {
   link.href = url;
   link.download = `journal-${period}.csv`;
   link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export function useAccounting() {
@@ -187,7 +190,7 @@ export function useAccounting() {
     setBusy(true);
     setError('');
     try {
-      await api.createAccountingEntry({ ...form, label: form.label.trim() || form.category });
+      await api.createAccountingEntry(accountingEntryForSubmission(form));
       setForm((previous) => ({ ...previous, label: '', amount: 0 }));
       setStoredEntries(await api.accountingEntries());
     } catch (cause) {
@@ -212,12 +215,8 @@ export function useAccounting() {
     }
   }
 
-  const title = new Date(`${month}-01T12:00:00Z`).toLocaleDateString('fr-FR', {
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  });
-  const maxCategory = totals.byCategory[0]?.[1] ?? 1;
+  const title = accountingMonthTitle(month);
+  const maxCategory = largestAccountingCategoryAmount(totals.byCategory);
   return {
     month,
     setMonth,
@@ -247,6 +246,6 @@ export function useAccounting() {
     maxCategory,
     categories: accountingCategories,
     shiftMonth: shiftAccountingMonth,
-    exportCsv,
+    exportCsv: downloadCsv,
   };
 }

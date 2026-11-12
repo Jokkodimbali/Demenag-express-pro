@@ -18,6 +18,7 @@ import {
   blankAvailability,
   busyBooking as findBusyBooking,
   bookingsForTeamDay,
+  bookingsWithCrewForDay,
   crewReplyChanges,
   dayDistance,
   dayIndex,
@@ -43,6 +44,7 @@ import {
   refusalCount,
   shortDate,
   shortTimestamp,
+  sortEmployeesByName,
   slotKey,
   slotTimes,
   spanOverlaps,
@@ -312,9 +314,7 @@ export function useAdminFleetPageModel() {
       });
       const { initialPassword, ...employee } = created;
       confirmedEmployeesRef.current.set(employee.id, employee);
-      setEmployees((current) =>
-        [...current, employee].sort((a, b) => a.name.localeCompare(b.name)),
-      );
+      setEmployees((current) => sortEmployeesByName([...current, employee]));
       setCreatedEmployeeAccess({
         name,
         phone: employee.phone,
@@ -428,7 +428,7 @@ export function useAdminFleetPageModel() {
       if (saved)
         plannedBookings = plannedBookings.map((item) => (item.id === saved.id ? saved : item));
     }
-    for (const booking of bookings.filter((item) => item.date === selectedDay && item.crew)) {
+    for (const booking of bookingsWithCrewForDay(bookings, selectedDay)) {
       const currentBooking = plannedBookings.find((item) => item.id === booking.id) ?? booking;
       const crew = teamOf(currentBooking);
       const normalizedCrew = normalizeCrewLead(crew);

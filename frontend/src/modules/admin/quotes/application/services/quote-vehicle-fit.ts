@@ -1,11 +1,10 @@
 import type { Inventory } from '../../../../moving/domain/inventory/inventory';
 import type { MovingEstimate } from '../../../../moving/domain/estimate/moving-estimate';
-import type { Vehicle } from '../../../../shared/domain/model';
-import type { Settings } from '../../../../shared/domain/model';
+import type { Settings, Vehicle } from '../../../../shared/domain/model';
 import { estimateMovingWork } from '../../../../moving/domain/estimate/moving-estimate';
 import { vehicleDimensionWarnings } from '../../../../moving/domain/vehicle-dimensions';
 import { createAdminQuotePreview } from './admin-quote-preview';
-import { simulationInput } from '../../../../moving/application/services/loading-simulation-model';
+import { loadingSimulationWarnings } from '../../../../moving/application/services/loading-simulation-model';
 
 export type CheaperVehicle = { vehicle: Vehicle; trips: number; total: number; savings: number };
 
@@ -17,15 +16,20 @@ export function vehicleFitWarnings(
   const stock = settings.movingLaborPlanning?.blanketStock ?? 0;
   const blanketLength = settings.movingLaborPlanning?.blanketLengthCm ?? 204;
   const blanketWidth = settings.movingLaborPlanning?.blanketWidthCm ?? 184;
-  try {
-    const plan = window.DemSim?.plan(
-      simulationInput(inventory, vehicle, stock, blanketLength, blanketWidth),
-    );
-    if (plan) return plan.out;
-  } catch {
-    // Fall back to the dimension checks if the 3D engine is not ready yet.
-  }
-  return vehicleDimensionWarnings(inventory, vehicle);
+  return (
+    loadingSimulationWarnings(inventory, vehicle, stock, blanketLength, blanketWidth) ??
+    vehicleDimensionWarnings(inventory, vehicle)
+  );
+}
+
+export function adminQuoteVehicleFitWarnings(input: {
+  manualMode: boolean;
+  inventory: Inventory;
+  vehicle: Vehicle | null;
+  settings: Settings | null | undefined;
+}): string[] {
+  if (input.manualMode || !input.vehicle || !input.settings) return [];
+  return vehicleFitWarnings(input.inventory, input.vehicle, input.settings);
 }
 
 export function cheaperCompatibleVehicle(input: {
