@@ -291,16 +291,21 @@ export function estimateMovingWork(
     1,
     Math.ceil(weight.total / fromIso.limit + weight.total / toIso.limit - 0.05),
   );
-  const stairFloors = Math.max(
+  const nonLiftStairFloors = Math.max(
     inventory.fromLift ? 0 : inventory.fromFloor,
     inventory.toLift ? 0 : inventory.toFloor,
   );
-  const stairExtra =
-    stairFloors > 0
-      ? Math.ceil(stairFloors / 2)
-      : Math.max(inventory.fromFloor, inventory.toFloor) >= 4
-        ? 1
-        : 0;
+  const liftFloors = Math.max(
+    inventory.fromLift ? inventory.fromFloor : 0,
+    inventory.toLift ? inventory.toFloor : 0,
+  );
+  // Keep the legacy reference rule: stairs add one mover per two floors;
+  // an elevator adds one only from the fourth floor.
+  const stairExtra = nonLiftStairFloors > 0
+    ? Math.ceil(nonLiftStairFloors / 2)
+    : liftFloors >= 4
+      ? 1
+      : 0;
   const teamVolumePerMover = Math.max(1, Number(labor.teamVolumePerMover) || 6);
   const volumeCrew =
     Math.max(
@@ -315,11 +320,17 @@ export function estimateMovingWork(
     (weight.max <= 25 ? 1 : weight.max <= 100 ? 2 : 3) +
       (stairsRequireCarryHelp && weight.max > 33 ? 1 : 0),
   );
+  const handlingCrew =
+    weight.largestHandlingCrew > 2 &&
+    weight.itemsAtLargestHandlingCrew <= 2 &&
+    dismantlingBySide.from + dismantlingBySide.to > 0
+      ? weight.largestHandlingCrew - 1
+      : weight.largestHandlingCrew;
   const minimumCrew = Math.max(
     stairsRequireExtra ? 3 : 2,
     carryCrew,
     Math.min(labor.maxMoversPerVehicle, Math.max(volumeCrew, isoCrew)),
-    weight.largestHandlingCrew,
+    handlingCrew,
     2 * parallelVehicles,
   );
   const efficiency = (crew: number) => {

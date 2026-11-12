@@ -196,6 +196,7 @@ export function inventoryWeight(inventory: Inventory, annexVolume: number) {
   let total = 0;
   let max = 0;
   let largestHandlingCrew = 1;
+  let itemsAtLargestHandlingCrew = 0;
   const stairAccess =
     (inventory.fromFloor > 0 && !inventory.fromLift) ||
     (inventory.toFloor > 0 && !inventory.toLift);
@@ -207,7 +208,8 @@ export function inventoryWeight(inventory: Inventory, annexVolume: number) {
     format: InventoryFormat,
     forceTwoPerson = false,
   ) => {
-    const itemCount = Math.min(4, Math.max(1, Math.ceil(maxKg / 25)));
+    const handlingWeight = Math.round(maxKg || 0);
+    const itemCount = Math.min(4, Math.max(1, Math.ceil(handlingWeight / 25)));
     const kind = ['frigo', 'congelateur', 'machine-laver', 'cuisiniere', 'climatiseur'].includes(
       key,
     )
@@ -232,15 +234,20 @@ export function inventoryWeight(inventory: Inventory, annexVolume: number) {
     let count = itemCount;
     if (kind === 'appliance' || kind === 'glass' || kind === 'sofa') count = Math.max(2, count);
     if (kind === 'case' && !dismantle) count = Math.max(2, count);
-    if (kind === 'mattress') count = size >= 2 ? 2 : 1;
+    if (kind === 'mattress') count = (size || 2) >= 2 ? 2 : 1;
     if (kind === 'table') count = dismantle ? Math.max(1, count) : Math.max(2, count);
-    if (kind === 'tv') count = maxKg > 15 || format === 'large' ? 2 : 1;
+    if (kind === 'tv') count = handlingWeight > 15 || format === 'large' ? 2 : 1;
     if (kind === 'single') count = 1;
-    if (kind === 'roll') count = maxKg > 25 ? 2 : 1;
+    if (kind === 'roll') count = handlingWeight > 25 ? 2 : 1;
     if (forceTwoPerson) count = Math.max(2, count);
-    if (stairAccess && maxKg > 33 && ['appliance', 'case'].includes(kind))
+    if (stairAccess && handlingWeight > 33 && ['appliance', 'case'].includes(kind))
       count = Math.min(4, count + 1);
-    largestHandlingCrew = Math.max(largestHandlingCrew, count);
+    if (count > largestHandlingCrew) {
+      largestHandlingCrew = count;
+      itemsAtLargestHandlingCrew = 1;
+    } else if (count === largestHandlingCrew) {
+      itemsAtLargestHandlingCrew += 1;
+    }
   };
   const consume = (
     key: string,
@@ -288,7 +295,12 @@ export function inventoryWeight(inventory: Inventory, annexVolume: number) {
     );
   });
   total += Math.round(annexVolume * 110);
-  return { total: Math.round(total), max, largestHandlingCrew };
+  return {
+    total: Math.round(total),
+    max,
+    largestHandlingCrew,
+    itemsAtLargestHandlingCrew,
+  };
 }
 
 export function vehicleCapacity(vehicle: Vehicle): number {
