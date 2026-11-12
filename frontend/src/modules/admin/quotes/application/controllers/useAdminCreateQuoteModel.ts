@@ -565,6 +565,45 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     billingMode: quoteConfig.billingMode,
   });
   function sendCurrentQuoteOnWhatsApp() {
+    if (editingLocked && editingBooking && savedQuote?.kind === 'final') {
+      if (!canSendQuoteWhatsApp) {
+        setStageError('Numéro WhatsApp du client invalide.');
+        setOpenQuoteSections((current) => ({ ...current, client: true }));
+        return;
+      }
+      const whatsappTab = window.open('about:blank', '_blank');
+      if (!whatsappTab) {
+        setStageError('Autorisez les fenêtres pour ouvrir WhatsApp.');
+        return;
+      }
+      setStageError('');
+      const href = quoteNotificationUrl(
+        editingBooking,
+        savedQuote,
+        editingBooking.pricingSettings ?? catalogue?.settings,
+      );
+      void (async () => {
+        try {
+          const settings = editingBooking.pricingSettings ?? catalogue?.settings;
+          if (settings) {
+            const blob = await exportQuote(editingBooking, savedQuote, settings);
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = quotePdfFilename(savedQuote, editingBooking.reference);
+            document.body.append(link);
+            link.click();
+            link.remove();
+            window.setTimeout(() => URL.revokeObjectURL(url), 30000);
+          }
+        } catch {
+          setPdfError('Le devis est enregistré, mais le PDF n’a pas pu être téléchargé.');
+        } finally {
+          whatsappTab.location.replace(href);
+        }
+      })();
+      return;
+    }
     startQuoteWhatsAppSubmission({
       canSendQuoteWhatsApp,
       quoteKind,
