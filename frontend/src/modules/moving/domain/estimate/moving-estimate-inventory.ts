@@ -192,6 +192,15 @@ function referenceLineWeight(
   return { total: weight, max: weight };
 }
 
+export function referenceItemWeight(
+  key: string,
+  size: number,
+  format: InventoryFormat,
+  dismantle: boolean,
+) {
+  return referenceLineWeight(key, size, format, dismantle);
+}
+
 export function inventoryWeight(inventory: Inventory, annexVolume: number) {
   let total = 0;
   let max = 0;

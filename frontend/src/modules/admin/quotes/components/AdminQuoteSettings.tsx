@@ -151,7 +151,7 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
             <button
               type="button"
               aria-pressed={quoteKind === 'final'}
-              className={quoteKind === 'final' ? 'active' : ''}
+              className={quoteKind === 'final' ? 'active final' : ''}
               title={
                 !canCreateFinal
                   ? 'Une date est nécessaire pour enregistrer un devis final.'

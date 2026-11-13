@@ -146,6 +146,7 @@ export type MovingEstimate = {
 };
 type EstimateOptions = {
   trips?: number;
+  recommendedTrips?: number;
   crew?: number;
   startTime?: string;
   laborPlanning?: MovingLaborPlanningSettings;
@@ -171,7 +172,8 @@ export function estimateMovingWork(
   const volume = groups.light + groups.furniture + groups.bulky + groups.heavy;
   const fillRate = inventory.flags.fragile ? 0.75 : 0.85;
   const capacity = vehicleCapacity(vehicle);
-  const trips = volume > 0 ? Math.max(1, Math.ceil(volume / (capacity * fillRate))) : 0;
+  const volumeTrips = volume > 0 ? Math.max(1, Math.ceil(volume / (capacity * fillRate))) : 0;
+  const trips = options.recommendedTrips ?? volumeTrips;
   const requestedTrips = Math.max(1, Math.min(99, (options.trips ?? trips) || 1));
   const labor = { ...defaultMovingLaborPlanning, ...options.laborPlanning };
   const parallelVehicles = options.parallelVehicles ?? 1;
@@ -312,14 +314,6 @@ export function estimateMovingWork(
       Math.ceil(volume / teamVolumePerMover),
       Math.ceil(weight.total / Math.max(100, teamVolumePerMover * 110)),
     ) + stairExtra;
-  const stairsRequireCarryHelp =
-    (inventory.fromFloor >= 2 && !inventory.fromLift) ||
-    (inventory.toFloor >= 2 && !inventory.toLift);
-  const carryCrew = Math.min(
-    4,
-    (weight.max <= 25 ? 1 : weight.max <= 100 ? 2 : 3) +
-      (stairsRequireCarryHelp && weight.max > 33 ? 1 : 0),
-  );
   const handlingCrew =
     weight.largestHandlingCrew > 2 &&
     weight.itemsAtLargestHandlingCrew <= 2 &&
@@ -328,7 +322,6 @@ export function estimateMovingWork(
       : weight.largestHandlingCrew;
   const minimumCrew = Math.max(
     stairsRequireExtra ? 3 : 2,
-    carryCrew,
     Math.min(labor.maxMoversPerVehicle, Math.max(volumeCrew, isoCrew)),
     handlingCrew,
     2 * parallelVehicles,
@@ -346,7 +339,9 @@ export function estimateMovingWork(
   const loadingBase =
     siteHours(inventory.fromFloor, inventory.fromLift) *
     densityFactor *
-    (inventory.stairs === 'balcon' ? 1.2 : 1);
+    (inventory.stairs === 'balcon'
+      ? 1 + (volume > 0 ? (0.4 * (groups.bulky + groups.heavy)) / volume : 0)
+      : 1);
   const unloadingBase = siteHours(inventory.toFloor, inventory.toLift, true) * densityFactor;
   const tripOverheadHours =
     (Math.max(0, Number(labor.tripSetupMinutes) || 0) / 60) *
@@ -383,11 +378,10 @@ export function estimateMovingWork(
   const crew = Math.min(20, Math.max(1, options.crew || recommendedCrew));
   const loadingHours = loadingWithCrew(crew, recommendedCarpenters);
   const unloadingHours = unloadingWithCrew(crew, recommendedCarpenters);
-  const packingHours =
-    inventory.flags.emballage || inventory.ready === 'non'
-      ? 0.45 * groups.light + 0.1 * (groups.furniture + groups.bulky + groups.heavy)
-      : 0;
-  const packingMinutes = (packingHours / efficiency(crew)) * 60;
+  const packingHours = inventory.flags.emballage
+    ? 0.45 * groups.light + 0.1 * (groups.furniture + groups.bulky + groups.heavy)
+    : 0;
+  const packingMinutes = (packingHours / efficiency(crew)) * handlingCalibration * 60;
   const routeKm = route?.distanceKm ?? 0;
   const routeMinutes = referenceTravelMinutes({
     distanceKm: routeKm,

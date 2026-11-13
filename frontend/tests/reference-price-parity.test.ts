@@ -6,10 +6,23 @@ import { calculatePrice } from '../../backend/src/domain/pricing/pricing.ts';
 import { inventoryAssemblyLines as backendAssemblyLines } from '../../backend/src/domain/inventory/inventory-assembly.ts';
 import { inventoryAssemblyLines as frontendAssemblyLines } from '../src/modules/moving/domain/inventory/inventory-assembly.ts';
 import { quoteTotal } from '../src/modules/admin/quotes/application/services/quote-total.ts';
+import { estimateAdminQuoteWork } from '../src/modules/admin/quotes/application/services/admin-quote-estimation.ts';
+import { defaultAdminQuoteConfig } from '../src/modules/admin/quotes/application/services/admin-quote-config.ts';
+import { createAdminQuotePreview } from '../src/modules/admin/quotes/application/services/admin-quote-preview.ts';
+import { cheaperCompatibleVehicle } from '../src/modules/admin/quotes/application/services/quote-vehicle-fit.ts';
 import { estimateMovingWork } from '../src/modules/moving/domain/estimate/moving-estimate.ts';
+import { defaultMovingLaborPlanning } from '../src/modules/moving/domain/estimate/moving-estimate.ts';
+import {
+  inventoryVolumes,
+  inventoryWeight,
+} from '../src/modules/moving/domain/estimate/moving-estimate-inventory.ts';
+import { referencePlannedTrips } from '../src/modules/moving/application/services/loading-simulation-model.ts';
+import { referenceAnnexVolume } from '../src/modules/moving/domain/estimate/reference-inventory-note.ts';
 import { blankInventory } from '../src/modules/moving/domain/inventory/inventory.ts';
 import type { Booking, Inventory, Settings, Vehicle } from '../src/modules/shared/domain/model.ts';
+import type { Draft } from '../src/modules/booking/application/booking-draft.ts';
 import { inventoryItems } from '../src/modules/moving/domain/inventory/inventory.ts';
+import { referenceVehiclePrices } from '../../shared/reference-tariff-defaults.ts';
 
 type ReferenceQuote = {
   vehicle: string;
@@ -30,7 +43,22 @@ const start = source.indexOf('class Component extends DCLogic {');
 const end = source.indexOf('</script>', start);
 assert.ok(start >= 0 && end > start, 'Le calculateur du fichier de référence doit être présent.');
 const code = source.slice(start, end).replace('state = this.init();', 'state = {};');
-const context = vm.createContext({ DCLogic: class {}, console, Date, Math, Set, Map, URL, Intl });
+const referenceWindow: { DemSim?: unknown } = {};
+vm.runInNewContext(
+  readFileSync(new URL('../public/reference/loading-sim.js', import.meta.url), 'utf8'),
+  { window: referenceWindow },
+);
+const context = vm.createContext({
+  DCLogic: class {},
+  console,
+  Date,
+  Math,
+  Set,
+  Map,
+  URL,
+  Intl,
+  window: referenceWindow,
+});
 vm.runInContext(`${code}\nglobalThis.ReferenceComponent = Component;`, context, { timeout: 10000 });
 const ReferenceComponent = (
   context as {
@@ -53,6 +81,41 @@ const ReferenceComponent = (
         max: number;
       };
       lineVol: (line: { k: string; q: number; s?: number; g?: string; dm?: boolean }) => number;
+      invAnnex: (inventory: { logement: string; annexOn?: boolean; lines: unknown[] }) => number;
+      invVolume: (inventory: { logement: string; annexOn?: boolean; lines: unknown[] }) => number;
+      invKg: (inventory: { logement: string; annexOn?: boolean; lines: unknown[] }) => {
+        tot: number;
+        max: number;
+      };
+      estTrips: (inventory: unknown, vehicle: string) => number;
+      laborEst: (quote: {
+        vehicle: string;
+        trips: number;
+        km: number;
+        date: string;
+        start: string;
+        inv: unknown;
+      }) => {
+        n: number;
+        N: number;
+        m: number;
+        hand: number;
+        total: number;
+        kg: number;
+        maxKg: number;
+      } | null;
+      cheapVeh0: (quote: {
+        vehicle: string;
+        km: number;
+        date: string;
+        start: string;
+        trips: number;
+        inv: unknown;
+      }) => { k: string; t: number; trips: number; gain: number } | null;
+      menuLines: (
+        quote: { inv: { lines: unknown[] } },
+        tariffs: Record<string, unknown>,
+      ) => Array<{ qty: number; pu: number }>;
     };
   }
 ).ReferenceComponent;
@@ -98,6 +161,555 @@ const tariffs = {
   manAsc: 500,
   montage: 15000,
 };
+
+test('les six logements et la déduction cartons/sacs reprennent le calcul de la référence', () => {
+  const reference = new ReferenceComponent();
+  reference.state = { data: { tarifs: tariffs, peages: [], invCat: {} } };
+  const dwellingTypes = [
+    ['studio', 'Studio'],
+    ['f2', 'F2'],
+    ['f3', 'F3'],
+    ['f4', 'F4'],
+    ['f5', 'F5 et plus'],
+    ['villa', 'Villa'],
+  ] as const;
+  for (const [legacyType, siteType] of dwellingTypes) {
+    const inventory = blankInventory();
+    inventory.dwellingType = siteType;
+    inventory.entries.carton = { quantity: 4, size: 1, format: 'medium', dismantle: false };
+    inventory.entries.sac = { quantity: 2, size: 1, format: 'large', dismantle: false };
+    const referenceInventory = {
+      logement: legacyType,
+      annexOn: true,
+      lines: [
+        { k: 'carton', q: 4, g: 'm', dm: false },
+        { k: 'sac', q: 2, g: 'g', dm: false },
+      ],
+    };
+    const groups = inventoryVolumes(inventory);
+    const siteVolume = groups.light + groups.furniture + groups.bulky + groups.heavy;
+    assert.equal(referenceAnnexVolume(inventory), reference.invAnnex(referenceInventory), siteType);
+    assert.equal(siteVolume, reference.invVolume(referenceInventory), siteType);
+    assert.equal(
+      inventoryWeight(inventory, referenceAnnexVolume(inventory)).total,
+      reference.invKg(referenceInventory).tot,
+      siteType,
+    );
+
+    inventory.annexOn = false;
+    referenceInventory.annexOn = false;
+    assert.equal(referenceAnnexVolume(inventory), 0, `${siteType} sans annexe côté site`);
+    assert.equal(reference.invAnnex(referenceInventory), 0, `${siteType} sans annexe référence`);
+    assert.equal(
+      inventoryWeight(inventory, referenceAnnexVolume(inventory)).total,
+      reference.invKg(referenceInventory).tot,
+      `${siteType} sans annexe`,
+    );
+  }
+});
+
+test('trajets simulés et manœuvres reprennent les fonctions de référence sur le même devis', () => {
+  const reference = new ReferenceComponent();
+  reference.state = { data: { tarifs: tariffs, peages: [], invCat: {} } };
+  const inventory = blankInventory();
+  inventory.dwellingType = 'F3';
+  inventory.fromFloor = 3;
+  inventory.toFloor = 1;
+  inventory.toLift = true;
+  inventory.flags = { acces: true, fragile: true, escalier: true, emballage: true };
+  for (const [key, quantity, size, dismantle] of [
+    ['salon', 1, 5, false],
+    ['armoire', 1, 3, true],
+    ['frigo', 1, 1, false],
+    ['carton', 12, 1, false],
+    ['lit', 1, 2, true],
+    ['matelas', 1, 2, false],
+  ] as const)
+    inventory.entries[key] = { quantity, size, format: 'medium', dismantle };
+
+  const aliases: Record<string, string> = {
+    'table-basse': 'tbasse',
+    'meuble-tv': 'meubletv',
+    television: 'tv',
+    'table-manger': 'tablem',
+    bibliotheque: 'biblio',
+    congelateur: 'congel',
+    'machine-laver': 'mal',
+    'micro-ondes': 'micro',
+    climatiseur: 'clim',
+    ventilateur: 'ventilo',
+  };
+  const referenceInventory = {
+    logement: 'f3',
+    annexOn: true,
+    fEt: inventory.fromFloor,
+    fAsc: inventory.fromLift,
+    tEt: inventory.toFloor,
+    tAsc: inventory.toLift,
+    opts: { acces: true, fragile: true, escalier: true, emballage: true },
+    lines: Object.entries(inventory.entries)
+      .filter(([, entry]) => entry.quantity > 0)
+      .map(([key, entry]) => ({
+        k: aliases[key] ?? key,
+        q: entry.quantity,
+        s: entry.size,
+        g: 'm',
+        dm: entry.dismantle,
+      })),
+  };
+  const siteVehicle = {
+    ...vehicle,
+    volume: '14 m³',
+    length: '4,30 m',
+    height: '1,94 m',
+    width: '1,78 m',
+    wheelWidth: '1,35 m',
+  };
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  Object.defineProperty(globalThis, 'window', {
+    value: referenceWindow,
+    configurable: true,
+    writable: true,
+  });
+  try {
+    const siteTrips = referencePlannedTrips(inventory, siteVehicle);
+    const referenceTrips = reference.estTrips(referenceInventory, 'sprinter');
+    assert.equal(siteTrips, referenceTrips, 'nombre de trajets simulés');
+    assert.ok(siteTrips);
+
+    const siteEstimate = estimateMovingWork(inventory, siteVehicle, null, {
+      recommendedTrips: siteTrips,
+      trips: siteTrips,
+    });
+    const referenceEstimate = reference.laborEst({
+      vehicle: 'sprinter',
+      trips: siteTrips,
+      km: 20,
+      date: '2026-11-10',
+      start: '08:00',
+      inv: referenceInventory,
+    });
+    assert.ok(referenceEstimate);
+    assert.equal(
+      siteEstimate.recommendedCrew,
+      referenceEstimate.n,
+      'nombre de manœuvres recommandé',
+    );
+    assert.equal(siteEstimate.carpenterCount, referenceEstimate.m, 'nombre de menuisiers');
+    assert.equal(
+      Math.round(siteEstimate.handlingMinutes),
+      Math.round(referenceEstimate.hand * 60),
+      'durée chargement et déchargement',
+    );
+  } finally {
+    if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow);
+    else delete (globalThis as typeof globalThis & { window?: Window }).window;
+  }
+});
+
+test('le mode automatique du formulaire calcule trajet et équipe avec le plan de référence dès le premier rendu', () => {
+  const reference = new ReferenceComponent();
+  reference.state = { data: { tarifs: tariffs, peages: [], invCat: {} } };
+  const inventory = blankInventory();
+  inventory.dwellingType = 'F4';
+  inventory.fromFloor = 3;
+  inventory.toFloor = 2;
+  inventory.toLift = true;
+  inventory.flags = { acces: true, fragile: true, escalier: true, emballage: true };
+  inventory.entries.salon = { quantity: 4, size: 8, format: 'medium', dismantle: false };
+  inventory.entries.frigo = { quantity: 4, size: 1, format: 'medium', dismantle: false };
+  inventory.entries.armoire = { quantity: 2, size: 6, format: 'medium', dismantle: true };
+  inventory.entries.carton = { quantity: 24, size: 1, format: 'medium', dismantle: false };
+  const legacyInventory = {
+    logement: 'f4',
+    annexOn: true,
+    fEt: inventory.fromFloor,
+    fAsc: inventory.fromLift,
+    tEt: inventory.toFloor,
+    tAsc: inventory.toLift,
+    opts: { ...inventory.flags },
+    lines: [
+      { k: 'salon', q: 4, s: 8, g: 'm', dm: false },
+      { k: 'frigo', q: 4, s: 1, g: 'm', dm: false },
+      { k: 'armoire', q: 2, s: 6, g: 'm', dm: true },
+      { k: 'carton', q: 24, s: 1, g: 'm', dm: false },
+    ],
+  };
+  const siteVehicle = {
+    ...vehicle,
+    volume: '13,9 m³',
+    length: '4,30 m',
+    height: '1,94 m',
+    width: '1,78 m',
+    wheelWidth: '1,35 m',
+  } as Vehicle;
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  Object.defineProperty(globalThis, 'window', {
+    value: referenceWindow,
+    configurable: true,
+    writable: true,
+  });
+  try {
+    const referenceTrips = reference.estTrips(legacyInventory, 'sprinter');
+    assert.ok(referenceTrips > 1, 'le scénario doit exercer plusieurs allers-retours');
+    const referenceEstimate = reference.laborEst({
+      vehicle: 'sprinter',
+      trips: referenceTrips,
+      km: 20,
+      date: '2026-11-10',
+      start: '08:00',
+      inv: legacyInventory,
+    });
+    assert.ok(referenceEstimate);
+
+    const quoteDraft = {
+      inventory: { ...inventory, crew: 9 },
+      options: { labour: 9, desk: 0, wardrobe: 0, bed: 0 },
+      date: '2026-11-10',
+      month: '2026-11',
+      timeSlot: '08:00',
+      fromAddress: '',
+      toAddress: '',
+      route: null,
+    } as unknown as Draft;
+    const estimate = estimateAdminQuoteWork({
+      inventory,
+      vehicle: siteVehicle,
+      route: null,
+      draft: quoteDraft,
+      config: { ...defaultAdminQuoteConfig(), trips: 1, calcMode: 'auto' },
+      settings,
+      tollLines: [],
+    });
+    assert.ok(estimate);
+    assert.equal(estimate.trips, referenceTrips, 'nombre estimé d’allers-retours');
+    assert.equal(estimate.plannedTrips, referenceTrips, 'trajets appliqués dès le premier calcul');
+    assert.equal(estimate.crew, referenceEstimate.n, 'équipe automatique sans ancien effectif résiduel');
+    assert.equal(estimate.recommendedCrew, referenceEstimate.n, 'manœuvres recommandées');
+    assert.equal(estimate.carpenterCount, referenceEstimate.m, 'menuisiers recommandés');
+
+    const manualEstimate = estimateAdminQuoteWork({
+      inventory,
+      vehicle: siteVehicle,
+      route: null,
+      draft: { ...quoteDraft, inventory: { ...inventory, crew: 4 } },
+      config: { ...defaultAdminQuoteConfig(), trips: 2, calcMode: 'manual' },
+      settings,
+      tollLines: [],
+    });
+    assert.ok(manualEstimate);
+    assert.equal(manualEstimate.plannedTrips, 2, 'le mode manuel conserve les trajets choisis');
+    assert.equal(manualEstimate.crew, 4, 'le mode manuel conserve l’équipe choisie');
+  } finally {
+    if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow);
+    else delete (globalThis as typeof globalThis & { window?: Window }).window;
+  }
+});
+
+test('le prix de chaque véhicule et la suggestion moins chère reprennent la référence au même trajet', () => {
+  const quoteTariffs = {
+    ...tariffs,
+    trafic: [...referenceVehiclePrices.trafic],
+    sprinter: [...referenceVehiclePrices.sprinter],
+    master: [...referenceVehiclePrices.master],
+    manoeuvre: 6500,
+    tripDeg: 60,
+    creux: 10,
+  };
+  const quoteSettings = {
+    ...settings,
+    labourPrice: 6500,
+    distanceBounds: [15, 25, 35] as [number, number, number],
+    movingLaborPlanning: {
+      ...defaultMovingLaborPlanning,
+      followingTripDiscountPercent: 60,
+      lowDemandDiscountPercent: 10,
+    },
+  } as Settings;
+  const fleet: Vehicle[] = [
+    {
+      ...vehicle,
+      id: 'trafic',
+      name: 'Renault Trafic III',
+      shortName: 'Trafic',
+      volume: '5,4 m³',
+      length: '2,54 m',
+      height: '1,39 m',
+      width: '1,66 m',
+      wheelWidth: '1,27 m',
+      image: '',
+      interior: '',
+      prices: [...referenceVehiclePrices.trafic],
+    },
+    {
+      ...vehicle,
+      id: 'master',
+      name: 'Renault Master III',
+      shortName: 'Master',
+      volume: '11,6 m³',
+      length: '3,73 m',
+      height: '1,89 m',
+      width: '1,76 m',
+      wheelWidth: '1,38 m',
+      image: '',
+      interior: '',
+      prices: [...referenceVehiclePrices.master],
+    },
+    {
+      ...vehicle,
+      id: 'sprinter',
+      name: 'Mercedes Sprinter',
+      shortName: 'Sprinter',
+      volume: '13,9 m³',
+      length: '4,30 m',
+      height: '1,94 m',
+      width: '1,78 m',
+      wheelWidth: '1,35 m',
+      image: '',
+      interior: '',
+      prices: [...referenceVehiclePrices.sprinter],
+    },
+  ];
+  const inventory = blankInventory();
+  inventory.dwellingType = 'F3';
+  inventory.annexOn = false;
+  inventory.entries.carton = { quantity: 60, size: 1, format: 'medium', dismantle: false };
+  const legacyInventory = {
+    logement: 'f3',
+    annexOn: false,
+    fEt: 0,
+    fAsc: false,
+    tEt: 0,
+    tAsc: false,
+    opts: { acces: false, fragile: false, escalier: false, emballage: false },
+    lines: [{ k: 'carton', q: 60, s: 1, g: 'm', dm: false }],
+  };
+  const route = {
+    id: 'vehicle-price-parity',
+    expiresAt: '2026-11-16T00:00:00.000Z',
+    from: [14.7, -17.5] as [number, number],
+    to: [14.7, -17.2] as [number, number],
+    distanceKm: 20,
+    durationMinutes: 30,
+    geometry: [],
+  };
+  const date = '2026-11-15';
+  const draft = {
+    vehicleId: 'sprinter',
+    customerName: '',
+    customerPhone: '',
+    source: '',
+    fromAddress: 'Dakar',
+    toAddress: 'Rufisque',
+    fromNote: '',
+    toNote: '',
+    from: route.from,
+    to: route.to,
+    route,
+    distanceKmOverride: null,
+    date,
+    noDate: false,
+    month: '2026-11',
+    timeSlot: '08:00',
+    estimatedTrips: 1,
+    options: { labour: 0, desk: 0, wardrobe: 0, bed: 0 },
+    notes: '',
+    inventory,
+    questionnaireAnswers: {},
+    requestId: 'vehicle-price-parity',
+  } as Draft;
+  const quoteConfig = defaultAdminQuoteConfig();
+  const extras: [keyof Draft['options'], string, string][] = [
+    ['labour', 'Manœuvres', 'Manœuvres'],
+    ['desk', 'Bureau', 'Bureau'],
+    ['wardrobe', 'Armoire', 'Armoire'],
+    ['bed', 'Lit', 'Lit'],
+  ];
+  const reference = new ReferenceComponent();
+  reference.state = { data: { tarifs: quoteTariffs, peages: [], invCat: {} } };
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  Object.defineProperty(globalThis, 'window', {
+    value: referenceWindow,
+    configurable: true,
+    writable: true,
+  });
+  try {
+    const estimates = new Map<string, ReturnType<typeof estimateAdminQuoteWork>>();
+    for (const candidate of fleet) {
+      const estimate = estimateAdminQuoteWork({
+        inventory,
+        vehicle: candidate,
+        route,
+        draft,
+        config: quoteConfig,
+        settings: quoteSettings,
+        tollLines: [],
+      });
+      assert.ok(estimate);
+      estimates.set(candidate.id, estimate);
+      const referenceTrips = reference.estTrips(legacyInventory, candidate.id);
+      const referenceLabour = reference.laborEst({
+        vehicle: candidate.id,
+        trips: referenceTrips,
+        km: 20,
+        date,
+        start: '08:00',
+        inv: legacyInventory,
+      });
+      assert.ok(referenceLabour);
+      const referenceTotal = reference.calc({
+        vehicle: candidate.id,
+        km: 20,
+        trips: referenceTrips,
+        man: referenceLabour.n,
+        inv: legacyInventory,
+        remise: 0,
+      }).total;
+      const sitePreview = createAdminQuotePreview({
+        draft: { ...draft, vehicleId: candidate.id, options: { ...draft.options, labour: estimate.crew } },
+        estimateInventory: inventory,
+        config: { ...quoteConfig, trips: estimate.plannedTrips },
+        vehicle: candidate,
+        estimate,
+        settings: quoteSettings,
+        price: null,
+        extras,
+        labourPrice: quoteSettings.labourPrice,
+        simulationNeeds: null,
+      });
+      assert.equal(estimate.trips, referenceTrips, `${candidate.id}: allers-retours`);
+      assert.equal(estimate.recommendedCrew, referenceLabour.n, `${candidate.id}: manœuvres`);
+      assert.equal(sitePreview.total, referenceTotal, `${candidate.id}: montant total à 20 km`);
+    }
+
+    const current = fleet.find((candidate) => candidate.id === 'master')!;
+    const referenceSuggestion = reference.cheapVeh0({
+      vehicle: current.id,
+      km: 20,
+      date,
+      start: '08:00',
+      trips: estimates.get(current.id)!.plannedTrips,
+      inv: legacyInventory,
+    });
+    const siteSuggestion = cheaperCompatibleVehicle({
+      manualMode: false,
+      inventory,
+      current,
+      vehicles: fleet,
+      route,
+      date,
+      month: '2026-11',
+      fromAddress: 'Dakar',
+      toAddress: 'Rufisque',
+      startTime: '08:00',
+      hasToll: false,
+      settings: quoteSettings,
+      estimate: estimates.get(current.id)!,
+    });
+    assert.ok(referenceSuggestion);
+    assert.ok(siteSuggestion);
+    assert.equal(siteSuggestion.vehicle.id, referenceSuggestion.k, 'véhicule le moins cher');
+    assert.equal(siteSuggestion.trips, referenceSuggestion.trips, 'trajets du véhicule suggéré');
+    assert.equal(siteSuggestion.total, referenceSuggestion.t, 'prix du véhicule suggéré');
+  } finally {
+    if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow);
+    else delete (globalThis as typeof globalThis & { window?: Window }).window;
+  }
+});
+
+test('allers-retours et manœuvres concordent avec la référence pour chaque meuble standard', async (t) => {
+  const aliases: Record<string, string> = {
+    'table-basse': 'tbasse',
+    'meuble-tv': 'meubletv',
+    television: 'tv',
+    'table-manger': 'tablem',
+    bibliotheque: 'biblio',
+    congelateur: 'congel',
+    'machine-laver': 'mal',
+    'micro-ondes': 'micro',
+    climatiseur: 'clim',
+    ventilateur: 'ventilo',
+  };
+  const formatKeys = { small: 'p', medium: 'm', large: 'g' } as const;
+  const siteVehicle = {
+    ...vehicle,
+    volume: '14 m³',
+    length: '4,30 m',
+    height: '1,94 m',
+    width: '1,78 m',
+    wheelWidth: '1,35 m',
+  };
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  Object.defineProperty(globalThis, 'window', {
+    value: referenceWindow,
+    configurable: true,
+    writable: true,
+  });
+  try {
+    const reference = new ReferenceComponent();
+    reference.state = { data: { tarifs: tariffs, peages: [], invCat: {} } };
+    for (const [itemIndex, item] of inventoryItems.entries()) {
+      const formats = item.hasFormat ? ['small', 'medium', 'large'] as const : ['medium'] as const;
+      for (const format of formats) {
+        const inventory = blankInventory();
+        inventory.dwellingType = 'F3';
+        inventory.fromFloor = itemIndex % 4;
+        inventory.fromLift = itemIndex % 2 === 0;
+        inventory.toFloor = (itemIndex + 1) % 3;
+        inventory.toLift = itemIndex % 3 === 0;
+        inventory.flags = {
+          acces: itemIndex % 2 === 0,
+          fragile: itemIndex % 3 === 0,
+          escalier: itemIndex % 4 === 3,
+          emballage: itemIndex % 5 === 0,
+        };
+        const size = item.defaultSize ?? 1;
+        const dismantle = itemIndex % 2 === 0;
+        inventory.entries[item.key] = { quantity: 2, size, format, dismantle };
+        const legacyInventory = {
+          logement: 'f3',
+          annexOn: true,
+          fEt: inventory.fromFloor,
+          fAsc: inventory.fromLift,
+          tEt: inventory.toFloor,
+          tAsc: inventory.toLift,
+          opts: { ...inventory.flags },
+          lines: [
+            {
+              k: aliases[item.key] ?? item.key,
+              q: 2,
+              s: size,
+              g: formatKeys[format],
+              dm: dismantle,
+            },
+          ],
+        };
+        const recommendedTrips = referencePlannedTrips(inventory, siteVehicle) ?? undefined;
+        const siteEstimate = estimateMovingWork(inventory, siteVehicle, null, {
+          ...(recommendedTrips ? { recommendedTrips } : {}),
+        });
+        const referenceTrips = reference.estTrips(legacyInventory, 'sprinter');
+        const referenceEstimate = reference.laborEst({
+          vehicle: 'sprinter',
+          trips: siteEstimate.trips,
+          km: 20,
+          date: '2026-11-10',
+          start: '08:00',
+          inv: legacyInventory,
+        });
+        assert.ok(referenceEstimate);
+        await t.test(`${item.key} / ${format}`, () => {
+          assert.equal(siteEstimate.trips, referenceTrips, 'nombre d’allers-retours');
+          assert.equal(siteEstimate.recommendedCrew, referenceEstimate.n, 'nombre de manœuvres');
+          assert.equal(siteEstimate.carpenterCount, referenceEstimate.m, 'nombre de menuisiers');
+        });
+      }
+    }
+  } finally {
+    if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow);
+    else delete (globalThis as typeof globalThis & { window?: Window }).window;
+  }
+});
 
 const quoteScenarios = [
   {
@@ -449,6 +1061,13 @@ test('volumes et poids de chaque meuble standard correspondent aux formules de r
     { app: 'medium' as const, ref: 'm' },
     { app: 'large' as const, ref: 'g' },
   ];
+  const sizes: Record<string, number[]> = {
+    salon: Array.from({ length: 10 }, (_, index) => index + 1),
+    'table-manger': Array.from({ length: 11 }, (_, index) => index + 2),
+    lit: [1, 2, 3, 4],
+    matelas: [1, 2, 3, 4],
+    armoire: Array.from({ length: 8 }, (_, index) => index + 1),
+  };
   const reference = new ReferenceComponent();
   reference.state = { data: { tarifs: tariffs, peages: [] } };
   const vehicle = {
@@ -467,23 +1086,121 @@ test('volumes et poids de chaque meuble standard correspondent aux formules de r
     for (const format of item.hasFormat ? formats : [formats[1]!]) {
       for (const dismantle of [false, true]) {
         const key = aliases[item.key] ?? item.key;
-        const size = item.defaultSize ?? 1;
-        const line = { k: key, q: 2, s: size, g: format.ref, dm: dismantle };
-        const expectedVolume = reference.lineVol(line);
-        const expectedWeight = reference.lineKg(line);
-        const inventory = blankInventory();
-        inventory.entries[item.key] = {
-          quantity: 2,
-          size,
-          format: format.app,
-          dismantle,
-        };
-        const actual = estimateMovingWork(inventory, vehicle, null, { trips: 1 });
-        await t.test(`${item.key} / ${format.app} / démonté=${dismantle}`, () => {
-          assert.equal(actual.volume, expectedVolume);
-          assert.equal(actual.totalWeightKg, expectedWeight.tot * 2);
-          assert.equal(actual.maxItemWeightKg, expectedWeight.max);
-        });
+        for (const size of sizes[item.key] ?? [item.defaultSize ?? 1]) {
+          const line = { k: key, q: 2, s: size, g: format.ref, dm: dismantle };
+          const expectedVolume = reference.lineVol(line);
+          const expectedWeight = reference.lineKg(line);
+          const inventory = blankInventory();
+          inventory.entries[item.key] = {
+            quantity: 2,
+            size,
+            format: format.app,
+            dismantle,
+          };
+          const actual = estimateMovingWork(inventory, vehicle, null, { trips: 1 });
+          await t.test(
+            `${item.key} / taille=${size} / ${format.app} / démonté=${dismantle}`,
+            () => {
+              assert.equal(actual.volume, expectedVolume);
+              assert.equal(actual.totalWeightKg, expectedWeight.tot * 2);
+              assert.equal(actual.maxItemWeightKg, expectedWeight.max);
+            },
+          );
+        }
+      }
+    }
+  }
+});
+
+test('les montants de démontage de chaque meuble standard reprennent les tarifs de référence', async (t) => {
+  const aliases: Record<string, string> = {
+    'table-basse': 'tbasse',
+    'meuble-tv': 'meubletv',
+    television: 'tv',
+    'table-manger': 'tablem',
+    bibliotheque: 'biblio',
+    congelateur: 'congel',
+    'machine-laver': 'mal',
+    'micro-ondes': 'micro',
+    climatiseur: 'clim',
+    ventilateur: 'ventilo',
+  };
+  const sizes: Record<string, number[]> = {
+    salon: Array.from({ length: 10 }, (_, index) => index + 1),
+    'table-manger': Array.from({ length: 11 }, (_, index) => index + 2),
+    lit: [1, 2, 3, 4],
+    matelas: [1, 2, 3, 4],
+    armoire: Array.from({ length: 8 }, (_, index) => index + 1),
+  };
+  const montageP = Object.fromEntries(
+    inventoryItems.map((item, index) => {
+      const key = aliases[item.key] ?? item.key;
+      const maxSize = sizes[item.key]?.at(-1);
+      return [
+        key,
+        {
+          local: 3000 + index * 211,
+          import: 5000 + index * 307,
+          u: 150 + index,
+          uI: 250 + index,
+          ...(maxSize
+            ? {
+                sz: {
+                  [maxSize]: {
+                    local: 25000 + index * 101,
+                    import: 40000 + index * 103,
+                  },
+                },
+              }
+            : {}),
+        },
+      ];
+    }),
+  );
+  const priceCases = [
+    { name: 'grille de référence par défaut', tariffs, settings },
+    {
+      name: 'tarifs configurés avec suppléments de taille',
+      tariffs: { ...tariffs, montageP },
+      settings: { ...settings, montageP } as Settings,
+    },
+  ];
+  const reference = new ReferenceComponent();
+
+  for (const priceCase of priceCases) {
+    reference.state = { data: { tarifs: priceCase.tariffs, peages: [], invCat: {} } };
+    for (const item of inventoryItems) {
+      for (const size of sizes[item.key] ?? [item.defaultSize ?? 1]) {
+        for (const origin of ['local', 'import'] as const) {
+          const inventory = blankInventory();
+          inventory.entries[item.key] = {
+            quantity: 2,
+            size,
+            format: 'medium',
+            dismantle: true,
+            origin,
+          };
+          const key = aliases[item.key] ?? item.key;
+          const expected = Array.from(
+            reference.menuLines(
+              {
+                inv: {
+                  lines: [
+                    { k: key, q: 2, s: item.sizeLabel ? size : undefined, dm: true, o: origin },
+                  ],
+                },
+              },
+              priceCase.tariffs,
+            ),
+            ({ qty, pu }) => [qty, pu],
+          );
+          const actual = frontendAssemblyLines(inventory, priceCase.settings).map(
+            ({ quantity, unitPrice }) => [quantity, unitPrice],
+          );
+          await t.test(`${priceCase.name} / ${item.key} / taille=${size} / ${origin}`, () => {
+            assert.deepEqual(actual, expected);
+          });
+        }
       }
     }
   }

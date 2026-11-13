@@ -25,6 +25,7 @@ import { visibleUiText } from '../../../shared/content/visible-ui-text';
 
 const scripts = new Map<string, Promise<void>>();
 function loadScript(src: string) {
+  if (src.endsWith('/reference/loading-sim.js') && window.DemSim) return Promise.resolve();
   const pending = scripts.get(src);
   if (pending) return pending;
   const next = new Promise<void>((resolve, reject) => {

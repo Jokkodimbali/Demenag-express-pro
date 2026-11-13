@@ -304,6 +304,10 @@
   background: #f6d73c;
   color: #1e2023;
 }
+.admin-quote-reference-setting button.active.final {
+  background: #3ddc84;
+  color: #1e2023;
+}
 .admin-quote-reference-setting button:disabled {
   opacity: 0.5;
   cursor: not-allowed;

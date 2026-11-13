@@ -41,7 +41,7 @@ export function AdminQuoteStep({
   }
 
   return (
-    <section className="admin-quote-step">
+    <section className="admin-quote-step" data-step={number}>
       <button
         className="admin-quote-step-heading"
         data-step={number}

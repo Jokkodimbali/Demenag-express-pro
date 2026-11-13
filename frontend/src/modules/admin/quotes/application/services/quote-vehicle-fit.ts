@@ -1,10 +1,13 @@
 import type { Inventory } from '../../../../moving/domain/inventory/inventory';
 import type { MovingEstimate } from '../../../../moving/domain/estimate/moving-estimate';
-import type { Settings, Vehicle } from '../../../../shared/domain/model';
+import type { RouteTicket, Settings, Vehicle } from '../../../../shared/domain/model';
 import { estimateMovingWork } from '../../../../moving/domain/estimate/moving-estimate';
 import { vehicleDimensionWarnings } from '../../../../moving/domain/vehicle-dimensions';
 import { createAdminQuotePreview } from './admin-quote-preview';
-import { loadingSimulationWarnings } from '../../../../moving/application/services/loading-simulation-model';
+import {
+  loadingSimulationWarnings,
+  referencePlannedTrips,
+} from '../../../../moving/application/services/loading-simulation-model';
 
 export type CheaperVehicle = { vehicle: Vehicle; trips: number; total: number; savings: number };
 
@@ -33,10 +36,11 @@ export function adminQuoteVehicleFitWarnings(input: {
 }
 
 export function cheaperCompatibleVehicle(input: {
+  manualMode: boolean;
   inventory: Inventory;
   current: Vehicle;
   vehicles: Vehicle[];
-  route: { distanceKm: number; durationMinutes: number } | null;
+  route: RouteTicket | null;
   date: string;
   month: string;
   fromAddress: string;
@@ -46,11 +50,24 @@ export function cheaperCompatibleVehicle(input: {
   settings?: Settings;
   estimate: MovingEstimate | null;
 }): CheaperVehicle | null {
-  if (!input.route || !input.settings || !input.estimate || input.estimate.volume === 0)
+  if (
+    input.manualMode ||
+    !input.route ||
+    !input.settings ||
+    !input.estimate ||
+    input.estimate.volume === 0
+  )
     return null;
   const settings = input.settings;
-  const estimateFor = (vehicle: Vehicle) =>
-    estimateMovingWork(input.inventory, vehicle, input.route, {
+  const estimateFor = (vehicle: Vehicle) => {
+    const recommendedTrips = referencePlannedTrips(
+      input.inventory,
+      vehicle,
+      settings.movingLaborPlanning,
+    );
+    return estimateMovingWork(input.inventory, vehicle, input.route, {
+      recommendedTrips: recommendedTrips ?? undefined,
+      trips: recommendedTrips ?? undefined,
       startTime: input.startTime,
       laborPlanning: settings.movingLaborPlanning,
       date: input.date,
@@ -59,6 +76,7 @@ export function cheaperCompatibleVehicle(input: {
       toAddress: input.toAddress,
       hasToll: input.hasToll,
     });
+  };
   const currentEstimate = estimateFor(input.current);
   const currentWarnings = vehicleFitWarnings(input.inventory, input.current, settings);
   if (currentWarnings.length) return null;
@@ -74,8 +92,8 @@ export function cheaperCompatibleVehicle(input: {
       toNote: '',
       from: null,
       to: null,
-      route: null,
-      distanceKmOverride: input.route?.distanceKm ?? null,
+      route: input.route,
+      distanceKmOverride: null,
       date: input.date,
       noDate: false,
       month: input.month,

@@ -5,6 +5,7 @@ import type { TollExtraLine } from '../../../../moving/domain/tolls/toll-selecti
 import type { RouteTicket, Settings, Vehicle } from '../../../../shared/domain/model';
 import { estimateMovingWork } from '../../../../moving/domain/estimate/moving-estimate';
 import { labourUnitPrice } from '../../../../moving/domain/pricing/labour-price';
+import { referencePlannedTrips } from '../../../../moving/application/services/loading-simulation-model';
 
 export function routeForQuotePricing(
   route: RouteTicket | null,
@@ -38,9 +39,21 @@ export function estimateAdminQuoteWork(input: {
   tollLines: readonly TollExtraLine[];
 }) {
   if (!input.vehicle) return null;
+  const recommendedTrips = referencePlannedTrips(
+    input.inventory,
+    input.vehicle,
+    input.settings?.movingLaborPlanning,
+  );
   return estimateMovingWork(input.inventory, input.vehicle, input.route, {
-    trips: input.config.trips,
-    crew: input.draft.inventory.crew,
+    recommendedTrips: recommendedTrips ?? undefined,
+    // In automatic mode the reference calculates the crew using the trip
+    // count it has just estimated from the loading simulation. Manual mode
+    // keeps the operator's explicit trip and crew values.
+    trips:
+      input.config.calcMode === 'manual'
+        ? input.config.trips
+        : recommendedTrips ?? undefined,
+    crew: input.config.calcMode === 'manual' ? input.draft.inventory.crew : 0,
     startTime: input.draft.timeSlot,
     laborPlanning: input.settings?.movingLaborPlanning,
     ignoreTraffic: input.config.trafficOff,

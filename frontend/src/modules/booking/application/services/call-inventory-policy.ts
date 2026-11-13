@@ -11,6 +11,7 @@ import {
   estimateMovingWork,
 } from '../../../moving/domain/estimate/moving-estimate';
 import { referenceAnnexVolume } from '../../../moving/domain/estimate/reference-inventory-note';
+import { referencePlannedTrips } from '../../../moving/application/services/loading-simulation-model';
 import { assemblyCount } from '../../../moving/domain/inventory/inventory-count';
 import {
   blankInventory,
@@ -148,7 +149,13 @@ export function estimateCallInventory(input: {
   heatRest?: number;
 }) {
   if (!input.vehicle) return null;
+  const recommendedTrips = referencePlannedTrips(
+    input.inventory,
+    input.vehicle,
+    input.laborPlanning,
+  );
   return estimateMovingWork(input.inventory, input.vehicle, input.route, {
+    recommendedTrips: recommendedTrips ?? undefined,
     ...(input.trips === undefined ? {} : { trips: input.trips }),
     crew: input.inventory.crew,
     startTime: input.startTime,

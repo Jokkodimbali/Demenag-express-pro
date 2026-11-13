@@ -73,6 +73,13 @@
 .admin-quote-step-content > .admin-quote-step-next:hover {
   background: #ffdf48;
 }
+.admin-quote-step[data-step='4'] .admin-quote-step-content > .admin-quote-step-next {
+  background: #16a34a;
+  color: #fff;
+}
+.admin-quote-step[data-step='4'] .admin-quote-step-content > .admin-quote-step-next:hover {
+  background: #15803d;
+}
 .admin-quote-expand-all {
   display: flex;
   justify-content: flex-end;

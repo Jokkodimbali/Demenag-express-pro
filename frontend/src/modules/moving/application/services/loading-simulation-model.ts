@@ -1,6 +1,7 @@
 import type { Inventory } from '../../domain/inventory/inventory';
 import { inventoryItems } from '../../domain/inventory/inventory';
 import { estimatedInventoryItemVolume } from '../../domain/estimate/moving-estimate';
+import { referenceItemWeight } from '../../domain/estimate/moving-estimate-inventory';
 import type { Vehicle } from '../../../shared/domain/model';
 import { referenceAnnexVolume } from '../../domain/estimate/reference-inventory-note';
 
@@ -138,6 +139,7 @@ export function simulationInput(
     v: number;
     dims?: number[];
     kg?: number;
+    kgU?: number;
     like?: string;
     up?: boolean;
     frag?: boolean;
@@ -173,6 +175,10 @@ export function simulationInput(
             1000,
         ) / 1000,
     });
+    const line = lines.at(-1)!;
+    if (!definition?.sizeLabel && key !== 'custom') {
+      line.kgU = Math.round(referenceItemWeight(key, size, format ?? 'medium', dismantle).max);
+    }
   };
   Object.entries(inventory.entries).forEach(([key, entry]) =>
     add(key, entry.quantity, entry.size, entry.format, entry.dismantle),
@@ -202,6 +208,18 @@ export function simulationInput(
     if (entry.like) {
       line.like = itemKeys[entry.like] ?? entry.like;
       line.hkind = line.like;
+      if (!(entry.kg && entry.kg > 0)) {
+        const likeKey = entry.like;
+        const likeDefinition = inventoryItems.find((item) => item.key === likeKey);
+        line.kg = Math.round(
+          referenceItemWeight(
+            likeKey,
+            likeDefinition?.defaultSize ?? 1,
+            entry.format ?? 'medium',
+            Boolean(entry.dismantle),
+          ).max,
+        );
+      }
     }
     line.up = Boolean(entry.up);
     line.frag = Boolean(entry.frag);
@@ -221,6 +239,28 @@ export function simulationInput(
     stock,
     blk: { L: blanketLengthCm / 100, W: blanketWidthCm / 100 },
   };
+}
+
+export function referencePlannedTrips(
+  inventory: Inventory,
+  vehicle: Vehicle,
+  laborPlanning?: Partial<import('../../../shared/domain/model').MovingLaborPlanningSettings>,
+): number | null {
+  if (typeof window === 'undefined' || !window.DemSim?.plan) return null;
+  try {
+    const plan = window.DemSim.plan(
+      simulationInput(
+        inventory,
+        vehicle,
+        laborPlanning?.blanketStock ?? 20,
+        laborPlanning?.blanketLengthCm ?? 204,
+        laborPlanning?.blanketWidthCm ?? 184,
+      ),
+    );
+    return plan.trips.length || null;
+  } catch {
+    return null;
+  }
 }
 
 export function loadingSimulationWarnings(

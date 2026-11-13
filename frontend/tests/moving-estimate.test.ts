@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import vm from 'node:vm';
 import {
   blankInventory,
   inventoryFormatHint,
@@ -10,6 +12,10 @@ import {
   estimatedInventoryItemVolume,
 } from '../src/modules/moving/domain/estimate/moving-estimate.ts';
 import { referenceTravelMinutes } from '../src/modules/moving/domain/routing/reference-traffic.ts';
+import {
+  referencePlannedTrips,
+  simulationInput,
+} from '../src/modules/moving/application/services/loading-simulation-model.ts';
 import type { Vehicle } from '../src/modules/shared/domain/model.ts';
 
 const vehicle: Vehicle = {
@@ -24,6 +30,42 @@ const vehicle: Vehicle = {
   interior: '/assets/sprinter-interieur.png',
   prices: [30000, 37000, 44000],
 };
+
+test('le devis reprend le nombre de trajets du simulateur de chargement de référence', () => {
+  const inventory = blankInventory();
+  inventory.dwellingType = 'F3';
+  inventory.entries.salon = { quantity: 1, size: 5, format: 'medium', dismantle: false };
+  inventory.entries.frigo = { quantity: 1, size: 2, format: 'large', dismantle: false };
+  inventory.entries.carton = { quantity: 30, size: 1, format: 'medium', dismantle: false };
+  const source = readFileSync(new URL('../public/reference/loading-sim.js', import.meta.url), 'utf8');
+  const simulationWindow = {} as Window & { DemSim?: NonNullable<Window['DemSim']> };
+  vm.runInNewContext(source, { window: simulationWindow });
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  Object.defineProperty(globalThis, 'window', {
+    value: simulationWindow,
+    configurable: true,
+    writable: true,
+  });
+  try {
+    const input = simulationInput(inventory, vehicle, 20, 204, 184);
+    const expected = simulationWindow.DemSim!.plan(input).trips.length;
+    assert.equal(
+      referencePlannedTrips(inventory, vehicle, {
+        blanketStock: 20,
+        blanketLengthCm: 204,
+        blanketWidthCm: 184,
+      }),
+      expected,
+    );
+    assert.equal(
+      estimateMovingWork(inventory, vehicle, null, { recommendedTrips: expected }).trips,
+      expected,
+    );
+  } finally {
+    if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow);
+    else delete (globalThis as typeof globalThis & { window?: Window }).window;
+  }
+});
 
 test('l’estimation affichée sous un objet reprend le volume utilisé par le devis', () => {
   assert.equal(estimatedInventoryItemVolume('meuble-tv', 1, false, 'medium'), 0.6);
@@ -76,7 +118,7 @@ test('le démontage d’un objet personnalisé réduit son volume comme dans la 
   assert.equal(dismantled.volume, 0.4);
 });
 
-test('le passage par le balcon augmente le temps de chargement de 20 % et reste figé au devis', () => {
+test('le passage par le balcon applique le supplément proportionnel de la référence et reste figé', () => {
   const inventory = blankInventory();
   inventory.entries.salon = { quantity: 1, size: 5, dismantle: false };
   const laborPlanning = { tripSetupMinutes: 0 };
@@ -94,7 +136,7 @@ test('le passage par le balcon augmente le temps de chargement de 20 % et reste 
   });
   const snapshot = bookingInventorySnapshot(inventory, balcony);
 
-  assert.ok(Math.abs(balcony.loadingMinutes / stairs.loadingMinutes - 1.2) < 0.000001);
+  assert.ok(Math.abs(balcony.loadingMinutes / stairs.loadingMinutes - 1.4) < 0.000001);
   assert.equal(snapshot.stairs, 'balcon');
   assert.equal(snapshot.balcPx, 25000);
   assert.equal(snapshot.sourceInventory?.balcPx, 25000);
@@ -179,7 +221,7 @@ test('la recommandation ne rajoute pas de menuisiers quand la manutention reste 
   assert.equal(estimate.carpenterCount, 1);
 });
 
-test('une réponse « pas prêt » ajoute le temps d’emballage au planning', () => {
+test('la réponse « pas prêt » ne remplace pas l’option emballage de la référence', () => {
   const inventory = blankInventory();
   inventory.custom = [{ id: 'objet', label: 'Objet', quantity: 1, format: 'medium' }];
   const ready = estimateMovingWork(inventory, vehicle, null, { trips: 1, crew: 2 });
@@ -187,7 +229,7 @@ test('une réponse « pas prêt » ajoute le temps d’emballage au planning', (
   const notReady = estimateMovingWork(inventory, vehicle, null, { trips: 1, crew: 2 });
 
   assert.equal(ready.packingMinutes, 0);
-  assert.equal(notReady.packingMinutes, 1.5);
+  assert.equal(notReady.packingMinutes, 0);
 });
 
 test('le trajet reprend le calcul de circulation Dakar de la référence', () => {

@@ -382,15 +382,11 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     () =>
       selected
         ? cheaperCompatibleVehicle({
+            manualMode: quoteConfig.calcMode === 'manual',
             inventory: estimateInventory,
             current: selected,
             vehicles: catalogue?.vehicles ?? [],
-            route: pricingRoute
-              ? {
-                  distanceKm: pricingRoute.distanceKm,
-                  durationMinutes: pricingRoute.durationMinutes,
-                }
-              : null,
+            route: pricingRoute,
             date: draft.date,
             month: draft.month,
             fromAddress: draft.fromAddress,
