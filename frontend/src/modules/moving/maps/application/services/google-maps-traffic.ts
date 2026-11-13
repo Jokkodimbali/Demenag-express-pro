@@ -35,7 +35,8 @@ let sdkKey = '';
 
 async function ensureGoogleMaps(key: string): Promise<boolean> {
   if (!key.trim()) return false;
-  if (window.google?.maps?.DistanceMatrixService || window.google?.maps?.DirectionsService) return true;
+  if (window.google?.maps?.DistanceMatrixService || window.google?.maps?.DirectionsService)
+    return true;
   if (sdkKey !== key) {
     sdkKey = key;
     sdkPromise = null;
@@ -53,7 +54,11 @@ async function ensureGoogleMaps(key: string): Promise<boolean> {
       };
       const timeout = window.setTimeout(() => finish(false), 15000);
       window[callbackName] = () => {
-        finish(Boolean(window.google?.maps?.DistanceMatrixService || window.google?.maps?.DirectionsService));
+        finish(
+          Boolean(
+            window.google?.maps?.DistanceMatrixService || window.google?.maps?.DirectionsService,
+          ),
+        );
       };
       window.gm_authFailure = () => finish(false);
       const script = document.createElement('script');

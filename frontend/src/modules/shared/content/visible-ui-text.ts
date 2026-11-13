@@ -273,6 +273,11 @@ export const visibleUiText = {
   quoteRecommendedMovers: 'Avec nos manœuvres · conseillée',
   quoteCompleteFormula: 'Complète',
   quoteCarpenterIncluded: '+ menuisier',
+  quoteStageSaving: 'Enregistrement de l’étape du devis…',
+  quoteStageFinalNotice:
+    'Devis final enregistré : revenu et charges automatiques ajoutés à la comptabilité.',
+  quoteStageProvisionalNotice:
+    'Devis repassé en provisoire : revenu et charges automatiques retirés de la comptabilité.',
   quoteLoadingConditionsNote:
     'Matériel et passage apparaissent dans l’encadré « Conditions de chargement » du devis PDF.',
   quoteLoadingSimulationHint:

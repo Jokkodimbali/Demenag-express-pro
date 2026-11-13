@@ -152,7 +152,9 @@ test('la location avec chauffeur ne demande pas de manœuvre ni de menuisier', (
       manoeuvre: ['mover-a'],
       chef: 'driver-a',
     },
-    quotes: [{ billingMode: 'driver-rental', providedCrew: 4 }] as Booking['quotes'],
+    quotes: [
+      { billingMode: 'driver-rental', menuIncluded: true, providedCrew: 4 },
+    ] as Booking['quotes'],
   });
   assert.deepEqual(needsOf(current), { chauffeur: 1, menuisier: 0, manoeuvre: 0 });
   assert.deepEqual(teamOf(current), {
@@ -161,6 +163,21 @@ test('la location avec chauffeur ne demande pas de manœuvre ni de menuisier', (
     manoeuvre: [],
     chef: 'driver-a',
   });
+});
+
+test('la formule standard garde le menuisier nécessaire au démontage comme la référence', () => {
+  const current = booking({
+    options: { labour: 2, bed: 1, wardrobe: 0, desk: 0 },
+    quotes: [
+      {
+        billingMode: 'standard',
+        options: { labour: 2, bed: 1, wardrobe: 0, desk: 0 },
+        providedCrew: 2,
+      },
+    ] as Booking['quotes'],
+  });
+
+  assert.deepEqual(needsOf(current), { chauffeur: 1, menuisier: 1, manoeuvre: 2 });
 });
 
 test('la composition automatique choisit le chef selon la priorité de la référence', () => {

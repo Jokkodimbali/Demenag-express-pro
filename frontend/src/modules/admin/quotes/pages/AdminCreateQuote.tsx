@@ -262,6 +262,16 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
       <form
         id="admin-quote-form"
         onSubmit={async (event) => {
+          const requestedKind = event.currentTarget.dataset.quoteKindOverride;
+          const quoteStageCommit = event.currentTarget.dataset.quoteStageCommit === 'true';
+          const quoteStageCommitId = event.currentTarget.dataset.quoteStageCommitId;
+          delete event.currentTarget.dataset.quoteKindOverride;
+          delete event.currentTarget.dataset.quoteStageCommit;
+          delete event.currentTarget.dataset.quoteStageCommitId;
+          const submittedKind =
+            requestedKind === 'final' || requestedKind === 'provisional'
+              ? requestedKind
+              : quoteKind;
           if (!normalizePhoneNumber(draft.customerPhone)) {
             event.preventDefault();
             setOpenQuoteSections((current) => ({ ...current, client: true }));
@@ -275,7 +285,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             return;
           }
           if (
-            quoteKind === 'final' &&
+            submittedKind === 'final' &&
             estimateInventory.stairs === 'balcon' &&
             !(Number(estimateInventory.balcPx) > 0)
           ) {
@@ -284,7 +294,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             return;
           }
           if (
-            quoteKind === 'final' &&
+            submittedKind === 'final' &&
             previewTier === 3 &&
             !(Number(quoteConfig.customPrice) > 0)
           ) {
@@ -294,7 +304,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             );
             return;
           }
-          if (quoteKind === 'final' && (!draft.date || draft.noDate)) {
+          if (submittedKind === 'final' && (!draft.date || draft.noDate)) {
             event.preventDefault();
             setStageError(
               'Un devis sans date reste provisoire. Choisissez une date pour passer en final.',
@@ -329,6 +339,9 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
               ? { ...draft.options, labour: movingEstimate.crew }
               : draft.options,
             manoeuvreOvertimeLine ? [manoeuvreOvertimeLine] : [],
+            submittedKind,
+            quoteStageCommitId,
+            quoteStageCommit,
           );
         }}
         className="admin-quote-layout"

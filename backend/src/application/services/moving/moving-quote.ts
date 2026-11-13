@@ -28,6 +28,8 @@ export async function createQuote(
   user: User,
   id: string,
   input: QuoteInput,
+  replaceQuoteId?: string,
+  bookingOverride?: Booking,
 ) {
   const {
     bookings,
@@ -38,11 +40,21 @@ export async function createQuote(
     getBooking,
   } = dependencies;
   requireAdministrator(user);
-  const booking = await getBooking(user, id);
-  if (booking.version !== input.version)
+  const savedBooking = await getBooking(user, id);
+  if (savedBooking.version !== input.version)
     throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
+  const booking = bookingOverride ?? savedBooking;
+  const existingQuoteIndex = replaceQuoteId
+    ? savedBooking.quotes.findIndex((quote) => quote.id === replaceQuoteId)
+    : -1;
+  requireValue(!replaceQuoteId || existingQuoteIndex >= 0, 'Le devis à modifier est introuvable.');
   requireValue(
-    !booking.quotes.some((quote) => quote.kind === 'final'),
+    !replaceQuoteId || existingQuoteIndex === booking.quotes.length - 1,
+    'Seul le dernier devis de cette réservation peut être modifié.',
+  );
+  const existingQuote = existingQuoteIndex >= 0 ? booking.quotes[existingQuoteIndex] : undefined;
+  requireValue(
+    !savedBooking.quotes.some((quote) => quote.kind === 'final' && quote.id !== existingQuote?.id),
     'Un devis final existe déjà pour cette réservation.',
   );
   requireValue(booking.status !== 'cancelled', messages.cetteReservationEstCloturee);
@@ -161,7 +173,7 @@ export async function createQuote(
     input.kind !== 'final' || price.tier !== 3 || Number(input.customPrice) > 0,
     `Distance au-delà de ${pricingSettings.distanceBounds[2]} km : fixez le prix par aller-retour avant le devis final.`,
   );
-  const quoteId = ids.next();
+  const quoteId = existingQuote?.id ?? ids.next();
   const accountingConfiguration =
     input.kind === 'final' ? ((await accounting?.configuration()) ?? null) : null;
   const quoteAccountingConfiguration = accountingConfiguration
@@ -173,15 +185,27 @@ export async function createQuote(
           booking.pricingSnapshot?.accounting?.menuPrices ?? accountingConfiguration.menuPrices,
       }
     : (booking.pricingSnapshot?.accounting ?? null);
+  const providedCrew = Math.max(0, Math.round(input.providedCrew ?? options.labour));
   const accountingCosts =
     input.kind === 'final'
-      ? captureAccountingCosts(booking, price, quoteAccountingConfiguration, billingMode)
+      ? captureAccountingCosts(
+          booking,
+          price,
+          quoteAccountingConfiguration,
+          billingMode,
+          providedCrew,
+        )
       : undefined;
   const quote = {
     id: quoteId,
-    reference: `DV-${clock.now().getUTCFullYear()}-${quoteId.slice(0, 8).toUpperCase()}`,
+    reference:
+      existingQuote?.reference ??
+      `DV-${clock.now().getUTCFullYear()}-${quoteId.slice(0, 8).toUpperCase()}`,
     kind: input.kind,
-    createdAt: clock.now().toISOString(),
+    createdAt:
+      input.kind === 'final'
+        ? clock.now().toISOString()
+        : (existingQuote?.createdAt ?? clock.now().toISOString()),
     price,
     notes: input.notes,
     options: pricingOptions,
@@ -190,7 +214,7 @@ export async function createQuote(
     menuIncluded,
     rentalKit: input.rentalKit ?? [],
     overtimeMinutes,
-    providedCrew: Math.max(0, Math.round(input.providedCrew ?? options.labour)),
+    providedCrew,
     pricingInput: {
       settings: {
         distanceBounds: quoteSettings.distanceBounds,
@@ -221,9 +245,82 @@ export async function createQuote(
   return bookings.update(
     {
       ...booking,
-      quotes: [...booking.quotes, quote],
-      status: input.kind === 'final' ? 'completed' : booking.status,
+      quotes: existingQuote
+        ? booking.quotes.map((item) => (item.id === existingQuote.id ? quote : item))
+        : [...booking.quotes, quote],
+      status:
+        input.kind === 'final'
+          ? 'completed'
+          : existingQuote?.kind === 'final'
+            ? 'pending'
+            : booking.status,
+      ...(input.kind === 'provisional' ? { estimate: price } : {}),
     },
     input.version,
+  );
+}
+
+export async function updateQuoteKind(
+  dependencies: {
+    bookings: BookingRepository;
+    clock: Clock;
+    getBooking: (user: User, id: string) => Promise<Booking>;
+  },
+  user: User,
+  id: string,
+  quoteId: string,
+  kind: QuoteInput['kind'],
+  version: number,
+) {
+  const { bookings, clock, getBooking } = dependencies;
+  requireAdministrator(user);
+  const booking = await getBooking(user, id);
+  if (booking.version !== version)
+    throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
+  requireValue(booking.status !== 'cancelled', messages.cetteReservationEstCloturee);
+  const quoteIndex = booking.quotes.findIndex((quote) => quote.id === quoteId);
+  requireValue(quoteIndex >= 0, 'Le devis à modifier est introuvable.');
+  requireValue(
+    quoteIndex === booking.quotes.length - 1,
+    'Seul le dernier devis de cette réservation peut changer d’étape.',
+  );
+  const quote = booking.quotes[quoteIndex];
+  const reopenCompletedEstimate = kind === 'provisional' && booking.status === 'completed';
+  if (quote.kind === kind && !reopenCompletedEstimate) return booking;
+
+  if (kind === 'final') {
+    requireValue(
+      Boolean(booking.date),
+      'Un devis sans date reste provisoire. Choisissez une date pour passer en final.',
+    );
+    const sourceInventory = booking.inventorySnapshot?.sourceInventory;
+    requireValue(
+      sourceInventory?.stairs !== 'balcon' || Number(sourceInventory.balcPx) > 0,
+      'Passage par le balcon : fixez le supplément avant le devis final.',
+    );
+    requireValue(quote.price.total !== null, messages.renseignezLeTarifDuTransportAvantDeFinaliser);
+    const transportPrice =
+      quote.pricingInput?.customPrice ??
+      quote.price.lines.find((line) => line.label.startsWith('Transport'))?.unitPrice;
+    requireValue(
+      quote.price.tier !== 3 || Number(transportPrice) > 0,
+      `Distance au-delà de ${booking.pricingSettings?.distanceBounds[2] ?? 35} km : fixez le prix par aller-retour avant le devis final.`,
+    );
+  }
+
+  const updatedQuote = {
+    ...quote,
+    kind,
+    ...(kind === 'final' ? { createdAt: clock.now().toISOString() } : {}),
+  };
+  const quotes = booking.quotes.map((item, index) => (index === quoteIndex ? updatedQuote : item));
+  return bookings.update(
+    {
+      ...booking,
+      quotes,
+      status: kind === 'final' ? 'completed' : 'pending',
+      ...(kind === 'provisional' ? { estimate: quote.price } : {}),
+    },
+    version,
   );
 }

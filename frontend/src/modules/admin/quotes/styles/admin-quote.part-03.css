@@ -141,6 +141,13 @@
   color: #737a81;
   cursor: not-allowed;
 }
+.admin-quote-stage-actions .admin-quote-action-whatsapp.is-estimating:disabled {
+  border-color: #0e9f4a;
+  background: #0e9f4a;
+  color: #fff;
+  opacity: 1;
+  cursor: wait;
+}
 .admin-quote-recipient {
   color: #aeb4bb;
   font-size: 12px;

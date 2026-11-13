@@ -15,8 +15,13 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
     estimateInventory,
     quoteKind,
     setQuoteKind,
-    canCreateFinal,
+    selectQuoteKind,
+    quoteKindSaving,
+    quoteKindNotice,
+    setQuoteKindNotice,
     setStageError,
+    submitting,
+    canSelectFinal,
     movingEstimate,
     formulaPrices,
     cheaperVehicle,
@@ -25,6 +30,38 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
     movingEstimate?.volume && (catalogue.settings.movingLaborPlanning?.heat ?? 0) > 0,
   );
   const heatActive = heatAvailable && !quoteConfig.heatOff;
+
+  function handleQuoteKindSelection(kind: 'provisional' | 'final') {
+    const savedQuote = model.editingBooking?.quotes.at(-1);
+    const finalCommit =
+      kind === 'final' &&
+      model.editingBooking &&
+      !['completed', 'cancelled'].includes(model.editingBooking.status) &&
+      savedQuote?.kind !== 'final';
+    const provisionalCommit =
+      kind === 'provisional' &&
+      model.editingBooking?.status === 'completed' &&
+      savedQuote?.kind === 'final';
+    if (finalCommit || provisionalCommit) {
+      setStageError('');
+      setQuoteKindNotice('');
+      setQuoteKind(kind);
+      window.requestAnimationFrame(() => {
+        const form = document.getElementById('admin-quote-form');
+        if (form instanceof HTMLFormElement) {
+          form.dataset.quoteKindOverride = kind;
+          form.dataset.quoteStageCommit = 'true';
+          if (savedQuote) form.dataset.quoteStageCommitId = savedQuote.id;
+          form.requestSubmit();
+          delete form.dataset.quoteKindOverride;
+          delete form.dataset.quoteStageCommit;
+          delete form.dataset.quoteStageCommitId;
+        }
+      });
+      return;
+    }
+    void selectQuoteKind(kind);
+  }
 
   return (
     <>
@@ -143,28 +180,29 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
             <button
               type="button"
               aria-pressed={quoteKind === 'provisional'}
+              disabled={quoteKindSaving || submitting}
               className={quoteKind === 'provisional' ? 'active' : ''}
-              onClick={() => setQuoteKind('provisional')}
+              onClick={() => handleQuoteKindSelection('provisional')}
             >
               {visibleUiText.text133}
             </button>
             <button
               type="button"
               aria-pressed={quoteKind === 'final'}
+              disabled={quoteKindSaving || submitting}
               className={quoteKind === 'final' ? 'active final' : ''}
               title={
-                !canCreateFinal
+                !canSelectFinal
                   ? 'Une date est nécessaire pour enregistrer un devis final.'
                   : undefined
               }
-              onClick={() => {
-                setQuoteKind('final');
-                setStageError('');
-              }}
+              onClick={() => handleQuoteKindSelection('final')}
             >
               {visibleUiText.text134}
             </button>
           </div>
+          {quoteKindSaving && <small role="status">{visibleUiText.quoteStageSaving}</small>}
+          {quoteKindNotice && <small role="status">{quoteKindNotice}</small>}
         </div>
         <div className="admin-quote-reference-setting">
           <span>{visibleUiText.text140}</span>

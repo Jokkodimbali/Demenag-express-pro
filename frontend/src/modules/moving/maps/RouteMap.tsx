@@ -285,7 +285,10 @@ export default function RouteMap({
               className={selectedAlternative === index ? 'selected' : ''}
               onClick={() => chooseRouteAlternative(index)}
             >
-              <strong>{alternative.durationMinutes} min · {String(alternative.distanceKm).replace('.', ',')} km</strong>
+              <strong>
+                {alternative.durationMinutes} min ·{' '}
+                {String(alternative.distanceKm).replace('.', ',')} km
+              </strong>
               {alternative.via && <span>par {alternative.via}</span>}
             </button>
           ))}

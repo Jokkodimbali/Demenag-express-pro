@@ -62,6 +62,8 @@ export function AdminCreateQuoteAside({
     editingReservation,
     downloadCurrentQuote,
   } = model;
+  const whatsappLocked = editingLocked && savedQuote?.kind !== 'final';
+  const whatsappEstimating = estimating && !submitting && !whatsappLocked;
   return (
     <aside className="admin-quote-aside">
       <div className="admin-quote-step-heading" data-step="6">
@@ -239,7 +241,8 @@ export function AdminCreateQuoteAside({
           <div className="admin-quote-stage-actions">
             <button
               type="button"
-              className="admin-quote-action-whatsapp"
+              className={`admin-quote-action-whatsapp${whatsappEstimating ? ' is-estimating' : ''}`}
+              aria-busy={whatsappEstimating}
               disabled={submitting || estimating || (editingLocked && savedQuote?.kind !== 'final')}
               onClick={sendCurrentQuoteOnWhatsApp}
             >

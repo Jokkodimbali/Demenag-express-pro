@@ -516,3 +516,49 @@ test('la location avec chauffeur exclut les manœuvres de l’entreprise des cha
   assert.equal(correctedStoredCosts.carpenters, 1);
   assert.equal(correctedStoredCosts.carpenterAmount, 12_000);
 });
+
+test('les charges du devis reprennent l’effectif saisi et les tarifs des objets personnalisés', () => {
+  const booking = {
+    estimate: {
+      lines: [{ label: 'Manœuvre', quantity: 2, unitPrice: 5_000, total: 10_000 }],
+    },
+    inventorySnapshot: {
+      moverCount: 5,
+      sourceInventory: {
+        crew: 0,
+        entries: {},
+        variants: [],
+        custom: [
+          {
+            id: 'custom-1',
+            label: 'Étagère importée',
+            quantity: 2,
+            dismantle: true,
+            origin: 'import',
+            mp: 8_000,
+            menuPriceImport: 9_000,
+          },
+          {
+            id: 'custom-2',
+            typeKey: 'etagere-speciale',
+            label: 'Étagère locale',
+            quantity: 1,
+            dismantle: true,
+            origin: 'local',
+            menuPriceLocal: 6_000,
+          },
+        ],
+      },
+    },
+  } as unknown as Booking;
+  const price = {
+    lines: [{ label: 'Manœuvres', quantity: 2, unitPrice: 5_000, total: 10_000 }],
+  } as Booking['estimate'];
+
+  const costs = captureAccountingCosts(booking, price, null, 'complete', 3);
+
+  assert.equal(costs.movers, 3);
+  assert.equal(costs.moverAmount, 15_000);
+  assert.equal(costs.carpenters, 3);
+  assert.equal(costs.carpenterAmount, 22_000);
+});

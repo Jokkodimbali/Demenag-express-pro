@@ -303,11 +303,8 @@ export function estimateMovingWork(
   );
   // Keep the legacy reference rule: stairs add one mover per two floors;
   // an elevator adds one only from the fourth floor.
-  const stairExtra = nonLiftStairFloors > 0
-    ? Math.ceil(nonLiftStairFloors / 2)
-    : liftFloors >= 4
-      ? 1
-      : 0;
+  const stairExtra =
+    nonLiftStairFloors > 0 ? Math.ceil(nonLiftStairFloors / 2) : liftFloors >= 4 ? 1 : 0;
   const teamVolumePerMover = Math.max(1, Number(labor.teamVolumePerMover) || 6);
   const volumeCrew =
     Math.max(

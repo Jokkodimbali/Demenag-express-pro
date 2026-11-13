@@ -60,6 +60,8 @@ import {
   routeForQuotePricing,
 } from '../services/admin-quote-estimation';
 import { errorMessage } from '../../../../shared/application/error-message';
+import { visibleUiText } from '../../../../shared/content/visible-ui-text';
+import { reassignTeamsAfterScheduleChange } from '../services/quote-stage-team-reassignment';
 
 export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const location = useLocation();
@@ -99,6 +101,8 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   } | null>(null);
   const [questionnaireOpen, setQuestionnaireOpen] = useState(false);
   const [quoteKind, setQuoteKind] = useState<Quote['kind']>('provisional');
+  const [quoteKindSaving, setQuoteKindSaving] = useState(false);
+  const [quoteKindNotice, setQuoteKindNotice] = useState('');
   const [resetVersion, setResetVersion] = useState(0);
   const [pdfError, setPdfError] = useState('');
   const [stageError, setStageError] = useState('');
@@ -130,9 +134,24 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     onAdministrativeBookingCreated: () => {
       void clearAdminQuoteDraft(api);
     },
+    onQuoteStageUpdated: (booking, previousBooking) => {
+      const savedQuote = latestBookingQuote(booking);
+      if (!savedQuote) return;
+      setQuoteKind(savedQuote.kind);
+      setQuoteKindNotice(
+        savedQuote.kind === 'final'
+          ? visibleUiText.quoteStageFinalNotice
+          : visibleUiText.quoteStageProvisionalNotice,
+      );
+      return reassignTeamsAfterScheduleChange(api, booking, previousBooking, () =>
+        setStageError(
+          'Le devis a changé d’étape, mais la réaffectation automatique de l’équipe n’a pas abouti. Vérifiez le planning.',
+        ),
+      );
+    },
     getRentalKit: () => rentalKit,
     onQuoteSaved: async (booking) => {
-      const savedQuote = latestQuoteOfKind(booking.quotes, quoteKind);
+      const savedQuote = latestBookingQuote(booking);
       if (!savedQuote) {
         whatsappWindow.current?.close();
         whatsappWindow.current = null;
@@ -228,6 +247,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     setQuoteConfig(defaultAdminQuoteConfig());
     setTollLines([]);
     setQuoteKind('provisional');
+    setQuoteKindNotice('');
     setQuestionnaireOpen(false);
     setSimulationNeeds(null);
     setStageError('');
@@ -251,9 +271,62 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
   }, [location.pathname, location.search, navigate, setDraft, startNewRequest, user]);
   const canCreateFinal = canCreateFinalQuote(editingBooking, draft.date, Boolean(draft.noDate));
+  const canSelectFinal = canCreateFinal;
+  async function selectQuoteKind(kind: Quote['kind']) {
+    const reopenCompletedEstimate =
+      kind === 'provisional' && editingBooking?.status === 'completed';
+    if (quoteKindSaving || (kind === quoteKind && !reopenCompletedEstimate)) return;
+    setStageError('');
+    setQuoteKindNotice('');
+    if (kind === 'final' && editingBooking?.status === 'completed') {
+      setQuoteKind(kind);
+      return;
+    }
+    const currentQuote = latestBookingQuote(editingBooking);
+    if (!editingBooking || !currentQuote) {
+      setQuoteKind(kind);
+      return;
+    }
+    if (currentQuote.kind === kind && !reopenCompletedEstimate) {
+      setQuoteKind(kind);
+      return;
+    }
+    if (
+      kind === 'final' &&
+      !(latestBookingQuote(editingBooking) ? canSelectFinal : canCreateFinal)
+    ) {
+      setStageError(
+        'Un devis sans date reste provisoire. Choisissez une date pour passer en final.',
+      );
+      return;
+    }
+    setQuoteKindSaving(true);
+    try {
+      const updated = await api.updateQuoteKind(
+        editingBooking.id,
+        currentQuote.id,
+        kind,
+        editingBooking.version,
+      );
+      state.setEditingBooking(updated);
+      setQuoteKind(kind);
+      setQuoteKindNotice(
+        kind === 'final'
+          ? visibleUiText.quoteStageFinalNotice
+          : visibleUiText.quoteStageProvisionalNotice,
+      );
+    } catch (reason) {
+      setStageError(errorMessage(reason));
+    } finally {
+      setQuoteKindSaving(false);
+    }
+  }
   useEffect(() => {
+    if (!state.editingBooking) return;
     const lastQuote = latestBookingQuote(state.editingBooking);
-    if (lastQuote) setQuoteKind(lastQuote.kind);
+    setQuoteKind(
+      state.editingBooking.status === 'completed' ? 'final' : (lastQuote?.kind ?? 'provisional'),
+    );
   }, [state.editingBooking]);
   const estimateInventory = useMemo(
     () => quoteEstimateInventory(draft.inventory, draft.questionnaireAnswers),
@@ -399,6 +472,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         : null,
     [
       catalogue?.vehicles,
+      quoteConfig.calcMode,
       draft.date,
       draft.fromAddress,
       draft.month,
@@ -744,6 +818,10 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     setQuestionnaireOpen,
     quoteKind,
     setQuoteKind,
+    selectQuoteKind,
+    quoteKindSaving,
+    quoteKindNotice,
+    setQuoteKindNotice,
     pdfError,
     setPdfError,
     stageError,
@@ -794,6 +872,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     editLoading,
     editError,
     canCreateFinal,
+    canSelectFinal,
     estimateInventory,
     inventoryText,
     route,

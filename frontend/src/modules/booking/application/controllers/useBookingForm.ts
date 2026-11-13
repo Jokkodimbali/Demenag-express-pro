@@ -13,6 +13,7 @@ import { type BookingField, type BookingFieldErrors } from '../../domain/booking
 import { blankDraft } from '../booking-draft';
 import { useBookingDraft } from '../booking-draft-context';
 import { buildBookingSubmission } from '../services/booking-submission';
+import { distanceKmForEstimateRequest } from '../services/estimate-request-distance';
 import type { AdministrativeQuoteSubmissionBuilder } from '../contracts/admin-quote-submission';
 import {
   createBookingQuotePreview,
@@ -44,6 +45,7 @@ export function useBookingForm({
   quoteConfig,
   quoteKind,
   onQuoteSaved,
+  onQuoteStageUpdated,
   onAdministrativeBookingCreated,
   getRentalKit,
   buildAdministrativeQuoteSubmission,
@@ -52,6 +54,10 @@ export function useBookingForm({
   quoteConfig?: BookingQuoteConfig;
   quoteKind?: Quote['kind'];
   onQuoteSaved?: (booking: Booking) => Promise<string | void> | string | void;
+  onQuoteStageUpdated?: (
+    booking: Booking,
+    previousBooking: Booking,
+  ) => void | Booking | Promise<void | Booking>;
   onAdministrativeBookingCreated?: () => void;
   getRentalKit?: () => RentalKitItem[];
   buildAdministrativeQuoteSubmission?: AdministrativeQuoteSubmissionBuilder;
@@ -185,7 +191,11 @@ export function useBookingForm({
           toLift: draft.inventory.toLift,
         },
         administrativeQuote ? (quoteConfig?.trips ?? 1) : draft.estimatedTrips,
-        draft.distanceKmOverride,
+        distanceKmForEstimateRequest(
+          draft.distanceKmOverride,
+          draft.route.distanceKm,
+          administrativeQuote,
+        ),
         draft.noDate || !draft.date ? null : draft.date,
         administrativeQuote,
       )
@@ -321,10 +331,25 @@ export function useBookingForm({
     inventorySnapshot?: BookingInput['inventorySnapshot'],
     quoteOptions?: Options,
     quoteExtraLines: Array<{ label: string; quantity: number; unitPrice: number }> = [],
+    quoteKindOverride?: Quote['kind'],
+    quoteStageCommitId?: string,
+    quoteStageCommit = false,
   ) {
     e.preventDefault();
     if (submitLock.current) return;
-    if (administrativeQuote && editingBooking && administrativeBookingEditLocked(editingBooking)) {
+    const isQuoteStageCommit = administrativeQuote && quoteStageCommit && Boolean(editingBooking);
+    const isFinalToProvisionalCommit =
+      isQuoteStageCommit &&
+      quoteKindOverride === 'provisional' &&
+      editingBooking?.status === 'completed' &&
+      editingBooking.quotes.at(-1)?.kind === 'final' &&
+      editingBooking.quotes.at(-1)?.id === quoteStageCommitId;
+    if (
+      administrativeQuote &&
+      editingBooking &&
+      administrativeBookingEditLocked(editingBooking) &&
+      !isFinalToProvisionalCommit
+    ) {
       setSubmitError('Cette réservation est clôturée et ne peut plus être modifiée.');
       return;
     }
@@ -368,6 +393,36 @@ export function useBookingForm({
         workPlan,
         inventorySnapshot,
       });
+      if (isQuoteStageCommit && editingBooking) {
+        if (!buildAdministrativeQuoteSubmission)
+          throw new Error('Le service de mise à jour du devis administratif est indisponible.');
+        const quoteInput = buildAdministrativeQuoteSubmission({
+          draft,
+          kind: quoteKindOverride ?? quoteKind ?? 'provisional',
+          config: quoteConfig,
+          catalogue: catalogue ?? null,
+          fallbackVehicle: editingBooking.vehicle,
+          tier: quoteTier,
+          version: editingBooking.version,
+          notes: bookingNotes,
+          extraLines: quoteExtraLines,
+          tollLines,
+          options: quoteOptions,
+          getRentalKit,
+        });
+        const updated = await api.updateQuoteStage(
+          editingBooking.id,
+          quoteStageCommitId ?? null,
+          input,
+          quoteInput,
+        );
+        onAdministrativeBookingCreated?.();
+        bookingLookup.current = null;
+        setEditingBooking(updated);
+        const latest = await onQuoteStageUpdated?.(updated, editingBooking);
+        if (latest) setEditingBooking(latest);
+        return;
+      }
       const booking = editingBooking
         ? administrativeQuote
           ? await api.updateAdminBooking(editingBooking.id, input, editingBooking.version)
@@ -386,7 +441,7 @@ export function useBookingForm({
             throw new Error('Le service de création du devis administratif est indisponible.');
           const quoteInput = buildAdministrativeQuoteSubmission({
             draft,
-            kind: quoteKind ?? 'provisional',
+            kind: quoteKindOverride ?? quoteKind ?? 'provisional',
             config: quoteConfig,
             catalogue: catalogue ?? null,
             fallbackVehicle: booking.vehicle,

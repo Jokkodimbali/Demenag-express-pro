@@ -12,7 +12,10 @@ import { useRouteMapCommands } from './application/controllers/useRouteMapComman
 import { useApp } from '../../shared/application/context';
 import { errorMessage } from '../../shared/application/error-message';
 import type { RouteMapDraft, RouteMapDraftUpdater } from './route-map-state';
-import { referenceRouteAlternatives, type ReferenceRouteAlternative } from './application/services/reference-route-alternatives';
+import {
+  referenceRouteAlternatives,
+  type ReferenceRouteAlternative,
+} from './application/services/reference-route-alternatives';
 type Side = 'from' | 'to';
 const EMPTY_TOLL_LINES: TollExtraLine[] = [];
 const pin = (side: Side) =>
@@ -136,27 +139,30 @@ export function useRouteMap(
     },
     [googleMapsKey, loadRoute, referenceQuoteMap, setDraft],
   );
-  const chooseRouteAlternative = useCallback(async (index: number) => {
-    const alternative = routeAlternatives[index];
-    if (!alternative) return;
-    const requestId = ++routeRequest.current;
-    setSelectedAlternative(index);
-    setBusy(true);
-    setError('');
-    try {
-      const ticket = await loadRoute(alternative.from, alternative.to);
-      if (requestId !== routeRequest.current) return;
-      setDraft((current) => ({
-        ...current,
-        route: { ...alternative, id: ticket.id, expiresAt: ticket.expiresAt },
-        distanceKmOverride: alternative.distanceKm,
-      }));
-    } catch (cause) {
-      if (requestId === routeRequest.current) setError(errorMessage(cause));
-    } finally {
-      if (requestId === routeRequest.current) setBusy(false);
-    }
-  }, [loadRoute, routeAlternatives, setDraft]);
+  const chooseRouteAlternative = useCallback(
+    async (index: number) => {
+      const alternative = routeAlternatives[index];
+      if (!alternative) return;
+      const requestId = ++routeRequest.current;
+      setSelectedAlternative(index);
+      setBusy(true);
+      setError('');
+      try {
+        const ticket = await loadRoute(alternative.from, alternative.to);
+        if (requestId !== routeRequest.current) return;
+        setDraft((current) => ({
+          ...current,
+          route: { ...alternative, id: ticket.id, expiresAt: ticket.expiresAt },
+          distanceKmOverride: alternative.distanceKm,
+        }));
+      } catch (cause) {
+        if (requestId === routeRequest.current) setError(errorMessage(cause));
+      } finally {
+        if (requestId === routeRequest.current) setBusy(false);
+      }
+    },
+    [loadRoute, routeAlternatives, setDraft],
+  );
   useLayoutEffect(() => {
     if (!host.current) return;
     const routeCounter = routeRequest;
@@ -289,14 +295,21 @@ export function useRouteMap(
   useEffect(() => {
     if (!referenceQuoteMap || !map.current || routeAlternatives.length < 2) return;
     const mapInstance = map.current;
-    const otherLines = routeAlternatives.map((alternative, index) => {
-      if (index === selectedAlternative) return null;
-      return L.polyline(alternative.geometry, { color: '#7c8a99', weight: 5, opacity: 0.8 })
-        .bindTooltip(`${alternative.durationMinutes} min · ${String(alternative.distanceKm).replace('.', ',')} km`, { sticky: true })
-        .on('click', () => chooseRouteAlternative(index))
-        .addTo(mapInstance);
-    }).filter((layer): layer is L.Polyline => layer !== null);
-    return () => { otherLines.forEach((layer) => layer.remove()); };
+    const otherLines = routeAlternatives
+      .map((alternative, index) => {
+        if (index === selectedAlternative) return null;
+        return L.polyline(alternative.geometry, { color: '#7c8a99', weight: 5, opacity: 0.8 })
+          .bindTooltip(
+            `${alternative.durationMinutes} min · ${String(alternative.distanceKm).replace('.', ',')} km`,
+            { sticky: true },
+          )
+          .on('click', () => chooseRouteAlternative(index))
+          .addTo(mapInstance);
+      })
+      .filter((layer): layer is L.Polyline => layer !== null);
+    return () => {
+      otherLines.forEach((layer) => layer.remove());
+    };
   }, [chooseRouteAlternative, referenceQuoteMap, routeAlternatives, selectedAlternative]);
   useEffect(() => {
     if (from && to) void calculateRoute(from, to);

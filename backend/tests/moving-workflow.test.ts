@@ -337,6 +337,168 @@ test('un devis final au-delà du dernier palier exige un prix de transport posit
   assert.equal(saved.quotes[0]?.price.total, 25000);
 });
 
+test('un devis existant bascule en final puis en provisoire sans créer de doublon', async () => {
+  const { service, getBooking, setQuotes } = harness();
+  setQuotes([
+    {
+      id: 'quote-1',
+      reference: 'DV-2026-QUOTE1',
+      kind: 'provisional',
+      createdAt: '2026-10-20T10:00:00.000Z',
+      price: { lines: [], total: 30000, discount: 0, tier: 1, trips: 1, currency: 'XOF' },
+      notes: '',
+    },
+  ]);
+
+  const finalized = await service.updateQuoteKind(
+    admin,
+    'booking-1',
+    'quote-1',
+    'final',
+    getBooking().version,
+  );
+  assert.equal(finalized.status, 'completed');
+  assert.equal(finalized.quotes.length, 1);
+  assert.equal(finalized.quotes[0]?.kind, 'final');
+  assert.equal(finalized.quotes[0]?.reference, 'DV-2026-QUOTE1');
+  assert.equal(finalized.quotes[0]?.createdAt, now.toISOString());
+
+  const provisional = await service.updateQuoteKind(
+    admin,
+    'booking-1',
+    'quote-1',
+    'provisional',
+    finalized.version,
+  );
+  assert.equal(provisional.status, 'pending');
+  assert.equal(provisional.quotes.length, 1);
+  assert.equal(provisional.quotes[0]?.id, 'quote-1');
+  assert.equal(provisional.quotes[0]?.kind, 'provisional');
+  assert.deepEqual(provisional.estimate, provisional.quotes[0]?.price);
+});
+
+test('la validation du formulaire final met à jour le devis provisoire en place', async () => {
+  const { service, getBooking, setQuotes, setDistance } = harness();
+  setDistance(20);
+  const initial = getBooking();
+  setQuotes([
+    {
+      id: 'quote-1',
+      reference: 'DV-2026-QUOTE1',
+      kind: 'provisional',
+      createdAt: '2026-10-20T10:00:00.000Z',
+      price: initial.estimate,
+      notes: '',
+    },
+  ]);
+
+  const finalized = await service.quote(
+    admin,
+    'booking-1',
+    {
+      kind: 'final',
+      trips: 1,
+      customPrice: null,
+      discount: 0,
+      notes: 'Formulaire final enregistré',
+      extraLines: [],
+      tolls: [],
+      options: initial.options,
+      version: getBooking().version,
+    },
+    'quote-1',
+  );
+
+  assert.equal(finalized.status, 'completed');
+  assert.equal(finalized.quotes.length, 1);
+  assert.equal(finalized.quotes[0]?.id, 'quote-1');
+  assert.equal(finalized.quotes[0]?.reference, 'DV-2026-QUOTE1');
+  assert.equal(finalized.quotes[0]?.kind, 'final');
+  assert.equal(finalized.quotes[0]?.notes, 'Formulaire final enregistré');
+});
+
+test('le basculement provisoire/final sauvegarde le formulaire courant dans la même opération', async () => {
+  const { service, getBooking, setQuotes, setDistance } = harness();
+  setDistance(20);
+  const initial = getBooking();
+  setQuotes([
+    {
+      id: 'quote-1',
+      reference: 'DV-2026-QUOTE1',
+      kind: 'provisional',
+      createdAt: '2026-10-20T10:00:00.000Z',
+      price: initial.estimate,
+      notes: '',
+    },
+  ]);
+  const bookingInput: BookingInput = {
+    vehicleId: initial.vehicle.id,
+    routeId: 'route-for-update',
+    trips: 1,
+    customerName: 'Client modifié',
+    customerPhone: initial.phone,
+    fromAddress: initial.fromAddress,
+    toAddress: initial.toAddress,
+    date: initial.date,
+    month: '2026-10',
+    timeSlot: '09:00',
+    options: initial.options,
+    notes: 'Notes du formulaire mises à jour',
+    questionnaireAnswers: [],
+    workPlan: [],
+    inventorySnapshot: null,
+    requestId: '00000000-0000-4000-8000-000000000001',
+  };
+  const finalQuote = {
+    kind: 'final' as const,
+    trips: 1,
+    customPrice: null,
+    discount: 0,
+    discountType: 'fcfa' as const,
+    notes: 'Devis final recalculé',
+    extraLines: [],
+    tolls: [],
+    options: bookingInput.options,
+    version: initial.version,
+  };
+
+  const finalized = await service.updateQuoteStage(
+    admin,
+    initial.id,
+    'quote-1',
+    bookingInput,
+    finalQuote,
+  );
+  assert.equal(finalized.status, 'completed');
+  assert.equal(finalized.customerName, 'Client modifié');
+  assert.equal(finalized.timeSlot, '09:00');
+  assert.equal(finalized.quotes.length, 1);
+  assert.equal(finalized.quotes[0]?.kind, 'final');
+  assert.equal(finalized.quotes[0]?.notes, 'Devis final recalculé');
+
+  const provisional = await service.updateQuoteStage(
+    admin,
+    initial.id,
+    'quote-1',
+    { ...bookingInput, customerName: 'Client provisoire', timeSlot: '10:00' },
+    {
+      ...finalQuote,
+      kind: 'provisional',
+      notes: 'Devis provisoire recalculé',
+      version: finalized.version,
+    },
+  );
+  assert.equal(provisional.status, 'pending');
+  assert.equal(provisional.customerName, 'Client provisoire');
+  assert.equal(provisional.timeSlot, '10:00');
+  assert.equal(provisional.quotes.length, 1);
+  assert.equal(provisional.quotes[0]?.id, 'quote-1');
+  assert.equal(provisional.quotes[0]?.kind, 'provisional');
+  assert.equal(provisional.quotes[0]?.notes, 'Devis provisoire recalculé');
+  assert.deepEqual(provisional.estimate, provisional.quotes[0]?.price);
+  assert.deepEqual(provisional.crew, { chauffeur: [], menuisier: [], manoeuvre: [], chef: '' });
+});
+
 test('un devis provisoire conserve le supplément balcon à fixer comme dans la référence', async () => {
   const { service, getBooking, setInventorySnapshot } = harness();
   const booking = getBooking();

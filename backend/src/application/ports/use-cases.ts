@@ -121,7 +121,21 @@ export interface MovingUseCases {
       version: number;
     },
   ): Promise<Booking>;
-  quote(user: User, id: string, input: QuoteInput): Promise<Booking>;
+  quote(user: User, id: string, input: QuoteInput, replaceQuoteId?: string): Promise<Booking>;
+  updateQuoteStage(
+    user: User,
+    id: string,
+    quoteId: string | null,
+    booking: BookingInput,
+    quote: QuoteInput,
+  ): Promise<Booking>;
+  updateQuoteKind(
+    user: User,
+    id: string,
+    quoteId: string,
+    kind: QuoteInput['kind'],
+    version: number,
+  ): Promise<Booking>;
   delete(user: User, id: string): Promise<void>;
   trashed(user: User): Promise<{ booking: Booking; deletedAt: string }[]>;
   restore(user: User, id: string): Promise<void>;

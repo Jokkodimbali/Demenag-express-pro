@@ -126,6 +126,19 @@ export interface BookingRepository {
   updateBookingRoute(id: string, from: Point, to: Point, version: number): Promise<Booking>;
   applyCurrentPricingSnapshot(id: string, version: number): Promise<Booking>;
   quote(id: string, input: QuoteInput): Promise<Booking>;
+  updateQuote(id: string, quoteId: string, input: QuoteInput): Promise<Booking>;
+  updateQuoteStage(
+    id: string,
+    quoteId: string | null,
+    booking: BookingInput,
+    quote: QuoteInput,
+  ): Promise<Booking>;
+  updateQuoteKind(
+    id: string,
+    quoteId: string,
+    kind: Quote['kind'],
+    version: number,
+  ): Promise<Booking>;
   assignDriver(id: string, driverId: string | null, version: number): Promise<Booking>;
   updateCrew(
     id: string,

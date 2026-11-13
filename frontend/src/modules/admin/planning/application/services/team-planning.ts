@@ -123,11 +123,11 @@ export const spanOverlaps = (left: JobSpan, right: JobSpan, dayOffset = 0) => {
 };
 export const overlaps = (left: string, right: string) =>
   left === 'journee' || right === 'journee' || left === right;
-export const activeBookings = (bookings: Booking[]) =>
+export const activeBookings = (bookings: readonly Booking[]) =>
   bookings.filter((booking) => booking.date && booking.status !== 'cancelled');
 export const teamOf = (booking: Booking) => {
   const quote = booking.quotes?.at(-1);
-  const rental = quote?.billingMode === 'driver-rental' && !quote.menuIncluded;
+  const rental = quote?.billingMode === 'driver-rental';
   return {
     chauffeur: booking.crew?.chauffeur ?? (booking.driverId ? [booking.driverId] : []),
     menuisier: rental ? [] : (booking.crew?.menuisier ?? []),
@@ -202,14 +202,12 @@ export function mergeTeamChanges(current: Booking, base: Booking, patch: Partial
 }
 export const needsOf = (booking: Booking) => {
   const quote = booking.quotes?.at(-1);
-  const rental = quote?.billingMode === 'driver-rental' && !quote.menuIncluded;
+  const rental = quote?.billingMode === 'driver-rental';
   const options = quote?.options ?? booking.options;
   return {
     chauffeur: 1,
     menuisier: Number(
-      (options?.bed ?? 0) + (options?.wardrobe ?? 0) + (options?.desk ?? 0) > 0 &&
-        quote?.billingMode !== 'standard' &&
-        !rental,
+      (options?.bed ?? 0) + (options?.wardrobe ?? 0) + (options?.desk ?? 0) > 0 && !rental,
     ),
     manoeuvre: rental ? 0 : Math.max(0, quote?.providedCrew ?? options.labour ?? 2),
   };
@@ -233,7 +231,7 @@ export const availabilityOf = (employee: Driver) =>
 export function busyBooking(employeeId: string, current: Booking, source: readonly Booking[]) {
   if (!current.date) return undefined;
   const currentSpan = jobSpan(current);
-  return source.find((booking) => {
+  return activeBookings(source).find((booking) => {
     if (booking.id === current.id || !booking.date || !teamIds(booking).includes(employeeId))
       return false;
     const offset = dayDistance(current.date!, booking.date);
@@ -252,7 +250,7 @@ export function sameDayJobs(employeeId: string, current: Booking, source: readon
 
 export function weekLoad(employeeId: string, day: string, source: readonly Booking[]) {
   const start = weekStart(day);
-  return source.filter(
+  return activeBookings(source).filter(
     (booking) =>
       booking.date! >= start &&
       booking.date! <= moveDay(start, 6) &&
@@ -352,13 +350,13 @@ export function autoAssignTeamForBooking(input: {
         })
         .sort((left, right) => {
           const coworkCount = (employee: Driver) =>
-            plannedBookings.filter((item) => {
+            activeBookings(plannedBookings).filter((item) => {
               const team = teamIds(item);
               return team.includes(employee.id) && team.some((id) => currentTeam.includes(id));
             }).length;
           const weeklyLoad = (employeeId: string) => {
             const start = weekStart(date);
-            return plannedBookings.filter(
+            return activeBookings(plannedBookings).filter(
               (item) =>
                 item.date! >= start &&
                 item.date! <= moveDay(start, 6) &&

@@ -38,21 +38,26 @@ export async function referenceRouteAlternatives(
           destination: { lat: to[0], lng: to[1] },
           travelMode: maps.TravelMode?.DRIVING ?? 'DRIVING',
           provideRouteAlternatives: true,
-          drivingOptions: { departureTime: new Date(Date.now() + 60000), trafficModel: 'bestguess' },
+          drivingOptions: {
+            departureTime: new Date(Date.now() + 60000),
+            trafficModel: 'bestguess',
+          },
           language: 'fr',
           region: 'SN',
         });
         const alternatives = (result.routes ?? []).flatMap((route) => {
           const leg = route.legs[0];
           if (!leg) return [];
-          return [{
-            from,
-            to,
-            geometry: route.overview_path.map((point): Point => [point.lat(), point.lng()]),
-            distanceKm: Math.round(leg.distance.value / 100) / 10,
-            durationMinutes: Math.round((leg.duration_in_traffic ?? leg.duration).value / 60),
-            via: route.summary ?? '',
-          }];
+          return [
+            {
+              from,
+              to,
+              geometry: route.overview_path.map((point): Point => [point.lat(), point.lng()]),
+              distanceKm: Math.round(leg.distance.value / 100) / 10,
+              durationMinutes: Math.round((leg.duration_in_traffic ?? leg.duration).value / 60),
+              via: route.summary ?? '',
+            },
+          ];
         });
         if (alternatives.length) return alternatives;
       }
@@ -77,7 +82,8 @@ export async function referenceRouteAlternatives(
     return (data.routes ?? []).map((route) => {
       const names: Record<string, number> = {};
       for (const step of route.legs[0]?.steps ?? []) {
-        if (step.name && step.distance > 300) names[step.name] = (names[step.name] ?? 0) + step.distance;
+        if (step.name && step.distance > 300)
+          names[step.name] = (names[step.name] ?? 0) + step.distance;
       }
       return {
         from,
@@ -85,7 +91,11 @@ export async function referenceRouteAlternatives(
         geometry: route.geometry.coordinates.map(([lng, lat]): Point => [lat, lng]),
         distanceKm: Math.round(route.distance / 100) / 10,
         durationMinutes: Math.round(route.duration / 60),
-        via: Object.entries(names).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([name]) => name).join(', '),
+        via: Object.entries(names)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 2)
+          .map(([name]) => name)
+          .join(', '),
       };
     });
   } catch {

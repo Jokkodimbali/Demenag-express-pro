@@ -291,4 +291,51 @@ export function registerBookingRoutes(
     );
     res.status(201).json(booking);
   });
+  app.patch(`${apiRoutes.bookings}/:id/quotes/:quoteId`, authenticate, admin, async (req, res) => {
+    res.json(
+      await deps.moving.quote(
+        getActor(res),
+        z.uuid().parse(req.params.id),
+        quoteSchema.parse(req.body),
+        z.uuid().parse(req.params.quoteId),
+      ),
+    );
+  });
+  app.patch(`${apiRoutes.bookings}/:id/quote-stage`, authenticate, admin, async (req, res) => {
+    const p = z
+      .object({
+        quoteId: z.uuid().nullable(),
+        booking: bookingSchema,
+        quote: quoteSchema,
+      })
+      .parse(req.body);
+    res.json(
+      await deps.moving.updateQuoteStage(
+        getActor(res),
+        z.uuid().parse(req.params.id),
+        p.quoteId,
+        p.booking,
+        p.quote,
+      ),
+    );
+  });
+  app.patch(
+    `${apiRoutes.bookings}/:id/quotes/:quoteId/kind`,
+    authenticate,
+    admin,
+    async (req, res) => {
+      const p = z
+        .object({ kind: z.enum(['provisional', 'final']), version: z.number().int().positive() })
+        .parse(req.body);
+      res.json(
+        await deps.moving.updateQuoteKind(
+          getActor(res),
+          z.uuid().parse(req.params.id),
+          z.uuid().parse(req.params.quoteId),
+          p.kind,
+          p.version,
+        ),
+      );
+    },
+  );
 }

@@ -30,20 +30,40 @@ function menuUnitPrice(
   return asInt(prices?.[origin] ?? (origin === 'import' ? 10_000 : 5_000));
 }
 
+function customMenuUnitPrice(
+  config: Pick<AccountingFinanceConfiguration, 'menuPrices'> | null,
+  custom: {
+    mp?: number;
+    menuPriceLocal?: number;
+    menuPriceImport?: number;
+    typeKey?: string;
+    like?: string;
+  },
+  origin: 'local' | 'import',
+) {
+  if (Number(custom.mp) > 0) return asInt(Number(custom.mp));
+  const savedPrice = origin === 'import' ? custom.menuPriceImport : custom.menuPriceLocal;
+  if (savedPrice != null) return asInt(savedPrice);
+  return menuUnitPrice(config, custom.typeKey ?? custom.like ?? 'custom', origin);
+}
+
 export function captureAccountingCosts(
   booking: Booking,
   price: Price,
   config: Pick<AccountingFinanceConfiguration, 'menuPrices' | 'moverCostPerMove'> | null,
   billingMode?: Quote['billingMode'],
+  providedCrew?: number,
 ) {
   const source = booking.inventorySnapshot?.sourceInventory;
   const movers =
     billingMode === 'driver-rental'
       ? 0
       : booking.crew?.manoeuvre.length ||
+        (providedCrew && providedCrew > 0 ? providedCrew : 0) ||
+        source?.crew ||
+        booking.inventorySnapshot?.moverCount ||
         price.lines.find((line) => /man[œo]uvre/i.test(line.label))?.quantity ||
         booking.estimate.lines.find((line) => /man[œo]uvre/i.test(line.label))?.quantity ||
-        source?.crew ||
         0;
   let carpenters = 0;
   let carpenterAmount = 0;
@@ -54,6 +74,13 @@ export function captureAccountingCosts(
     origin: 'local' | 'import' | undefined,
     dismantle: boolean,
     menuisier: boolean,
+    custom?: {
+      mp?: number;
+      menuPriceLocal?: number;
+      menuPriceImport?: number;
+      typeKey?: string;
+      like?: string;
+    },
   ) => {
     const normalized = aliases[key] ?? key;
     if (
@@ -64,14 +91,19 @@ export function captureAccountingCosts(
       return;
     const sized = sizedItems.has(normalized) ? size : undefined;
     carpenters += quantity;
-    carpenterAmount += quantity * menuUnitPrice(config, normalized, origin ?? 'local', sized);
+    const itemOrigin = origin ?? 'local';
+    const unitPrice =
+      normalized === 'custom' && custom
+        ? customMenuUnitPrice(config, custom, itemOrigin)
+        : menuUnitPrice(config, normalized, itemOrigin, sized);
+    carpenterAmount += quantity * unitPrice;
   };
   for (const [key, item] of Object.entries(source?.entries ?? {}))
     add(key, item.quantity, item.size, item.origin, item.dismantle, !!item.menuisier);
   for (const item of source?.variants ?? [])
     add(item.itemKey, item.quantity, item.size, item.origin, item.dismantle, !!item.menuisier);
   for (const item of source?.custom ?? [])
-    add('custom', item.quantity, 1, item.origin, !!item.dismantle, false);
+    add('custom', item.quantity, 1, item.origin, !!item.dismantle, false, item);
   return {
     movers,
     moverAmount: asInt(movers * (config?.moverCostPerMove ?? 5_000)),
@@ -82,11 +114,11 @@ export function captureAccountingCosts(
 
 export function accountingCostsForQuote(
   booking: Booking,
-  quote: Pick<Quote, 'price' | 'billingMode' | 'accountingCosts'>,
+  quote: Pick<Quote, 'price' | 'billingMode' | 'accountingCosts' | 'providedCrew'>,
   config: Pick<AccountingFinanceConfiguration, 'menuPrices' | 'moverCostPerMove'> | null,
 ) {
   const costs =
     quote.accountingCosts ??
-    captureAccountingCosts(booking, quote.price, config, quote.billingMode);
+    captureAccountingCosts(booking, quote.price, config, quote.billingMode, quote.providedCrew);
   return quote.billingMode === 'driver-rental' ? { ...costs, movers: 0, moverAmount: 0 } : costs;
 }

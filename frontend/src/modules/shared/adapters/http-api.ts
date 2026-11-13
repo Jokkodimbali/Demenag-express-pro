@@ -222,6 +222,16 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
       request(`${httpRoutes.bookings}/${id}/driver`, 'PATCH', { driverId, version }),
     updateCrew: (id, input) => request(`${httpRoutes.bookings}/${id}/crew`, 'PATCH', input),
     quote: (id, input) => request(`${httpRoutes.bookings}/${id}/quotes`, 'POST', input),
+    updateQuote: (id, quoteId, input) =>
+      request(`${httpRoutes.bookings}/${id}/quotes/${quoteId}`, 'PATCH', input),
+    updateQuoteStage: (id, quoteId, booking, quote) =>
+      request(`${httpRoutes.bookings}/${id}/quote-stage`, 'PATCH', {
+        quoteId,
+        booking,
+        quote,
+      }),
+    updateQuoteKind: (id, quoteId, kind, version) =>
+      request(`${httpRoutes.bookings}/${id}/quotes/${quoteId}/kind`, 'PATCH', { kind, version }),
     route: (from, to) => request(httpRoutes.maps.route, 'POST', { from, to }),
     search: (query) => request(`${httpRoutes.maps.search}?q=${encodeURIComponent(query)}`),
     reverse: (point) => request(`${httpRoutes.maps.reverse}?lat=${point[0]}&lon=${point[1]}`),

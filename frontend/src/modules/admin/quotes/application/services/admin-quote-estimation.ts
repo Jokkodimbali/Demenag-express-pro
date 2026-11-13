@@ -50,9 +50,7 @@ export function estimateAdminQuoteWork(input: {
     // count it has just estimated from the loading simulation. Manual mode
     // keeps the operator's explicit trip and crew values.
     trips:
-      input.config.calcMode === 'manual'
-        ? input.config.trips
-        : recommendedTrips ?? undefined,
+      input.config.calcMode === 'manual' ? input.config.trips : (recommendedTrips ?? undefined),
     crew: input.config.calcMode === 'manual' ? input.draft.inventory.crew : 0,
     startTime: input.draft.timeSlot,
     laborPlanning: input.settings?.movingLaborPlanning,
