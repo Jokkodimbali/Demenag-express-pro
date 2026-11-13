@@ -1,12 +1,15 @@
+import { useId } from 'react';
 import { uiText } from '../../shared/content/reference-ui-text';
 import 'leaflet/dist/leaflet.css';
 import { Expand, LocateFixed, Search, X } from 'lucide-react';
 import { useRouteMap } from './useRouteMap';
 import { useApp } from '../../shared/application/context';
 import { messages } from '../../shared/content/fr';
+import { visibleUiText } from '../../shared/content/visible-ui-text';
 import { referenceTierLabels } from '../../shared/application/presentation/format';
 import type { TollExtraLine } from '../domain/tolls/toll-selection';
 import type { RouteMapDraft, RouteMapDraftUpdater } from './route-map-state';
+import { referenceRouteAddresses } from './reference-route-addresses';
 const EMPTY_TOLL_LINES: TollExtraLine[] = [];
 export default function RouteMap({
   tollLines = EMPTY_TOLL_LINES,
@@ -32,6 +35,8 @@ export default function RouteMap({
   referenceRouting?: boolean;
 }) {
   const { catalogue } = useApp();
+  const routeAddressListId = `reference-route-addresses-${useId().replace(/:/g, '')}`;
+  const useReferenceAddressSuggestions = adminQuote || referenceRouting;
   const {
     routeTolls,
     canChooseTolls,
@@ -91,10 +96,11 @@ export default function RouteMap({
         <span className={'point-badge ' + side}>{side === 'from' ? 'A' : 'B'}</span>
         <input
           id={'address-' + side}
+          {...(useReferenceAddressSuggestions ? { list: routeAddressListId } : {})}
           value={draft[(side + 'Address') as 'fromAddress' | 'toAddress']}
           onChange={(event) => address(side, event.target.value)}
           onFocus={() => setActive(side)}
-          onBlur={adminQuote ? () => void geocode(side) : undefined}
+          onBlur={useReferenceAddressSuggestions ? () => void geocode(side) : undefined}
           placeholder={
             adminQuote
               ? side === 'from'
@@ -144,6 +150,13 @@ export default function RouteMap({
 
   return (
     <div className="route-picker">
+      {useReferenceAddressSuggestions && (
+        <datalist id={routeAddressListId}>
+          {referenceRouteAddresses.map((address) => (
+            <option key={address} value={address} />
+          ))}
+        </datalist>
+      )}
       <div className={'field-pair' + (adminQuote ? ' admin-quote-route-grid' : '')}>
         {adminQuote ? (
           <>
@@ -276,7 +289,7 @@ export default function RouteMap({
         )}
       </div>
       {referenceRouting && draft.route && routeAlternatives.length > 1 && (
-        <div className="reference-route-alternatives" aria-label="Itinéraires alternatifs">
+        <div className="reference-route-alternatives" aria-label={visibleUiText.routeAlternatives}>
           {routeAlternatives.map((alternative, index) => (
             <button
               key={`${alternative.distanceKm}-${alternative.durationMinutes}-${index}`}
@@ -286,10 +299,15 @@ export default function RouteMap({
               onClick={() => chooseRouteAlternative(index)}
             >
               <strong>
-                {alternative.durationMinutes} min ·{' '}
-                {String(alternative.distanceKm).replace('.', ',')} km
+                {alternative.durationMinutes}
+                {uiText['min']} · {String(alternative.distanceKm).replace('.', ',')}
+                {uiText['km']}
               </strong>
-              {alternative.via && <span>par {alternative.via}</span>}
+              {alternative.via && (
+                <span>
+                  {visibleUiText.routeVia} {alternative.via}
+                </span>
+              )}
             </button>
           ))}
         </div>

@@ -196,6 +196,14 @@ export async function catalogueFromForm(data: FormData, catalogue: Catalogue): P
       'movingLaborPlanning.manoeuvreOvertimeHourlyRate',
       catalogue.settings.movingLaborPlanning?.manoeuvreOvertimeHourlyRate ?? 0,
     ),
+    fill: numberField(
+      'movingLaborPlanning.fill',
+      catalogue.settings.movingLaborPlanning?.fill ?? 85,
+    ),
+    fillF: numberField(
+      'movingLaborPlanning.fillF',
+      catalogue.settings.movingLaborPlanning?.fillF ?? 75,
+    ),
     blanketLengthCm: numberField(
       'movingLaborPlanning.blanketLengthCm',
       catalogue.settings.movingLaborPlanning?.blanketLengthCm ?? 204,

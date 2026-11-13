@@ -5,6 +5,8 @@ import {
   defaultMovingLaborPlanning,
   estimateMovingWork,
   formatDuration,
+  lastTripFillRatio,
+  vehicleFillPercentage,
 } from '../../moving/domain/estimate/moving-estimate';
 import type { MovingLaborPlanningSettings, Vehicle } from '../../shared/domain/model';
 import type { Inventory } from '../../moving/domain/inventory/inventory';
@@ -185,6 +187,17 @@ export function MovingPlanningPanel({
           <div className="moving-vehicle-estimates">
             {comparisons.map(({ vehicle, estimate }) => {
               const selected = vehicle.id === selectedVehicleId;
+              const fillPercentage = vehicleFillPercentage(
+                estimate.volume,
+                estimate.trips,
+                estimate.capacity,
+              );
+              const lastTripFill = lastTripFillRatio(
+                estimate.volume,
+                estimate.trips,
+                estimate.capacity,
+                estimate.fillRate,
+              );
               return (
                 <article
                   className={'moving-vehicle-estimate' + (selected ? ' active' : '')}
@@ -201,16 +214,9 @@ export function MovingPlanningPanel({
                     {estimate.trips ? (estimate.trips > 1 ? 'allers-retours' : 'aller-retour') : ''}
                   </strong>
                   <span className="moving-vehicle-fill">
-                    {Math.round(
-                      (estimate.volume / (estimate.capacity * estimate.trips || 1)) * 100,
-                    )}{' '}
-                    {uiText['deRemplissage']}
-                    {estimate.trips > 1 &&
-                    (estimate.volume -
-                      (estimate.trips - 1) * estimate.capacity * estimate.fillRate) /
-                      (estimate.capacity * estimate.fillRate) <
-                      0.2
-                      ? ` · dernier voyage à ${Math.round(((estimate.volume - (estimate.trips - 1) * estimate.capacity * estimate.fillRate) / (estimate.capacity * estimate.fillRate)) * 100)} %, peut tenir en ${estimate.trips - 1} si chargé serré`
+                    {fillPercentage} {uiText['deRemplissage']}
+                    {estimate.trips > 1 && lastTripFill < 0.2
+                      ? ` · dernier voyage à ${Math.round(lastTripFill * 100)} %, peut tenir en ${estimate.trips - 1} si chargé serré`
                       : ''}
                   </span>
                   {estimate.vehicleWarnings.map((warning) => (

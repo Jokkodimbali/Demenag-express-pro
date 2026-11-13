@@ -52,6 +52,8 @@ export const defaultMovingLaborPlanning: MovingLaborPlanningSettings = {
   lowDemandDiscountPercent: 10,
   manoeuvreOvertimeThresholdHours: 8,
   manoeuvreOvertimeHourlyRate: 0,
+  fill: 85,
+  fillF: 75,
 };
 
 export type PlanningStep = {
@@ -144,6 +146,32 @@ export type MovingEstimate = {
   vehicleWarnings: string[];
   warning: string | null;
 };
+
+export function movingEstimateFillRate(
+  fragile: boolean,
+  settings: Pick<MovingLaborPlanningSettings, 'fill' | 'fillF'> = defaultMovingLaborPlanning,
+) {
+  const configuredFill = Number(fragile ? settings.fillF : settings.fill);
+  const defaultFill = fragile ? 75 : 85;
+  return Math.max(30, Math.min(100, configuredFill || defaultFill)) / 100;
+}
+
+export function vehicleFillPercentage(volume: number, trips: number, capacity: number) {
+  if (trips <= 0 || capacity <= 0) return 0;
+  return Math.round((volume / (trips * capacity)) * 100);
+}
+
+export function lastTripFillRatio(
+  volume: number,
+  trips: number,
+  capacity: number,
+  fillRate: number,
+) {
+  if (trips <= 1) return 1;
+  const acceptedVolume = capacity * fillRate;
+  return acceptedVolume > 0 ? (volume - (trips - 1) * acceptedVolume) / acceptedVolume : 0;
+}
+
 type EstimateOptions = {
   trips?: number;
   recommendedTrips?: number;
@@ -170,12 +198,12 @@ export function estimateMovingWork(
 ): MovingEstimate {
   const groups = inventoryVolumes(inventory);
   const volume = groups.light + groups.furniture + groups.bulky + groups.heavy;
-  const fillRate = inventory.flags.fragile ? 0.75 : 0.85;
+  const labor = { ...defaultMovingLaborPlanning, ...options.laborPlanning };
+  const fillRate = movingEstimateFillRate(inventory.flags.fragile, labor);
   const capacity = vehicleCapacity(vehicle);
   const volumeTrips = volume > 0 ? Math.max(1, Math.ceil(volume / (capacity * fillRate))) : 0;
   const trips = options.recommendedTrips ?? volumeTrips;
   const requestedTrips = Math.max(1, Math.min(99, (options.trips ?? trips) || 1));
-  const labor = { ...defaultMovingLaborPlanning, ...options.laborPlanning };
   const parallelVehicles = options.parallelVehicles ?? 1;
   const categoryRates = {
     light: { r: 1.4, st: 0.1, lift: 0.03 },

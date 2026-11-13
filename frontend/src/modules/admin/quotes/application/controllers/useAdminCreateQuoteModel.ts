@@ -62,6 +62,10 @@ import {
 import { errorMessage } from '../../../../shared/application/error-message';
 import { visibleUiText } from '../../../../shared/content/visible-ui-text';
 import { reassignTeamsAfterScheduleChange } from '../services/quote-stage-team-reassignment';
+import {
+  mergeClientSuggestionProfiles,
+  type ClientSuggestionProfile,
+} from '../services/client-suggestions';
 
 export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const location = useLocation();
@@ -117,6 +121,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     tolls: false,
     options: false,
   });
+  const [clientProfiles, setClientProfiles] = useState<ClientSuggestionProfile[]>([]);
   const {
     exportQuote,
     catalogue: appCatalogue,
@@ -125,6 +130,24 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     api,
     requestConfirmation,
   } = useApp();
+  useEffect(() => {
+    if (user?.role !== 'admin') {
+      setClientProfiles([]);
+      return;
+    }
+    let active = true;
+    void Promise.all([api.clientProfiles(), api.bookings(), api.hiddenClients()])
+      .then(([profiles, bookings, hiddenClients]) => {
+        if (active)
+          setClientProfiles(mergeClientSuggestionProfiles(profiles, bookings, hiddenClients));
+      })
+      .catch(() => {
+        if (active) setClientProfiles([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [api, user?.role]);
   const bookingCommands = useBookingCommands();
   const state = useBookingForm({
     mode: publicRequest && user?.role !== 'admin' ? 'booking' : 'admin-quote',
@@ -835,6 +858,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     sendWhatsAppAfterSave,
     openQuoteSections,
     setOpenQuoteSections,
+    clientProfiles,
     googleMapsKey,
     traffic,
     trafficBusy,

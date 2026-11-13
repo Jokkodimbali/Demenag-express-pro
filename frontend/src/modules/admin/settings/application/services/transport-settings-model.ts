@@ -144,6 +144,8 @@ export function labourSettingsMatrix(settings: Settings, scenario: LabourMatrixS
 
 export function planningFieldConstraints(key: string) {
   const minByField: Record<string, number> = {
+    fill: 30,
+    fillF: 30,
     wbgtAdj: -10,
     heat: 0,
     maxDayHours: 1,
@@ -155,6 +157,8 @@ export function planningFieldConstraints(key: string) {
     defaultStartHour: 0,
   };
   const maxByField: Record<string, number> = {
+    fill: 100,
+    fillF: 100,
     metabolicReference: 1500,
     effortGround: 1500,
     effortLift: 1500,

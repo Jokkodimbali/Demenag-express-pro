@@ -227,6 +227,8 @@ export type MovingLaborPlanningSettings = {
   lowDemandDiscountPercent?: number;
   manoeuvreOvertimeThresholdHours?: number;
   manoeuvreOvertimeHourlyRate?: number;
+  fill?: number;
+  fillF?: number;
 };
 export type LabourMatrixScenario = 'none' | 'from' | 'to' | 'both';
 export type LabourPriceMatrix = Record<LabourMatrixScenario, number[][]>;

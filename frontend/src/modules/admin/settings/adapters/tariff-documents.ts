@@ -28,6 +28,10 @@ export function createTariffDocument(
   const margin = kind === 'client' ? 15 : 16;
   const width = 210 - margin * 2;
   const settings = catalogue.settings;
+  const configuredFill = (value: number | undefined, fallback: number) =>
+    Math.max(30, Math.min(100, Number(value) || fallback));
+  const standardFill = configuredFill(settings.movingLaborPlanning?.fill, 85);
+  const fragileFill = configuredFill(settings.movingLaborPlanning?.fillF, 75);
   const vehicles = catalogue.vehicles.filter((vehicle) => vehicle.active !== false);
   let y = kind === 'client' ? 49 : 74;
   let page = 1;
@@ -382,7 +386,7 @@ export function createTariffDocument(
       'Volume de chaque objet : gabarit, taille, encombrement et démontage selon le type.',
       'Affaires annexes : forfait selon le logement, diminué des cartons et sacs déjà comptés.',
       'Volume utile : dimensions intérieures moins passages de roue, puis coefficient utile de 0,95.',
-      'Allers-retours : arrondi supérieur de volume total ÷ (volume utile × remplissage). Remplissage 85 %, ou 75 % si objets fragiles.',
+      `Allers-retours : arrondi supérieur de volume total ÷ (volume utile × remplissage). Remplissage ${standardFill} %, ou ${fragileFill} % si objets fragiles. Le pourcentage affiché par véhicule est le volume total ÷ (allers-retours × volume utile), arrondi à l’unité.`,
       'Manœuvres : volume, poids, étages, ascenseur, objets lourds et durée plafond. Minimum 2.',
       `Planning : chargement, déchargement, trajets, ${settings.movingLaborPlanning?.tripSetupMinutes ?? 15} minutes de mise en place par voyage et pauses.`,
       'Prix : transport + manœuvres + menuisier + suppléments − remise. Péages indiqués à part.',
@@ -524,7 +528,7 @@ export function createTariffDocument(
       `location.depassement_par_heure = ${settings.rentalOvertimeHourlyRate ?? 10000}`,
       'peages.inclus_dans_total = non',
       'calcul.allers_retours = ceil(volume_total / (volume_utile * remplissage))',
-      'calcul.remplissage = 0.85 (0.75 si objets fragiles)',
+      `calcul.remplissage = ${standardFill / 100} (${fragileFill / 100} si objets fragiles)`,
       'calcul.total = transport + manoeuvres + menuisier + supplements - remise',
       ...furniture.map((item) => {
         const key = referenceInventoryKey(item.key);

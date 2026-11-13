@@ -455,6 +455,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
               editingReservation={editingReservation}
               clientRecognition={clientRecognition}
               recognizingClient={recognizingClient}
+              clientProfiles={model.clientProfiles}
               contactCard={contactCard}
             />
           </AdminQuoteStep>

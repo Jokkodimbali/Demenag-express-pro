@@ -1,4 +1,6 @@
 export const visibleUiText = {
+  routeAlternatives: 'Itinéraires alternatifs',
+  routeVia: 'par',
   text1: 'Calcul du devis',
   text2: 'CALCUL DU DEVIS',
   text3: 'Mode de calcul',
@@ -312,6 +314,8 @@ export function quoteCalculationRules(settings?: {
     maxHandlingHours?: number;
     maxDayHours?: number;
     defaultStartHour?: number;
+    fill?: number;
+    fillF?: number;
   };
 }) {
   const labor = settings?.movingLaborPlanning;
@@ -324,8 +328,13 @@ export function quoteCalculationRules(settings?: {
   const maxDay = labor?.maxDayHours ?? 8;
   const start = labor?.defaultStartHour ?? 8;
   const maxMovers = labor?.maxMoversPerVehicle ?? 6;
+  const fillRate = (configured: number | undefined, fallback: number) =>
+    Math.max(30, Math.min(100, Number(configured) || fallback));
+  const standardFill = fillRate(labor?.fill, 85);
+  const fragileFill = fillRate(labor?.fillF, 75);
   const cadence = (volume: number) => (rate * volume).toFixed(1).replace('.', ',');
   return [
+    `Allers-retours par véhicule : arrondi supérieur du volume total ÷ (volume utile × taux de remplissage). Taux : ${standardFill} % en standard, ${fragileFill} % si des objets fragiles sont signalés. Le pourcentage affiché est le volume total ÷ (nombre d’allers-retours × volume utile), arrondi à l’unité.`,
     `Cadence par manœuvre et par heure au rez-de-chaussée : cartons et sacs ≈ ${cadence(1.4)} m³, meubles ≈ ${cadence(1)} m³, canapés et matelas ≈ ${cadence(1.2)} m³, objets lourds (frigo, armoire montée, buffet…) ≈ ${cadence(0.72)} m³. Déchargement 20 % plus rapide.`,
     "Étages sans ascenseur : de +10 % (cartons) à +25 % (objets lourds) par étage, 40 % de plus si escalier étroit. Avec ascenseur : +5 % d'attente puis +3 % à +15 % par étage, les canapés passant souvent par l'escalier.",
     'Accès camion difficile (portage long) : +20 %. Objets fragiles : +10 %.',

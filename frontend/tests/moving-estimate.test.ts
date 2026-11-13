@@ -8,8 +8,12 @@ import {
 } from '../src/modules/moving/domain/inventory/inventory.ts';
 import {
   bookingInventorySnapshot,
+  defaultMovingLaborPlanning,
   estimateMovingWork,
   estimatedInventoryItemVolume,
+  lastTripFillRatio,
+  movingEstimateFillRate,
+  vehicleFillPercentage,
 } from '../src/modules/moving/domain/estimate/moving-estimate.ts';
 import { referenceTravelMinutes } from '../src/modules/moving/domain/routing/reference-traffic.ts';
 import {
@@ -31,13 +35,101 @@ const vehicle: Vehicle = {
   prices: [30000, 37000, 44000],
 };
 
+test('les taux et pourcentages des cartes véhicule reprennent les formules de référence', () => {
+  const reference = readFileSync(
+    new URL('../../reference/Demenag Express.dc.html', import.meta.url),
+    'utf8',
+  );
+  assert.ok(reference.includes('invFill(i) { const L = this.labP();'));
+  assert.ok(reference.includes('Math.ceil(vol / (cap * FILL))'));
+  assert.ok(reference.includes('Math.round(vol / (n * cap) * 100)'));
+  assert.equal(movingEstimateFillRate(false), 0.85);
+  assert.equal(movingEstimateFillRate(true), 0.75);
+  assert.equal(movingEstimateFillRate(false, { fill: 92, fillF: 68 }), 0.92);
+  assert.equal(movingEstimateFillRate(true, { fill: 92, fillF: 68 }), 0.68);
+  assert.equal(movingEstimateFillRate(false, { fill: 0, fillF: 75 }), 0.85);
+  assert.equal(movingEstimateFillRate(true, { fill: 20, fillF: 120 }), 1);
+
+  const inventory = blankInventory();
+  inventory.entries.carton = {
+    quantity: 64,
+    size: 1,
+    format: 'medium',
+    dismantle: false,
+  };
+  inventory.flags.fragile = true;
+  const traffic = {
+    ...vehicle,
+    id: 'trafic',
+    volume: '~5,2 m³',
+    length: '2,54 m',
+    height: '1,39 m',
+    width: '1,66 m',
+    wheelWidth: '1,27 m',
+  };
+  const estimate = estimateMovingWork(inventory, traffic, null, {
+    laborPlanning: { ...defaultMovingLaborPlanning, fill: 85, fillF: 75 },
+  });
+  const fillRate = 0.75;
+  const referenceTrips = Math.max(1, Math.ceil(estimate.volume / (estimate.capacity * fillRate)));
+  const referenceLastTrip =
+    (estimate.volume - (referenceTrips - 1) * estimate.capacity * fillRate) /
+    (estimate.capacity * fillRate);
+
+  assert.equal(estimate.trips, referenceTrips);
+  assert.equal(
+    vehicleFillPercentage(estimate.volume, estimate.trips, estimate.capacity),
+    Math.round((estimate.volume / (referenceTrips * estimate.capacity)) * 100),
+  );
+  assert.equal(
+    lastTripFillRatio(estimate.volume, estimate.trips, estimate.capacity, fillRate),
+    referenceLastTrip,
+  );
+});
+
+test('la capacité utilisée vient des dimensions comme dans la référence, pas du volume approximatif', () => {
+  const vehicles: { vehicle: Vehicle; capacity: number }[] = [
+    { vehicle: { ...vehicle, volume: '~14 m³' }, capacity: 13.9 },
+    {
+      vehicle: {
+        ...vehicle,
+        id: 'trafic',
+        volume: '~5,2 m³',
+        length: '2,54 m',
+        height: '1,39 m',
+        width: '1,66 m',
+        wheelWidth: '1,27 m',
+      },
+      capacity: 5.4,
+    },
+    {
+      vehicle: {
+        ...vehicle,
+        id: 'master',
+        volume: '~13 m³',
+        length: '3,73 m',
+        height: '1,89 m',
+        width: '1,76 m',
+        wheelWidth: '1,38 m',
+      },
+      capacity: 11.6,
+    },
+  ];
+
+  for (const { vehicle: candidate, capacity } of vehicles)
+    assert.equal(estimateMovingWork(blankInventory(), candidate).capacity, capacity);
+});
+
 test('le devis reprend le nombre de trajets du simulateur de chargement de référence', () => {
   const inventory = blankInventory();
   inventory.dwellingType = 'F3';
   inventory.entries.salon = { quantity: 1, size: 5, format: 'medium', dismantle: false };
   inventory.entries.frigo = { quantity: 1, size: 2, format: 'large', dismantle: false };
   inventory.entries.carton = { quantity: 30, size: 1, format: 'medium', dismantle: false };
-  const source = readFileSync(new URL('../public/reference/loading-sim.js', import.meta.url), 'utf8');
+  const source = readFileSync(
+    new URL('../public/reference/loading-sim.js', import.meta.url),
+    'utf8',
+  );
   const simulationWindow = {} as Window & { DemSim?: NonNullable<Window['DemSim']> };
   vm.runInNewContext(source, { window: simulationWindow });
   const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');

@@ -32,6 +32,16 @@ import {
 const tiers = ['Moins de 15 km', '15 – 25 km', '25 – 35 km'];
 const planningFields = [
   [
+    'fill',
+    'Remplissage du véhicule (%)',
+    'Part du volume utile chargée si le plan de chargement 3D n’est pas disponible.',
+  ],
+  [
+    'fillF',
+    'Remplissage avec objets fragiles (%)',
+    'Utilisé si le client signale des objets fragiles.',
+  ],
+  [
     'heat',
     'Pauses chaleur ISO 7243 (1 = oui, 0 = non)',
     'Pauses de récupération selon la chaleur (WBGT) du mois à Dakar.',

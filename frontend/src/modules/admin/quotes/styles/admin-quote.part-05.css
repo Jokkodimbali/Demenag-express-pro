@@ -753,6 +753,65 @@
   position: relative;
   min-width: 0;
 }
+.admin-quote-client-name input[readonly] {
+  cursor: not-allowed;
+}
+.admin-quote-saved-client-hint {
+  display: block;
+  margin-top: 4px;
+  color: #3ddc84;
+  font-size: 12px;
+  font-weight: 700;
+}
+.admin-quote-client-suggestions {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  min-width: 220px;
+  overflow: hidden;
+  border: 1px solid #4a5057;
+  border-radius: 10px;
+  background: #272a2e;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 50%);
+}
+.admin-quote-client-suggestions button {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 0;
+  border-bottom: 1px solid #30343a;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+}
+.admin-quote-client-suggestions button:last-child {
+  border-bottom: 0;
+}
+.admin-quote-client-suggestions button:hover,
+.admin-quote-client-suggestions button:focus-visible {
+  background: #3b4046;
+  outline: 0;
+}
+.admin-quote-client-suggestions button span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-quote-client-suggestions button span:last-child {
+  flex-shrink: 0;
+  color: #f6d73c;
+  font-size: 13px;
+}
 .admin-quote-date-control {
   display: flex;
   min-width: 0;

@@ -1,5 +1,6 @@
 import { inventoryItems, type Inventory, type InventoryFormat } from '../inventory/inventory';
 import type { Vehicle } from '../../../shared/domain/model';
+import { vehicleCapacity as referenceVehicleCapacity } from '../../../shared/domain/vehicles/vehicle-capacity';
 
 const itemVolumes: Record<string, number> = {
   salon: 0.6,
@@ -313,7 +314,13 @@ export function inventoryWeight(inventory: Inventory, annexVolume: number) {
 }
 
 export function vehicleCapacity(vehicle: Vehicle): number {
-  return numberFrom(vehicle.volume) || 10;
+  const calculatedCapacity = referenceVehicleCapacity(
+    String(vehicle.length ?? ''),
+    String(vehicle.height ?? ''),
+    String(vehicle.width ?? ''),
+    String(vehicle.wheelWidth ?? ''),
+  );
+  return numberFrom(calculatedCapacity) || numberFrom(vehicle.volume) || 10;
 }
 
 type VolumeGroups = {

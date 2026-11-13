@@ -384,7 +384,11 @@ test('le mode automatique du formulaire calcule trajet et équipe avec le plan d
     assert.ok(estimate);
     assert.equal(estimate.trips, referenceTrips, 'nombre estimé d’allers-retours');
     assert.equal(estimate.plannedTrips, referenceTrips, 'trajets appliqués dès le premier calcul');
-    assert.equal(estimate.crew, referenceEstimate.n, 'équipe automatique sans ancien effectif résiduel');
+    assert.equal(
+      estimate.crew,
+      referenceEstimate.n,
+      'équipe automatique sans ancien effectif résiduel',
+    );
     assert.equal(estimate.recommendedCrew, referenceEstimate.n, 'manœuvres recommandées');
     assert.equal(estimate.carpenterCount, referenceEstimate.m, 'menuisiers recommandés');
 
@@ -557,16 +561,20 @@ test('le prix de chaque véhicule et la suggestion moins chère reprennent la r�
         inv: legacyInventory,
       });
       assert.ok(referenceLabour);
-      const referenceTotal = reference.calc({
+      const referenceCalculation = reference.calc({
         vehicle: candidate.id,
         km: 20,
         trips: referenceTrips,
         man: referenceLabour.n,
         inv: legacyInventory,
         remise: 0,
-      }).total;
+      });
       const sitePreview = createAdminQuotePreview({
-        draft: { ...draft, vehicleId: candidate.id, options: { ...draft.options, labour: estimate.crew } },
+        draft: {
+          ...draft,
+          vehicleId: candidate.id,
+          options: { ...draft.options, labour: estimate.crew },
+        },
         estimateInventory: inventory,
         config: { ...quoteConfig, trips: estimate.plannedTrips },
         vehicle: candidate,
@@ -579,7 +587,111 @@ test('le prix de chaque véhicule et la suggestion moins chère reprennent la r�
       });
       assert.equal(estimate.trips, referenceTrips, `${candidate.id}: allers-retours`);
       assert.equal(estimate.recommendedCrew, referenceLabour.n, `${candidate.id}: manœuvres`);
-      assert.equal(sitePreview.total, referenceTotal, `${candidate.id}: montant total à 20 km`);
+      assert.equal(
+        sitePreview.total,
+        referenceCalculation.total,
+        `${candidate.id}: montant total à 20 km`,
+      );
+      assert.equal(
+        JSON.stringify(
+          sitePreview.lines.map((line) => [line.quantity, line.unitPrice, line.total]),
+        ),
+        JSON.stringify(referenceCalculation.lines.map((line) => [line.qty, line.pu, line.amount])),
+        `${candidate.id}: détail des lignes du devis`,
+      );
+    }
+
+    const mixedInventory = blankInventory();
+    mixedInventory.dwellingType = 'F3';
+    mixedInventory.flags.fragile = true;
+    mixedInventory.entries.salon = { quantity: 1, size: 5, format: 'medium', dismantle: false };
+    mixedInventory.entries.frigo = { quantity: 1, size: 1, format: 'large', dismantle: false };
+    mixedInventory.entries.carton = { quantity: 30, size: 1, format: 'medium', dismantle: false };
+    const mixedLegacyInventory = {
+      logement: 'f3',
+      annexOn: true,
+      fEt: 0,
+      fAsc: false,
+      tEt: 0,
+      tAsc: false,
+      opts: { acces: false, fragile: true, escalier: false, emballage: false },
+      lines: [
+        { k: 'salon', q: 1, s: 5, g: 'm', dm: false },
+        { k: 'frigo', q: 1, s: 1, g: 'g', dm: false },
+        { k: 'carton', q: 30, s: 1, g: 'm', dm: false },
+      ],
+    };
+    const mixedDraft = { ...draft, inventory: mixedInventory };
+    for (const candidate of fleet) {
+      const estimate = estimateAdminQuoteWork({
+        inventory: mixedInventory,
+        vehicle: candidate,
+        route,
+        draft: mixedDraft,
+        config: quoteConfig,
+        settings: quoteSettings,
+        tollLines: [],
+      });
+      assert.ok(estimate);
+      const referenceTrips = reference.estTrips(mixedLegacyInventory, candidate.id);
+      const referenceLabour = reference.laborEst({
+        vehicle: candidate.id,
+        trips: referenceTrips,
+        km: 20,
+        date,
+        start: '08:00',
+        inv: mixedLegacyInventory,
+      });
+      assert.ok(referenceLabour);
+      const referenceCalculation = reference.calc({
+        vehicle: candidate.id,
+        km: 20,
+        trips: referenceTrips,
+        man: referenceLabour.n,
+        inv: mixedLegacyInventory,
+        remise: 0,
+      });
+      const sitePreview = createAdminQuotePreview({
+        draft: {
+          ...mixedDraft,
+          vehicleId: candidate.id,
+          options: { ...mixedDraft.options, labour: estimate.crew },
+        },
+        estimateInventory: mixedInventory,
+        config: { ...quoteConfig, trips: estimate.plannedTrips },
+        vehicle: candidate,
+        estimate,
+        settings: quoteSettings,
+        price: null,
+        extras,
+        labourPrice: quoteSettings.labourPrice,
+        simulationNeeds: null,
+      });
+      assert.ok(Math.abs(estimate.volume - reference.invVolume(mixedLegacyInventory)) < 1e-9);
+      assert.equal(estimate.totalWeightKg, reference.invKg(mixedLegacyInventory).tot);
+      assert.equal(estimate.trips, referenceTrips, `${candidate.id}: trajets du devis mixte`);
+      assert.equal(
+        estimate.recommendedCrew,
+        referenceLabour.n,
+        `${candidate.id}: manœuvres du devis mixte`,
+      );
+      assert.equal(
+        Math.round(estimate.handlingMinutes),
+        Math.round(referenceLabour.hand * 60),
+        `${candidate.id}: durée de manutention du devis mixte`,
+      );
+      assert.equal(
+        sitePreview.total,
+        referenceCalculation.total,
+        `${candidate.id}: total du devis mixte`,
+      );
+      assert.equal(
+        JSON.stringify(
+          sitePreview.lines.map((line) => [line.quantity, line.unitPrice, line.total]),
+        ),
+        JSON.stringify(referenceCalculation.lines.map((line) => [line.qty, line.pu, line.amount])),
+        `${candidate.id}: lignes du devis mixte`,
+      );
     }
 
     const current = fleet.find((candidate) => candidate.id === 'master')!;
@@ -649,7 +761,9 @@ test('allers-retours et manœuvres concordent avec la référence pour chaque me
     const reference = new ReferenceComponent();
     reference.state = { data: { tarifs: tariffs, peages: [], invCat: {} } };
     for (const [itemIndex, item] of inventoryItems.entries()) {
-      const formats = item.hasFormat ? ['small', 'medium', 'large'] as const : ['medium'] as const;
+      const formats = item.hasFormat
+        ? (['small', 'medium', 'large'] as const)
+        : (['medium'] as const);
       for (const format of formats) {
         const inventory = blankInventory();
         inventory.dwellingType = 'F3';

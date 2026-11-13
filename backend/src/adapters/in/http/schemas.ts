@@ -566,6 +566,8 @@ export const catalogueSchema = z.object({
         lowDemandDiscountPercent: z.number().int().min(0).max(50).default(10),
         manoeuvreOvertimeThresholdHours: z.number().min(1).max(24).default(8),
         manoeuvreOvertimeHourlyRate: z.number().int().min(0).max(10000000).default(0),
+        fill: z.number().min(30).max(100).default(85),
+        fillF: z.number().min(30).max(100).default(75),
         blanketLengthCm: z.number().int().min(50).max(400).optional(),
         blanketWidthCm: z.number().int().min(50).max(400).optional(),
         blanketStock: z.number().int().min(0).optional(),
@@ -594,6 +596,8 @@ export const catalogueSchema = z.object({
         lowDemandDiscountPercent: 10,
         manoeuvreOvertimeThresholdHours: 8,
         manoeuvreOvertimeHourlyRate: 0,
+        fill: 85,
+        fillF: 75,
       }),
     assemblyPrice: z.number().int().min(0).max(1000000),
     montageP: z

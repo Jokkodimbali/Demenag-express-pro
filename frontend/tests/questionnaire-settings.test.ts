@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { ClientQuestion } from '../src/modules/shared/domain/model';
-import { questionnaireFromForm } from '../src/modules/admin/settings/application/catalogue-from-form';
+import { questionnaireFromForm } from '../src/modules/admin/settings/application/mappers/catalogue-from-form';
 
 const original: ClientQuestion[] = [
   {

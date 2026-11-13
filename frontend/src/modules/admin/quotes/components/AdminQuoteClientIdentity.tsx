@@ -1,5 +1,5 @@
 import { ChevronDown } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { uiText } from '../../../shared/content/reference-ui-text';
 import { visibleUiText } from '../../../shared/content/visible-ui-text';
 import { normalizedClientPhone } from '../../../shared/domain/client-identity';
@@ -11,6 +11,12 @@ import {
 } from '../../../shared/application/services/contact-vcard-file';
 import type { Draft } from '../../../booking/application/booking-draft';
 import { adminQuoteVehicleText as quoteText } from '../content/admin-quote-vehicle';
+import {
+  clientNameSuggestions,
+  clientSuggestionSelection,
+  savedClientForPhone,
+  type ClientSuggestionProfile,
+} from '../application/services/client-suggestions';
 
 type ClientRecognition = { phone: string; name: string; bookingCount: number } | null;
 
@@ -25,6 +31,7 @@ export function AdminQuoteClientIdentity({
   editingReservation,
   clientRecognition,
   recognizingClient,
+  clientProfiles = [],
   contactCard,
 }: {
   draft: Draft;
@@ -37,6 +44,7 @@ export function AdminQuoteClientIdentity({
   editingReservation: boolean;
   clientRecognition: ClientRecognition;
   recognizingClient: boolean;
+  clientProfiles?: ClientSuggestionProfile[];
   contactCard: {
     first: string;
     last: string;
@@ -46,6 +54,33 @@ export function AdminQuoteClientIdentity({
   } | null;
 }) {
   const [contactFeedback, setContactFeedback] = useState('');
+  const [clientNameFocused, setClientNameFocused] = useState(false);
+  const clientNameBlurTimeout = useRef<number | undefined>(undefined);
+  const matchedProfile = savedClientForPhone(clientProfiles, draft.customerPhone);
+  const suggestions =
+    clientNameFocused && !matchedProfile
+      ? clientNameSuggestions(clientProfiles, draft.customerName, draft.customerPhone)
+      : [];
+
+  useEffect(
+    () => () => {
+      if (clientNameBlurTimeout.current !== undefined) {
+        window.clearTimeout(clientNameBlurTimeout.current);
+      }
+    },
+    [],
+  );
+
+  function selectClient(profile: ClientSuggestionProfile) {
+    if (clientNameBlurTimeout.current !== undefined) {
+      window.clearTimeout(clientNameBlurTimeout.current);
+    }
+    setClientNameFocused(false);
+    setDraft((current) => ({
+      ...current,
+      ...clientSuggestionSelection(profile, current.fromAddress || ''),
+    }));
+  }
 
   async function copyNamePart(value: string, label: string) {
     if (await copyContactText(value)) {
@@ -91,13 +126,58 @@ export function AdminQuoteClientIdentity({
               <input
                 required
                 maxLength={100}
+                autoComplete="off"
+                readOnly={Boolean(matchedProfile)}
+                title={matchedProfile ? quoteText.savedClientNameTitle : undefined}
+                aria-autocomplete="list"
+                aria-expanded={suggestions.length > 0}
+                aria-controls={suggestions.length ? 'admin-quote-client-suggestions' : undefined}
                 value={draft.customerName}
+                onFocus={() => {
+                  if (clientNameBlurTimeout.current !== undefined) {
+                    window.clearTimeout(clientNameBlurTimeout.current);
+                  }
+                  setClientNameFocused(true);
+                }}
+                onBlur={() => {
+                  clientNameBlurTimeout.current = window.setTimeout(
+                    () => setClientNameFocused(false),
+                    150,
+                  );
+                }}
                 onChange={(event) =>
                   setDraft((current) => ({ ...current, customerName: event.target.value }))
                 }
                 placeholder={uiText['nomDuClient']}
                 aria-label={uiText['nomDuClient']}
               />
+              {matchedProfile && (
+                <span className="admin-quote-saved-client-hint">
+                  {quoteText.savedClientNameHint}
+                </span>
+              )}
+              {suggestions.length > 0 && (
+                <div
+                  className="admin-quote-client-suggestions"
+                  id="admin-quote-client-suggestions"
+                  role="listbox"
+                  aria-label={quoteText.savedClientsSuggestions}
+                >
+                  {suggestions.map((profile) => (
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected="false"
+                      key={`${profile.phone}-${profile.name}`}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => selectClient(profile)}
+                    >
+                      <span>{profile.name}</span>
+                      <span>{profile.phone}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <div>
               <input
@@ -106,12 +186,15 @@ export function AdminQuoteClientIdentity({
                 inputMode="tel"
                 maxLength={25}
                 value={draft.customerPhone}
-                onChange={(event) =>
+                onChange={(event) => {
+                  const phone = sanitizePhoneInput(event.target.value);
+                  const profile = savedClientForPhone(clientProfiles, phone);
                   setDraft((current) => ({
                     ...current,
-                    customerPhone: sanitizePhoneInput(event.target.value),
-                  }))
-                }
+                    customerPhone: phone,
+                    ...(profile ? { customerName: profile.name } : {}),
+                  }));
+                }}
                 placeholder={visibleUiText.text123}
                 aria-label={uiText['telephone']}
               />
