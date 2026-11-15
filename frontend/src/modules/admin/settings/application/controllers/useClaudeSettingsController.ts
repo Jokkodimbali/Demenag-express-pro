@@ -11,11 +11,10 @@ import {
 const disconnected: ClaudeSettingsStatus = { connected: false, model: '', models: [] };
 
 export function useClaudeSettingsController() {
-  const { api, requestConfirmation } = useApp();
+  const { api, requestConfirmation, showSuccessToast, showErrorToast } = useApp();
   const [status, setStatus] = useState<ClaudeSettingsStatus>(disconnected);
   const [key, setKey] = useState('');
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -41,14 +40,15 @@ export function useClaudeSettingsController() {
     }
     setBusy(true);
     setError('');
-    setNotice('');
     try {
       const connected = await api.connectClaudeKey(key.trim());
       setStatus(connected);
       setKey('');
-      setNotice(connectedClaudeNotice(connected));
+      showSuccessToast(connectedClaudeNotice(connected));
     } catch (cause) {
-      setError(`Clé refusée : ${errorMessage(cause)}`);
+      const message = `Clé refusée : ${errorMessage(cause)}`;
+      setError(message);
+      showErrorToast(message);
     } finally {
       setBusy(false);
     }
@@ -57,12 +57,13 @@ export function useClaudeSettingsController() {
   async function test() {
     setBusy(true);
     setError('');
-    setNotice('');
     try {
       const result = await api.testClaude();
-      setNotice(claudeTestNotice(result.response));
+      showSuccessToast(claudeTestNotice(result.response));
     } catch (cause) {
-      setError(`Échec : ${errorMessage(cause)}`);
+      const message = `Échec : ${errorMessage(cause)}`;
+      setError(message);
+      showErrorToast(message);
     } finally {
       setBusy(false);
     }
@@ -79,13 +80,14 @@ export function useClaudeSettingsController() {
     if (!confirmed) return;
     setBusy(true);
     setError('');
-    setNotice('');
     try {
       await api.disconnectClaude();
       setStatus(disconnected);
-      setNotice('Compte Claude déconnecté.');
+      showSuccessToast('Compte Claude déconnecté.');
     } catch (cause) {
-      setError(errorMessage(cause));
+      const message = errorMessage(cause);
+      setError(message);
+      showErrorToast(message);
     } finally {
       setBusy(false);
     }
@@ -98,11 +100,13 @@ export function useClaudeSettingsController() {
       const selected = await api.selectClaudeModel(model);
       setStatus((current) => ({ ...current, model: selected.model, models: selected.models }));
     } catch (cause) {
-      setError(errorMessage(cause));
+      const message = errorMessage(cause);
+      setError(message);
+      showErrorToast(message);
     } finally {
       setBusy(false);
     }
   }
 
-  return { status, key, setKey, busy, notice, error, connect, test, disconnect, selectModel };
+  return { status, key, setKey, busy, error, connect, test, disconnect, selectModel };
 }

@@ -3,7 +3,7 @@ import type { Catalogue } from '../../../shared/domain/model';
 import { useTariffDocuments } from '../application/controllers/useTariffDocuments';
 
 export function TariffDocumentsSettings({ catalogue }: { catalogue: Catalogue }) {
-  const { busy, message, exportDocument } = useTariffDocuments(catalogue);
+  const { busy, error, exportDocument } = useTariffDocuments(catalogue);
   return (
     <section className="reference-settings-wide reference-settings-card reference-tariff-documents">
       <div>
@@ -34,7 +34,11 @@ export function TariffDocumentsSettings({ catalogue }: { catalogue: Catalogue })
           </button>
         </div>
       </div>
-      {message && <p role="status">{message}</p>}
+      {error && (
+        <p role="alert" className="alert error">
+          {error}
+        </p>
+      )}
     </section>
   );
 }

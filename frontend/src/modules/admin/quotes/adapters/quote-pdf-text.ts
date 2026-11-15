@@ -69,36 +69,35 @@ export function withoutInventoryBlock(
   fromAddress: string,
   toAddress: string,
 ): string {
+  let cleaned = value.trim();
   if (inventory?.sourceInventory) {
     const expected = referenceInventoryNote(inventory.sourceInventory, fromAddress, toAddress);
     const exactStart = value.indexOf(expected);
-    if (exactStart >= 0) {
-      return `${value.slice(0, exactStart)}${value.slice(exactStart + expected.length)}`.trim();
-    }
+    if (exactStart >= 0)
+      cleaned = `${value.slice(0, exactStart)}${value.slice(exactStart + expected.length)}`.trim();
   }
-  const lines = value.split(/\r?\n/u);
-  const noteStart = lines.findIndex((line) =>
-    /^Déménagement du .+ de .+ \/ au .+$/iu.test(line.trim()),
-  );
-  if (noteStart >= 0) {
-    const estimateStart = lines.findIndex(
-      (line, index) => index > noteStart && /^Estimation\s*:/iu.test(line.trim()),
+  const generatedInventoryLine = (line: string) => {
+    const normalized = line.trim();
+    return (
+      /^Déménagement du .+ de .+ \/ au .+$/iu.test(normalized) ||
+      /^(?:Estimation\s*:\s*(?:volume|~|≈)|Main-d['’](?:oe|œ)uvre\s*:)/iu.test(normalized) ||
+      /^Main-d['’](?:oe|œ)uvre\s*:\s*\d+\s+man(?:oe|œ)uvres?\b.*(?:trajet\s*(?:~|≈)|durée\s*(?:~|≈))/iu.test(
+        normalized,
+      ) ||
+      /^(?:Trajet\s*:\s*(?:~|≈)|Planning prévisionnel\s*:.*durée\s*(?:~|≈)|Emballage\s*:\s*(?:~|≈))/iu.test(
+        normalized,
+      ) ||
+      /^-\s+\d+\s+.+?(?:≈|~)\s*[\d,.]+\s*m[³3](?:\s|$)/iu.test(normalized) ||
+      /^Logement\s*:/iu.test(normalized) ||
+      /^À noter\s*:/iu.test(normalized)
     );
-    return [...lines.slice(0, noteStart), ...(estimateStart >= 0 ? lines.slice(estimateStart) : [])]
-      .join('\n')
-      .trim();
-  }
-  const start = lines.findIndex((line) =>
-    /^FICHE D['’]APPEL\s*·\s*INVENTAIRE$/iu.test(line.trim()),
-  );
-  if (start < 0) return value.trim();
-  const end = lines.findIndex(
-    (line, index) =>
-      index > start &&
-      (/^Estimation des allers-retours\s*:/iu.test(line.trim()) ||
-        /^Estimation\s*:/iu.test(line.trim())),
-  );
-  return [...lines.slice(0, start), ...(end >= 0 ? lines.slice(end) : [])].join('\n').trim();
+  };
+  return cleaned
+    .split(/\r?\n/u)
+    .filter((line) => !generatedInventoryLine(line))
+    .join('\n')
+    .replace(/\n{2,}/gu, '\n')
+    .trim();
 }
 
 export function durationLabel(minutes: number, step = 5): string {

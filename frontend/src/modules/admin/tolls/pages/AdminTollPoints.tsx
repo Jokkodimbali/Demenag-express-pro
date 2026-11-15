@@ -40,7 +40,7 @@ const referenceVehicleName = (vehicle: Vehicle) =>
   (vehicle.shortName || vehicle.name).replace(/\s+(?:iii|iv)(?:\s+phase\s+\d+)?$/i, '');
 
 export function AdminTollPoints() {
-  const { catalogue, tollPoints, setTollPoints, requestConfirmation } = useApp();
+  const { catalogue, tollPoints, setTollPoints, requestConfirmation, showSuccessToast, showErrorToast } = useApp();
   const commands = useTollPointCommands();
   const vehicles = useMemo(
     () =>
@@ -55,7 +55,6 @@ export function AdminTollPoints() {
   const [axisFilter, setAxisFilter] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
   const updateTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const revisions = useRef(new Map<string, number>());
@@ -110,13 +109,14 @@ export function AdminTollPoints() {
       const input = blankPoint(latitude, longitude, vehicles);
       setBusy(true);
       setError('');
-      setNotice('');
       try {
         const point = await commands.createTollPoint(input);
         setTollPoints((current) => [...current.filter((item) => item.id !== point.id), point]);
         setSelectedId(point.id);
       } catch (reason) {
-        setError(errorMessage(reason));
+        const message = errorMessage(reason);
+        setError(message);
+        showErrorToast(message);
       } finally {
         setBusy(false);
       }
@@ -132,7 +132,6 @@ export function AdminTollPoints() {
       );
       setTollPoints((current) => current.map((item) => (item.id === point.id ? next : item)));
       setError('');
-      setNotice('');
       const revision = (revisions.current.get(point.id) ?? 0) + 1;
       revisions.current.set(point.id, revision);
       const previousTimer = updateTimers.current.get(point.id);
@@ -165,11 +164,13 @@ export function AdminTollPoints() {
                 setTollPoints((current) =>
                   current.map((item) => (item.id === point.id ? savedPoint : item)),
                 );
-                setNotice('Modifications enregistrées.');
+                showSuccessToast('Modifications enregistrées.');
               }
             }
           } catch (reason) {
-            setError(errorMessage(reason));
+            const message = errorMessage(reason);
+            setError(message);
+            showErrorToast(message);
           } finally {
             writesInFlight.current.delete(point.id);
           }
@@ -177,7 +178,7 @@ export function AdminTollPoints() {
       }, delay);
       updateTimers.current.set(point.id, timer);
     },
-    [commands, setTollPoints],
+    [commands, setTollPoints, showSuccessToast, showErrorToast],
   );
 
   const movePoint = useCallback(
@@ -199,19 +200,20 @@ export function AdminTollPoints() {
       if (!confirmed) return;
       setBusy(true);
       setError('');
-      setNotice('');
       try {
         await commands.deleteTollPoint(point.id);
         setTollPoints((current) => current.filter((item) => item.id !== point.id));
         setSelectedId((current) => (current === point.id ? null : current));
-        setNotice('Péage supprimé.');
+        showSuccessToast('Péage supprimé.');
       } catch (reason) {
-        setError(errorMessage(reason));
+        const message = errorMessage(reason);
+        setError(message);
+        showErrorToast(message);
       } finally {
         setBusy(false);
       }
     },
-    [commands, requestConfirmation, setTollPoints],
+    [commands, requestConfirmation, setTollPoints, showSuccessToast, showErrorToast],
   );
 
   const mapMovePoint = useCallback(
@@ -240,9 +242,9 @@ export function AdminTollPoints() {
         </div>
       </div>
 
-      {(error || notice) && (
-        <p className={error ? 'alert error' : 'alert success'} role={error ? 'alert' : 'status'}>
-          {error || notice}
+      {error && (
+        <p className="alert error" role="alert">
+          {error}
         </p>
       )}
 

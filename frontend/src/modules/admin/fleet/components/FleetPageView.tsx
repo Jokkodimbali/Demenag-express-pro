@@ -1,5 +1,4 @@
 import { visibleUiText } from '../../../shared/content/visible-ui-text';
-import { uiText } from '../../../shared/content/reference-ui-text';
 import type { useAdminFleetPageModel } from '../application/controllers/useAdminFleetPageModel';
 import { FleetMapPanel } from './FleetMapPanel';
 import { FleetPlanningPanel } from './FleetPlanningPanel';
@@ -9,8 +8,6 @@ export function FleetPageView({ model }: { model: Model }) {
   const {
     pageError,
     bookingsError,
-    toast,
-    setToast,
     whatsappBriefQueue,
     openNextWhatsAppBrief,
     cancelWhatsAppBriefs,
@@ -43,11 +40,6 @@ export function FleetPageView({ model }: { model: Model }) {
         <p role="alert" className="teams-error-banner">
           {pageError || bookingsError}
         </p>
-      )}
-      {toast && (
-        <button className="teams-toast" onClick={() => setToast('')}>
-          {toast} {uiText['fermer2']}
-        </button>
       )}
     </main>
   );

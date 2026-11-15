@@ -135,6 +135,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     user,
     api,
     requestConfirmation,
+    showSuccessToast,
   } = useApp();
   useEffect(() => {
     if (user?.role !== 'admin') {
@@ -340,7 +341,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       );
       state.setEditingBooking(updated);
       setQuoteKind(kind);
-      setQuoteKindNotice(
+      showSuccessToast(
         kind === 'final'
           ? visibleUiText.quoteStageFinalNotice
           : visibleUiText.quoteStageProvisionalNotice,

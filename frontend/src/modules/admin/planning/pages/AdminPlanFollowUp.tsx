@@ -357,7 +357,7 @@ function PlanRow({
 }
 
 export function AdminPlanFollowUp() {
-  const { api } = useApp();
+  const { api, showSuccessToast } = useApp();
   const commands = useBookingCommands();
   const { bookings, setBookings, loading, error } = useAdministration();
   const [period, setPeriod] = useState<Period>('week');
@@ -417,6 +417,7 @@ export function AdminPlanFollowUp() {
           },
         );
         setBookings((items) => items.map((item) => (item.id === next.id ? next : item)));
+        showSuccessToast('Suivi du planning enregistré.');
         return next;
       });
     queues.current.set(booking.id, task);

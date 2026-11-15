@@ -10,7 +10,7 @@ import {
   resetCatalogueTariffsToReference,
 } from '../../domain/reference-tariff-defaults';
 export function useSettings() {
-  const { api, catalogue, setCatalogue } = useApp();
+  const { api, catalogue, setCatalogue, showSuccessToast, showErrorToast } = useApp();
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [saved, setSaved] = useState(false),
@@ -36,9 +36,16 @@ export function useSettings() {
         const updated = await api.updateCatalogue(await catalogueFromForm(formData, current));
         catalogueRef.current = updated;
         setCatalogue(updated);
-        if (mounted.current) setSaved(true);
+        if (mounted.current) {
+          setSaved(true);
+          showSuccessToast('Paramètres enregistrés.');
+        }
       } catch (cause) {
-        if (mounted.current) setError(errorMessage(cause));
+        if (mounted.current) {
+          const message = errorMessage(cause);
+          setError(message);
+          showErrorToast(message);
+        }
       } finally {
         if (mounted.current) setBusy(false);
       }
@@ -129,9 +136,16 @@ export function useSettings() {
         catalogueRef.current = updated;
         setCatalogue(updated);
         succeeded = true;
-        if (mounted.current) setSaved(true);
+        if (mounted.current) {
+          setSaved(true);
+          showSuccessToast('Paramètres enregistrés.');
+        }
       } catch (cause) {
-        if (mounted.current) setError(errorMessage(cause));
+        if (mounted.current) {
+          const message = errorMessage(cause);
+          setError(message);
+          showErrorToast(message);
+        }
       } finally {
         if (mounted.current) setBusy(false);
       }

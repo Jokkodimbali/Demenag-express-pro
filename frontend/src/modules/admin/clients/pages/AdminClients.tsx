@@ -216,7 +216,7 @@ function ClientRow({
   );
 }
 export function AdminClients() {
-  const { requestConfirmation, catalogue } = useApp();
+  const { requestConfirmation, catalogue, showSuccessToast, showErrorToast } = useApp();
   const { loadDirectory, updateClient, hideClientProfile, resetClientPassword } = useAdminClients();
   const { bookings, loading, error, setRetry } = useAdministration();
   const navigate = useNavigate();
@@ -318,6 +318,7 @@ export function AdminClients() {
     setBusyKey(initial.key);
     try {
       await updateClient(initial.key, next);
+      showSuccessToast(`Fiche client de ${next.name || next.phone} enregistrée.`);
       const newKey = normalizedClientPhone(next.phone);
       setProfiles((old) => [
         ...old.filter(
@@ -328,6 +329,9 @@ export function AdminClients() {
         { phone: next.phone, name: next.name, address: next.address },
       ]);
       setRetry((value) => value + 1);
+    } catch (cause) {
+      showErrorToast(errorMessage(cause));
+      throw cause;
     } finally {
       setBusyKey('');
     }
@@ -347,8 +351,10 @@ export function AdminClients() {
         ...old.filter((value) => normalizedClientPhone(value.phone) !== client.key),
         entry,
       ]);
+      showSuccessToast(`Fiche de ${client.name || client.phone} masquée.`);
     } catch (e) {
       setDirectoryError(errorMessage(e));
+      showErrorToast(errorMessage(e));
     }
   }
   async function resetPassword(event: React.FormEvent<HTMLFormElement>) {
@@ -365,8 +371,11 @@ export function AdminClients() {
         ),
       );
       setResetTarget(null);
+      showSuccessToast(`Mot de passe réinitialisé pour ${resetTarget.name || resetTarget.phone}.`);
     } catch (e) {
-      setResetError(errorMessage(e));
+      const message = errorMessage(e);
+      setResetError(message);
+      showErrorToast(message);
     } finally {
       setResetBusy(false);
     }

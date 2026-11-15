@@ -7,7 +7,7 @@ export function ClaudeSettings({
 }: {
   onConnectionChange?: (connected: boolean) => void;
 }) {
-  const { status, key, setKey, busy, notice, error, connect, test, disconnect, selectModel } =
+  const { status, key, setKey, busy, error, connect, test, disconnect, selectModel } =
     useClaudeSettingsController();
   const modelName = status.models.find((item) => item.id === status.model)?.name ?? status.model;
   useEffect(() => {
@@ -106,11 +106,6 @@ export function ClaudeSettings({
         <span>{text.claudeInstructionThree}</span>
       </div>
       <span className="reference-claude-security-note">{text.claudeSecurityNote}</span>
-      {notice && (
-        <span className="reference-claude-notice" role="status">
-          {notice}
-        </span>
-      )}
       {error && (
         <span className="reference-claude-error" role="alert">
           {error}

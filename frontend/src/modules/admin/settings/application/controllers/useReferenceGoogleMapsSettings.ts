@@ -3,7 +3,7 @@ import { useApp } from '../../../../shared/application/context';
 import { errorMessage } from '../../../../shared/application/error-message';
 
 export function useReferenceGoogleMapsSettings() {
-  const { api } = useApp();
+  const { api, showSuccessToast, showErrorToast } = useApp();
   const [key, setKey] = useState('');
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(false);
@@ -30,9 +30,12 @@ export function useReferenceGoogleMapsSettings() {
     try {
       await api.updateGoogleMapsApiKey(value.trim());
       setError('');
+      showSuccessToast('Clé Google Maps enregistrée.');
       return true;
     } catch (cause) {
-      setError(errorMessage(cause));
+      const message = errorMessage(cause);
+      setError(message);
+      showErrorToast(message);
       return false;
     }
   }

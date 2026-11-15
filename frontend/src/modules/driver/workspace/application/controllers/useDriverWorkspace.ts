@@ -5,7 +5,7 @@ import { errorMessage } from '../../../../shared/application/error-message';
 import { dataUrl } from '../../../../shared/application/validation/image-data-url';
 
 export function useDriverWorkspace(loadBookings = true) {
-  const { api, user, setUser } = useApp();
+  const { api, user, setUser, showSuccessToast, showErrorToast } = useApp();
   const [profile, setProfile] = useState<Driver | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,7 +60,9 @@ export function useDriverWorkspace(loadBookings = true) {
       if (user) setUser({ ...user, photo: updated.photo });
       return true;
     } catch (reason) {
-      setError(errorMessage(reason));
+      const message = errorMessage(reason);
+      setError(message);
+      showErrorToast(message);
       return false;
     } finally {
       setPhotoSaving(false);
@@ -82,11 +84,13 @@ export function useDriverWorkspace(loadBookings = true) {
         confirmed = updated;
         if (!pendingAvailability.current) setProfile(updated);
       }
+      showSuccessToast('Disponibilités enregistrées.');
       return true;
     } catch (reason) {
       pendingAvailability.current = null;
       setProfile(confirmed);
       setError(errorMessage(reason));
+      showErrorToast(errorMessage(reason));
       return false;
     } finally {
       availabilityRunning.current = false;

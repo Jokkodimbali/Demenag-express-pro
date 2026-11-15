@@ -40,7 +40,7 @@ function downloadCsv(entries: AccountingEntry[], period: string) {
 }
 
 export function useAccounting() {
-  const { api } = useApp();
+  const { api, showSuccessToast, showErrorToast } = useApp();
   const { bookings } = useAdministration();
   const requestSequence = useRef(0);
   const [month, setMonth] = useState(() => currentAccountingDate().slice(0, 7));
@@ -113,17 +113,22 @@ export function useAccounting() {
           .then(() => api.saveAccountingConfiguration(next));
         void saveChain.current.then(
           () => {
-            if (revision === saveRevision.current) setFinanceSaving(false);
+            if (revision === saveRevision.current) {
+              setFinanceSaving(false);
+              showSuccessToast('Configuration comptable enregistrée.');
+            }
           },
           (cause: unknown) => {
             if (revision !== saveRevision.current) return;
             setFinanceSaving(false);
-            setError(errorMessage(cause));
+            const message = errorMessage(cause);
+            setError(message);
+            showErrorToast(message);
           },
         );
       }, 450);
     },
-    [api],
+    [api, showSuccessToast, showErrorToast],
   );
 
   useEffect(
@@ -193,8 +198,11 @@ export function useAccounting() {
       await api.createAccountingEntry(accountingEntryForSubmission(form));
       setForm((previous) => ({ ...previous, label: '', amount: 0 }));
       setStoredEntries(await api.accountingEntries());
+      showSuccessToast('Écriture ajoutée au journal.');
     } catch (cause) {
-      setError(errorMessage(cause));
+      const message = errorMessage(cause);
+      setError(message);
+      showErrorToast(message);
     } finally {
       setBusy(false);
     }
@@ -206,10 +214,14 @@ export function useAccounting() {
     setError('');
     try {
       await api.voidAccountingEntry(pendingVoid.id);
+      const voidedLabel = pendingVoid.label;
       setPendingVoid(null);
       setStoredEntries(await api.accountingEntries());
+      showSuccessToast(`Écriture « ${voidedLabel} » annulée.`);
     } catch (cause) {
-      setError(errorMessage(cause));
+      const message = errorMessage(cause);
+      setError(message);
+      showErrorToast(message);
     } finally {
       setBusy(false);
     }

@@ -62,7 +62,7 @@ export function useBookingForm({
   getRentalKit?: () => RentalKitItem[];
   buildAdministrativeQuoteSubmission?: AdministrativeQuoteSubmissionBuilder;
 } = {}) {
-  const { catalogue, tollPoints, loading, error, reload, api, user, authLoading } = useApp();
+  const { catalogue, tollPoints, loading, error, reload, api, user, authLoading, showErrorToast } = useApp();
   const { draft, setDraft } = useBookingDraft();
   const navigate = useNavigate();
   const location = useLocation();
@@ -491,6 +491,7 @@ export function useBookingForm({
       document.getElementById('reserver')?.scrollIntoView({ behavior: 'smooth' });
     } catch (e) {
       const message = errorMessage(e);
+      showErrorToast(message);
       if (administrativeQuote) {
         setSubmitError(message);
       } else {

@@ -67,7 +67,7 @@ export function useAdminFleetPageModel() {
   const [searchParams] = useSearchParams();
   const targetDay = searchParams.get('date') ?? '';
   const targetBooking = searchParams.get('booking') ?? '';
-  const { catalogue, requestConfirmation } = useApp();
+  const { catalogue, requestConfirmation, showSuccessToast, showErrorToast } = useApp();
   const fleetCommands = useAdminFleet();
   const businessWhatsAppPhone =
     catalogue?.settings.whatsappPhone || catalogue?.settings.businessPhone || '';
@@ -97,7 +97,6 @@ export function useAdminFleetPageModel() {
   const [savingBooking, setSavingBooking] = useState('');
   const [savingEmployee, setSavingEmployee] = useState('');
   const [pageError, setPageError] = useState('');
-  const [toast, setToast] = useState('');
   const [copiedBooking, setCopiedBooking] = useState('');
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const [openInfo, setOpenInfo] = useState<Record<string, boolean>>({});
@@ -213,6 +212,7 @@ export function useAdminFleetPageModel() {
             current.map((item) => (item.id === employee.id ? confirmed : item)),
           );
           setPageError(errorMessage(cause));
+          showErrorToast(errorMessage(cause));
         }
         return null;
       } finally {
@@ -222,7 +222,7 @@ export function useAdminFleetPageModel() {
         }
       }
     },
-    [fleetCommands],
+    [fleetCommands, showErrorToast],
   );
   const saveTeam = useCallback(
     async (booking: Booking, patch: Partial<Booking>) => {
@@ -243,12 +243,13 @@ export function useAdminFleetPageModel() {
         return updated;
       } catch (cause) {
         setPageError(errorMessage(cause));
+        showErrorToast(errorMessage(cause));
         return null;
       } finally {
         if (!bookingSaveQueuesRef.current.has(booking.id)) setSavingBooking('');
       }
     },
-    [fleetCommands, setBookings],
+    [fleetCommands, setBookings, showErrorToast],
   );
 
   const { mapRef } = useAdminFleetMap({
@@ -264,7 +265,9 @@ export function useAdminFleetPageModel() {
     selectedRoute,
     fleetCommands,
     saveEmployee,
-    setToast,
+    setToast: (message) => {
+      if (typeof message === 'string' && message) showSuccessToast(message);
+    },
   });
 
   const applyMemberPatch = async (employee: Driver, patch: Partial<Driver>) => {
@@ -288,6 +291,7 @@ export function useAdminFleetPageModel() {
       setMapError('');
     } catch (cause) {
       setMapError(errorMessage(cause));
+      showErrorToast(errorMessage(cause));
     }
   };
   const addEmployee = async () => {
@@ -328,7 +332,7 @@ export function useAdminFleetPageModel() {
         role: 'manoeuvre',
         authorizedVehicleIds: [],
       });
-      setToast(`${name} ajouté(e).`);
+      showSuccessToast(`${name} ajouté(e).`);
       if (employee.address) {
         try {
           const result = await fleetCommands.searchAddress(`${employee.address}, Sénégal`);
@@ -343,6 +347,7 @@ export function useAdminFleetPageModel() {
       }
     } catch (cause) {
       setPageError(errorMessage(cause));
+      showErrorToast(errorMessage(cause));
     }
   };
   const resetEmployeePassword = async (employee: Driver) => {
@@ -365,9 +370,10 @@ export function useAdminFleetPageModel() {
         password,
         purpose: 'reset',
       });
-      setToast(`Nouveau mot de passe créé pour ${employee.name}.`);
+      showSuccessToast(`Nouveau mot de passe créé pour ${employee.name}.`);
     } catch (cause) {
       setPageError(errorMessage(cause));
+      showErrorToast(errorMessage(cause));
     } finally {
       setSavingEmployee('');
     }
@@ -390,15 +396,16 @@ export function useAdminFleetPageModel() {
         setEmployees((current) => current.filter((item) => item.id !== employee.id));
         setBookings(await fleetCommands.loadBookings());
         if (selectedEmployee === employee.id) setSelectedEmployee('');
-        setToast(`${employee.name} supprimé(e).`);
+        showSuccessToast(`${employee.name} supprimé(e).`);
       } else {
         setEmployees((current) =>
           current.map((item) => (item.id === employee.id ? result.employee : item)),
         );
-        setToast(`${employee.name} désactivé(e) : son compte chauffeur est conservé.`);
+        showSuccessToast(`${employee.name} désactivé(e) : son compte chauffeur est conservé.`);
       }
     } catch (cause) {
       setPageError(errorMessage(cause));
+      showErrorToast(errorMessage(cause));
     } finally {
       setSavingEmployee('');
     }
@@ -437,7 +444,7 @@ export function useAdminFleetPageModel() {
       if (saved)
         plannedBookings = plannedBookings.map((item) => (item.id === saved.id ? saved : item));
     }
-    setToast(
+    showSuccessToast(
       added
         ? `${added} affectation(s) ajoutée(s)${missing ? `, il manque encore ${missing} personne(s).` : '.'}`
         : missing
@@ -500,7 +507,7 @@ export function useAdminFleetPageModel() {
       [first.member.id]: new Date().toISOString(),
     };
     await saveTeam(booking, { crewBriefs });
-    setToast(
+    showSuccessToast(
       remaining.length
         ? `Message WhatsApp préparé pour ${first.member.name}. Ouvrez chaque conversation suivante avec le bouton affiché.`
         : `Message WhatsApp préparé pour ${first.member.name}.`,
@@ -519,7 +526,7 @@ export function useAdminFleetPageModel() {
         [next.member.id]: new Date().toISOString(),
       },
     });
-    setToast(
+    showSuccessToast(
       remaining.length
         ? `Message WhatsApp préparé pour ${next.member.name}. Ouvrez la conversation suivante avec le bouton affiché.`
         : `Message WhatsApp préparé pour ${next.member.name}.`,
@@ -633,8 +640,6 @@ export function useAdminFleetPageModel() {
     setSavingEmployee,
     pageError,
     setPageError,
-    toast,
-    setToast,
     copiedBooking,
     setCopiedBooking,
     openSections,

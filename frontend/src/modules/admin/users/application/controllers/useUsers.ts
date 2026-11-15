@@ -5,7 +5,7 @@ import { errorMessage } from '../../../../shared/application/error-message';
 import { userFromForm } from '../mappers/user-from-form';
 import { mergeUserDirectory } from '../services/user-directory';
 export function useUsers() {
-  const { api, user: actor } = useApp();
+  const { api, user: actor, showSuccessToast, showErrorToast } = useApp();
   const [users, setUsers] = useState<User[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -46,9 +46,12 @@ export function useUsers() {
           ? [updated, ...rows]
           : rows.map((row) => (row.id === updated.id ? updated : row)),
       );
+      showSuccessToast(editing === 'new' ? 'Compte créé.' : 'Compte mis à jour.');
       setEditing(null);
     } catch (e) {
-      setError(errorMessage(e));
+      const message = errorMessage(e);
+      setError(message);
+      showErrorToast(message);
     } finally {
       setBusy(false);
     }
@@ -62,9 +65,12 @@ export function useUsers() {
       setUsers((rows) =>
         rows.map((row) => (row.id === userId ? { ...row, passwordResetRequestedAt: null } : row)),
       );
+      showSuccessToast('Mot de passe client réinitialisé.');
       return true;
     } catch (cause) {
-      setError(errorMessage(cause));
+      const message = errorMessage(cause);
+      setError(message);
+      showErrorToast(message);
       return false;
     } finally {
       setBusy(false);

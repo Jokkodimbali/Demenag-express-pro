@@ -10,11 +10,10 @@ import { visibleUiText } from '../../shared/content/visible-ui-text';
 import { sanitizePhoneInput } from '../../shared/domain/phone-number';
 
 export function AdminProfileForm() {
-  const { user } = useApp();
+  const { user, showSuccessToast, showErrorToast } = useApp();
   const { updateProfile } = useAdminProfile();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [saved, setSaved] = useState(false);
 
   if (!user || user.role !== 'admin') return null;
   const admin = user;
@@ -24,7 +23,6 @@ export function AdminProfileForm() {
     if (saving) return;
     setSaving(true);
     setError('');
-    setSaved(false);
     const form = new FormData(event.currentTarget);
     try {
       const photo = await dataUrl(form.get('photo'), admin.photo ?? '');
@@ -37,9 +35,11 @@ export function AdminProfileForm() {
             .toLowerCase() || null,
         photo: photo || null,
       });
-      setSaved(true);
+      showSuccessToast(messages.profilMisAJour);
     } catch (reason) {
-      setError(errorMessage(reason));
+      const message = errorMessage(reason);
+      setError(message);
+      showErrorToast(message);
     } finally {
       setSaving(false);
     }
@@ -115,11 +115,6 @@ export function AdminProfileForm() {
         {error && (
           <p role="alert" className="alert error">
             {error}
-          </p>
-        )}
-        {saved && (
-          <p role="status" className="alert success">
-            {messages.profilMisAJour}
           </p>
         )}
         <div className="driver-profile-actions">

@@ -97,6 +97,58 @@
   padding-left: 14px;
   padding-right: 14px;
 }
+.reference-success-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(92px + env(safe-area-inset-bottom));
+  z-index: 2600;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: max-content;
+  max-width: min(560px, 92vw);
+  padding: 10px 12px 10px 16px;
+  transform: translateX(-50%);
+  border: 1px solid #3ddc84;
+  border-radius: 14px;
+  background: #272a2e;
+  box-shadow: 0 10px 30px #0008;
+  margin: 0;
+  inset: auto auto calc(92px + env(safe-area-inset-bottom)) 50%;
+}
+.reference-success-toast.is-error {
+  border-color: #ff5a5f;
+}
+.reference-success-toast::backdrop {
+  display: none;
+}
+.reference-success-toast > span {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+.reference-success-toast button {
+  flex: 0 0 auto;
+  min-height: 44px;
+  border: 0;
+  cursor: pointer;
+}
+.reference-success-toast-undo {
+  padding: 0 14px;
+  border-radius: 9px;
+  background: #f6d73c;
+  color: #1e2023;
+  font-size: 13.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.reference-success-toast-close {
+  padding: 0 6px;
+  background: transparent;
+  color: #aeb4bb;
+  font-size: 18px;
+}
 .workspace-page .section-heading {
   margin-bottom: 32px;
 }

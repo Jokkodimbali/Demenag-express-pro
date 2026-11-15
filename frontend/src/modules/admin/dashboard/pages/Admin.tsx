@@ -2,7 +2,7 @@ import { liveBookingPrice } from '../../../moving/application/services/live-book
 import { uiText } from '../../../shared/content/reference-ui-text';
 import { useEffect, useState } from 'react';
 import { MessageCircle, Search, X } from 'lucide-react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { administrationQuoteForBooking, routes } from '../../../shared/navigation/config/routes';
 import { useAdministration } from '../../application/controllers/useAdministration';
 import { ConfirmationDialog } from '../../../shared/feedback/ConfirmationDialog';
@@ -75,9 +75,8 @@ function referenceMoney(value: number | null) {
 
 export function Admin() {
   const { bookings, loading, error, recordBookingReminder, removeBooking } = useAdministration();
-  const { catalogue } = useApp();
+  const { catalogue, showSuccessToast } = useApp();
   const [params] = useSearchParams();
-  const location = useLocation();
   const navigate = useNavigate();
   const [reservationFilter, setReservationFilter] = useState<ReservationFilter>('all');
   const [searchQuery, setSearchQuery] = useState(() => params.get('q') ?? '');
@@ -88,9 +87,6 @@ export function Admin() {
   const [deleteTarget, setDeleteTarget] = useState<Booking | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState('');
-  const [successToast, setSuccessToast] = useState(
-    () => (location.state as { successMessage?: string } | null)?.successMessage ?? '',
-  );
   const periodBookings = bookings.filter((booking) => {
     if (period === 'all') return true;
     if (!booking.date) return false;
@@ -159,6 +155,7 @@ export function Admin() {
     setActionError('');
     try {
       await recordBookingReminder(booking.id);
+      showSuccessToast(`Rappel enregistré pour ${booking.customerName || booking.reference}.`);
     } catch (reason) {
       setActionError(
         reason instanceof Error ? reason.message : 'Le rappel n’a pas pu être enregistré.',
@@ -173,7 +170,7 @@ export function Admin() {
     setDeleteError('');
     try {
       await removeBooking(deleteTarget.id);
-      setSuccessToast(`Réservation ${deleteTarget.reference} placée dans la corbeille.`);
+      showSuccessToast(`Réservation ${deleteTarget.reference} placée dans la corbeille.`);
       setDeleteTarget(null);
     } catch (reason) {
       setDeleteError(
@@ -195,11 +192,6 @@ export function Admin() {
       {actionError && (
         <p className="alert error" role="alert">
           {actionError}
-        </p>
-      )}
-      {successToast && (
-        <p className="alert success" role="status">
-          {successToast}
         </p>
       )}
       {deleteTarget && (

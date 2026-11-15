@@ -11,7 +11,7 @@ import {
 export type { AdminEmployeeProof } from '../services/employee-proofs';
 
 export function useAdminVehicleReports() {
-  const { api } = useApp();
+  const { api, showSuccessToast, showErrorToast } = useApp();
   const [reports, setReports] = useState<VehicleReports>({ inspections: [], breakdowns: [] });
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -76,15 +76,18 @@ export function useAdminVehicleReports() {
           current.map((booking) => (booking.id === updated.id ? updated : booking)),
         );
         setError('');
+        showSuccessToast('Preuve de déménagement mise à jour.');
       } catch (reason) {
-        setError(errorMessage(reason));
+        const message = errorMessage(reason);
+        setError(message);
+        showErrorToast(message);
         throw reason;
       } finally {
         if (bookingWrites.current.get(bookingId) === operation)
           bookingWrites.current.delete(bookingId);
       }
     },
-    [api],
+    [api, showSuccessToast, showErrorToast],
   );
 
   const deleteProof = useCallback(
@@ -100,15 +103,18 @@ export function useAdminVehicleReports() {
           current.map((booking) => (booking.id === updated.id ? updated : booking)),
         );
         setError('');
+        showSuccessToast('Preuve de déménagement supprimée.');
       } catch (reason) {
-        setError(errorMessage(reason));
+        const message = errorMessage(reason);
+        setError(message);
+        showErrorToast(message);
         throw reason;
       } finally {
         if (bookingWrites.current.get(bookingId) === operation)
           bookingWrites.current.delete(bookingId);
       }
     },
-    [api],
+    [api, showSuccessToast, showErrorToast],
   );
 
   const updateInspectionLevel = useCallback(
@@ -126,11 +132,14 @@ export function useAdminVehicleReports() {
           ),
         }));
         setError('');
+        showSuccessToast('Résultat du contrôle mis à jour.');
       } catch (reason) {
-        setError(errorMessage(reason));
+        const message = errorMessage(reason);
+        setError(message);
+        showErrorToast(message);
       }
     },
-    [api],
+    [api, showSuccessToast, showErrorToast],
   );
 
   const deleteInspection = useCallback(
@@ -142,11 +151,14 @@ export function useAdminVehicleReports() {
           inspections: current.inspections.filter((inspection) => inspection.id !== id),
         }));
         setError('');
+        showSuccessToast('Contrôle véhicule supprimé.');
       } catch (reason) {
-        setError(errorMessage(reason));
+        const message = errorMessage(reason);
+        setError(message);
+        showErrorToast(message);
       }
     },
-    [api],
+    [api, showSuccessToast, showErrorToast],
   );
 
   return {

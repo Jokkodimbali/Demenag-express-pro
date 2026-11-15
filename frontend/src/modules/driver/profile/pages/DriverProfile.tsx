@@ -1,6 +1,7 @@
 import { ArrowLeft, CircleUserRound, RefreshCw, Save } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useApp } from '../../../shared/application/context';
 import { PasswordForm } from '../../../shared/forms/PasswordForm';
 import { PhotoPicker } from '../../../shared/forms/PhotoPicker';
 import { useDriverWorkspace } from '../../workspace/application/controllers/useDriverWorkspace';
@@ -10,8 +11,8 @@ import { visibleUiText } from '../../../shared/content/visible-ui-text';
 
 export function DriverProfile() {
   const { profile, loading, error, photoSaving, setRetry, savePhoto } = useDriverWorkspace(false);
+  const { showSuccessToast } = useApp();
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
-  const [photoSaved, setPhotoSaved] = useState(false);
 
   return (
     <section className="container workspace-page driver-profile-page">
@@ -70,14 +71,8 @@ export function DriverProfile() {
               importButtonLabel="Importer une photo"
               onChange={(files) => {
                 setPhotoFiles(files);
-                setPhotoSaved(false);
               }}
             />
-            {photoSaved ? (
-              <p className="alert success" role="status">
-                {visibleUiText.text94}
-              </p>
-            ) : null}
             <div className="driver-profile-actions">
               <button
                 className="button primary small"
@@ -86,7 +81,7 @@ export function DriverProfile() {
                 onClick={async () => {
                   if (await savePhoto(photoFiles[0] ?? null)) {
                     setPhotoFiles([]);
-                    setPhotoSaved(true);
+                    showSuccessToast(visibleUiText.text94);
                   }
                 }}
               >

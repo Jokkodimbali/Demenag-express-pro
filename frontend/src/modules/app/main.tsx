@@ -2,7 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { createHttpApi } from '../shared/adapters/http-api';
-import { AppProvider } from '../shared/application/context';
+import { AppProvider, AppSuccessToastHost } from '../shared/application/context';
 import { AppConfirmation } from '../shared/feedback/AppConfirmation';
 import { BookingDraftProvider } from '../booking/application/booking-draft-context';
 import { LoadingSimulationPdfProvider } from '../booking/application/loading-simulation-pdf-context';
@@ -57,6 +57,7 @@ createRoot(document.getElementById('root')!).render(
           <LoadingSimulationPdfProvider exporter={generateLoadingSimulationPdf}>
             <AppRoutes />
             <AppConfirmation />
+            <AppSuccessToastHost />
           </LoadingSimulationPdfProvider>
         </BookingDraftProvider>
       </AppProvider>

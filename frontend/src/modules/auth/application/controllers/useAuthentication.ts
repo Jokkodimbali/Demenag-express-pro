@@ -26,7 +26,7 @@ function formValues(form: HTMLFormElement): AuthenticationFormValues {
 }
 
 export function useAuthentication() {
-  const { api, setUser } = useApp();
+  const { api, setUser, showErrorToast } = useApp();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const [register, setRegister] = useState(false),
@@ -77,6 +77,7 @@ export function useAuthentication() {
       });
     } catch (e) {
       const message = errorMessage(e);
+      showErrorToast(message);
       const apiFieldErrors = authenticationFieldErrorsForApiFailure(message, register);
       if (apiFieldErrors) {
         setFieldErrors(apiFieldErrors);
@@ -99,7 +100,9 @@ export function useAuthentication() {
       await api.requestPasswordReset(String(form.get('phone')));
       setResetSent(true);
     } catch (cause) {
-      setError(errorMessage(cause));
+      const message = errorMessage(cause);
+      setError(message);
+      showErrorToast(message);
     } finally {
       setBusy(false);
     }

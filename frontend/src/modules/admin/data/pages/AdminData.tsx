@@ -2,7 +2,7 @@ import { useAdminData } from '../application/controllers/useAdminData';
 import { visibleUiText } from '../../../shared/content/visible-ui-text';
 
 export function AdminData() {
-  const { items, loading, busy, error, notice, restore, purge } = useAdminData();
+  const { items, loading, busy, error, restore, purge } = useAdminData();
 
   return (
     <section className="admin-data-page">
@@ -46,11 +46,6 @@ export function AdminData() {
           </article>
         ))}
       </div>
-      {notice && (
-        <p className="alert success" role="status">
-          {notice}
-        </p>
-      )}
       {error && (
         <p className="alert error" role="alert">
           {error}

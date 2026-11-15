@@ -53,7 +53,7 @@ export function RentalKitSettings({ catalogue }: { catalogue: Catalogue }) {
   );
   const [imageError, setImageError] = useState('');
   const countInput = useRef<HTMLInputElement>(null);
-  const { requestConfirmation } = useApp();
+  const { requestConfirmation, showSuccessToast } = useApp();
   const notifyForm = () =>
     countInput.current?.dispatchEvent(new Event('change', { bubbles: true }));
   const vehicleImage =
@@ -98,6 +98,7 @@ export function RentalKitSettings({ catalogue }: { catalogue: Catalogue }) {
     if (!confirmed) return;
     setItems(defaultRentalKitConfiguration.map((item) => ({ ...item })));
     window.setTimeout(notifyForm, 0);
+    showSuccessToast('Matériel de déménagement rétabli par défaut.');
   }
 
   async function chooseImage(index: number, file: File | undefined) {

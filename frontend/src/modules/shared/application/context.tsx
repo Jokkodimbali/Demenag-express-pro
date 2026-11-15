@@ -35,6 +35,10 @@ type AppContextValue = {
   confirmation: ConfirmationRequest | null;
   requestConfirmation: (request: ConfirmationRequest) => Promise<boolean>;
   resolveConfirmation: (confirmed: boolean) => void;
+  showSuccessToast: (message: string, undo?: () => void) => void;
+  showErrorToast: (message: string) => void;
+  successToast: { message: string; undo?: () => void; type: 'success' | 'error' } | null;
+  closeSuccessToast: () => void;
 };
 export type ConfirmationRequest = {
   titleId: string;
@@ -44,6 +48,38 @@ export type ConfirmationRequest = {
   confirmLabel: string;
 };
 const AppContext = createContext<AppContextValue | null>(null);
+
+function AppSuccessToast({
+  message,
+  undo,
+  type,
+  onClose,
+}: {
+  message: string;
+  undo?: () => void;
+  type: 'success' | 'error';
+  onClose: () => void;
+}) {
+  return (
+    <div className={`reference-success-toast${type === 'error' ? ' is-error' : ''}`} role={type === 'error' ? 'alert' : 'status'} aria-live={type === 'error' ? 'assertive' : 'polite'} aria-atomic="true">
+      <span>{message}</span>
+      {undo && (
+        <button type="button" className="reference-success-toast-undo" onClick={undo}>
+          Annuler
+        </button>
+      )}
+      <button
+        type="button"
+        className="reference-success-toast-close"
+        aria-label="Fermer la notification"
+        onClick={onClose}
+      >
+        ×
+      </button>
+    </div>
+  );
+}
+
 export function AppProvider({
   api,
   exportQuote,
@@ -67,6 +103,10 @@ export function AppProvider({
     [retry, setRetry] = useState(0);
   const [tollPoints, setTollPoints] = useState<TollPoint[]>([]);
   const [confirmation, setConfirmation] = useState<ConfirmationRequest | null>(null);
+  const [successToast, setSuccessToast] = useState<{ message: string; undo?: () => void; type: 'success' | 'error' } | null>(
+    null,
+  );
+  const successToastTimer = useRef<number | null>(null);
   const confirmationResolver = useRef<((confirmed: boolean) => void) | null>(null);
   const requestConfirmation = useCallback((request: ConfirmationRequest) => {
     return new Promise<boolean>((resolve) => {
@@ -80,6 +120,38 @@ export function AppProvider({
     confirmationResolver.current?.(confirmed);
     confirmationResolver.current = null;
   }, []);
+  const showSuccessToast = useCallback((message: string, undo?: () => void) => {
+    if (successToastTimer.current !== null) window.clearTimeout(successToastTimer.current);
+    setSuccessToast({ message, undo, type: 'success' });
+    successToastTimer.current = window.setTimeout(() => {
+      setSuccessToast(null);
+      successToastTimer.current = null;
+    }, 7000);
+  }, []);
+  const showErrorToast = useCallback((message: string) => {
+    if (successToastTimer.current !== null) window.clearTimeout(successToastTimer.current);
+    setSuccessToast({ message, type: 'error' });
+    successToastTimer.current = window.setTimeout(() => {
+      setSuccessToast(null);
+      successToastTimer.current = null;
+    }, 7000);
+  }, []);
+  useEffect(() => {
+    const receiveSuccess = (event: Event) => {
+      if (event instanceof CustomEvent && typeof event.detail === 'string')
+        showSuccessToast(event.detail);
+    };
+    window.addEventListener('demenag:header-success', receiveSuccess);
+    return () => window.removeEventListener('demenag:header-success', receiveSuccess);
+  }, [showSuccessToast]);
+  const closeSuccessToast = useCallback(() => {
+    if (successToastTimer.current !== null) window.clearTimeout(successToastTimer.current);
+    successToastTimer.current = null;
+    setSuccessToast(null);
+  }, []);
+  useEffect(() => () => {
+    if (successToastTimer.current !== null) window.clearTimeout(successToastTimer.current);
+  }, []);
   useEffect(() => api.onSessionExpired?.(() => setUser(null)), [api]);
   useEffect(() => {
     let active = true;
@@ -92,7 +164,11 @@ export function AppProvider({
         if (active) setUser(currentUser);
       })
       .catch((cause: unknown) => {
-        if (active) setError(errorMessage(cause));
+        if (active) {
+          const message = errorMessage(cause);
+          setError(message);
+          showErrorToast(message);
+        }
       })
       .finally(() => {
         if (active) setAuthLoading(false);
@@ -130,7 +206,7 @@ export function AppProvider({
     return () => {
       active = false;
     };
-  }, [api, retry]);
+  }, [api, retry, showErrorToast]);
   return (
     <AppContext.Provider
       value={{
@@ -152,6 +228,10 @@ export function AppProvider({
         confirmation,
         requestConfirmation,
         resolveConfirmation,
+        showSuccessToast,
+        showErrorToast,
+        successToast,
+        closeSuccessToast,
       }}
     >
       {children}
@@ -162,4 +242,17 @@ export function useApp() {
   const value = useContext(AppContext);
   if (!value) throw new Error('AppProvider manquant');
   return value;
+}
+
+export function AppSuccessToastHost() {
+  const { successToast, closeSuccessToast } = useApp();
+  if (!successToast) return null;
+  return (
+    <AppSuccessToast
+      message={successToast.message}
+      undo={successToast.undo}
+      type={successToast.type}
+      onClose={closeSuccessToast}
+    />
+  );
 }

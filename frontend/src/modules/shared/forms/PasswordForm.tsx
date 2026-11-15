@@ -1,10 +1,16 @@
 import { Eye, EyeOff } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useApp } from '../application/context';
 import { usePasswordForm } from './application/controllers/usePasswordForm';
 import { messages } from '../content/fr';
 export function PasswordForm({ embedded = false }: { embedded?: boolean }) {
   const { busy, error, saved, submit } = usePasswordForm();
+  const { showSuccessToast } = useApp();
   const [showPasswords, setShowPasswords] = useState(false);
+
+  useEffect(() => {
+    if (saved) showSuccessToast(messages.motDePasseModifie);
+  }, [saved, showSuccessToast]);
 
   return (
     <section className={embedded ? 'password-panel' : 'panel password-panel'}>
@@ -65,11 +71,6 @@ export function PasswordForm({ embedded = false }: { embedded?: boolean }) {
         {error && (
           <p role="alert" className="alert error">
             {error}
-          </p>
-        )}
-        {saved && (
-          <p role="status" className="alert success">
-            {messages.motDePasseModifie}
           </p>
         )}
         <button className="button primary small" disabled={busy}>

@@ -16,13 +16,12 @@ import { VehiclePhotoEditor } from '../../fleet/components/VehiclePhotoEditor';
 const standardIds = new Set(['sprinter', 'trafic', 'master']);
 
 export function ReferenceVehicleSettings({ catalogue }: { catalogue: Catalogue }) {
-  const { api, setCatalogue } = useApp();
+  const { api, setCatalogue, showSuccessToast } = useApp();
   const commands = useBookingCommands();
   const [editing, setEditing] = useState<Vehicle | null>(null);
   const [removing, setRemoving] = useState<Vehicle | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
   const customVehicles = catalogue.vehicles.filter((vehicle) => !standardIds.has(vehicle.id));
   const previewVolume = editing
     ? vehicleCapacity(editing.length, editing.height, editing.width, editing.wheelWidth)
@@ -33,7 +32,6 @@ export function ReferenceVehicleSettings({ catalogue }: { catalogue: Catalogue }
       catalogue.vehicles.find((vehicle) => vehicle.id === 'master') ?? catalogue.vehicles[0];
     if (!base) return;
     setError('');
-    setNotice('');
     setEditing({
       ...base,
       id: `veh-${crypto.randomUUID().slice(0, 10)}`,
@@ -79,7 +77,7 @@ export function ReferenceVehicleSettings({ catalogue }: { catalogue: Catalogue }
       const wasExisting = catalogue.vehicles.some((item) => item.id === vehicle.id);
       setCatalogue(await new CatalogueService(api).saveVehicle(catalogue, vehicle));
       setEditing(null);
-      setNotice(
+      showSuccessToast(
         wasExisting
           ? `${vehicle.name} modifié.`
           : `${vehicle.name} ajouté. Pensez à régler ses tarifs ci-dessus.`,
@@ -126,11 +124,6 @@ export function ReferenceVehicleSettings({ catalogue }: { catalogue: Catalogue }
           <span className="reference-settings-card-title">{uiText['ajouterUnVehicule']}</span>
           <span>{uiText['formatsConseillesProfil960355PxInterieur560500Px']}</span>
         </div>
-        {notice && (
-          <span role="status" className="reference-settings-vehicle-notice">
-            {notice}
-          </span>
-        )}
         {customVehicles.length > 0 && (
           <div className="reference-settings-custom-vehicles">
             {customVehicles.map((vehicle) => (

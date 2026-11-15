@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../../../application/context';
 import { errorMessage } from '../../../application/error-message';
 export function usePasswordForm() {
-  const { api, setUser } = useApp();
+  const { api, setUser, showErrorToast } = useApp();
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [saved, setSaved] = useState(false);
@@ -18,7 +18,9 @@ export function usePasswordForm() {
       form.reset();
       setSaved(true);
     } catch (e) {
-      setError(errorMessage(e));
+      const message = errorMessage(e);
+      setError(message);
+      showErrorToast(message);
     } finally {
       setBusy(false);
     }

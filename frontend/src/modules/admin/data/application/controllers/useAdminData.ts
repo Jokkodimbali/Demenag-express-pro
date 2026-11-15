@@ -6,12 +6,11 @@ import { errorMessage } from '../../../../shared/application/error-message';
 type TrashedBooking = { booking: Booking; deletedAt: string };
 
 export function useAdminData() {
-  const { api, requestConfirmation } = useApp();
+  const { api, requestConfirmation, showSuccessToast, showErrorToast } = useApp();
   const [items, setItems] = useState<TrashedBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -36,14 +35,16 @@ export function useAdminData() {
       try {
         await api.restoreBooking(id);
         setItems((current) => current.filter((item) => item.booking.id !== id));
-        setNotice('Réservation restaurée.');
+        showSuccessToast('Réservation restaurée.');
       } catch (cause) {
-        setError(errorMessage(cause));
+        const message = errorMessage(cause);
+        setError(message);
+        showErrorToast(message);
       } finally {
         setBusy('');
       }
     },
-    [api],
+    [api, showSuccessToast, showErrorToast],
   );
 
   const purge = useCallback(
@@ -61,15 +62,17 @@ export function useAdminData() {
       try {
         await api.purgeBooking(item.booking.id);
         setItems((current) => current.filter((entry) => entry.booking.id !== item.booking.id));
-        setNotice('Supprimé définitivement.');
+        showSuccessToast('Supprimé définitivement.');
       } catch (cause) {
-        setError(errorMessage(cause));
+        const message = errorMessage(cause);
+        setError(message);
+        showErrorToast(message);
       } finally {
         setBusy('');
       }
     },
-    [api, requestConfirmation],
+    [api, requestConfirmation, showSuccessToast, showErrorToast],
   );
 
-  return { items, loading, busy, error, notice, restore, purge };
+  return { items, loading, busy, error, restore, purge };
 }

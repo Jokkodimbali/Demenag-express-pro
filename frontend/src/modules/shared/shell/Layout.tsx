@@ -1,5 +1,5 @@
 import { uiText } from '../content/reference-ui-text';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { BriefcaseBusiness, ChevronDown, LogOut, UserRound } from 'lucide-react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useLayout } from './application/controllers/useLayout';
@@ -9,8 +9,6 @@ import { whatsappUrl } from '../messaging/application/services/whatsapp';
 export function Layout() {
   const { user, catalogue, error, logout } = useLayout();
   const { pathname, hash } = useLocation();
-  const [headerSuccess, setHeaderSuccess] = useState('');
-  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const accountMenuRef = useRef<HTMLDetailsElement>(null);
 
   useEffect(() => {
@@ -20,19 +18,6 @@ export function Layout() {
       );
     }
   }, [pathname, hash]);
-  useEffect(() => {
-    function receiveSuccess(event: Event) {
-      if (!(event instanceof CustomEvent) || typeof event.detail !== 'string') return;
-      setHeaderSuccess(event.detail);
-      if (noticeTimer.current) clearTimeout(noticeTimer.current);
-      noticeTimer.current = setTimeout(() => setHeaderSuccess(''), 7000);
-    }
-    window.addEventListener('demenag:header-success', receiveSuccess);
-    return () => {
-      window.removeEventListener('demenag:header-success', receiveSuccess);
-      if (noticeTimer.current) clearTimeout(noticeTimer.current);
-    };
-  }, []);
   useEffect(() => {
     function closeOnOutsidePointer(event: PointerEvent) {
       const menu = accountMenuRef.current;
@@ -128,11 +113,6 @@ export function Layout() {
           <span />
         </div>
       </header>
-      {headerSuccess && (
-        <div className="reference-notice" role="status">
-          {headerSuccess}
-        </div>
-      )}
       {error && (
         <div className="container">
           <p className="alert error" role="alert">

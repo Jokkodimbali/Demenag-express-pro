@@ -25,6 +25,7 @@ export async function downloadQuote(
   const right = pageWidth - margin;
 
   const pdfMoney = (value: number | null) => cleanPdfText(money(value));
+  const pdfIssuedAt = new Date();
   let y = 15;
 
   function ensureSpace(height: number) {
@@ -36,8 +37,8 @@ export async function downloadQuote(
 
   function pdfHead(title: string, subtitle: string, detail: string) {
     const headY = 16;
-    const logoWidth = settings.invoiceLogo ? 13 : 0;
-    if (settings.invoiceLogo) addPdfImage(doc, settings.invoiceLogo, margin, headY - 4, 13, 13);
+    const logoWidth = logo ? 13 : 0;
+    if (logo) addPdfImage(doc, logo, margin, headY - 4, 13, 13);
     const titleX = margin + logoWidth + (logoWidth ? 4 : 0);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
@@ -119,7 +120,7 @@ export async function downloadQuote(
   doc.setFontSize(9);
   doc.setTextColor(174, 180, 187);
   doc.text(
-    `Émis le ${new Date(documentQuote?.createdAt || booking.createdAt).toLocaleDateString('fr-FR', { timeZone: 'Africa/Dakar' })} · version 1`,
+    `Émis le ${pdfIssuedAt.toLocaleDateString('fr-FR', { timeZone: 'Africa/Dakar' })} · version 1`,
     right,
     31.5,
     { align: 'right' },
@@ -255,7 +256,7 @@ export async function downloadQuote(
   // Même bandeau et mêmes colonnes que le tableau du devis de référence.
   const qtyX = right - 70;
   const unitX = right - 38;
-  const amountX = right;
+  const amountX = right - 4;
   const tableHeader = () => {
     doc.setFillColor(30, 32, 35);
     doc.roundedRect(margin, y, contentWidth, 8, 1.5, 1.5, 'F');
@@ -265,7 +266,7 @@ export async function downloadQuote(
     doc.text('DÉSIGNATION', margin + 4, y + 5.3);
     doc.text('QTÉ', qtyX, y + 5.3, { align: 'right' });
     doc.text('P.U.', unitX, y + 5.3, { align: 'right' });
-    doc.text('MONTANT', amountX - 4, y + 5.3, { align: 'right' });
+    doc.text('MONTANT', amountX, y + 5.3, { align: 'right' });
     y += 8;
   };
   tableHeader();
@@ -318,29 +319,31 @@ export async function downloadQuote(
   const totalBackground: [number, number, number] = isFinal ? [30, 32, 35] : [246, 215, 60];
   const totalForeground: [number, number, number] = isFinal ? [255, 255, 255] : [35, 37, 40];
   doc.setFillColor(...totalBackground);
-  doc.roundedRect(margin, y, contentWidth, 16, 2.5, 2.5, 'F');
+  doc.roundedRect(margin, y, contentWidth, 20, 2.5, 2.5, 'F');
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...totalForeground);
   doc.setFontSize(11);
-  doc.text(isFinal ? 'TOTAL À PAYER' : 'ESTIMATION PROVISOIRE', margin + 5, y + 10);
+  doc.text(isFinal ? 'TOTAL À PAYER' : 'ESTIMATION PROVISOIRE', margin + 6, y + 9.2);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.text(
     cleanPdfText(
-      `${price.trips} aller(s)-retour(s)${isFinal ? '' : ' estimé(s)'} · ${booking.vehicle.shortName || booking.vehicle.name}`,
+      `${price.trips} aller(s)-retour(s)${isFinal ? '' : ' estimé(s)'} · ${booking.vehicle.name}`,
     ),
-    margin + 5,
-    y + 15,
+    margin + 6,
+    y + 14.6,
   );
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(17);
+  doc.setFontSize(20);
   const totalLabel =
     price.tier === 3 &&
     !price.lines.some((line) => line.label.startsWith('Transport') && line.unitPrice > 0)
       ? 'Sur devis'
       : pdfMoney(price.total);
-  doc.text(totalLabel, right - 5, y + 10, { align: 'right' });
-  y += 25;
+  if (isFinal) doc.setTextColor(246, 215, 60);
+  else doc.setTextColor(30, 32, 35);
+  doc.text(totalLabel, right - 6, y + 13.2, { align: 'right' });
+  y += 24;
 
   if (isFinal && (price.total ?? 0) > 0 && totalLabel !== 'Sur devis') {
     y = pdfParagraph(
@@ -375,7 +378,7 @@ export async function downloadQuote(
   }
   if (!isFinal && validityDays > 0) {
     const issueDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Dakar' }).format(
-      new Date(documentQuote?.createdAt || booking.createdAt),
+      pdfIssuedAt,
     );
     const expiry = new Date(`${issueDate}T12:00:00Z`);
     notices.push({
@@ -397,9 +400,14 @@ export async function downloadQuote(
     settings.paymentWave !== false ? 'Wave' : '',
     settings.paymentCash !== false ? 'espèces' : '',
   ].filter(Boolean);
-  const paymentText = paymentModes.length
-    ? `${paymentModes.join(' ou ')}${paymentModes.length > 1 ? ' (au choix)' : ''}`
-    : '';
+  const paymentText =
+    paymentModes.length > 1
+      ? 'Wave ou espèces (au choix)'
+      : paymentModes[0] === 'Wave'
+        ? 'Wave uniquement'
+        : paymentModes.length
+          ? 'Espèces uniquement'
+          : '';
   const paymentQr =
     settings.paymentWave !== false && settings.paymentQr
       ? settings.paymentQr.startsWith('/assets/')
@@ -481,6 +489,19 @@ export async function downloadQuote(
     });
     y += cardHeight + 3;
   }
+  if (!inventory && tolls.length) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.setTextColor(30, 32, 35);
+    doc.text(
+      cleanPdfText(
+        `Péages à la charge du client (non inclus) : ${pdfMoney(tollTotal)} - détail en page annexe.`,
+      ),
+      margin,
+      y,
+    );
+    y += 7;
+  }
   if (quoteNotes) {
     const noteLines = doc.splitTextToSize(
       cleanPdfText(`Note : ${quoteNotes}`),
@@ -495,19 +516,6 @@ export async function downloadQuote(
     doc.setTextColor(30, 32, 35);
     doc.text(noteLines, margin, y);
     y += noteLines.length * 4.6 + 4;
-  }
-  if (!inventory && tolls.length) {
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9.5);
-    doc.setTextColor(30, 32, 35);
-    doc.text(
-      cleanPdfText(
-        `Péages à la charge du client (non inclus) : ${pdfMoney(tollTotal)} - détail en page annexe.`,
-      ),
-      margin,
-      y,
-    );
-    y += 7;
   }
   const explanation = isFinal
     ? `Devis final établi sur la base du nombre réel d’allers-retours effectués (${price.trips}), au tarif de la tranche de distance appliquée.`
@@ -534,7 +542,10 @@ export async function downloadQuote(
   // Espaces de signature et cachet comme sur le document de référence.
   let signatureY = y + 3;
   let signatureHeight = paymentText ? Math.min(108, 286 - signatureY) : 50;
-  if (signatureHeight < (paymentText ? 24 : 50) || signatureY + signatureHeight > 284) {
+  if (
+    signatureHeight < (paymentText ? 24 : 50) ||
+    (!paymentText && signatureY + signatureHeight > 284)
+  ) {
     doc.addPage();
     signatureY = 24;
     signatureHeight = paymentText ? Math.min(108, 286 - signatureY) : 50;
@@ -742,35 +753,31 @@ export async function downloadQuote(
 
   if (inventory) {
     doc.addPage();
-    y = 18;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.setTextColor(30, 32, 35);
-    doc.text('Inventaire', margin, y + 3);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(90, 97, 104);
-    doc.text(
-      cleanPdfText(`${booking.customerName}${booking.phone ? `  ·  ${booking.phone}` : ''}`),
-      margin,
-      y + 9,
+    const inventoryParagraph = (
+      value: string,
+      size: number,
+      color: [number, number, number] = [30, 32, 35],
+      bold = false,
+    ) => {
+      doc.setFont('helvetica', bold ? 'bold' : 'normal');
+      doc.setFontSize(size);
+      doc.setTextColor(...color);
+      const lines = doc.splitTextToSize(cleanPdfText(value), contentWidth) as string[];
+      const blockHeight = lines.length * (size * 0.42) + 1;
+      if (y + blockHeight > 278) {
+        doc.addPage();
+        y = 24;
+      }
+      doc.text(lines, margin, y);
+      y += blockHeight;
+      return y;
+    };
+    y = pdfHead(
+      'Annexe · Inventaire',
+      `${booking.customerName || '-'}${booking.phone ? `  ·  ${booking.phone}` : ''}`,
+      `N° ${documentQuote?.reference || booking.reference}  ·  ${(booking.date ?? '').split('-').reverse().join('/')}`,
     );
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
-    doc.setTextColor(94, 101, 108);
-    doc.text(
-      `Réf. ${documentQuote?.reference || booking.reference} · ${(booking.date ?? '').split('-').reverse().join('/')}`,
-      right,
-      y + 9,
-      {
-        align: 'right',
-      },
-    );
-    y += 13;
-    doc.setDrawColor(35, 38, 41);
-    doc.setLineWidth(0.3);
-    doc.line(margin, y, right, y);
-    y += 9;
+    y += 1;
     const halfWidth = contentWidth / 2 - 5;
     const accessLine = (
       x: number,
@@ -815,54 +822,83 @@ export async function downloadQuote(
           addressNotes.to,
         ),
       ) + 10;
-    const recapRows = [
+    const recapValues: [string, string][] = [
       ...(inventory.totalVolumeM3 > 0
-        ? [
+        ? ([
             [
               'ESTIMATION',
               `Volume ~${inventory.totalVolumeM3.toFixed(1).replace('.', ',')} m³, soit ${inventory.estimatedTrips} aller${inventory.estimatedTrips > 1 ? 's' : ''}-retour${inventory.estimatedTrips > 1 ? 's' : ''} en ${booking.vehicle.name}.`,
             ],
-          ]
+          ] as [string, string][])
         : []),
       [
         'MAIN-D’ŒUVRE',
         `${inventory.moverCount} manœuvres${inventory.totalWeightKg == null ? '' : ` (~ ${inventory.totalWeightKg} kg, objet le plus lourd ~${inventory.maxItemWeightKg ?? 0} kg)`}${inventory.carpenterCount ? ` + ${inventory.carpenterCount} menuisier${inventory.carpenterCount > 1 ? 's' : ''}` : ''}, chargement + déchargement ~${durationLabel(inventory.loadingMinutes + inventory.unloadingMinutes)}.`,
       ],
       ...(tolls.length
-        ? [
+        ? ([
             [
               'PÉAGES',
               `À la charge du client (non inclus) : ${pdfMoney(tollTotal)} - détail en page annexe.`,
             ],
-          ]
+          ] as [string, string][])
         : []),
-      ...(addressNotes.remaining ? [['NOTES', addressNotes.remaining]] : []),
-    ].map(([label, value]) => ({
+      ...(addressNotes.remaining
+        ? ([['NOTES', addressNotes.remaining]] as [string, string][])
+        : []),
+    ];
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9.5);
+    const recapRows = recapValues.map(([label, value]) => ({
       label,
       lines: doc.splitTextToSize(cleanPdfText(value), contentWidth - 46) as string[],
     }));
     if (recapRows.length) {
-      const recapHeight = 8 + recapRows.reduce((sum, row) => sum + row.lines.length * 4.6 + 2, 0);
-      if (y + recapHeight > 270) {
+      const maxLinesPerCard = 42;
+      const chunks = recapRows.flatMap((row) =>
+        Array.from({ length: Math.ceil(row.lines.length / maxLinesPerCard) }, (_, index) => ({
+          label: index ? `${row.label} (suite)` : row.label,
+          lines: row.lines.slice(index * maxLinesPerCard, (index + 1) * maxLinesPerCard),
+        })),
+      );
+      const recapHeight = 8 + chunks.reduce((sum, row) => sum + row.lines.length * 4.6 + 2, 0);
+      const drawRecapCard = (rows: typeof chunks, height: number) => {
+        doc.setDrawColor(201, 206, 211);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(margin, y, contentWidth, height, 2, 2, 'S');
+        let recapY = y + 6.5;
+        rows.forEach((row) => {
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(8);
+          doc.setTextColor(90, 97, 104);
+          doc.text(row.label, margin + 4, recapY);
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(9.5);
+          doc.setTextColor(30, 32, 35);
+          doc.text(row.lines, margin + 42, recapY);
+          recapY += row.lines.length * 4.6 + 2;
+        });
+        y += height + 9;
+      };
+      const drawContinuationHeader = () => {
         doc.addPage();
-        y = 24;
+        y = pdfHead(
+          'Annexe · Inventaire (suite)',
+          `${booking.customerName || '-'}${booking.phone ? `  ·  ${booking.phone}` : ''}`,
+          `N° ${documentQuote?.reference || booking.reference}  ·  ${(booking.date ?? '').split('-').reverse().join('/')}`,
+        );
+        y += 1;
+      };
+      if (recapHeight <= 210) {
+        if (y + recapHeight > 278) drawContinuationHeader();
+        drawRecapCard(chunks, recapHeight);
+      } else {
+        for (const row of chunks) {
+          const height = 8 + row.lines.length * 4.6 + 2;
+          if (y + height > 278) drawContinuationHeader();
+          drawRecapCard([row], height);
+        }
       }
-      doc.setDrawColor(201, 206, 211);
-      doc.setLineWidth(0.3);
-      doc.roundedRect(margin, y, contentWidth, recapHeight, 2, 2, 'S');
-      let recapY = y + 6.5;
-      recapRows.forEach((row) => {
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8);
-        doc.setTextColor(90, 97, 104);
-        doc.text(row.label, margin + 4, recapY);
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9.5);
-        doc.setTextColor(30, 32, 35);
-        doc.text(row.lines, margin + 42, recapY);
-        recapY += row.lines.length * 4.6 + 2;
-      });
-      y += recapHeight + 9;
     }
     const columns = { item: margin, quantity: right - 92, details: right - 80, volume: right };
     const tableHeader = () => {
@@ -896,91 +932,104 @@ export async function downloadQuote(
     const sections = [...new Set(inventory.items.map((item) => item.section))];
     sections.forEach((section) => {
       const sectionItems = inventory.items.filter((item) => item.section === section);
-      if (y + 10 > 278) {
-        doc.addPage();
-        y = 20;
-        tableHeader();
-      }
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8.5);
-      doc.setTextColor(90, 97, 104);
-      doc.text(cleanPdfText(section), margin, y);
       const sectionCount = sectionItems.reduce((sum, item) => sum + item.quantity, 0);
       const sectionVolume = sectionItems.reduce((sum, item) => sum + item.volumeM3, 0);
-      doc.text(
-        cleanPdfText(
-          `${sectionCount} objet${sectionCount > 1 ? 's' : ''} · ${sectionVolume.toFixed(2).replace('.', ',')} m³`,
-        ),
-        right,
-        y,
-        { align: 'right' },
-      );
-      y += 5.5;
-      sectionItems.forEach((item) => {
-        const detailLines = doc.splitTextToSize(
-          cleanPdfText(item.details),
-          columns.volume - columns.details - 22,
-        ) as string[];
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      const rows = sectionItems.map((item) => {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
         const labelLines = doc.splitTextToSize(
           cleanPdfText(item.label),
           columns.quantity - columns.item - 14,
         ) as string[];
-        const height = Math.max(1, detailLines.length) * 4.4 + 1.5;
-        if (y + height > 276) {
+        doc.setFontSize(9);
+        const detailLines = doc.splitTextToSize(
+          cleanPdfText(item.details),
+          columns.volume - columns.details - 22,
+        ) as string[];
+        const height = Math.max(labelLines.length, detailLines.length, 1) * 4.4 + 1.5;
+        return { item, labelLines, detailLines, height };
+      });
+      const drawSectionBand = (title: string) => {
+        doc.setFillColor(30, 32, 35);
+        doc.roundedRect(margin, y, contentWidth, 8, 1.5, 1.5, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.setTextColor(255, 255, 255);
+        doc.text(cleanPdfText(title), margin + 4, y + 5.4);
+        doc.setTextColor(246, 215, 60);
+        doc.text(
+          cleanPdfText(
+            `${sectionCount} objet${sectionCount > 1 ? 's' : ''}  ·  ${sectionVolume.toFixed(2).replace('.', ',')} m³`,
+          ),
+          right - 4,
+          y + 5.4,
+          { align: 'right' },
+        );
+        y += 8;
+      };
+      if (y + 8 + (rows[0]?.height ?? 0) > 278) {
+        doc.addPage();
+        y = 24;
+        tableHeader();
+      }
+      drawSectionBand(section);
+      rows.forEach(({ item, labelLines, detailLines, height }, index) => {
+        if (y + height > 278) {
           doc.addPage();
-          y = 20;
+          y = 24;
           tableHeader();
+          drawSectionBand(`${section} (suite)`);
         }
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
         doc.setTextColor(36, 40, 44);
-        doc.text(labelLines, columns.item, y);
-        doc.text(String(item.quantity), columns.quantity, y, { align: 'right' });
+        doc.text(labelLines, columns.item, y + 4.6);
+        doc.text(String(item.quantity), columns.quantity, y + 4.6, { align: 'right' });
         doc.setFontSize(9);
         doc.setTextColor(94, 101, 108);
-        doc.text(detailLines, columns.details, y);
+        doc.text(detailLines, columns.details, y + 4.6);
         doc.setFontSize(10);
         doc.setTextColor(36, 40, 44);
-        doc.text(`${item.volumeM3.toFixed(2).replace('.', ',')} m³`, columns.volume, y, {
+        doc.text(`${item.volumeM3.toFixed(2).replace('.', ',')} m³`, columns.volume, y + 4.6, {
           align: 'right',
         });
         y += height;
         doc.setDrawColor(225, 228, 231);
         doc.setLineWidth(0.15);
         doc.line(margin, y, right, y);
-        y += 5;
+        y += 3.6;
       });
+      doc.setDrawColor(220, 223, 227);
+      doc.setLineWidth(0.3);
+      doc.line(margin, y, right, y);
+      y += 7;
     });
     if (inventory.dwellingType) {
       const dwelling = inventory.dwellingType === 'F5 et plus' ? 'F5 et +' : inventory.dwellingType;
-      y = pdfParagraph(
-        doc,
-        `Logement : ${dwelling}`,
-        margin,
-        y,
-        contentWidth,
-        8.5,
-        true,
-        [90, 97, 104],
-      );
+      y = inventoryParagraph(`Logement : ${dwelling}`, 8.5, [90, 97, 104], true);
     }
     if (inventory.annexVolumeM3 > 0) {
-      if (y + 11 > 278) {
+      const annexDwelling =
+        inventory.dwellingType === 'F5 et plus' ? 'F5 et +' : inventory.dwellingType;
+      const annexDetails = `Sacs, vaisselle, linge, petits objets (forfait ${annexDwelling} ~${String(referenceDwellingVolume(inventory.dwellingType)).replace('.', ',')} m³, cartons et sacs comptés déduits)`;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      const annexLines = doc.splitTextToSize(
+        cleanPdfText(annexDetails),
+        columns.volume - columns.details - 22,
+      ) as string[];
+      const annexHeight = Math.max(1, annexLines.length) * 4.4 + 1.5;
+      if (y + annexHeight > 278) {
         doc.addPage();
-        y = 20;
+        y = 24;
         tableHeader();
       }
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
       doc.setTextColor(36, 40, 44);
       doc.text('Effets annexes', columns.item, y);
-      const annexDwelling =
-        inventory.dwellingType === 'F5 et plus' ? 'F5 et +' : inventory.dwellingType;
-      const annexDetails = `Sacs, vaisselle, linge, petits objets (forfait ${annexDwelling} ~${String(referenceDwellingVolume(inventory.dwellingType)).replace('.', ',')} m³, cartons et sacs comptés déduits)`;
-      const annexLines = doc.splitTextToSize(
-        cleanPdfText(annexDetails),
-        columns.volume - columns.details - 22,
-      ) as string[];
       doc.setFontSize(9);
       doc.setTextColor(94, 101, 108);
       doc.text(annexLines, columns.details, y);
@@ -989,13 +1038,13 @@ export async function downloadQuote(
       doc.text(`${inventory.annexVolumeM3.toFixed(2).replace('.', ',')} m³`, columns.volume, y, {
         align: 'right',
       });
-      y += Math.max(1, annexLines.length) * 4.4 + 1.5;
+      y += annexHeight;
       doc.setDrawColor(225, 228, 231);
       doc.setLineWidth(0.15);
       doc.line(margin, y, right, y);
       y += 5;
     }
-    if (y > 245) {
+    if (y > 220) {
       doc.addPage();
       y = 24;
     }
@@ -1014,53 +1063,34 @@ export async function downloadQuote(
       align: 'right',
     });
     y += 9;
-    y = pdfParagraph(
-      doc,
+    y = inventoryParagraph(
       `Estimation : ${inventory.estimatedTrips} aller${inventory.estimatedTrips > 1 ? 's' : ''}-retour${inventory.estimatedTrips > 1 ? 's' : ''} en ${booking.vehicle.name} (${String(inventory.vehicleCapacityM3).replace('.', ',')} m³, chargement à ${Math.round(inventory.fillRate * 100)} %).`,
-      margin,
-      y,
-      contentWidth,
       8.5,
+      [30, 32, 35],
     );
-    if (y > 248) {
-      doc.addPage();
-      y = 24;
-    }
-    y = pdfParagraph(
-      doc,
+    y = inventoryParagraph(
       `Main-d’œuvre : ${inventory.moverCount} manœuvres${inventory.totalWeightKg == null ? '' : ` (~ ${inventory.totalWeightKg} kg, objet le plus lourd ~${inventory.maxItemWeightKg ?? 0} kg)`}${inventory.carpenterCount ? ` + ${inventory.carpenterCount} menuisier${inventory.carpenterCount > 1 ? 's' : ''}` : ''}, chargement + déchargement ~${durationLabel(inventory.loadingMinutes + inventory.unloadingMinutes)}.`,
-      margin,
-      y,
-      contentWidth,
       8.5,
+      [30, 32, 35],
     );
     if (inventory.packingMinutes > 0) {
-      y = pdfParagraph(
-        doc,
+      y = inventoryParagraph(
         `Emballage : ~${durationLabel(inventory.packingMinutes)}${inventory.packingMinutes > 90 ? ', la veille.' : ', le jour même avant le chargement.'}`,
-        margin,
-        y,
-        contentWidth,
         8.5,
+        [30, 32, 35],
       );
     }
     if (booking.distanceKm > 0) {
-      y = pdfParagraph(
-        doc,
+      y = inventoryParagraph(
         `Trajet : ~${durationLabel(inventory.travelLegMinutes ?? inventory.travelMinutes)} par trajet (${String(booking.distanceKm).replace('.', ',')} km)${inventory.estimatedTrips > 1 ? `, ${inventory.estimatedTrips} voyages, trajets ~${durationLabel(inventory.travelMinutes)}` : ''}.`,
-        margin,
-        y,
-        contentWidth,
         8.5,
+        [30, 32, 35],
       );
     }
-    y = pdfParagraph(
-      doc,
+    y = inventoryParagraph(
       `Planning prévisionnel : de ${inventory.startTime} à ${inventory.endTime}, durée de travail ~${durationLabel(inventory.totalMinutes)} (entre ${durationLabel(inventory.lowDurationMinutes, 15)} et ${durationLabel(inventory.highDurationMinutes, 15)}).`,
-      margin,
-      y,
-      contentWidth,
       8.5,
+      [30, 32, 35],
     );
     const maxDayHours = booking.pricingSettings?.movingLaborPlanning?.maxDayHours ?? 8;
     const startParts = inventory.startTime.split(':').map(Number);
@@ -1072,13 +1102,10 @@ export async function downloadQuote(
         1,
     );
     if (inventory.totalMinutes > maxDayHours * 60 + 1) {
-      y = pdfParagraph(
-        doc,
+      y = inventoryParagraph(
         `Au-delà de ${maxDayHours} h : prévoir ${days} jours ou un véhicule supplémentaire.`,
-        margin,
-        y,
-        contentWidth,
         8.5,
+        [30, 32, 35],
       );
     }
     const inventoryFlags = inventory.flags.map((flag) => flag.toLocaleLowerCase('fr-FR'));
@@ -1094,23 +1121,11 @@ export async function downloadQuote(
     if (inventory.stairs === 'balcon' && inventory.balcPx)
       inventoryFlags.push(`supplément balcon : ${money(inventory.balcPx)}`);
     if (inventoryFlags.length) {
-      y = pdfParagraph(
-        doc,
-        `À noter : ${inventoryFlags.join(', ')}.`,
-        margin,
-        y,
-        contentWidth,
-        8.5,
-      );
+      y = inventoryParagraph(`À noter : ${inventoryFlags.join(', ')}.`, 8.5, [30, 32, 35]);
     }
-    y = pdfParagraph(
-      doc,
+    y = inventoryParagraph(
       "Volumes estimés à partir de moyennes par meuble, selon le format, la taille et le démontage. Le nombre réel d'allers-retours, de manœuvres et la durée dépendent des accès et de la circulation le jour du déménagement.",
-      margin,
-      y + 3,
-      contentWidth,
       8.5,
-      false,
       [90, 97, 104],
     );
   }
