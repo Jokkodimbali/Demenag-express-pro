@@ -38,6 +38,7 @@ export function buildAdminQuotePdfDocument(input: {
   rentalKit: RentalKitItem[];
   tolls: Array<{ id: string; label: string; quantity: number; unitPrice: number }>;
   effectiveDistance?: number;
+  providedCrew?: number;
 }) {
   const { draft, booking, vehicle, settings, config, estimateInventory, estimate } = input;
   const price: Price = {
@@ -74,7 +75,7 @@ export function buildAdminQuotePdfDocument(input: {
     menuIncluded: config.billingMode === 'driver-rental' && config.menuIncluded,
     rentalKit: config.billingMode === 'driver-rental' ? input.rentalKit : [],
     overtimeMinutes: config.billingMode === 'driver-rental' ? config.overtimeMinutes : 0,
-    providedCrew: estimate?.crew ?? draft.options.labour,
+    providedCrew: input.providedCrew ?? estimate?.crew ?? draft.options.labour,
     tolls: input.tolls.map((line) => ({
       tollPointId: line.id,
       label: line.label,

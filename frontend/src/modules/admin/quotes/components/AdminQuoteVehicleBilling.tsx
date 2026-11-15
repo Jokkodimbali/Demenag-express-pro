@@ -19,6 +19,7 @@ export function AdminQuoteVehicleBilling({
     draft,
     setDraft,
     movingEstimate,
+    economicCrew,
     rentalKit,
     rentalOvertimeAmount,
   } = model;
@@ -147,8 +148,8 @@ export function AdminQuoteVehicleBilling({
               <div>
                 <span>{t.clientCrew}</span>
                 <strong>
-                  {movingEstimate?.crew || draft.options.labour || 2} {t.mover}
-                  {(movingEstimate?.crew || draft.options.labour || 2) === 1 ? '' : 's'}
+                  {(quoteConfig.calcMode === 'manual' ? draft.options.labour : economicCrew) || movingEstimate?.crew || draft.options.labour || 2} {t.mover}
+                  {((quoteConfig.calcMode === 'manual' ? draft.options.labour : economicCrew) || movingEstimate?.crew || draft.options.labour || 2) === 1 ? '' : 's'}
                 </strong>
               </div>
               <div>

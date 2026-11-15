@@ -34,6 +34,6 @@ export const buildAdminQuoteSubmission: AdministrativeQuoteSubmissionBuilder = (
     menuIncluded: config.menuIncluded,
     rentalKit,
     overtimeMinutes: config.overtimeMinutes,
-    providedCrew: draft.options.labour,
+    providedCrew: input.providedCrew ?? draft.options.labour,
   };
 };

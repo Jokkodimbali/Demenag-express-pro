@@ -22,4 +22,5 @@ export type AdministrativeQuoteSubmissionBuilder = (input: {
   extraLines: QuoteInput['extraLines'];
   tollLines: TollExtraLine[];
   getRentalKit?: () => RentalKitItem[];
+  providedCrew?: number;
 }) => QuoteInput;

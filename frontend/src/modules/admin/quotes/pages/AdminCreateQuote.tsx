@@ -979,7 +979,6 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                 onCrewRecommendation={() =>
                   setQuoteConfig((current) => ({ ...current, calcMode: 'manual' }))
                 }
-                onPlanNeeds={model.setSimulationNeeds}
               />
               {model.inventoryCount === 0 && (
                 <span className="admin-quote-plan-empty">

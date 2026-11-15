@@ -188,6 +188,7 @@ type EstimateOptions = {
   fromAddress?: string;
   toAddress?: string;
   hasToll?: boolean;
+  ignoreDismantling?: boolean;
 };
 
 export function estimateMovingWork(
@@ -240,6 +241,7 @@ export function estimateMovingWork(
     climatiseur: [0.75, 1.25],
   };
   const addDismantling = (key: string, size: number, quantity: number, dismantle: boolean) => {
+    if (options.ignoreDismantling) return;
     const duration = dismantle ? (dismantlingMinutes[key] ?? [0.2, 0.3]) : undefined;
     if (!duration || quantity <= 0) return;
     const multiplier = key === 'armoire' ? size : 1;
@@ -253,7 +255,7 @@ export function estimateMovingWork(
     addDismantling(variant.itemKey, variant.size, variant.quantity, variant.dismantle),
   );
   inventory.custom.forEach((item) => {
-    if (item.dismantle && item.quantity > 0) {
+    if (!options.ignoreDismantling && item.dismantle && item.quantity > 0) {
       dismantlingBySide.from += 0.2 * item.quantity;
       dismantlingBySide.to += 0.3 * item.quantity;
     }

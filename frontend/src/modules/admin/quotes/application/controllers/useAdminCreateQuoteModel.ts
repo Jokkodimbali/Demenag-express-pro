@@ -59,6 +59,7 @@ import {
   quoteHasPaidTolls,
   routeForQuotePricing,
 } from '../services/admin-quote-estimation';
+import { referenceRentalKitNeeds } from '../../../../moving/application/services/loading-simulation-model';
 import { errorMessage } from '../../../../shared/application/error-message';
 import { visibleUiText } from '../../../../shared/content/visible-ui-text';
 import { reassignTeamsAfterScheduleChange } from '../services/quote-stage-team-reassignment';
@@ -99,10 +100,6 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const skipInitialSave = useRef(false);
   const draftSaveQueue = useRef(Promise.resolve());
   const [quoteConfig, setQuoteConfig] = useState<AdminQuoteConfig>(defaultAdminQuoteConfig);
-  const [simulationNeeds, setSimulationNeeds] = useState<{
-    blankets: number;
-    straps: number;
-  } | null>(null);
   const [questionnaireOpen, setQuestionnaireOpen] = useState(false);
   const [quoteKind, setQuoteKind] = useState<Quote['kind']>('provisional');
   const [quoteKindSaving, setQuoteKindSaving] = useState(false);
@@ -180,6 +177,8 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       );
     },
     getRentalKit: () => rentalKit,
+    getProvidedCrew: () =>
+      quoteConfig.billingMode === 'driver-rental' ? economicCrew : movingEstimateCrew,
     onQuoteSaved: async (booking) => {
       const savedQuote = latestBookingQuote(booking);
       if (!savedQuote) {
@@ -280,7 +279,6 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     setQuoteKind('provisional');
     setQuoteKindNotice('');
     setQuestionnaireOpen(false);
-    setSimulationNeeds(null);
     setStageError('');
     setPdfError('');
     setReminderNotice('');
@@ -572,6 +570,17 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const businessPhone = catalogue?.settings.businessPhone ?? '';
   const { digits: businessPhoneDigits, display: displayBusinessPhone } =
     businessPhonePresentation(businessPhone);
+  const rentalKitNeeds = useMemo(
+    () =>
+      selected
+        ? referenceRentalKitNeeds(
+            estimateInventory,
+            selected,
+            quoteSettings?.movingLaborPlanning,
+          )
+        : null,
+    [estimateInventory, selected, quoteSettings?.movingLaborPlanning],
+  );
   const preview = createAdminQuotePreview({
     draft,
     estimateInventory,
@@ -583,7 +592,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     extras,
     labourPrice,
     applySnapshotLabourPrice: Boolean(editingBooking?.pricingSnapshot),
-    simulationNeeds,
+    simulationNeeds: rentalKitNeeds,
   });
   const formulaPrices = {
     economic: createAdminQuotePreview({
@@ -602,7 +611,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       extras,
       labourPrice,
       applySnapshotLabourPrice: Boolean(editingBooking?.pricingSnapshot),
-      simulationNeeds,
+      simulationNeeds: rentalKitNeeds,
     }).total,
     standard: createAdminQuotePreview({
       draft,
@@ -615,7 +624,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       extras,
       labourPrice,
       applySnapshotLabourPrice: Boolean(editingBooking?.pricingSnapshot),
-      simulationNeeds,
+      simulationNeeds: rentalKitNeeds,
     }).total,
     complete: createAdminQuotePreview({
       draft,
@@ -628,9 +637,30 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       extras,
       labourPrice,
       applySnapshotLabourPrice: Boolean(editingBooking?.pricingSnapshot),
-      simulationNeeds,
+      simulationNeeds: rentalKitNeeds,
     }).total,
   };
+  const economicMovingEstimate = useMemo(
+    () =>
+      selected
+        ? estimateAdminQuoteWork({
+            inventory: estimateInventory,
+            vehicle: selected,
+            route: pricingRoute,
+            draft,
+            config: {
+              ...quoteConfig,
+              billingMode: 'driver-rental',
+              menuIncluded: false,
+              overtimeMinutes: 0,
+            },
+            settings: quoteSettings,
+            tollLines,
+          })
+        : null,
+    [selected, estimateInventory, pricingRoute, draft, quoteConfig, quoteSettings, tollLines],
+  );
+  const economicCrew = economicMovingEstimate?.crew ?? movingEstimateCrew;
   const {
     tier: previewTier,
     rentalKit,
@@ -742,6 +772,8 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         tier: previewTier,
         estimateInventory,
         estimate: movingEstimate,
+        providedCrew:
+          quoteConfig.billingMode === 'driver-rental' ? economicCrew : movingEstimateCrew,
         visibleInventoryText,
         estimateText,
         questionnaireText,
@@ -920,6 +952,8 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     selectedVehicleId,
     movingEstimateVolume,
     movingEstimateCrew,
+    economicCrew,
+    rentalKitNeeds,
     movingEstimateTrips,
     readyAnswer,
     stairsAnswer,
@@ -942,7 +976,6 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     menuIncluded,
     previewLines,
     rentalKit,
-    setSimulationNeeds,
     rentalOvertimeAmount,
     manoeuvreOvertimeLine: manoeuvreOvertime,
     previewSubtotal,

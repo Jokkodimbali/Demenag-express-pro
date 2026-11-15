@@ -15,6 +15,7 @@ test('le matériel fourni reprend les besoins du plan et ses valeurs de repli', 
   assert.equal(fromPlan.find((item) => item.id === 'blankets')?.quantity, 9);
   assert.equal(fromPlan.find((item) => item.id === 'tie-down-straps')?.quantity, 7);
   assert.equal(fromPlan.find((item) => item.id === 'lifting-straps')?.quantity, 2);
+  assert.equal(fromPlan.find((item) => item.id === 'gloves')?.quantity, 3);
 
   const fallback = defaultRentalKit(vehicle, 3, undefined, { blankets: 0, straps: 2 });
   assert.equal(fallback.find((item) => item.id === 'blankets')?.quantity, 6);

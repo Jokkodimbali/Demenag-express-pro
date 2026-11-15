@@ -48,6 +48,7 @@ export function useBookingForm({
   onQuoteStageUpdated,
   onAdministrativeBookingCreated,
   getRentalKit,
+  getProvidedCrew,
   buildAdministrativeQuoteSubmission,
 }: {
   mode?: 'booking' | 'admin-quote';
@@ -60,6 +61,7 @@ export function useBookingForm({
   ) => void | Booking | Promise<void | Booking>;
   onAdministrativeBookingCreated?: () => void;
   getRentalKit?: () => RentalKitItem[];
+  getProvidedCrew?: () => number;
   buildAdministrativeQuoteSubmission?: AdministrativeQuoteSubmissionBuilder;
 } = {}) {
   const { catalogue, tollPoints, loading, error, reload, api, user, authLoading, showErrorToast } = useApp();
@@ -419,6 +421,7 @@ export function useBookingForm({
           tollLines,
           options: quoteOptions,
           getRentalKit,
+          providedCrew: getProvidedCrew?.(),
         });
         const updated = await api.updateQuoteStage(
           editingBooking.id,
@@ -462,6 +465,7 @@ export function useBookingForm({
             tollLines,
             options: quoteOptions,
             getRentalKit,
+            providedCrew: getProvidedCrew?.(),
           });
           const savedQuoteBooking = await api.quote(booking.id, quoteInput);
           let successMessage: string | void;

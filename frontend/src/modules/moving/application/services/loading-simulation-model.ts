@@ -253,11 +253,37 @@ export function referencePlannedTrips(
         inventory,
         vehicle,
         laborPlanning?.blanketStock ?? 20,
-        laborPlanning?.blanketLengthCm ?? 204,
-        laborPlanning?.blanketWidthCm ?? 184,
+        inventory.blanketLengthCm ?? laborPlanning?.blanketLengthCm ?? 204,
+        inventory.blanketWidthCm ?? laborPlanning?.blanketWidthCm ?? 184,
       ),
     );
     return plan.trips.length || null;
+  } catch {
+    return null;
+  }
+}
+
+export function referenceRentalKitNeeds(
+  inventory: Inventory,
+  vehicle: Vehicle,
+  laborPlanning?: Partial<import('../../../shared/domain/model').MovingLaborPlanningSettings>,
+): { blankets: number; straps: number } | null {
+  if (typeof window === 'undefined' || !window.DemSim?.plan) return null;
+  try {
+    const plan = window.DemSim.plan(
+      simulationInput(
+        inventory,
+        vehicle,
+        laborPlanning?.blanketStock ?? 20,
+        inventory.blanketLengthCm ?? laborPlanning?.blanketLengthCm ?? 204,
+        inventory.blanketWidthCm ?? laborPlanning?.blanketWidthCm ?? 184,
+      ),
+    );
+    if (!plan.trips.length) return null;
+    return {
+      blankets: Math.max(...plan.trips.map((trip) => trip.need || trip.blankets || 0)),
+      straps: Math.max(...plan.trips.map((trip) => trip.straps ?? 0)),
+    };
   } catch {
     return null;
   }

@@ -17,6 +17,8 @@ import {
   inventoryWeight,
 } from '../src/modules/moving/domain/estimate/moving-estimate-inventory.ts';
 import { referencePlannedTrips } from '../src/modules/moving/application/services/loading-simulation-model.ts';
+import { referenceRentalKitNeeds, simulationInput } from '../src/modules/moving/application/services/loading-simulation-model.ts';
+import { defaultRentalKit } from '../src/modules/moving/domain/rental-kit.ts';
 import { referenceAnnexVolume } from '../src/modules/moving/domain/estimate/reference-inventory-note.ts';
 import { blankInventory } from '../src/modules/moving/domain/inventory/inventory.ts';
 import type { Booking, Inventory, Settings, Vehicle } from '../src/modules/shared/domain/model.ts';
@@ -95,6 +97,8 @@ const ReferenceComponent = (
         date: string;
         start: string;
         inv: unknown;
+        bill?: 'loc';
+        locMenu?: boolean;
       }) => {
         n: number;
         N: number;
@@ -391,6 +395,131 @@ test('le mode automatique du formulaire calcule trajet et équipe avec le plan d
     );
     assert.equal(estimate.recommendedCrew, referenceEstimate.n, 'manœuvres recommandées');
     assert.equal(estimate.carpenterCount, referenceEstimate.m, 'menuisiers recommandés');
+
+    const rentalReference = reference.laborEst({
+      vehicle: 'sprinter',
+      trips: referenceTrips,
+      km: 20,
+      date: '2026-11-10',
+      start: '08:00',
+      inv: legacyInventory,
+      bill: 'loc',
+    });
+    assert.ok(rentalReference);
+    const rentalEstimate = estimateAdminQuoteWork({
+      inventory,
+      vehicle: siteVehicle,
+      route: null,
+      draft: quoteDraft,
+      config: {
+        ...defaultAdminQuoteConfig(),
+        trips: referenceTrips,
+        calcMode: 'auto',
+        billingMode: 'driver-rental',
+      },
+      settings,
+      tollLines: [],
+    });
+    assert.ok(rentalEstimate);
+    assert.equal(rentalEstimate.crew, rentalReference.n, 'manœuvres fournies en location économique');
+    assert.equal(rentalEstimate.carpenterCount, rentalReference.m, 'menuisiers exclus de la location');
+    assert.equal(rentalEstimate.trips, referenceTrips, 'les trajets économiques concordent');
+
+    const rentalNeeds = referenceRentalKitNeeds(inventory, siteVehicle);
+    const referencePlan = (referenceWindow.DemSim as {
+      plan: (input: unknown) => {
+        trips: Array<{ need: number; blankets: number; straps: number }>;
+      };
+    }).plan(simulationInput(inventory, siteVehicle, 20, 204, 184));
+    assert.ok(rentalNeeds);
+    assert.deepEqual(rentalNeeds, {
+      blankets: Math.max(...referencePlan.trips.map((trip) => trip.need || trip.blankets || 0)),
+      straps: Math.max(...referencePlan.trips.map((trip) => trip.straps || 0)),
+    });
+    const equipment = defaultRentalKit(siteVehicle, rentalReference.n, undefined, rentalNeeds);
+    assert.equal(
+      equipment.find((item) => item.id === 'blankets')?.quantity,
+      rentalNeeds.blankets || Math.max(4, rentalReference.n * 2),
+      'nombre de serviettes comme le plan de référence',
+    );
+    assert.equal(
+      equipment.find((item) => item.id === 'tie-down-straps')?.quantity,
+      Math.max(4, rentalNeeds.straps || 4),
+      'nombre de sangles d’attache comme le plan de référence',
+    );
+    assert.equal(
+      equipment.find((item) => item.id === 'lifting-straps')?.quantity,
+      Math.max(1, Math.ceil(rentalReference.n / 2)),
+      'nombre de paires de sangles de levage comme le plan de référence',
+    );
+    assert.equal(
+      equipment.find((item) => item.id === 'gloves')?.quantity,
+      rentalReference.n,
+      'nombre de paires de gants, une par manœuvre comme dans la référence',
+    );
+
+    const priceSettings = {
+      ...settings,
+      rentalKitConfiguration: undefined,
+    } as Settings;
+    const draftForRental = {
+      ...quoteDraft,
+      route: { id: 'rental-reference', expiresAt: '2026-11-16T00:00:00.000Z', from: [14.7, -17.5], to: [14.7, -17.2], distanceKm: 20, durationMinutes: 30, geometry: [] },
+      inventory,
+    } as Draft;
+    const rentalPreview = createAdminQuotePreview({
+      draft: draftForRental,
+      estimateInventory: inventory,
+      config: {
+        ...defaultAdminQuoteConfig(),
+        billingMode: 'driver-rental',
+        menuIncluded: false,
+        trips: referenceTrips,
+        rentalKit: null,
+      },
+      vehicle: siteVehicle,
+      estimate: rentalEstimate,
+      settings: priceSettings,
+      price: { lines: [], total: 0, discount: 0, discountLabel: '', discountType: 'fcfa', discountValue: 0, discountReason: '', tier: 0, trips: referenceTrips, currency: 'XOF' },
+      extras: [
+        ['labour', 'Manœuvres', 'Manœuvres'],
+        ['desk', 'Bureau', 'Bureau'],
+        ['wardrobe', 'Armoire', 'Armoire'],
+        ['bed', 'Lit', 'Lit'],
+      ],
+      labourPrice: settings.labourPrice ?? 6000,
+      simulationNeeds: rentalNeeds,
+    });
+    const rentalReferenceTariffs = {
+      ...tariffs,
+      sprinter: [...vehicle.prices],
+      tripDeg: 60,
+      creux: 10,
+    };
+    reference.state = { data: { tarifs: rentalReferenceTariffs, peages: [], invCat: {} } };
+    const rentalPriceReference = reference.calc({
+      vehicle: siteVehicle.id,
+      km: 20,
+      trips: referenceTrips,
+      man: rentalReference.n,
+      bill: 'loc',
+      locMenu: false,
+      inv: legacyInventory,
+      date: '2026-11-10',
+      remise: 0,
+    });
+    assert.equal(
+      rentalPreview.total,
+      rentalPriceReference.total,
+      `total location économique identique aux tarifs de la référence: ${JSON.stringify({ actual: rentalPreview.previewLines, reference: rentalPriceReference.lines, trips: referenceTrips })}`,
+    );
+    assert.equal(
+      JSON.stringify(
+        rentalPreview.previewLines.map((line) => [line.quantity, line.unitPrice, line.total]),
+      ),
+      JSON.stringify(rentalPriceReference.lines.map((line) => [line.qty, line.pu, line.amount])),
+      'lignes tarifaires de location identiques à la référence',
+    );
 
     const manualEstimate = estimateAdminQuoteWork({
       inventory,

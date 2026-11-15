@@ -55,7 +55,6 @@ export function LoadingSimulation({
   onTripsChange,
   onCrewRecommendation,
   laborPlanning,
-  onPlanNeeds,
 }: {
   draft: Draft;
   vehicles: Vehicle[];
@@ -74,7 +73,6 @@ export function LoadingSimulation({
   onTripsChange: (trips: number) => void;
   onCrewRecommendation?: (crew: number) => void;
   laborPlanning?: MovingLaborPlanningSettings;
-  onPlanNeeds?: Dispatch<SetStateAction<{ blankets: number; straps: number } | null>>;
 }) {
   const { blanketLengthCm, blanketWidthCm, blanketStock, saveBlanketStock, imageDataUrl } =
     useLoadingSimulationPreferences();
@@ -167,18 +165,6 @@ export function LoadingSimulation({
     quoteBlanketLengthCm,
     quoteBlanketWidthCm,
   ]);
-  useEffect(() => {
-    if (!onPlanNeeds) return;
-    const trips = vehiclePlans[draft.vehicleId]?.trips ?? [];
-    onPlanNeeds(
-      trips.length
-        ? {
-            blankets: Math.max(...trips.map((trip) => trip.need || trip.blankets || 0)),
-            straps: Math.max(...trips.map((trip) => trip.straps || 0)),
-          }
-        : null,
-    );
-  }, [draft.vehicleId, onPlanNeeds, vehiclePlans]);
   const trip = plan?.trips[Math.min(tripIndex, plan.trips.length - 1)] ?? null;
   const currentStep = step === null ? null : Math.min(step, trip?.boxes.length ?? 0);
   const currentStepRef = useRef(currentStep);
