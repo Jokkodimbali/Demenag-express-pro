@@ -146,6 +146,32 @@ export function simulationInput(
     notop?: boolean;
     hkind?: string;
   }[] = [];
+  const handlingKinds: Record<string, string> = {
+    frigo: 'app',
+    congel: 'app',
+    mal: 'app',
+    cuisiniere: 'app',
+    clim: 'app',
+    micro: 'small',
+    armoire: 'case',
+    buffet: 'case',
+    biblio: 'case',
+    commode: 'case',
+    vitrine: 'glass',
+    coiffeuse: 'glass',
+    salon: 'sofa',
+    matelas: 'mat',
+    lit: 'bed',
+    tablem: 'table',
+    bureau: 'table',
+    tv: 'tv',
+    carton: 'box',
+    sac: 'box',
+    gaz: 'gas',
+    velo: 'misc',
+    pot: 'misc',
+    tapis: 'roll',
+  };
   const add = (
     key: string,
     quantity: number,
@@ -193,32 +219,54 @@ export function simulationInput(
     const dimensions = [entry.cL, entry.cW, entry.cH].map(Number);
     if (dimensions.every((value) => value > 0)) line.dims = dimensions.map((value) => value / 100);
     if (line.dims) {
-      line.v = line.dims.reduce((volume, value) => volume * value, 1) * (entry.dismantle ? 0.8 : 1);
+      line.v =
+        Math.round(
+          line.dims.reduce((volume, value) => volume * value, 1) *
+            (entry.dismantle ? 0.8 : 1) *
+            1000,
+        ) / 1000;
     } else if (entry.like) {
       const likeKey = entry.like;
       const likeDefinition = inventoryItems.find((item) => item.key === likeKey);
-      line.v = estimatedInventoryItemVolume(
-        likeKey,
-        likeDefinition?.defaultSize ?? 1,
-        Boolean(entry.dismantle),
-        entry.format,
-      );
+      line.v =
+        estimatedInventoryItemVolume(
+          likeKey,
+          likeDefinition?.defaultSize ?? 1,
+          Boolean(entry.dismantle),
+          entry.format,
+        ) / (likeKey === 'salon' ? 1.25 : 1);
     }
     if (entry.kg && entry.kg > 0) line.kg = entry.kg;
     if (entry.like) {
       line.like = itemKeys[entry.like] ?? entry.like;
-      line.hkind = line.like;
+      line.hkind = handlingKinds[line.like] ?? '';
       if (!(entry.kg && entry.kg > 0)) {
         const likeKey = entry.like;
         const likeDefinition = inventoryItems.find((item) => item.key === likeKey);
         line.kg = Math.round(
           referenceItemWeight(
             likeKey,
-            likeDefinition?.defaultSize ?? 1,
+            likeDefinition?.sizeLabel ? 3 : 1,
             entry.format ?? 'medium',
-            Boolean(entry.dismantle),
+            false,
           ).max,
         );
+        line.hkind = handlingKinds[line.like] ?? '';
+      }
+      if (!line.dims && entry.like) {
+        const likeKey = entry.like;
+        const likeDefinition = inventoryItems.find((item) => item.key === likeKey);
+        line.v =
+          Math.round(
+            (estimatedInventoryItemVolume(
+              likeKey,
+              likeDefinition?.defaultSize ?? 1,
+              Boolean(entry.dismantle),
+              entry.format,
+            ) /
+              (likeKey === 'salon' ? 1.25 : 1)) *
+              1000,
+          ) / 1000;
       }
     }
     line.up = Boolean(entry.up);

@@ -52,8 +52,7 @@ export function estimateAdminQuoteWork(input: {
     trips:
       input.config.calcMode === 'manual' ? input.config.trips : (recommendedTrips ?? undefined),
     crew: input.config.calcMode === 'manual' ? input.draft.inventory.crew : 0,
-    ignoreDismantling:
-      input.config.billingMode === 'driver-rental' && !input.config.menuIncluded,
+    ignoreDismantling: input.config.billingMode === 'driver-rental' && !input.config.menuIncluded,
     startTime: input.draft.timeSlot,
     laborPlanning: input.settings?.movingLaborPlanning,
     ignoreTraffic: input.config.trafficOff,

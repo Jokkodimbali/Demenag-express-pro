@@ -64,7 +64,8 @@ export function useBookingForm({
   getProvidedCrew?: () => number;
   buildAdministrativeQuoteSubmission?: AdministrativeQuoteSubmissionBuilder;
 } = {}) {
-  const { catalogue, tollPoints, loading, error, reload, api, user, authLoading, showErrorToast } = useApp();
+  const { catalogue, tollPoints, loading, error, reload, api, user, authLoading, showErrorToast } =
+    useApp();
   const { draft, setDraft } = useBookingDraft();
   const navigate = useNavigate();
   const location = useLocation();

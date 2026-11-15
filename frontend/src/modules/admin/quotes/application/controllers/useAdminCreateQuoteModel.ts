@@ -573,11 +573,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const rentalKitNeeds = useMemo(
     () =>
       selected
-        ? referenceRentalKitNeeds(
-            estimateInventory,
-            selected,
-            quoteSettings?.movingLaborPlanning,
-          )
+        ? referenceRentalKitNeeds(estimateInventory, selected, quoteSettings?.movingLaborPlanning)
         : null,
     [estimateInventory, selected, quoteSettings?.movingLaborPlanning],
   );

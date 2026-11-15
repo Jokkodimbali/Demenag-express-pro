@@ -61,7 +61,12 @@ function AppSuccessToast({
   onClose: () => void;
 }) {
   return (
-    <div className={`reference-success-toast${type === 'error' ? ' is-error' : ''}`} role={type === 'error' ? 'alert' : 'status'} aria-live={type === 'error' ? 'assertive' : 'polite'} aria-atomic="true">
+    <div
+      className={`reference-success-toast${type === 'error' ? ' is-error' : ''}`}
+      role={type === 'error' ? 'alert' : 'status'}
+      aria-live={type === 'error' ? 'assertive' : 'polite'}
+      aria-atomic="true"
+    >
       <span>{message}</span>
       {undo && (
         <button type="button" className="reference-success-toast-undo" onClick={undo}>
@@ -103,9 +108,11 @@ export function AppProvider({
     [retry, setRetry] = useState(0);
   const [tollPoints, setTollPoints] = useState<TollPoint[]>([]);
   const [confirmation, setConfirmation] = useState<ConfirmationRequest | null>(null);
-  const [successToast, setSuccessToast] = useState<{ message: string; undo?: () => void; type: 'success' | 'error' } | null>(
-    null,
-  );
+  const [successToast, setSuccessToast] = useState<{
+    message: string;
+    undo?: () => void;
+    type: 'success' | 'error';
+  } | null>(null);
   const successToastTimer = useRef<number | null>(null);
   const confirmationResolver = useRef<((confirmed: boolean) => void) | null>(null);
   const requestConfirmation = useCallback((request: ConfirmationRequest) => {
@@ -149,9 +156,12 @@ export function AppProvider({
     successToastTimer.current = null;
     setSuccessToast(null);
   }, []);
-  useEffect(() => () => {
-    if (successToastTimer.current !== null) window.clearTimeout(successToastTimer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (successToastTimer.current !== null) window.clearTimeout(successToastTimer.current);
+    },
+    [],
+  );
   useEffect(() => api.onSessionExpired?.(() => setUser(null)), [api]);
   useEffect(() => {
     let active = true;

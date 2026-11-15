@@ -10,14 +10,22 @@ import { estimateAdminQuoteWork } from '../src/modules/admin/quotes/application/
 import { defaultAdminQuoteConfig } from '../src/modules/admin/quotes/application/services/admin-quote-config.ts';
 import { createAdminQuotePreview } from '../src/modules/admin/quotes/application/services/admin-quote-preview.ts';
 import { cheaperCompatibleVehicle } from '../src/modules/admin/quotes/application/services/quote-vehicle-fit.ts';
-import { estimateMovingWork } from '../src/modules/moving/domain/estimate/moving-estimate.ts';
-import { defaultMovingLaborPlanning } from '../src/modules/moving/domain/estimate/moving-estimate.ts';
+import {
+  estimateMovingWork,
+  defaultMovingLaborPlanning,
+  movingEstimateFillRate,
+  vehicleFillPercentage,
+  lastTripFillRatio,
+} from '../src/modules/moving/domain/estimate/moving-estimate.ts';
 import {
   inventoryVolumes,
   inventoryWeight,
 } from '../src/modules/moving/domain/estimate/moving-estimate-inventory.ts';
 import { referencePlannedTrips } from '../src/modules/moving/application/services/loading-simulation-model.ts';
-import { referenceRentalKitNeeds, simulationInput } from '../src/modules/moving/application/services/loading-simulation-model.ts';
+import {
+  referenceRentalKitNeeds,
+  simulationInput,
+} from '../src/modules/moving/application/services/loading-simulation-model.ts';
 import { defaultRentalKit } from '../src/modules/moving/domain/rental-kit.ts';
 import { referenceAnnexVolume } from '../src/modules/moving/domain/estimate/reference-inventory-note.ts';
 import { blankInventory } from '../src/modules/moving/domain/inventory/inventory.ts';
@@ -65,7 +73,13 @@ vm.runInContext(`${code}\nglobalThis.ReferenceComponent = Component;`, context, 
 const ReferenceComponent = (
   context as {
     ReferenceComponent: new () => {
-      state: { data: { tarifs: Record<string, unknown>; peages: unknown[] } };
+      state: {
+        data: {
+          tarifs: Record<string, unknown>;
+          peages: unknown[];
+          labor?: { fill?: number; fillF?: number };
+        };
+      };
       calc: (quote: ReferenceQuote) => {
         total: number;
         lines: Array<{ qty: number; pu: number; amount: number }>;
@@ -89,6 +103,9 @@ const ReferenceComponent = (
         tot: number;
         max: number;
       };
+      invFill: (inventory: { opts?: { fragile?: boolean } }) => number;
+      vcap: (vehicle: string) => number;
+      simInputOf: (draft: { inv: unknown; vehicle: string }, vehicle: string) => unknown;
       estTrips: (inventory: unknown, vehicle: string) => number;
       laborEst: (quote: {
         vehicle: string;
@@ -165,6 +182,15 @@ const tariffs = {
   manAsc: 500,
   montage: 15000,
 };
+const component = new ReferenceComponent();
+component.state = {
+  data: {
+    tarifs: tariffs as unknown as Record<string, unknown>,
+    peages: [],
+    invCat: { add: [{ k: 'armoire', n: 'armoire' }] },
+    fin: { menuPrices: {} },
+  },
+} as never;
 
 test('les six logements et la déduction cartons/sacs reprennent le calcul de la référence', () => {
   const reference = new ReferenceComponent();
@@ -356,6 +382,34 @@ test('le mode automatique du formulaire calcule trajet et équipe avec le plan d
   try {
     const referenceTrips = reference.estTrips(legacyInventory, 'sprinter');
     assert.ok(referenceTrips > 1, 'le scénario doit exercer plusieurs allers-retours');
+    const referenceFillPlan = referenceWindow.DemSim!.plan(
+      reference.simInputOf({ inv: legacyInventory, vehicle: 'sprinter' }, 'sprinter'),
+    );
+    const appPlan = referenceWindow.DemSim!.plan(
+      simulationInput(inventory, siteVehicle, 20, 204, 184),
+    );
+    assert.equal(
+      appPlan.trips.length,
+      referenceFillPlan.trips.length,
+      'nombre de trajets du plan 3D',
+    );
+    assert.equal(
+      JSON.stringify(appPlan.trips.map(({ fill, vol, left, front }) => [fill, vol, left, front])),
+      JSON.stringify(
+        referenceFillPlan.trips.map(({ fill, vol, left, front }) => [fill, vol, left, front]),
+      ),
+      'remplissage, volume et équilibrage de chaque trajet 3D identiques à la référence',
+    );
+    assert.equal(
+      movingEstimateFillRate(inventory.flags.fragile),
+      reference.invFill(legacyInventory),
+      'taux utilisé pour prévoir les trajets, y compris avec objets fragiles',
+    );
+    assert.equal(
+      movingEstimateFillRate(false),
+      reference.invFill({ ...legacyInventory, opts: { ...legacyInventory.opts, fragile: false } }),
+      'taux par défaut sans objet fragile comme la référence',
+    );
     const referenceEstimate = reference.laborEst({
       vehicle: 'sprinter',
       trips: referenceTrips,
@@ -387,6 +441,39 @@ test('le mode automatique du formulaire calcule trajet et équipe avec le plan d
     });
     assert.ok(estimate);
     assert.equal(estimate.trips, referenceTrips, 'nombre estimé d’allers-retours');
+    assert.equal(
+      vehicleFillPercentage(estimate.volume, estimate.trips, estimate.capacity),
+      Math.round(
+        (reference.invVolume(legacyInventory) / (referenceTrips * reference.vcap('sprinter'))) *
+          100,
+      ),
+      'pourcentage global de remplissage par véhicule comme dans le récapitulatif de référence',
+    );
+    assert.equal(
+      Math.round(
+        lastTripFillRatio(estimate.volume, estimate.trips, estimate.capacity, estimate.fillRate) *
+          100,
+      ),
+      Math.round(
+        ((reference.invVolume(legacyInventory) -
+          (referenceTrips - 1) * reference.vcap('sprinter') * reference.invFill(legacyInventory)) /
+          (reference.vcap('sprinter') * reference.invFill(legacyInventory))) *
+          100,
+      ),
+      'pourcentage du dernier trajet comme dans la référence',
+    );
+    reference.state.data.labor = { fill: 62, fillF: 48 };
+    for (const fragile of [false, true]) {
+      const configuredInventory = {
+        ...legacyInventory,
+        opts: { ...legacyInventory.opts, fragile },
+      };
+      assert.equal(
+        movingEstimateFillRate(fragile, { ...defaultMovingLaborPlanning, fill: 62, fillF: 48 }),
+        reference.invFill(configuredInventory),
+        `taux configuré à ${fragile ? 48 : 62} % comme la référence`,
+      );
+    }
     assert.equal(estimate.plannedTrips, referenceTrips, 'trajets appliqués dès le premier calcul');
     assert.equal(
       estimate.crew,
@@ -421,16 +508,26 @@ test('le mode automatique du formulaire calcule trajet et équipe avec le plan d
       tollLines: [],
     });
     assert.ok(rentalEstimate);
-    assert.equal(rentalEstimate.crew, rentalReference.n, 'manœuvres fournies en location économique');
-    assert.equal(rentalEstimate.carpenterCount, rentalReference.m, 'menuisiers exclus de la location');
+    assert.equal(
+      rentalEstimate.crew,
+      rentalReference.n,
+      'manœuvres fournies en location économique',
+    );
+    assert.equal(
+      rentalEstimate.carpenterCount,
+      rentalReference.m,
+      'menuisiers exclus de la location',
+    );
     assert.equal(rentalEstimate.trips, referenceTrips, 'les trajets économiques concordent');
 
     const rentalNeeds = referenceRentalKitNeeds(inventory, siteVehicle);
-    const referencePlan = (referenceWindow.DemSim as {
-      plan: (input: unknown) => {
-        trips: Array<{ need: number; blankets: number; straps: number }>;
-      };
-    }).plan(simulationInput(inventory, siteVehicle, 20, 204, 184));
+    const referencePlan = (
+      referenceWindow.DemSim as {
+        plan: (input: unknown) => {
+          trips: Array<{ need: number; blankets: number; straps: number }>;
+        };
+      }
+    ).plan(simulationInput(inventory, siteVehicle, 20, 204, 184));
     assert.ok(rentalNeeds);
     assert.deepEqual(rentalNeeds, {
       blankets: Math.max(...referencePlan.trips.map((trip) => trip.need || trip.blankets || 0)),
@@ -464,7 +561,15 @@ test('le mode automatique du formulaire calcule trajet et équipe avec le plan d
     } as Settings;
     const draftForRental = {
       ...quoteDraft,
-      route: { id: 'rental-reference', expiresAt: '2026-11-16T00:00:00.000Z', from: [14.7, -17.5], to: [14.7, -17.2], distanceKm: 20, durationMinutes: 30, geometry: [] },
+      route: {
+        id: 'rental-reference',
+        expiresAt: '2026-11-16T00:00:00.000Z',
+        from: [14.7, -17.5],
+        to: [14.7, -17.2],
+        distanceKm: 20,
+        durationMinutes: 30,
+        geometry: [],
+      },
       inventory,
     } as Draft;
     const rentalPreview = createAdminQuotePreview({
@@ -480,7 +585,18 @@ test('le mode automatique du formulaire calcule trajet et équipe avec le plan d
       vehicle: siteVehicle,
       estimate: rentalEstimate,
       settings: priceSettings,
-      price: { lines: [], total: 0, discount: 0, discountLabel: '', discountType: 'fcfa', discountValue: 0, discountReason: '', tier: 0, trips: referenceTrips, currency: 'XOF' },
+      price: {
+        lines: [],
+        total: 0,
+        discount: 0,
+        discountLabel: '',
+        discountType: 'fcfa',
+        discountValue: 0,
+        discountReason: '',
+        tier: 0,
+        trips: referenceTrips,
+        currency: 'XOF',
+      },
       extras: [
         ['labour', 'Manœuvres', 'Manœuvres'],
         ['desk', 'Bureau', 'Bureau'],
@@ -537,6 +653,525 @@ test('le mode automatique du formulaire calcule trajet et équipe avec le plan d
     if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow);
     else delete (globalThis as typeof globalThis & { window?: Window }).window;
   }
+});
+
+test('pourcentages de remplissage identiques à la référence pour les options du devis et chaque véhicule', () => {
+  const reference = new ReferenceComponent();
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  Object.defineProperty(globalThis, 'window', {
+    value: referenceWindow,
+    configurable: true,
+    writable: true,
+  });
+  const aliases: Record<string, string> = {
+    'table-basse': 'tbasse',
+    'meuble-tv': 'meubletv',
+    'table-manger': 'tablem',
+    television: 'tv',
+    bibliotheque: 'biblio',
+    congelateur: 'congel',
+    'machine-laver': 'mal',
+    'micro-ondes': 'micro',
+    climatiseur: 'clim',
+    ventilateur: 'ventilo',
+  };
+  const formats = { small: 'p', medium: 'm', large: 'g' } as const;
+  const makeInventory = (input: {
+    dwellingType: string;
+    annexOn: boolean;
+    fragile: boolean;
+    entries?: Inventory['entries'];
+    variants?: Inventory['variants'];
+    custom?: Inventory['custom'];
+    blanketLengthCm: number;
+    blanketWidthCm: number;
+  }) => {
+    const inventory = blankInventory();
+    inventory.dwellingType = input.dwellingType;
+    inventory.annexOn = input.annexOn;
+    inventory.flags.fragile = input.fragile;
+    inventory.entries = input.entries ?? {};
+    inventory.variants = input.variants ?? [];
+    inventory.custom = input.custom ?? [];
+    inventory.fromFloor = 2;
+    inventory.toFloor = 4;
+    inventory.fromLift = true;
+    inventory.toLift = false;
+    inventory.ready = 'non';
+    inventory.stairs = 'verif';
+    inventory.blanketLengthCm = input.blanketLengthCm;
+    inventory.blanketWidthCm = input.blanketWidthCm;
+    return inventory;
+  };
+  const legacyInventory = (inventory: Inventory) => {
+    const lines: Record<string, unknown>[] = [];
+    const add = (
+      key: string,
+      item: {
+        quantity: number;
+        size: number;
+        format?: 'small' | 'medium' | 'large';
+        dismantle: boolean;
+      },
+    ) => {
+      if (item.quantity <= 0) return;
+      lines.push({
+        k: aliases[key] ?? key,
+        q: item.quantity,
+        s: item.size,
+        g: formats[item.format ?? 'medium'],
+        dm: item.dismantle,
+      });
+    };
+    Object.entries(inventory.entries).forEach(([key, item]) => add(key, item));
+    inventory.variants.forEach((item) => add(item.itemKey, item));
+    inventory.custom.forEach((item) => {
+      if (item.quantity <= 0) return;
+      lines.push({
+        k: 'custom',
+        q: item.quantity,
+        s: 1,
+        g: formats[item.format ?? 'medium'],
+        dm: Boolean(item.dismantle),
+        n: item.label,
+        cL: item.cL,
+        cW: item.cW,
+        cH: item.cH,
+        kg: item.kg,
+        like: item.like ? (aliases[item.like] ?? item.like) : '',
+        up: item.up,
+        frag: item.frag,
+        notop: item.notop,
+      });
+    });
+    inventory.variants
+      .filter((item) => item.origin === 'import')
+      .forEach((item) => {
+        const ix = lines.findIndex((line) => line.k === (aliases[item.itemKey] ?? item.itemKey));
+        if (ix >= 0) lines[ix] = { ...lines[ix], k: 'custom', n: item.itemKey, like: '', kg: 0 };
+      });
+    inventory.custom
+      .filter((item) => item.typeKey)
+      .forEach((item) => {
+        const ix = lines.findIndex((line) => line.n === item.label);
+        if (ix >= 0) lines[ix] = { ...lines[ix], k: 'custom', like: '', kg: 0 };
+      });
+    return {
+      logement: inventory.dwellingType.toLowerCase(),
+      annexOn: inventory.annexOn,
+      fEt: inventory.fromFloor,
+      fAsc: inventory.fromLift,
+      tEt: inventory.toFloor,
+      tAsc: inventory.toLift,
+      opts: { ...inventory.flags },
+      ready: inventory.ready,
+      stairs: inventory.stairs,
+      lines,
+    };
+  };
+  const scenarios = [
+    {
+      name: 'petit chargement léger sans effets annexes',
+      inventory: makeInventory({
+        dwellingType: 'Studio',
+        annexOn: false,
+        fragile: false,
+        blanketLengthCm: 204,
+        blanketWidthCm: 184,
+        entries: {
+          carton: { quantity: 26, size: 1, format: 'medium', dismantle: false },
+          sac: { quantity: 6, size: 1, format: 'large', dismantle: false },
+        },
+      }),
+      planning: { ...defaultMovingLaborPlanning },
+      stock: 20,
+    },
+    {
+      name: 'F4 fragile avec démontage et effets annexes',
+      inventory: makeInventory({
+        dwellingType: 'F4',
+        annexOn: true,
+        fragile: true,
+        blanketLengthCm: 204,
+        blanketWidthCm: 184,
+        entries: {
+          salon: { quantity: 2, size: 7, format: 'medium', dismantle: false },
+          television: { quantity: 2, size: 3, format: 'large', dismantle: false },
+          carton: { quantity: 35, size: 1, format: 'medium', dismantle: false },
+          frigo: { quantity: 1, size: 2, format: 'medium', dismantle: false },
+        },
+        custom: [],
+      }),
+      planning: { ...defaultMovingLaborPlanning, fill: 62, fillF: 48 },
+      stock: 12,
+    },
+    {
+      name: 'villa avec variantes, charges lourdes et objet sur mesure',
+      inventory: makeInventory({
+        dwellingType: 'Villa',
+        annexOn: true,
+        fragile: false,
+        blanketLengthCm: 220,
+        blanketWidthCm: 190,
+        entries: {
+          congelateur: { quantity: 2, size: 1, format: 'large', dismantle: false },
+          'table-manger': { quantity: 1, size: 8, format: 'medium', dismantle: true },
+          buffet: { quantity: 1, size: 1, format: 'large', dismantle: false },
+        },
+        variants: [],
+        custom: [
+          {
+            id: 'custom-dimensions',
+            label: 'Objet long sur mesure',
+            quantity: 1,
+            format: 'large',
+            dismantle: true,
+            cL: 240,
+            cW: 80,
+            cH: 60,
+            kg: 72,
+            up: true,
+            frag: true,
+            notop: true,
+          },
+        ],
+      }),
+      planning: { ...defaultMovingLaborPlanning, fill: 78, fillF: 58 },
+      stock: 30,
+    },
+    {
+      name: 'F3 fragile avec stock faible et serviettes grand format',
+      inventory: makeInventory({
+        dwellingType: 'F3',
+        annexOn: false,
+        fragile: true,
+        blanketLengthCm: 240,
+        blanketWidthCm: 200,
+        entries: {
+          vitrine: { quantity: 1, size: 2, format: 'large', dismantle: false },
+          climatiseur: { quantity: 2, size: 1, format: 'medium', dismantle: true },
+          'table-basse': { quantity: 2, size: 1, format: 'medium', dismantle: false },
+          carton: { quantity: 18, size: 1, format: 'small', dismantle: false },
+        },
+      }),
+      planning: { ...defaultMovingLaborPlanning, fill: 88, fillF: 55 },
+      stock: 4,
+    },
+    {
+      name: 'inventaire vide',
+      inventory: makeInventory({
+        dwellingType: '',
+        annexOn: false,
+        fragile: false,
+        blanketLengthCm: 204,
+        blanketWidthCm: 184,
+      }),
+      planning: { ...defaultMovingLaborPlanning },
+      stock: 20,
+    },
+  ];
+  const vehicles: Vehicle[] = [
+    {
+      ...vehicle,
+      id: 'trafic',
+      name: 'Renault Trafic III',
+      shortName: 'Trafic',
+      length: '2,54 m',
+      height: '1,39 m',
+      width: '1,66 m',
+      wheelWidth: '1,27 m',
+    },
+    {
+      ...vehicle,
+      id: 'sprinter',
+      name: 'Mercedes Sprinter',
+      shortName: 'Sprinter',
+      length: '4,30 m',
+      height: '1,94 m',
+      width: '1,78 m',
+      wheelWidth: '1,35 m',
+    },
+    {
+      ...vehicle,
+      id: 'master',
+      name: 'Renault Master III',
+      shortName: 'Master',
+      length: '3,73 m',
+      height: '1,89 m',
+      width: '1,76 m',
+      wheelWidth: '1,38 m',
+    },
+  ];
+  const engine = referenceWindow.DemSim as {
+    plan: (input: unknown) => {
+      trips: Array<{
+        fill: number;
+        vol: number;
+        left: number;
+        front: number;
+        kg: number;
+        nItems: number;
+      }>;
+    };
+  };
+  try {
+    for (const scenario of scenarios) {
+      const legacy = legacyInventory(scenario.inventory);
+      reference.state = {
+        data: {
+          tarifs: tariffs,
+          peages: [],
+          invCat: { add: [{ k: 'armoire', n: 'armoire' }] },
+          simStock: scenario.stock,
+          blk: {
+            L: scenario.inventory.blanketLengthCm,
+            W: scenario.inventory.blanketWidthCm,
+          },
+          labor: {
+            fill: scenario.planning.fill,
+            fillF: scenario.planning.fillF,
+          },
+        },
+      };
+      for (const selectedVehicle of vehicles) {
+        const referencePlan = engine.plan(
+          reference.simInputOf({ inv: legacy, vehicle: selectedVehicle.id }, selectedVehicle.id),
+        );
+        const appPlan = engine.plan(
+          simulationInput(
+            scenario.inventory,
+            selectedVehicle,
+            scenario.stock,
+            scenario.inventory.blanketLengthCm!,
+            scenario.inventory.blanketWidthCm!,
+          ),
+        );
+        const label = `${scenario.name} / ${selectedVehicle.id}`;
+        assert.equal(
+          JSON.stringify(
+            appPlan.trips.map(({ fill, vol, left, front, kg, nItems }) => [
+              fill,
+              vol,
+              left,
+              front,
+              kg,
+              nItems,
+            ]),
+          ),
+          JSON.stringify(
+            referencePlan.trips.map(({ fill, vol, left, front, kg, nItems }) => [
+              fill,
+              vol,
+              left,
+              front,
+              kg,
+              nItems,
+            ]),
+          ),
+          `${label}: pourcentages et données de chaque voyage`,
+        );
+        const referenceFillRate = reference.invFill(legacy);
+        const referenceVolume = reference.invVolume(legacy);
+        const referenceCapacity = reference.vcap(selectedVehicle.id);
+        const plannedTrips =
+          referenceVolume > 0
+            ? Math.max(1, Math.ceil(referenceVolume / (referenceCapacity * referenceFillRate)))
+            : 0;
+        const estimate = estimateMovingWork(scenario.inventory, selectedVehicle, null, {
+          laborPlanning: scenario.planning,
+        });
+        assert.equal(estimate.fillRate, referenceFillRate, `${label}: taux de calcul des trajets`);
+        assert.equal(
+          estimate.trips,
+          plannedTrips,
+          `${label}: trajets calculés par seuil de volume`,
+        );
+        if (!plannedTrips || referenceVolume <= 0) {
+          assert.equal(estimate.volume, 0, `${label}: aucun volume sans inventaire`);
+          continue;
+        }
+        assert.equal(
+          vehicleFillPercentage(estimate.volume, estimate.trips, estimate.capacity),
+          Math.round((referenceVolume / (plannedTrips * referenceCapacity)) * 100),
+          `${label}: remplissage global affiché`,
+        );
+        const expectedLastFill =
+          plannedTrips <= 1
+            ? 1
+            : (referenceVolume - (plannedTrips - 1) * referenceCapacity * referenceFillRate) /
+              (referenceCapacity * referenceFillRate);
+        assert.equal(
+          Math.round(
+            lastTripFillRatio(
+              estimate.volume,
+              estimate.trips,
+              estimate.capacity,
+              estimate.fillRate,
+            ) * 100,
+          ),
+          Math.round(expectedLastFill * 100),
+          `${label}: remplissage du dernier trajet affiché`,
+        );
+      }
+    }
+  } finally {
+    if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow);
+    else delete (globalThis as typeof globalThis & { window?: Window }).window;
+  }
+});
+
+test('parité des pourcentages pour chaque meuble, format, taille, démontage, logement et véhicule', () => {
+  const reference = new ReferenceComponent();
+  const aliases: Record<string, string> = {
+    'table-basse': 'tbasse',
+    'meuble-tv': 'meubletv',
+    television: 'tv',
+    'table-manger': 'tablem',
+    bibliotheque: 'biblio',
+    congelateur: 'congel',
+    'machine-laver': 'mal',
+    'micro-ondes': 'micro',
+    climatiseur: 'clim',
+    ventilateur: 'ventilo',
+  };
+  const formats = [
+    { value: 'small', reference: 'p' },
+    { value: 'medium', reference: 'm' },
+    { value: 'large', reference: 'g' },
+  ] as const;
+  const scenarioVehicles: Vehicle[] = [
+    {
+      ...vehicle,
+      id: 'trafic',
+      name: 'Trafic',
+      length: '2,54 m',
+      height: '1,39 m',
+      width: '1,66 m',
+      wheelWidth: '1,27 m',
+    },
+    {
+      ...vehicle,
+      id: 'sprinter',
+      name: 'Sprinter',
+      length: '4,30 m',
+      height: '1,94 m',
+      width: '1,78 m',
+      wheelWidth: '1,35 m',
+    },
+    {
+      ...vehicle,
+      id: 'master',
+      name: 'Master',
+      length: '3,73 m',
+      height: '1,89 m',
+      width: '1,76 m',
+      wheelWidth: '1,38 m',
+    },
+  ];
+  const dwellingTypes = [
+    ['', '', false],
+    ['Studio', 'studio', true],
+    ['F2', 'f2', true],
+    ['F3', 'f3', true],
+    ['F4', 'f4', true],
+    ['F5 et plus', 'f5', true],
+    ['Villa', 'villa', true],
+  ] as const;
+  let cases = 0;
+
+  for (const item of inventoryItems) {
+    const sizes = item.sizeLabel ? Array.from({ length: 12 }, (_, index) => index + 1) : [1];
+    const itemFormats = item.hasFormat ? formats : [formats[1]];
+    for (const size of sizes) {
+      for (const format of itemFormats) {
+        for (const dismantle of [false, true]) {
+          for (const fragile of [false, true]) {
+            for (const [dwellingType, legacyDwelling, annexOn] of dwellingTypes) {
+              const inventory = blankInventory();
+              inventory.dwellingType = dwellingType;
+              inventory.annexOn = annexOn;
+              inventory.flags.fragile = fragile;
+              inventory.entries[item.key] = { quantity: 3, size, format: format.value, dismantle };
+              const legacy = {
+                logement: legacyDwelling,
+                annexOn,
+                opts: { fragile },
+                lines: [
+                  {
+                    k: aliases[item.key] ?? item.key,
+                    q: 3,
+                    s: size,
+                    g: format.reference,
+                    dm: dismantle,
+                  },
+                ],
+              };
+              const label = `${item.key} / taille ${size} / ${format.value} / démonté=${dismantle} / fragile=${fragile} / ${dwellingType || 'sans logement'}`;
+              const referenceVolume = reference.invVolume(legacy);
+              const appGroups = inventoryVolumes(inventory);
+              const appVolume =
+                appGroups.light + appGroups.furniture + appGroups.bulky + appGroups.heavy;
+              assert.equal(appVolume, referenceVolume, `${label}: volume identique`);
+              reference.state = { data: { tarifs: tariffs, peages: [], labor: {}, invCat: {} } };
+              for (const selectedVehicle of scenarioVehicles) {
+                const estimate = estimateMovingWork(inventory, selectedVehicle, null);
+                const referenceRate = reference.invFill(legacy);
+                const referenceTrips =
+                  referenceVolume > 0
+                    ? Math.max(
+                        1,
+                        Math.ceil(
+                          referenceVolume / (reference.vcap(selectedVehicle.id) * referenceRate),
+                        ),
+                      )
+                    : 0;
+                assert.equal(
+                  estimate.fillRate,
+                  referenceRate,
+                  `${label} / ${selectedVehicle.id}: taux`,
+                );
+                assert.equal(
+                  estimate.trips,
+                  referenceTrips,
+                  `${label} / ${selectedVehicle.id}: trajets`,
+                );
+                assert.equal(
+                  vehicleFillPercentage(estimate.volume, estimate.trips, estimate.capacity),
+                  referenceTrips
+                    ? Math.round(
+                        (referenceVolume / (referenceTrips * reference.vcap(selectedVehicle.id))) *
+                          100,
+                      )
+                    : 0,
+                  `${label} / ${selectedVehicle.id}: pourcentage global`,
+                );
+                const expectedLast =
+                  referenceTrips <= 1
+                    ? 1
+                    : (referenceVolume -
+                        (referenceTrips - 1) * reference.vcap(selectedVehicle.id) * referenceRate) /
+                      (reference.vcap(selectedVehicle.id) * referenceRate);
+                assert.equal(
+                  Math.round(
+                    lastTripFillRatio(
+                      estimate.volume,
+                      estimate.trips,
+                      estimate.capacity,
+                      estimate.fillRate,
+                    ) * 100,
+                  ),
+                  Math.round(expectedLast * 100),
+                  `${label} / ${selectedVehicle.id}: dernier trajet`,
+                );
+                cases += 1;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  assert.ok(cases > 1000, `matrice étendue exécutée (${cases} cas)`);
 });
 
 test('le prix de chaque véhicule et la suggestion moins chère reprennent la référence au même trajet', () => {

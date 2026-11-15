@@ -18,7 +18,7 @@ export async function downloadQuote(
   const documentQuote = quote;
   const doc = new jsPDF({ format: 'a4', unit: 'mm' });
   const price = documentQuote?.price || booking.estimate;
-  const { addressNotes } = quotePdfNotes(booking, documentQuote);
+  const { addressNotes, loadingConditions } = quotePdfNotes(booking, documentQuote);
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 16;
   const contentWidth = pageWidth - margin * 2;
@@ -182,7 +182,8 @@ export async function downloadQuote(
     doc.setFontSize(9);
     doc.setTextColor(90, 97, 104);
     const detailLines = doc.splitTextToSize(cleanPdfText(detail), infoWidth - 9) as string[];
-    doc.text(detailLines[0] || '', x + 5, y + 19);
+    if (detailLines.length > 1) doc.setFontSize(7.5);
+    doc.text(detailLines, x + 5, y + (detailLines.length > 1 ? 17 : 19));
   });
 
   y += infoHeight + 5;
@@ -422,6 +423,7 @@ export async function downloadQuote(
     : [
         addressNotes.from ? `Repère départ : ${addressNotes.from}` : '',
         addressNotes.to ? `Repère arrivée : ${addressNotes.to}` : '',
+        loadingConditions,
         addressNotes.remaining,
       ]
         .filter(Boolean)

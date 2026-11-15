@@ -90,7 +90,9 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
             >
               <strong>{visibleUiText.quoteEconomicFormula}</strong>
               <b>{money(formulaPrices.economic)}</b>
-              <small>{visibleUiText.quoteMoversLabel} · {economicCrew || 0}</small>
+              <small>
+                {visibleUiText.quoteMoversLabel} · {economicCrew || 0}
+              </small>
             </button>
             <button
               type="button"

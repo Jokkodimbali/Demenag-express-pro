@@ -40,7 +40,14 @@ const referenceVehicleName = (vehicle: Vehicle) =>
   (vehicle.shortName || vehicle.name).replace(/\s+(?:iii|iv)(?:\s+phase\s+\d+)?$/i, '');
 
 export function AdminTollPoints() {
-  const { catalogue, tollPoints, setTollPoints, requestConfirmation, showSuccessToast, showErrorToast } = useApp();
+  const {
+    catalogue,
+    tollPoints,
+    setTollPoints,
+    requestConfirmation,
+    showSuccessToast,
+    showErrorToast,
+  } = useApp();
   const commands = useTollPointCommands();
   const vehicles = useMemo(
     () =>
