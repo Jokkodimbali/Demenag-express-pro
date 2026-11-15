@@ -1174,6 +1174,363 @@ test('parité des pourcentages pour chaque meuble, format, taille, démontage, l
   assert.ok(cases > 1000, `matrice étendue exécutée (${cases} cas)`);
 });
 
+test('parité des objets importés, personnalisés et typés dans le plan de chargement', () => {
+  const engine = referenceWindow.DemSim as {
+    plan: (input: unknown) => {
+      trips: Array<{
+        fill: number;
+        vol: number;
+        left: number;
+        front: number;
+        kg: number;
+        nItems: number;
+      }>;
+    };
+  };
+  const scenarioVehicles: Vehicle[] = [
+    {
+      ...vehicle,
+      id: 'trafic',
+      length: '2,54 m',
+      height: '1,39 m',
+      width: '1,66 m',
+      wheelWidth: '1,27 m',
+    },
+    {
+      ...vehicle,
+      id: 'sprinter',
+      length: '4,30 m',
+      height: '1,94 m',
+      width: '1,78 m',
+      wheelWidth: '1,35 m',
+    },
+    {
+      ...vehicle,
+      id: 'master',
+      length: '3,73 m',
+      height: '1,89 m',
+      width: '1,76 m',
+      wheelWidth: '1,38 m',
+    },
+  ];
+  const scenarios: Array<{
+    name: string;
+    inventory: Inventory;
+    legacy: Record<string, unknown>;
+    customTypes?: Array<Record<string, unknown>>;
+  }> = [];
+  const makeCustomScenario = (
+    name: string,
+    custom: Inventory['custom'][number],
+    legacyLine: Record<string, unknown>,
+    customType?: Record<string, unknown>,
+  ) => {
+    const inventory = blankInventory();
+    inventory.dwellingType = 'F3';
+    inventory.annexOn = true;
+    inventory.flags.fragile = Boolean(custom.frag);
+    inventory.custom = [custom];
+    scenarios.push({
+      name,
+      inventory,
+      legacy: {
+        logement: 'f3',
+        annexOn: true,
+        opts: { fragile: Boolean(custom.frag) },
+        lines: [legacyLine],
+      },
+      ...(customType ? { customTypes: [customType] } : {}),
+    });
+  };
+  makeCustomScenario(
+    'objet libre avec dimensions, poids et contraintes',
+    {
+      id: 'free',
+      label: 'piano droit',
+      quantity: 1,
+      format: 'large',
+      dismantle: true,
+      cL: 150,
+      cW: 55,
+      cH: 125,
+      kg: 180,
+      up: true,
+      frag: true,
+      notop: true,
+    },
+    {
+      k: 'custom',
+      q: 1,
+      s: 1,
+      g: 'g',
+      dm: true,
+      n: 'piano droit',
+      cL: 150,
+      cW: 55,
+      cH: 125,
+      kg: 180,
+      up: true,
+      frag: true,
+      notop: true,
+    },
+  );
+  makeCustomScenario(
+    'objet personnalisé assimilé à une armoire sans dimensions',
+    {
+      id: 'like-wardrobe',
+      label: 'armoire spéciale',
+      quantity: 1,
+      format: 'medium',
+      dismantle: false,
+      like: 'armoire',
+    },
+    { k: 'custom', q: 1, s: 1, g: 'm', dm: false, n: 'armoire spéciale', like: 'armoire' },
+  );
+  makeCustomScenario(
+    'objet typé assimilé à une table sans dimensions',
+    {
+      id: 'custom-type-table',
+      typeKey: 'tableSpeciale',
+      label: 'table spéciale',
+      quantity: 2,
+      format: 'medium',
+      dismantle: false,
+      like: 'table-manger',
+    },
+    { k: 'tableSpeciale', q: 2, s: null, g: 'm', dm: false },
+    { k: 'tableSpeciale', n: 'table spéciale', like: 'tablem', dm: false },
+  );
+  makeCustomScenario(
+    'objet typé importé avec dimensions, poids, fragile et position verticale',
+    {
+      id: 'custom-type-import',
+      typeKey: 'sculptureImportee',
+      label: 'sculpture fragile',
+      quantity: 2,
+      format: 'large',
+      dismantle: false,
+      origin: 'import',
+      cL: 175,
+      cW: 65,
+      cH: 90,
+      kg: 48,
+      up: true,
+      frag: true,
+      notop: true,
+    },
+    { k: 'sculptureImportee', q: 2, s: null, g: 'g', dm: false },
+    {
+      k: 'sculptureImportee',
+      n: 'sculpture fragile',
+      L: 175,
+      W: 65,
+      H: 90,
+      kg: 48,
+      up: true,
+      frag: true,
+      notop: true,
+      dm: false,
+    },
+  );
+  const importedFurniture = blankInventory();
+  importedFurniture.dwellingType = 'F3';
+  importedFurniture.annexOn = true;
+  importedFurniture.entries.frigo = {
+    quantity: 1,
+    size: 2,
+    format: 'medium',
+    dismantle: false,
+    origin: 'import',
+  };
+  importedFurniture.variants = [
+    {
+      id: 'imported-desk',
+      itemKey: 'bureau',
+      quantity: 2,
+      size: 2,
+      format: 'large',
+      dismantle: true,
+      origin: 'import',
+    },
+  ];
+  scenarios.push({
+    name: 'meubles standard importés',
+    inventory: importedFurniture,
+    legacy: {
+      logement: 'f3',
+      annexOn: true,
+      opts: {},
+      lines: [
+        { k: 'frigo', q: 1, s: 2, g: 'm', dm: false, o: 'import' },
+        { k: 'bureau', q: 2, s: 2, g: 'g', dm: true, o: 'import' },
+      ],
+    },
+  });
+
+  for (const scenario of scenarios) {
+    const reference = new ReferenceComponent();
+    reference.state = {
+      data: {
+        tarifs: tariffs,
+        peages: [],
+        simStock: 20,
+        blk: { L: 204, W: 184 },
+        invCat: { add: scenario.customTypes ?? [] },
+      },
+    } as never;
+    const referenceVolume = reference.invVolume(scenario.legacy);
+    const groups = inventoryVolumes(scenario.inventory);
+    const appVolume = groups.light + groups.furniture + groups.bulky + groups.heavy;
+    assert.equal(appVolume, referenceVolume, `${scenario.name}: volume de devis`);
+    for (const selectedVehicle of scenarioVehicles) {
+      const referencePlan = engine.plan(
+        reference.simInputOf(
+          { inv: scenario.legacy, vehicle: selectedVehicle.id },
+          selectedVehicle.id,
+        ),
+      );
+      const appPlan = engine.plan(
+        simulationInput(scenario.inventory, selectedVehicle, 20, 204, 184),
+      );
+      assert.deepEqual(
+        appPlan.trips.map(({ fill, vol, left, front, kg, nItems }) => [
+          fill,
+          vol,
+          left,
+          front,
+          kg,
+          nItems,
+        ]),
+        referencePlan.trips.map(({ fill, vol, left, front, kg, nItems }) => [
+          fill,
+          vol,
+          left,
+          front,
+          kg,
+          nItems,
+        ]),
+        `${scenario.name} / ${selectedVehicle.id}: données de chaque chargement`,
+      );
+    }
+  }
+
+  const referenceKeys: Record<string, string> = {
+    'table-basse': 'tbasse',
+    'meuble-tv': 'meubletv',
+    television: 'tv',
+    'table-manger': 'tablem',
+    bibliotheque: 'biblio',
+    congelateur: 'congel',
+    'machine-laver': 'mal',
+    'micro-ondes': 'micro',
+    climatiseur: 'clim',
+    ventilateur: 'ventilo',
+  };
+  for (const [definitionIndex, definition] of inventoryItems
+    .filter((item) => !['carton', 'sac'].includes(item.key))
+    .entries()) {
+    for (const typed of [false, true]) {
+      for (const dismantle of [false, true]) {
+        for (const explicitWeight of [false, true]) {
+          const typeKey = `custom-like-${definition.key}`;
+          const legacyLike = referenceKeys[definition.key] ?? definition.key;
+          const custom: Inventory['custom'][number] = {
+            id: `${typeKey}-${typed}-${dismantle}-${explicitWeight}`,
+            ...(typed ? { typeKey } : {}),
+            label: `${definition.label} assimilé`,
+            quantity: 2,
+            format: 'medium',
+            dismantle,
+            like: definition.key,
+            ...(explicitWeight ? { kg: 64 } : {}),
+          };
+          const customType = {
+            k: typeKey,
+            n: custom.label,
+            like: legacyLike,
+            dm: dismantle,
+            ...(explicitWeight ? { kg: 64 } : {}),
+          };
+          const inventory = blankInventory();
+          inventory.dwellingType = 'F4';
+          inventory.annexOn = true;
+          inventory.flags.fragile = true;
+          inventory.custom = [custom];
+          const legacy = {
+            logement: 'f4',
+            annexOn: true,
+            opts: { fragile: true },
+            lines: [
+              typed
+                ? { k: typeKey, q: 2, s: null, g: 'm', dm: dismantle }
+                : {
+                    k: 'custom',
+                    q: 2,
+                    s: 1,
+                    g: 'm',
+                    dm: dismantle,
+                    n: custom.label,
+                    like: legacyLike,
+                    ...(explicitWeight ? { kg: 64 } : {}),
+                  },
+            ],
+          };
+          const reference = new ReferenceComponent();
+          reference.state = {
+            data: {
+              tarifs: tariffs,
+              peages: [],
+              simStock: 20,
+              blk: { L: 204, W: 184 },
+              invCat: { add: typed ? [customType] : [] },
+            },
+          } as never;
+          const label = `${typed ? 'typé' : 'libre'} ${definition.key} / démonté=${dismantle} / poids saisi=${explicitWeight}`;
+          const appGroups = inventoryVolumes(inventory);
+          assert.equal(
+            appGroups.light + appGroups.furniture + appGroups.bulky + appGroups.heavy,
+            reference.invVolume(legacy),
+            `${label}: volume total`,
+          );
+          assert.equal(
+            inventoryWeight(inventory, reference.invAnnex(legacy)).total,
+            reference.invKg(legacy).tot,
+            `${label}: poids total`,
+          );
+          const selectedVehicle =
+            scenarioVehicles[
+              (definitionIndex + Number(typed) + Number(dismantle) + Number(explicitWeight)) %
+                scenarioVehicles.length
+            ];
+          const appPlan = engine.plan(simulationInput(inventory, selectedVehicle, 20, 204, 184));
+          const referencePlan = engine.plan(
+            reference.simInputOf({ inv: legacy, vehicle: selectedVehicle.id }, selectedVehicle.id),
+          );
+          assert.deepEqual(
+            appPlan.trips.map(({ fill, vol, left, front, kg, nItems }) => [
+              fill,
+              vol,
+              left,
+              front,
+              kg,
+              nItems,
+            ]),
+            referencePlan.trips.map(({ fill, vol, left, front, kg, nItems }) => [
+              fill,
+              vol,
+              left,
+              front,
+              kg,
+              nItems,
+            ]),
+            `${label} / ${selectedVehicle.id}: simulation`,
+          );
+        }
+      }
+    }
+  }
+});
+
 test('le prix de chaque véhicule et la suggestion moins chère reprennent la référence au même trajet', () => {
   const quoteTariffs = {
     ...tariffs,

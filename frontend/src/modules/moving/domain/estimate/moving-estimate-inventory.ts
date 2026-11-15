@@ -64,7 +64,7 @@ export const customItemVolume = (item: Inventory['custom'][number]) => {
     const definition = inventoryItems.find((candidate) => candidate.key === item.like);
     return estimatedInventoryItemVolume(
       item.like,
-      definition?.defaultSize ?? 1,
+      item.typeKey ? (definition?.defaultSize ?? 1) : 1,
       Boolean(item.dismantle),
       item.format,
     );
@@ -286,7 +286,9 @@ export function inventoryWeight(inventory: Inventory, annexVolume: number) {
         : 'custom';
     const assumedWeight = referenceLineWeight(
       likeKey,
-      1,
+      item.typeKey
+        ? (inventoryItems.find((definition) => definition.key === likeKey)?.defaultSize ?? 1)
+        : 1,
       item.format ?? 'medium',
       Boolean(item.dismantle),
     );

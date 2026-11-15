@@ -231,7 +231,7 @@ export function simulationInput(
       line.v =
         estimatedInventoryItemVolume(
           likeKey,
-          likeDefinition?.defaultSize ?? 1,
+          entry.typeKey ? (likeDefinition?.defaultSize ?? 1) : 1,
           Boolean(entry.dismantle),
           entry.format,
         ) / (likeKey === 'salon' ? 1.25 : 1);
@@ -246,9 +246,9 @@ export function simulationInput(
         line.kg = Math.round(
           referenceItemWeight(
             likeKey,
-            likeDefinition?.sizeLabel ? 3 : 1,
+            entry.typeKey ? (likeDefinition?.defaultSize ?? 1) : 1,
             entry.format ?? 'medium',
-            false,
+            Boolean(entry.dismantle),
           ).max,
         );
         line.hkind = handlingKinds[line.like] ?? '';
@@ -260,7 +260,7 @@ export function simulationInput(
           Math.round(
             (estimatedInventoryItemVolume(
               likeKey,
-              likeDefinition?.defaultSize ?? 1,
+              entry.typeKey ? (likeDefinition?.defaultSize ?? 1) : 1,
               Boolean(entry.dismantle),
               entry.format,
             ) /
