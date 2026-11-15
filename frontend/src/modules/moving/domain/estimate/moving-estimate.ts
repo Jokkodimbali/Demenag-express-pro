@@ -529,7 +529,6 @@ export function estimateMovingWork(
     heatWithoutPauses && heatWithoutPauses.work < 150
       ? 100 + Math.round(Math.max(0, heatWithoutPauses.wbgt - heatWithoutPauses.reference) * 10)
       : 0;
-  const restRule = heat ?? { work: 150, rest: 15, wbgt: 0, reference: 0, manual: false };
   const planning: PlanningStep[] = [];
   let cursor = startAt;
   let workSinceRest = 0;
@@ -565,13 +564,20 @@ export function estimateMovingWork(
         dinnerTaken = true;
         continue;
       }
+      // The reference only enforces heat recovery from 9:00 to 18:00 unless
+      // the operator explicitly configured a manual recovery interval.
+      const timeOfDay = cursor % 1440;
+      const heatActive = Boolean(
+        heat && (heat.manual || (timeOfDay >= 9 * 60 && timeOfDay < 18 * 60)),
+      );
+      const restRule = heatActive ? heat! : { work: 150, rest: 15 };
       if (workSinceRest >= restRule.work) {
         planning.push({
           time: '',
-          title: heat && heat.work < 150 ? 'Récupération chaleur' : 'Pause',
+          title: heatActive && heat!.work < 150 ? 'Récupération chaleur' : 'Pause',
           detail:
-            heat && heat.work < 150
-              ? `${heat.rest} min à l’ombre et eau après ${heat.work} min de portage (ISO 7243 : WBGT ${String(heat.wbgt).replace('.', ',')} °C, référence ${heat.reference} °C)`
+            heatActive && heat!.work < 150
+              ? `${heat!.rest} min à l’ombre et eau après ${heat!.work} min de portage (ISO 7243 : WBGT ${String(heat!.wbgt).replace('.', ',')} °C, référence ${heat!.reference} °C)`
               : '15 min toutes les 2 h 30 de portage, hydratation',
           minutes: restRule.rest,
           kind: 'pause',

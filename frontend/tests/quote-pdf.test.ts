@@ -216,6 +216,6 @@ for (const [billingMode, expected] of [
     };
     const text = await extractPdfText(await downloadQuote(booking, quote, settings));
     assert.ok(text.includes(expected), `${billingMode}: ${text}`);
-    assert.match(text, /Émis le 3 novembre 2026/);
+    assert.match(text, /Émis le 03\/11\/2026/);
   });
 }

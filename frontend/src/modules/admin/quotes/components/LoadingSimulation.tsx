@@ -8,7 +8,8 @@ import {
   fatigueAdvice,
   handlingAdvice,
 } from '../../../moving/domain/loading-simulation-details';
-import type { Vehicle } from '../../../shared/domain/model';
+import type { MovingLaborPlanningSettings, Vehicle } from '../../../shared/domain/model';
+import { estimateMovingWork } from '../../../moving/domain/estimate/moving-estimate';
 import {
   simulationInput,
   format,
@@ -52,15 +53,27 @@ export function LoadingSimulation({
   estimate,
   setDraft,
   onTripsChange,
+  onCrewRecommendation,
+  laborPlanning,
   onPlanNeeds,
 }: {
   draft: Draft;
   vehicles: Vehicle[];
-  quoteConfig: { trips: number; calcMode: 'auto' | 'manual' };
+  quoteConfig: {
+    trips: number;
+    calcMode: 'auto' | 'manual';
+    heatOff?: boolean;
+    heatRest?: number;
+    trafficOff?: boolean;
+    legMinutes?: number;
+    hasToll?: boolean;
+  };
   crew: number;
   estimate?: MovingEstimate | null;
   setDraft: Dispatch<SetStateAction<Draft>>;
   onTripsChange: (trips: number) => void;
+  onCrewRecommendation?: (crew: number) => void;
+  laborPlanning?: MovingLaborPlanningSettings;
   onPlanNeeds?: Dispatch<SetStateAction<{ blankets: number; straps: number } | null>>;
 }) {
   const { blanketLengthCm, blanketWidthCm, blanketStock, saveBlanketStock, imageDataUrl } =
@@ -194,11 +207,120 @@ export function LoadingSimulation({
   const details = useMemo(() => {
     const lines = input?.lines ?? [];
     const handling = handlingAdvice(lines, draft.inventory);
+    const baseFatigue = fatigueAdvice(lines, draft.inventory, crew, estimate, quoteConfig.heatOff);
+    let crewRecommendation: { crew: number; effort: number; totalMinutes: number } | null = null;
+    let parallelVehicleSolution: string | undefined;
+    const activeVehicle = vehicles.find((item) => item.id === draft.vehicleId);
+    const rawReferenceDuration = (candidate: NonNullable<typeof estimate>) => {
+      const workMinutes =
+        25 +
+        candidate.loadingMinutes +
+        candidate.unloadingMinutes +
+        candidate.packingMinutes +
+        candidate.travelMinutes;
+      return workMinutes + (workMinutes > 300 ? (laborPlanning?.pauseMinutes ?? 30) : 0);
+    };
+    const fatigueRoute =
+      draft.route && draft.distanceKmOverride != null
+        ? { ...draft.route, distanceKm: draft.distanceKmOverride }
+        : draft.route;
+    const maxCrew = Math.max(crew, laborPlanning?.maxMoversPerVehicle ?? 6);
+    if (
+      activeVehicle &&
+      estimate &&
+      baseFatigue.score >= 80 &&
+      baseFatigue.gauges[0].score >= baseFatigue.gauges[1].score &&
+      baseFatigue.gauges[0].score >= baseFatigue.gauges[2].score
+    ) {
+      for (let recommendedCrew = crew + 1; recommendedCrew <= maxCrew; recommendedCrew += 1) {
+        const nextEstimate = estimateMovingWork(
+          { ...draft.inventory, crew: recommendedCrew },
+          activeVehicle,
+          fatigueRoute,
+          {
+            trips: quoteConfig.calcMode === 'manual' ? quoteConfig.trips : estimate.plannedTrips,
+            recommendedTrips: estimate.plannedTrips,
+            crew: recommendedCrew,
+            startTime: draft.timeSlot,
+            laborPlanning,
+            ignoreTraffic: quoteConfig.trafficOff,
+            manualLegMinutes: quoteConfig.calcMode === 'manual' ? quoteConfig.legMinutes : 0,
+            date: draft.date,
+            month: draft.month,
+            heatOff: quoteConfig.heatOff,
+            heatRest: quoteConfig.heatRest,
+            fromAddress: draft.fromAddress,
+            toAddress: draft.toAddress,
+            hasToll: quoteConfig.hasToll,
+          },
+        );
+        if (nextEstimate.fatigueEffort.percentage < 80 || recommendedCrew === maxCrew) {
+          if (nextEstimate.fatigueEffort.percentage < baseFatigue.gauges[0].score)
+            crewRecommendation = {
+              crew: recommendedCrew,
+              effort: nextEstimate.fatigueEffort.percentage,
+              totalMinutes: nextEstimate.totalMinutes,
+            };
+          break;
+        }
+      }
+    }
+    if (
+      activeVehicle &&
+      estimate?.totalMinutes &&
+      baseFatigue.score >= 80 &&
+      baseFatigue.gauges[0].score >= baseFatigue.gauges[1].score &&
+      baseFatigue.gauges[0].score >= baseFatigue.gauges[2].score
+    ) {
+      const parallelOptions = {
+        trips: quoteConfig.calcMode === 'manual' ? quoteConfig.trips : estimate.plannedTrips,
+        recommendedTrips: estimate.plannedTrips,
+        crew: Math.max(4, crew * 2),
+        parallelVehicles: 2 as const,
+        startTime: draft.timeSlot,
+        laborPlanning,
+        ignoreTraffic: quoteConfig.trafficOff,
+        manualLegMinutes: quoteConfig.calcMode === 'manual' ? quoteConfig.legMinutes : 0,
+        date: draft.date,
+        month: draft.month,
+        heatOff: quoteConfig.heatOff,
+        heatRest: quoteConfig.heatRest,
+        fromAddress: draft.fromAddress,
+        toAddress: draft.toAddress,
+        hasToll: quoteConfig.hasToll,
+      };
+      const parallelCandidates = vehicles
+        .filter((item) => item.active !== false)
+        .map((item) => ({
+          vehicle: item,
+          estimate: estimateMovingWork(draft.inventory, item, fatigueRoute, parallelOptions),
+        }))
+        .sort(
+          (left, right) =>
+            rawReferenceDuration(left.estimate) - rawReferenceDuration(right.estimate),
+        );
+      const parallelCandidate = parallelCandidates[0];
+      if (parallelCandidate) {
+        const parallelEffort = Math.round(
+          (baseFatigue.gauges[0].score * rawReferenceDuration(parallelCandidate.estimate)) /
+            rawReferenceDuration(estimate),
+        );
+        parallelVehicleSolution = `2 × ${parallelCandidate.vehicle.shortName || parallelCandidate.vehicle.name} en parallèle : effort ≈ ${parallelEffort} % par équipe`;
+      }
+    }
     return {
       handling,
       from: crewPosts(draft.inventory.fromFloor, draft.inventory.fromLift, true, crew, handling),
       to: crewPosts(draft.inventory.toFloor, draft.inventory.toLift, false, crew, handling),
-      fatigue: fatigueAdvice(lines, draft.inventory, crew, estimate),
+      fatigue: fatigueAdvice(
+        lines,
+        draft.inventory,
+        crew,
+        estimate,
+        quoteConfig.heatOff,
+        crewRecommendation,
+        parallelVehicleSolution,
+      ),
       equipment: equipmentAdvice(lines, draft.inventory, crew, plan?.trips ?? [], estimate).map(
         (item) => ({
           ...item,
@@ -206,7 +328,24 @@ export function LoadingSimulation({
         }),
       ),
     };
-  }, [input, draft.inventory, crew, estimate, plan]);
+  }, [
+    input,
+    draft.inventory,
+    draft.vehicleId,
+    draft.route,
+    draft.distanceKmOverride,
+    draft.timeSlot,
+    draft.date,
+    draft.month,
+    draft.fromAddress,
+    draft.toAddress,
+    crew,
+    estimate,
+    plan,
+    quoteConfig,
+    vehicles,
+    laborPlanning,
+  ]);
 
   useEffect(() => {
     viewer.current?.dispose();
@@ -592,57 +731,34 @@ export function LoadingSimulation({
                               ))}
                             </div>
                           )}
-                          <div className="loading-simulation-fatigue">
-                            <strong>
-                              {visibleUiText.text44}{' '}
-                              <span style={{ color: details.fatigue.color }}>
-                                {details.fatigue.level} · {details.fatigue.score} %
-                              </span>
-                            </strong>
-                            <div className="loading-simulation-fatigue-track">
-                              <span
-                                style={{
-                                  width: `${Math.min(100, details.fatigue.score)}%`,
-                                  background: details.fatigue.color,
-                                }}
-                              />
-                            </div>
-                            {details.fatigue.gauges.map((gauge) => (
-                              <div key={gauge.label} className="loading-simulation-fatigue-gauge">
-                                <div className="loading-simulation-fatigue-rows">
-                                  <span>{gauge.label}</span>
-                                  <strong>{gauge.score} %</strong>
-                                </div>
-                                <div className="loading-simulation-fatigue-track">
-                                  <span
-                                    style={{
-                                      width: `${Math.min(100, gauge.score)}%`,
-                                      background:
-                                        gauge.score >= 100
-                                          ? '#FF5A5F'
-                                          : gauge.score >= 80
-                                            ? '#FF9F5A'
-                                            : gauge.score >= 50
-                                              ? '#FFD23F'
-                                              : '#3DDC84',
-                                    }}
-                                  />
-                                </div>
-                                <small>{gauge.detail}</small>
+                          {estimate && estimate.volume > 0 && (
+                            <div className="loading-simulation-fatigue">
+                              <div className="loading-simulation-fatigue-heading compact">
+                                <strong>Indicateur de fatigue</strong>
+                                <strong style={{ color: details.fatigue.color }}>
+                                  {details.fatigue.level} · {details.fatigue.score} %
+                                </strong>
                               </div>
-                            ))}
-                            <div className="loading-simulation-fatigue-rows">
-                              {details.fatigue.rows.map(([label, value]) => (
-                                <div key={label}>
-                                  <span>{label}</span>
-                                  <strong>{value}</strong>
-                                </div>
-                              ))}
+                              <div className="loading-simulation-fatigue-track">
+                                <span
+                                  style={{
+                                    width: `${Math.min(100, details.fatigue.score)}%`,
+                                    background: details.fatigue.color,
+                                  }}
+                                />
+                              </div>
+                              {details.fatigue.recommendations
+                                .filter(
+                                  (advice) =>
+                                    !details.fatigue.solutions.some(
+                                      (solution) => solution.text === advice,
+                                    ),
+                                )
+                                .map((advice) => (
+                                  <span key={advice}>· {advice}</span>
+                                ))}
                             </div>
-                            {details.fatigue.recommendations.map((advice) => (
-                              <span key={advice}>· {advice}</span>
-                            ))}
-                          </div>
+                          )}
                         </div>
                       </div>
                     )}
@@ -842,6 +958,100 @@ export function LoadingSimulation({
           </div>
         )}
       </section>
+      {hasItems && estimate && estimate.volume > 0 && (
+        <div className="loading-simulation-fatigue quote-fatigue-indicator">
+          <div className="loading-simulation-fatigue-heading">
+            <strong>INDICATEUR DE FATIGUE DE L’ÉQUIPE</strong>
+            <strong style={{ color: details.fatigue.color }}>
+              Fatigue {details.fatigue.level.toLocaleLowerCase('fr-FR')} · {details.fatigue.score} %
+            </strong>
+          </div>
+          <div className="loading-simulation-fatigue-track">
+            <span
+              style={{
+                width: `${Math.min(100, details.fatigue.score)}%`,
+                background: details.fatigue.color,
+              }}
+            />
+          </div>
+          <div className="quote-fatigue-scale">
+            <span>0 %</span>
+            <span>50 % modérée</span>
+            <span>80 % élevée</span>
+            <span>100 % limite</span>
+          </div>
+          <div className="quote-fatigue-gauges">
+            {details.fatigue.gauges.map((gauge) => {
+              const color =
+                gauge.score >= 100
+                  ? '#FF5A5F'
+                  : gauge.score >= 80
+                    ? '#FF9F5A'
+                    : gauge.score >= 50
+                      ? '#FFD23F'
+                      : '#3DDC84';
+              return (
+                <div key={gauge.label}>
+                  <div className="loading-simulation-fatigue-rows">
+                    <span>{gauge.label}</span>
+                    <strong style={{ color }}>{gauge.value}</strong>
+                  </div>
+                  <div className="loading-simulation-fatigue-track">
+                    <span style={{ width: `${Math.min(100, gauge.score)}%`, background: color }} />
+                  </div>
+                  <small>{gauge.detail}</small>
+                </div>
+              );
+            })}
+          </div>
+          {details.fatigue.solutions.length > 0 && (
+            <div className="quote-fatigue-solutions">
+              <strong>Pour réduire la fatigue</strong>
+              {details.fatigue.solutions.map((solution) => (
+                <div key={solution.text}>
+                  <span>{solution.text}</span>
+                  {solution.crew && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDraft((current) => ({
+                          ...current,
+                          inventory: { ...current.inventory, crew: solution.crew! },
+                        }));
+                        onCrewRecommendation?.(solution.crew!);
+                      }}
+                    >
+                      Appliquer
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="loading-simulation-fatigue-rows">
+            {details.fatigue.rows.map(([label, value]) => (
+              <div key={label}>
+                <span>{label}</span>
+                <strong>{value}</strong>
+              </div>
+            ))}
+          </div>
+          {details.fatigue.recommendations
+            .filter(
+              (advice) => !details.fatigue.solutions.some((solution) => solution.text === advice),
+            )
+            .map((advice) => (
+              <span key={advice}>· {advice}</span>
+            ))}
+          <small>
+            Score = la plus élevée des trois jauges. Effort : chaque étape du planning compte selon
+            son effort (portage en escalier plus que plain-pied, trajet assis moins, pauses et repas
+            non comptés) ; 100 % = 8 h à l’effort de référence. Manutention : masse portée par
+            personne face à la limite ISO 11228-1, majorée pour les objets de plus de 25 et 33 kg.
+            Chaleur : contrôlée par les pauses du planning.
+          </small>
+        </div>
+      )}
     </div>
   );
 }

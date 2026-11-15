@@ -2,15 +2,12 @@ import { assetDataUrl } from '../../../shared/adapters/pdf-assets';
 import { addPdfImage, cleanPdfText, pdfParagraph } from './quote-pdf-render';
 import { drawQuoteSignature } from './quote-pdf-signature';
 import { drawQuoteTerms } from './quote-pdf-terms';
-import {
-  dateLabel,
-  money,
-  referenceTierLabels,
-} from '../../../shared/application/presentation/format';
+import { money, referenceTierLabels } from '../../../shared/application/presentation/format';
 import { referenceDwellingVolume } from '../../../moving/domain/estimate/reference-inventory-note';
 import { defaultQuoteTerms } from '../../../moving/domain/quote-terms';
 import type { Booking, Quote, Settings } from '../../../shared/domain/model';
 import { durationLabel, quotePdfNotes } from './quote-pdf-text';
+import { quoteAmountInFrench } from './quote-pdf-number';
 
 export async function downloadQuote(
   booking: Booking,
@@ -21,7 +18,7 @@ export async function downloadQuote(
   const documentQuote = quote;
   const doc = new jsPDF({ format: 'a4', unit: 'mm' });
   const price = documentQuote?.price || booking.estimate;
-  const { loadingConditions, addressNotes } = quotePdfNotes(booking, documentQuote);
+  const { addressNotes } = quotePdfNotes(booking, documentQuote);
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 16;
   const contentWidth = pageWidth - margin * 2;
@@ -35,6 +32,34 @@ export async function downloadQuote(
       doc.addPage();
       y = 20;
     }
+  }
+
+  function pdfHead(title: string, subtitle: string, detail: string) {
+    const headY = 16;
+    const logoWidth = settings.invoiceLogo ? 13 : 0;
+    if (settings.invoiceLogo) addPdfImage(doc, settings.invoiceLogo, margin, headY - 4, 13, 13);
+    const titleX = margin + logoWidth + (logoWidth ? 4 : 0);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(30, 32, 35);
+    doc.text(cleanPdfText(title), titleX, headY + 3);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(90, 97, 104);
+    const detailWidth = detail ? doc.getTextWidth(cleanPdfText(detail)) + 6 : 0;
+    if (subtitle)
+      doc.text(
+        doc.splitTextToSize(cleanPdfText(subtitle), pageWidth - margin - titleX - detailWidth)[0] ||
+          '',
+        titleX,
+        headY + 8.4,
+      );
+    if (detail) doc.text(cleanPdfText(detail), right, headY + 8.4, { align: 'right' });
+    doc.setFillColor(30, 32, 35);
+    doc.rect(margin, headY + 12, contentWidth, 0.7, 'F');
+    doc.setFillColor(246, 215, 60);
+    doc.rect(margin, headY + 12, 26, 0.7, 'F');
+    return headY + 20;
   }
 
   // En-tête du document de référence.
@@ -94,7 +119,7 @@ export async function downloadQuote(
   doc.setFontSize(9);
   doc.setTextColor(174, 180, 187);
   doc.text(
-    `Émis le ${dateLabel((documentQuote?.createdAt || booking.createdAt).slice(0, 10))}`,
+    `Émis le ${new Date(documentQuote?.createdAt || booking.createdAt).toLocaleDateString('fr-FR', { timeZone: 'Africa/Dakar' })} · version 1`,
     right,
     31.5,
     { align: 'right' },
@@ -113,99 +138,182 @@ export async function downloadQuote(
 
   y = 49;
   const infoGap = 4;
-  const infoWidth = (contentWidth - infoGap * 2) / 3;
-  const infoX = [margin, margin + infoWidth + infoGap, margin + 2 * (infoWidth + infoGap)];
-  pdfParagraph(doc, 'CLIENT', infoX[0]!, y, infoWidth, 8, true, [96, 103, 110]);
-  pdfParagraph(doc, 'DATE PRÉVUE', infoX[1]!, y, infoWidth, 8, true, [96, 103, 110]);
-  pdfParagraph(doc, 'VÉHICULE', infoX[2]!, y, infoWidth, 8, true, [96, 103, 110]);
-  pdfParagraph(doc, booking.customerName, infoX[0]!, y + 7, infoWidth, 11, true);
-  pdfParagraph(doc, booking.phone, infoX[0]!, y + 13, infoWidth, 9);
-  const schedule = booking.date
-    ? `${dateLabel(booking.date)}  -  ${booking.timeSlot}`
-    : booking.month
-      ? `${new Date(`${booking.month}-01T12:00:00Z`).toLocaleDateString('fr-FR', {
-          month: 'long',
-          year: 'numeric',
-          timeZone: 'Africa/Dakar',
-        })}${booking.timeSlot ? `  -  Début ${booking.timeSlot}` : ''}`
-      : 'À convenir';
-  pdfParagraph(doc, schedule, infoX[1]!, y + 7, infoWidth, 10, true);
-  pdfParagraph(doc, booking.vehicle.name, infoX[2]!, y + 7, infoWidth, 11, true);
-  pdfParagraph(
-    doc,
-    documentQuote?.billingMode === 'driver-rental'
-      ? 'Formule Économique · location avec chauffeur'
-      : documentQuote?.billingMode === 'standard'
-        ? 'Formule Standard'
-        : 'Formule Complète',
-    infoX[2]!,
-    y + 13,
-    infoWidth,
-    8,
-  );
+  const infoWidth = (pageWidth - 2 * margin - 2 * infoGap) / 3;
+  const infoHeight = 23;
+  const infoCards = [
+    ['CLIENT', booking.customerName || '-', booking.phone || ''],
+    [
+      'DATE PRÉVUE',
+      booking.date
+        ? booking.date.split('-').reverse().join('/')
+        : booking.month
+          ? new Date(`${booking.month}-01T12:00:00Z`).toLocaleDateString('fr-FR', {
+              month: 'long',
+              year: 'numeric',
+              timeZone: 'Africa/Dakar',
+            })
+          : '-',
+      booking.timeSlot ? (booking.date ? booking.timeSlot : `Début ${booking.timeSlot}`) : '',
+    ],
+    [
+      'VÉHICULE',
+      booking.vehicle.name,
+      documentQuote?.billingMode === 'driver-rental'
+        ? 'Formule Économique · location avec chauffeur'
+        : documentQuote?.billingMode === 'standard'
+          ? 'Formule Standard'
+          : 'Formule Complète',
+    ],
+  ] as const;
+  infoCards.forEach(([label, value, detail], index) => {
+    const x = margin + index * (infoWidth + infoGap);
+    doc.setFillColor(244, 245, 247);
+    doc.roundedRect(x, y, infoWidth, infoHeight, 2.5, 2.5, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(90, 97, 104);
+    doc.text(label, x + 5, y + 7);
+    doc.setFontSize(11);
+    doc.setTextColor(30, 32, 35);
+    const valueLines = doc.splitTextToSize(cleanPdfText(value), infoWidth - 9) as string[];
+    doc.text(valueLines[0] || '', x + 5, y + 13.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(90, 97, 104);
+    const detailLines = doc.splitTextToSize(cleanPdfText(detail), infoWidth - 9) as string[];
+    doc.text(detailLines[0] || '', x + 5, y + 19);
+  });
 
-  y = 73;
-  pdfParagraph(doc, 'TRAJET', margin, y, contentWidth, 8, true, [96, 103, 110]);
-  y += 6;
-  y = pdfParagraph(doc, `A  ${booking.fromAddress}`, margin, y, contentWidth, 10, true);
-  y = pdfParagraph(doc, `B  ${booking.toAddress}`, margin, y, contentWidth, 10, true);
-  const bounds = settings.distanceBounds ?? [15, 25, 35];
-  y = pdfParagraph(
-    doc,
-    `${booking.distanceKm.toLocaleString('fr-FR')} km par la route  ·  Tranche : ${referenceTierLabels(bounds)[price.tier]}`,
-    margin,
-    y + 1,
-    contentWidth,
-    9,
-  );
-  y += 8;
+  y += infoHeight + 5;
+  {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    const addressWidth = pageWidth - 2 * margin - 66;
+    const fromLines = doc.splitTextToSize(
+      cleanPdfText(booking.fromAddress || '-'),
+      addressWidth,
+    ) as string[];
+    const toLines = doc.splitTextToSize(
+      cleanPdfText(booking.toAddress || '-'),
+      addressWidth,
+    ) as string[];
+    const routeHeight = Math.max(32, 14 + (fromLines.length + toLines.length) * 4.6 + 7);
+    doc.setFillColor(244, 245, 247);
+    doc.roundedRect(margin, y, contentWidth, routeHeight, 2.5, 2.5, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(90, 97, 104);
+    doc.text('TRAJET', margin + 5, y + 7);
+    const fromY = y + 14;
+    const toY = fromY + fromLines.length * 4.6 + 3.5;
+    const routeDot = (top: number, color: [number, number, number], label: string) => {
+      doc.setFillColor(...color);
+      doc.circle(margin + 8, top - 1.4, 2.7, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(255, 255, 255);
+      doc.text(label, margin + 8, top - 0.3, { align: 'center' });
+    };
+    doc.setDrawColor(174, 180, 187);
+    doc.setLineWidth(0.4);
+    if (doc.setLineDashPattern) doc.setLineDashPattern([0.8, 0.9], 0);
+    doc.line(margin + 8, fromY + 1.8, margin + 8, toY - 4.6);
+    if (doc.setLineDashPattern) doc.setLineDashPattern([], 0);
+    routeDot(fromY, [11, 107, 53], 'A');
+    routeDot(toY, [227, 38, 47], 'B');
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(30, 32, 35);
+    doc.text(fromLines, margin + 14, fromY);
+    doc.text(toLines, margin + 14, toY);
+    const routeStatsX = pageWidth - margin - 50;
+    doc.setDrawColor(220, 223, 227);
+    doc.setLineWidth(0.3);
+    doc.line(routeStatsX, y + 5, routeStatsX, y + routeHeight - 5);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.setTextColor(30, 32, 35);
+    doc.text(
+      booking.distanceKm ? `${String(booking.distanceKm).replace('.', ',')} km` : '-',
+      routeStatsX + 6,
+      y + 14,
+    );
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(90, 97, 104);
+    doc.text('par la route', routeStatsX + 6, y + 19);
+    const bounds = settings.distanceBounds ?? [15, 25, 35];
+    const tierLabels = referenceTierLabels(bounds);
+    doc.text(
+      doc.splitTextToSize(cleanPdfText(`Tranche : ${tierLabels[price.tier]}`), 42).slice(0, 2),
+      routeStatsX + 6,
+      y + 24.5,
+    );
+    y += routeHeight + 8;
+  }
 
-  // Tableau des lignes : désignation, quantité, prix unitaire et montant.
+  // Même bandeau et mêmes colonnes que le tableau du devis de référence.
   const qtyX = right - 70;
   const unitX = right - 38;
   const amountX = right;
-  pdfParagraph(doc, 'DÉSIGNATION', margin, y, 96, 8, true);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.text('QTÉ', qtyX, y, { align: 'right' });
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.text('P.U.', unitX, y, { align: 'right' });
-  doc.text('MONTANT', amountX, y, { align: 'right' });
-  y += 3;
-  doc.setDrawColor(35, 38, 41);
-  doc.setLineWidth(0.65);
-  doc.line(margin, y, right, y);
-  y += 2;
-  doc.setLineWidth(0.18);
-  doc.setDrawColor(211, 216, 220);
-  for (const [index, line] of price.lines.entries()) {
-    const label =
-      index === 0 && documentQuote?.kind !== 'final' ? `${line.label} - estimé` : line.label;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    const labelLines = doc.splitTextToSize(cleanPdfText(label), qtyX - margin - 14) as string[];
-    const rowHeight = Math.max(12, labelLines.length * 4.5 + 5);
-    ensureSpace(rowHeight + 35);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.setTextColor(39, 42, 45);
-    doc.text(labelLines, margin, y + 4);
-    doc.text(String(line.quantity), qtyX, y + 4, { align: 'right' });
-    doc.text(pdfMoney(line.unitPrice), unitX, y + 4, { align: 'right' });
+  const tableHeader = () => {
+    doc.setFillColor(30, 32, 35);
+    doc.roundedRect(margin, y, contentWidth, 8, 1.5, 1.5, 'F');
     doc.setFont('helvetica', 'bold');
-    doc.text(pdfMoney(line.total), amountX, y + 4, { align: 'right' });
+    doc.setFontSize(8);
+    doc.setTextColor(255, 255, 255);
+    doc.text('DÉSIGNATION', margin + 4, y + 5.3);
+    doc.text('QTÉ', qtyX, y + 5.3, { align: 'right' });
+    doc.text('P.U.', unitX, y + 5.3, { align: 'right' });
+    doc.text('MONTANT', amountX - 4, y + 5.3, { align: 'right' });
+    y += 8;
+  };
+  tableHeader();
+  doc.setDrawColor(220, 223, 227);
+  doc.setLineWidth(0.3);
+  for (const [index, line] of price.lines.entries()) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9.5);
+    const labelLines = doc.splitTextToSize(
+      cleanPdfText(line.label),
+      qtyX - margin - 14,
+    ) as string[];
+    const rowHeight = labelLines.length * 4.4 + 4.4;
+    if (y + rowHeight > 262) {
+      doc.addPage();
+      y = 24;
+      tableHeader();
+    }
+    doc.setTextColor(30, 32, 35);
+    if (index % 2) {
+      doc.setFillColor(244, 245, 247);
+      doc.rect(margin, y, contentWidth, rowHeight, 'F');
+    }
+    doc.text(labelLines, margin + 4, y + 5.6);
+    doc.setTextColor(90, 97, 104);
+    doc.text(String(line.quantity), qtyX, y + 5.6, { align: 'right' });
+    doc.text(pdfMoney(line.unitPrice), unitX, y + 5.6, { align: 'right' });
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 32, 35);
+    doc.text(pdfMoney(line.total), amountX, y + 5.6, { align: 'right' });
     y += rowHeight;
+  }
+  doc.line(margin, y, right, y);
+  if (price.discount > 0) {
+    y += 1;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.setTextColor(30, 140, 80);
+    doc.text(cleanPdfText(price.discountLabel ?? 'Remise'), margin + 4, y + 5.6);
+    doc.text(`- ${pdfMoney(price.discount)}`, amountX, y + 5.6, { align: 'right' });
+    y += 8.8;
     doc.line(margin, y, right, y);
   }
-  if (price.discount > 0) {
-    y += 2;
-    pdfParagraph(doc, price.discountLabel ?? 'Remise', margin, y + 3, 100, 9);
-    doc.text(`-${pdfMoney(price.discount)}`, amountX, y + 3, { align: 'right' });
-    y += 10;
+  y += 5;
+  if (y > 252) {
+    doc.addPage();
+    y = 24;
   }
-  y += 8;
-  ensureSpace(67);
   const isFinal = documentQuote?.kind === 'final';
   const totalBackground: [number, number, number] = isFinal ? [30, 32, 35] : [246, 215, 60];
   const totalForeground: [number, number, number] = isFinal ? [255, 255, 255] : [35, 37, 40];
@@ -234,28 +342,56 @@ export async function downloadQuote(
   doc.text(totalLabel, right - 5, y + 10, { align: 'right' });
   y += 25;
 
-  const tolls = documentQuote?.tolls ?? [];
-  const tollTotal = tolls.reduce((total, toll) => total + toll.quantity * toll.unitPrice, 0);
-  if (tolls.length) {
+  if (isFinal && (price.total ?? 0) > 0 && totalLabel !== 'Sur devis') {
     y = pdfParagraph(
       doc,
-      `Péages à la charge du client (non inclus) : ${pdfMoney(tollTotal)} · détail en page annexe.`,
+      `Arrêté le présent devis à la somme de ${quoteAmountInFrench(price.total ?? 0)} francs CFA.`,
       margin,
       y,
       contentWidth,
       9,
       true,
-    );
-    y += 2;
-    y = pdfParagraph(
-      doc,
-      `Péages estimés à votre charge : ${pdfMoney(tollTotal)} · Budget total à prévoir : ${pdfMoney((price.total ?? 0) + tollTotal)}`,
-      margin,
-      y,
-      contentWidth,
-      9,
+      [60, 66, 72],
     );
   }
+
+  const inventory = booking.inventorySnapshot;
+  const tolls = documentQuote?.tolls ?? [];
+  const tollTotal = tolls.reduce((total, toll) => total + toll.quantity * toll.unitPrice, 0);
+  const validityDays = settings.quoteValidityDays ?? 15;
+  const depositPercent = settings.bookingDepositPercent ?? 0;
+  const notices: { bold: boolean; text: string }[] = [];
+  if (tolls.length)
+    notices.push({
+      bold: false,
+      text: `Péages estimés à votre charge : ${pdfMoney(tollTotal)}  ·  Budget total à prévoir : ${pdfMoney((price.total ?? 0) + tollTotal)}`,
+    });
+  if ((price.total ?? 0) > 0 && depositPercent > 0) {
+    const deposit = Math.round(((price.total ?? 0) * depositPercent) / 100 / 500) * 500;
+    notices.push({
+      bold: false,
+      text: `Acompte à la réservation : ${money(deposit)} (${depositPercent} %)  ·  Solde le jour du déménagement : ${money((price.total ?? 0) - deposit)}`,
+    });
+  }
+  if (!isFinal && validityDays > 0) {
+    const issueDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Dakar' }).format(
+      new Date(documentQuote?.createdAt || booking.createdAt),
+    );
+    const expiry = new Date(`${issueDate}T12:00:00Z`);
+    notices.push({
+      bold: false,
+      text: `Devis valable ${validityDays} jours${Number.isNaN(expiry.getTime()) ? '' : `, jusqu’au ${expiry.toLocaleDateString('fr-FR', { timeZone: 'Africa/Dakar' })}`}.`,
+    });
+  }
+  notices.forEach((notice) => {
+    doc.setFont('helvetica', notice.bold ? 'bold' : 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(60, 66, 72);
+    const lines = doc.splitTextToSize(cleanPdfText(notice.text), contentWidth) as string[];
+    doc.text(lines, margin, y);
+    y += lines.length * 4.4;
+  });
+  if (notices.length) y += 3;
 
   const paymentModes = [
     settings.paymentWave !== false ? 'Wave' : '',
@@ -272,7 +408,6 @@ export async function downloadQuote(
       : '';
   const paymentQrSize = paymentQr ? doc.getImageProperties(paymentQr) : null;
 
-  const inventory = booking.inventorySnapshot;
   const hasInventoryDetails = Boolean(inventory?.items.length);
   const quoteNotes = inventory
     ? ''
@@ -283,58 +418,101 @@ export async function downloadQuote(
       ]
         .filter(Boolean)
         .join('\n');
-  if (quoteNotes) {
-    y += 8;
-    ensureSpace(12);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
-    doc.setTextColor(36, 40, 44);
-    const sourceLines = quoteNotes.split(/\r?\n/);
-    sourceLines[0] = `Note : ${sourceLines[0]}`;
-    for (const sourceLine of sourceLines) {
-      if (!sourceLine) {
-        y += 3;
-        continue;
-      }
-      for (const line of doc.splitTextToSize(cleanPdfText(sourceLine), contentWidth) as string[]) {
-        ensureSpace(6);
-        doc.text(line, margin, y);
-        y += 4.5;
-      }
+  const loadingCards: { ok: boolean; main: string }[] = [];
+  if (inventory?.ready === 'oui') loadingCards.push({ ok: true, main: 'Prêt à être chargé' });
+  else if (inventory?.ready === 'non')
+    loadingCards.push({ ok: false, main: 'À emballer sur place' });
+  if (inventory?.stairs === 'oui')
+    loadingCards.push({ ok: true, main: 'Tout passe par l’escalier' });
+  else if (inventory?.stairs === 'balcon')
+    loadingCards.push({
+      ok: false,
+      main: inventory.balcPx ? `Par le balcon · +${pdfMoney(inventory.balcPx)}` : 'Par le balcon',
+    });
+  else if (inventory?.stairs === 'non')
+    loadingCards.push({ ok: false, main: 'Démontage ou monte-meuble' });
+  else if (inventory?.stairs === 'verif') loadingCards.push({ ok: false, main: 'À confirmer' });
+  if (loadingCards.length) {
+    const pad = 4;
+    const cardHeight = 13;
+    const cardWidth = (contentWidth - pad * 2) / loadingCards.length;
+    if (y + cardHeight > 280) {
+      doc.addPage();
+      y = 24;
     }
-    y += 3;
-  }
-  if (loadingConditions) {
-    y += 3;
-    ensureSpace(12);
+    doc.setFillColor(246, 247, 248);
+    doc.roundedRect(margin, y, contentWidth, cardHeight, 2, 2, 'F');
+    doc.setFillColor(246, 215, 60);
+    doc.roundedRect(margin, y, 1.6, cardHeight, 0.8, 0.8, 'F');
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.setTextColor(36, 40, 44);
-    doc.text('CONDITIONS DE CHARGEMENT', margin, y);
-    y += 5;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
-    doc.setTextColor(60, 66, 72);
-    const conditionLines = loadingConditions.split(/\r?\n/u).slice(1);
-    for (const conditionLine of conditionLines) {
-      for (const line of doc.splitTextToSize(
-        cleanPdfText(conditionLine),
-        contentWidth,
-      ) as string[]) {
-        ensureSpace(6);
-        doc.text(line, margin, y);
-        y += 4.5;
+    doc.setFontSize(7);
+    doc.setTextColor(30, 32, 35);
+    doc.text('CONDITIONS DE CHARGEMENT', margin + pad + 1, y + 4.4);
+    doc.setFontSize(7);
+    doc.setTextColor(180, 40, 45);
+    doc.text('À respecter, sinon le déménagement n’aura pas lieu.', right - pad, y + 4.4, {
+      align: 'right',
+    });
+    loadingCards.forEach((card, index) => {
+      const x = margin + pad + 1 + index * cardWidth;
+      const centerY = y + 9.2;
+      const color: [number, number, number] = card.ok ? [30, 140, 80] : [214, 140, 20];
+      doc.setFillColor(...color);
+      doc.circle(x + 1.9, centerY, 1.9, 'F');
+      if (card.ok) {
+        doc.setDrawColor(255, 255, 255);
+        doc.setLineWidth(0.5);
+        doc.line(x + 1, centerY, x + 1.7, centerY + 0.7);
+        doc.line(x + 1.7, centerY + 0.7, x + 2.9, centerY - 0.7);
+      } else {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.5);
+        doc.setTextColor(255, 255, 255);
+        doc.text('!', x + 1.9, centerY + 0.6, { align: 'center' });
       }
-    }
-    y += 2;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.3);
+      doc.setTextColor(30, 32, 35);
+      doc.text(
+        doc.splitTextToSize(cleanPdfText(card.main), cardWidth - 7)[0] || '',
+        x + 5,
+        centerY + 0.6,
+      );
+    });
+    y += cardHeight + 3;
   }
-  const explanation =
-    documentQuote?.billingMode === 'driver-rental'
-      ? `Location avec chauffeur : les manœuvres sont fournies et encadrées par le client. Le montant comprend le transport et les prestations de montage sélectionnées${documentQuote.providedCrew ? ` ; ${documentQuote.providedCrew} manœuvre(s) sont à prévoir côté client` : ''}.`
-      : documentQuote?.kind === 'final'
-        ? `Devis final établi sur la base du nombre réel d'allers-retours effectués (${price.trips}), au tarif de la tranche de distance appliquée.`
-        : `Devis temporaire, calculé sur ${price.trips} aller(s)-retour(s) estimé(s). Le transport est facturé par aller-retour effectué : le devis final, basé sur le nombre réel d'allers-retours, sera envoyé par Demenag Express à la fin du déménagement.`;
-  y = pdfParagraph(doc, explanation, margin, y, contentWidth, 8.5, false, [92, 99, 106]);
+  if (quoteNotes) {
+    const noteLines = doc.splitTextToSize(
+      cleanPdfText(`Note : ${quoteNotes}`),
+      contentWidth,
+    ) as string[];
+    if (y + noteLines.length * 4.6 > 278) {
+      doc.addPage();
+      y = 24;
+    }
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9.5);
+    doc.setTextColor(30, 32, 35);
+    doc.text(noteLines, margin, y);
+    y += noteLines.length * 4.6 + 4;
+  }
+  if (!inventory && tolls.length) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.setTextColor(30, 32, 35);
+    doc.text(
+      cleanPdfText(
+        `Péages à la charge du client (non inclus) : ${pdfMoney(tollTotal)} - détail en page annexe.`,
+      ),
+      margin,
+      y,
+    );
+    y += 7;
+  }
+  const explanation = isFinal
+    ? `Devis final établi sur la base du nombre réel d’allers-retours effectués (${price.trips}), au tarif de la tranche de distance appliquée.`
+    : `Devis temporaire, calculé sur ${price.trips} aller(s)-retour(s) estimé(s). Le transport est facturé par aller-retour effectué : le devis final, basé sur le nombre réel d’allers-retours, sera envoyé par Demenag Express à la fin du déménagement.`;
+  y = pdfParagraph(doc, explanation, margin, y, contentWidth, 8, false, [90, 97, 104]);
   if (documentQuote?.billingMode === 'driver-rental') {
     const hourlyRate =
       documentQuote.pricingInput?.rentalOvertimeHourlyRate ??
@@ -352,46 +530,14 @@ export async function downloadQuote(
       [92, 99, 106],
     );
   }
-  const validityDays = settings.quoteValidityDays ?? 15;
-  if (documentQuote?.kind !== 'final' && validityDays > 0) {
-    const issueDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Dakar' }).format(
-      new Date(documentQuote?.createdAt || booking.createdAt),
-    );
-    const expiry = new Date(`${issueDate}T12:00:00Z`);
-    expiry.setUTCDate(expiry.getUTCDate() + validityDays);
-    y = pdfParagraph(
-      doc,
-      `Devis valable ${validityDays} jours${Number.isNaN(expiry.getTime()) ? '' : ` · jusqu’au ${expiry.toLocaleDateString('fr-FR', { timeZone: 'Africa/Dakar' })}`}.`,
-      margin,
-      y,
-      contentWidth,
-      8,
-      false,
-      [92, 99, 106],
-    );
-  }
-  const depositPercent = settings.bookingDepositPercent ?? 0;
-  if (depositPercent > 0) {
-    const deposit = Math.round(((price.total ?? 0) * depositPercent) / 100 / 500) * 500;
-    y = pdfParagraph(
-      doc,
-      `Acompte à la réservation : ${money(deposit)} (${depositPercent} %) · Solde le jour du déménagement : ${money((price.total ?? 0) - deposit)}.`,
-      margin,
-      y,
-      contentWidth,
-      8,
-      false,
-      [92, 99, 106],
-    );
-  }
   const terms = (settings.quoteTerms || defaultQuoteTerms).trim();
   // Espaces de signature et cachet comme sur le document de référence.
-  let signatureY = y + 8;
-  let signatureHeight = paymentText ? Math.min(112, 287 - signatureY) : 50;
-  if (paymentText || signatureHeight < 70 || signatureY + signatureHeight > 287) {
+  let signatureY = y + 3;
+  let signatureHeight = paymentText ? Math.min(108, 286 - signatureY) : 50;
+  if (signatureHeight < (paymentText ? 24 : 50) || signatureY + signatureHeight > 284) {
     doc.addPage();
     signatureY = 24;
-    signatureHeight = paymentText ? 112 : 50;
+    signatureHeight = paymentText ? Math.min(108, 286 - signatureY) : 50;
   }
   await drawQuoteSignature({
     doc,
@@ -416,91 +562,6 @@ export async function downloadQuote(
       right,
       contentWidth,
     });
-  }
-
-  if (tolls.length) {
-    doc.addPage();
-    y = 18;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.setTextColor(30, 32, 35);
-    doc.text('PÉAGES', margin, y);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(90, 97, 104);
-    doc.text(
-      `${documentQuote?.reference || ''} · ${booking.customerName} · ${booking.vehicle.shortName || booking.vehicle.name}`,
-      right,
-      y,
-      { align: 'right' },
-    );
-    y += 4;
-    doc.setDrawColor(30, 32, 35);
-    doc.setLineWidth(0.5);
-    doc.line(margin, y, right, y);
-    y += 10;
-    const tollBoxHeight = 22 + tolls.length * 7.5;
-    const tollAmountX = right - 5;
-    const tollUnitX = tollAmountX - 38;
-    doc.setDrawColor(201, 206, 211);
-    doc.setLineWidth(0.3);
-    doc.roundedRect(margin, y, contentWidth, tollBoxHeight, 2, 2, 'S');
-    doc.setFillColor(247, 248, 249);
-    doc.rect(margin + 0.2, y + 0.2, contentWidth - 0.4, 9, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.setTextColor(30, 32, 35);
-    doc.text('PÉAGES À LA CHARGE DU CLIENT', margin + 4, y + 6);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(90, 97, 104);
-    doc.text('NON INCLUS DANS LE TOTAL', tollAmountX, y + 6, { align: 'right' });
-    let tollY = y + 15;
-    doc.setFontSize(9.5);
-    tolls.forEach((toll) => {
-      const label = toll.label.replace(/^Péage · /iu, '');
-      doc.setTextColor(30, 32, 35);
-      doc.text(cleanPdfText(label), margin + 4, tollY);
-      doc.setTextColor(90, 97, 104);
-      doc.text(
-        cleanPdfText(
-          `${toll.quantity} × ${toll.unitPrice ? pdfMoney(toll.unitPrice) : 'prix à confirmer'}`,
-        ),
-        tollUnitX,
-        tollY,
-        { align: 'right' },
-      );
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 32, 35);
-      doc.text(
-        toll.unitPrice ? pdfMoney(toll.quantity * toll.unitPrice) : '—',
-        tollAmountX,
-        tollY,
-        {
-          align: 'right',
-        },
-      );
-      doc.setFont('helvetica', 'normal');
-      tollY += 7.5;
-    });
-    doc.setFillColor(30, 32, 35);
-    doc.rect(margin + 0.2, tollY - 3.5, contentWidth - 0.4, 8.5, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Total péages à régler par le client', margin + 4, tollY + 2);
-    doc.setTextColor(246, 215, 60);
-    doc.text(pdfMoney(tollTotal), tollAmountX, tollY + 2, { align: 'right' });
-    y += tollBoxHeight + 8;
-    y = pdfParagraph(
-      doc,
-      'Les péages sont réglés directement par le client au passage du véhicule. Ils ne sont pas inclus dans le montant du devis.',
-      margin,
-      y,
-      contentWidth,
-      9,
-      false,
-      [90, 97, 104],
-    );
   }
 
   if (documentQuote?.billingMode === 'driver-rental') {
@@ -609,6 +670,76 @@ export async function downloadQuote(
     );
   }
 
+  if (tolls.length) {
+    doc.addPage();
+    y = pdfHead(
+      'Annexe · Péages',
+      'À la charge du client, non inclus dans le total',
+      `${documentQuote?.reference || booking.reference} · ${booking.customerName} · ${booking.vehicle.shortName || booking.vehicle.name}`,
+    );
+    y += 0;
+    const tollBoxHeight = 22 + tolls.length * 7.5;
+    const tollAmountX = right - 5;
+    const tollUnitX = tollAmountX - 38;
+    doc.setDrawColor(201, 206, 211);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(margin, y, contentWidth, tollBoxHeight, 2, 2, 'S');
+    doc.setFillColor(247, 248, 249);
+    doc.rect(margin + 0.2, y + 0.2, contentWidth - 0.4, 9, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(30, 32, 35);
+    doc.text('PÉAGES À LA CHARGE DU CLIENT', margin + 4, y + 6);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(90, 97, 104);
+    doc.text('NON INCLUS DANS LE TOTAL', tollAmountX, y + 6, { align: 'right' });
+    let tollY = y + 15;
+    doc.setFontSize(9.5);
+    tolls.forEach((toll) => {
+      const label = toll.label.replace(/^Péage · /iu, '');
+      doc.setTextColor(30, 32, 35);
+      doc.text(cleanPdfText(label), margin + 4, tollY);
+      doc.setTextColor(90, 97, 104);
+      doc.text(
+        cleanPdfText(
+          `${toll.quantity} × ${toll.unitPrice ? pdfMoney(toll.unitPrice) : 'prix à confirmer'}`,
+        ),
+        tollUnitX,
+        tollY,
+        { align: 'right' },
+      );
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 32, 35);
+      doc.text(
+        toll.unitPrice ? pdfMoney(toll.quantity * toll.unitPrice) : '—',
+        tollAmountX,
+        tollY,
+        { align: 'right' },
+      );
+      doc.setFont('helvetica', 'normal');
+      tollY += 7.5;
+    });
+    doc.setFillColor(30, 32, 35);
+    doc.rect(margin + 0.2, tollY - 3.5, contentWidth - 0.4, 8.5, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Total péages à régler par le client', margin + 4, tollY + 2);
+    doc.setTextColor(246, 215, 60);
+    doc.text(pdfMoney(tollTotal), tollAmountX, tollY + 2, { align: 'right' });
+    y += tollBoxHeight + 8;
+    pdfParagraph(
+      doc,
+      'Les péages sont réglés directement par le client au passage du véhicule. Ils ne sont pas inclus dans le montant du devis.',
+      margin,
+      y,
+      contentWidth,
+      9,
+      false,
+      [90, 97, 104],
+    );
+  }
+
   if (inventory) {
     doc.addPage();
     y = 18;
@@ -628,7 +759,7 @@ export async function downloadQuote(
     doc.setFontSize(8.5);
     doc.setTextColor(94, 101, 108);
     doc.text(
-      `Réf. ${documentQuote?.reference || booking.reference} · ${dateLabel(booking.date ?? '')}`,
+      `Réf. ${documentQuote?.reference || booking.reference} · ${(booking.date ?? '').split('-').reverse().join('/')}`,
       right,
       y + 9,
       {
@@ -891,7 +1022,7 @@ export async function downloadQuote(
       contentWidth,
       8.5,
     );
-    if (inventory.itemCount > 0 || y > 248) {
+    if (y > 248) {
       doc.addPage();
       y = 24;
     }
@@ -984,6 +1115,44 @@ export async function downloadQuote(
     );
   }
 
+  const pageCount = doc.getNumberOfPages();
+  const pdfReference = documentQuote?.reference || booking.reference;
+  for (let page = 1; page <= pageCount; page++) {
+    doc.setPage(page);
+    if (!isFinal) {
+      doc.saveGraphicsState();
+      doc.setGState(doc.GState({ opacity: 0.06 }));
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(84);
+      doc.setTextColor(30, 32, 35);
+      doc.text('PROVISOIRE', pageWidth / 2, 175, { angle: 35, align: 'center' });
+      doc.restoreGraphicsState();
+    }
+    doc.setDrawColor(220, 223, 227);
+    doc.setLineWidth(0.3);
+    doc.line(margin, 288.5, right, 288.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(96, 103, 111);
+    const pageLabel = cleanPdfText(
+      `Devis ${isFinal ? 'final' : 'provisoire'} ${pdfReference}  ·  Page ${page} / ${pageCount}`,
+    );
+    const availableWidth = contentWidth - doc.getTextWidth(pageLabel) - 8;
+    const footer = [
+      'DEMENAG EXPRESS PRO MTH',
+      settings.businessAddress || 'Dakar, Sénégal',
+      settings.businessPhone || '+221 77 510 51 04',
+      settings.businessNinea ? `NINEA ${settings.businessNinea}` : '',
+      settings.businessRccm ? `RCCM ${settings.businessRccm}` : '',
+    ].filter(Boolean);
+    while (
+      footer.length > 1 &&
+      doc.getTextWidth(cleanPdfText(footer.join('  ·  '))) > availableWidth
+    )
+      footer.splice(footer.length > 3 ? footer.length - 1 : 1, 1);
+    doc.text(cleanPdfText(footer.join('  ·  ')), margin, 293);
+    doc.text(pageLabel, right, 293, { align: 'right' });
+  }
   const blob = doc.output('blob');
   return blob;
 }

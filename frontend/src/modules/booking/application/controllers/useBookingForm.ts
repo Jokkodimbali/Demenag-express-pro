@@ -355,7 +355,7 @@ export function useBookingForm({
     }
     setSubmitError('');
     if (Object.keys(validatePublicFields('all')).length > 0) return;
-    if (!draft.route || !price) {
+    if (!draft.route || (!price && !administrativeQuote)) {
       setSubmitError(messages.calculezLeTrajetPourObtenirUneEstimation);
       return;
     }
@@ -380,9 +380,19 @@ export function useBookingForm({
     submitLock.current = true;
     setSubmitting(true);
     try {
+      const submissionRoute =
+        Date.parse(draft.route.expiresAt) <= Date.now() + 30_000 ||
+        !Number.isFinite(Date.parse(draft.route.expiresAt))
+          ? await api.route(draft.route.from, draft.route.to)
+          : draft.route;
+      if (submissionRoute.id !== draft.route.id) {
+        setDraft((current) =>
+          current.route?.id === draft.route?.id ? { ...current, route: submissionRoute } : current,
+        );
+      }
       const input = buildBookingSubmission({
         draft,
-        routeId: draft.route.id,
+        routeId: submissionRoute.id,
         administrativeQuote,
         quoteTrips: quoteConfig?.trips ?? 1,
         options: administrativeQuote ? quoteOptions : undefined,

@@ -479,8 +479,8 @@ test('le scénario de référence conserve ses volumes, son équipe et ses duré
   assert.equal(estimate.crew, 6);
   assert.equal(estimate.carpenterCount, 2);
   assert.ok(Math.abs(estimate.handlingMinutes - 206.170947) < 0.001);
-  assert.equal(estimate.totalMinutes, 525);
-  assert.equal(estimate.endTime, '16:45');
+  assert.equal(estimate.totalMinutes, 510);
+  assert.equal(estimate.endTime, '16:30');
   assert.equal(estimate.totalWeightKg, 819);
   assert.equal(estimate.maxItemWeightKg, 65);
 

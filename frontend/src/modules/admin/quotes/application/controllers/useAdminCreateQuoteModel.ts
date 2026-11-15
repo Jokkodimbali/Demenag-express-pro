@@ -115,6 +115,12 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const [reminderNotice, setReminderNotice] = useState('');
   const whatsappWindow = useRef<Window | null>(null);
   const sendWhatsAppAfterSave = useRef(false);
+  function cancelPendingWhatsApp() {
+    if (!sendWhatsAppAfterSave.current) return;
+    whatsappWindow.current?.close();
+    whatsappWindow.current = null;
+    sendWhatsAppAfterSave.current = false;
+  }
   const [openQuoteSections, setOpenQuoteSections] = useState({
     client: true,
     route: false,
@@ -178,6 +184,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       if (!savedQuote) {
         whatsappWindow.current?.close();
         whatsappWindow.current = null;
+        sendWhatsAppAfterSave.current = false;
         return;
       }
       if (sendWhatsAppAfterSave.current) {
@@ -856,6 +863,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     setReminderNotice,
     whatsappWindow,
     sendWhatsAppAfterSave,
+    cancelPendingWhatsApp,
     openQuoteSections,
     setOpenQuoteSections,
     clientProfiles,

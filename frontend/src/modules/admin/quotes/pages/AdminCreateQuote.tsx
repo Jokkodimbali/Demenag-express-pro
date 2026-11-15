@@ -73,6 +73,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
     selected,
     done,
     submit,
+    cancelPendingWhatsApp,
     tollLines,
     extras,
     clientRecognition,
@@ -274,12 +275,14 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
               : quoteKind;
           if (!normalizePhoneNumber(draft.customerPhone)) {
             event.preventDefault();
+            cancelPendingWhatsApp();
             setOpenQuoteSections((current) => ({ ...current, client: true }));
             setStageError('Saisissez un numéro valide avec son indicatif international.');
             return;
           }
           if (publicRequest && !draft.date) {
             event.preventDefault();
+            cancelPendingWhatsApp();
             setOpenQuoteSections((current) => ({ ...current, client: true }));
             setStageError('Choisissez une date.');
             return;
@@ -290,6 +293,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             !(Number(estimateInventory.balcPx) > 0)
           ) {
             event.preventDefault();
+            cancelPendingWhatsApp();
             setStageError('Passage par le balcon : fixez le supplément avant le devis final.');
             return;
           }
@@ -299,6 +303,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             !(Number(quoteConfig.customPrice) > 0)
           ) {
             event.preventDefault();
+            cancelPendingWhatsApp();
             setStageError(
               `Distance au-delà de ${(quoteSettings ?? catalogue.settings).distanceBounds[2]} km : fixez le prix par aller-retour avant le devis final.`,
             );
@@ -306,15 +311,26 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
           }
           if (submittedKind === 'final' && (!draft.date || draft.noDate)) {
             event.preventDefault();
+            cancelPendingWhatsApp();
             setStageError(
               'Un devis sans date reste provisoire. Choisissez une date pour passer en final.',
             );
             return;
           }
           event.preventDefault();
-          if (!(await confirmVehicleFit())) return;
+          if (!(await confirmVehicleFit())) {
+            cancelPendingWhatsApp();
+            return;
+          }
           setStageError('');
-          void submit(
+          if (!draft.route) {
+            setActiveStep(2);
+            setOpenQuoteSections((current) => ({ ...current, route: true }));
+            setStageError('Calculez le trajet avant d’enregistrer le devis.');
+            cancelPendingWhatsApp();
+            return;
+          }
+          await submit(
             event,
             [
               visibleInventoryText,
@@ -343,6 +359,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             quoteStageCommitId,
             quoteStageCommit,
           );
+          cancelPendingWhatsApp();
         }}
         className="admin-quote-layout"
       >
@@ -950,11 +967,18 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
               <LoadingSimulation
                 draft={draft}
                 vehicles={catalogue.vehicles}
-                quoteConfig={quoteConfig}
+                quoteConfig={{
+                  ...quoteConfig,
+                  hasToll: tollLines.some((line) => line.quantity * line.unitPrice > 0),
+                }}
+                laborPlanning={(quoteSettings ?? catalogue.settings).movingLaborPlanning}
                 crew={movingEstimate?.crew ?? 2}
                 estimate={movingEstimate}
                 setDraft={setDraft}
                 onTripsChange={(trips) => setQuoteConfig((current) => ({ ...current, trips }))}
+                onCrewRecommendation={() =>
+                  setQuoteConfig((current) => ({ ...current, calcMode: 'manual' }))
+                }
                 onPlanNeeds={model.setSimulationNeeds}
               />
               {model.inventoryCount === 0 && (
@@ -982,7 +1006,6 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             submitting={model.submitting}
             disabled={
               model.submitting ||
-              model.estimating ||
               model.editLoading ||
               Boolean(model.editError) ||
               model.editingLocked

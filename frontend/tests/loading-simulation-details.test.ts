@@ -37,9 +37,7 @@ test('les postes et le matériel évoluent avec étages, objets lourds et stock 
   assert.ok(equipment.some((item) => item.key === 'diable'));
   assert.ok(equipment.some((item) => item.key === 'visseuse'));
   assert.ok(
-    fatigueAdvice(lines, inventory, 6).rows.some(
-      ([label]) => label === 'Limite ISO 11228-1 au départ',
-    ),
+    fatigueAdvice(lines, inventory, 6).rows.some(([label]) => label === 'Limite ISO 11228-1'),
   );
 });
 
@@ -58,12 +56,12 @@ test('la fatigue reprend le poids et les distances ISO calculés avec les régla
 
   const result = fatigueAdvice([], inventory, 4, estimate);
   assert.deepEqual(result.rows.slice(0, 6), [
+    ['Durée totale', 'Non calculée'],
+    ['Effort de portage', '200 W/m² au départ · 200 W/m² à l’arrivée'],
     ['Poids total à porter', '≈ 1 234 kg'],
-    ['Durée totale prévue', 'Non calculée'],
-    ['Effort départ · arrivée', '200 · 200 W/m²'],
-    ['Masse portée par manœuvre', '≈ 617 kg'],
-    ['Limite ISO 11228-1 au départ', '2 553 kg / jour (47 m équivalents)'],
-    ['Limite ISO 11228-1 à l’arrivée', '1 935 kg / jour (62 m équivalents)'],
+    ['Limite ISO 11228-1', '2 553 kg au départ · 1 935 kg à l’arrivée'],
+    ['Départ · arrivée', '1er étage sans ascenseur · 2e étage sans ascenseur'],
+    ['Équipe', '4 manœuvres'],
   ]);
 });
 
@@ -71,8 +69,27 @@ test('sans estimation, le même accès est appliqué au départ et à l’arriv�
   const inventory = blankInventory();
   inventory.flags.acces = true;
   const result = fatigueAdvice([], inventory, 2);
-  const from = result.rows.find(([label]) => label === 'Limite ISO 11228-1 au départ')?.[1];
-  const to = result.rows.find(([label]) => label === 'Limite ISO 11228-1 à l’arrivée')?.[1];
-  assert.equal(from, '4 000 kg / jour (30 m équivalents)');
-  assert.equal(to, from);
+  const limits = result.rows.find(([label]) => label === 'Limite ISO 11228-1')?.[1];
+  assert.equal(limits, '4 000 kg au départ · 4 000 kg à l’arrivée');
+});
+
+test('la manutention reprend le score de la référence sans majoration par la chaleur', () => {
+  const inventory = blankInventory();
+  const lines: SimulationLine[] = [{ k: 'frigo', q: 1, s: 0, g: 'g', dm: false, n: 'Frigo' }];
+  const estimate = {
+    totalWeightKg: 1234,
+    fromIsoDistanceMeters: 47,
+    toIsoDistanceMeters: 62,
+    fromIsoLimitKg: 2553,
+    toIsoLimitKg: 1935,
+    heat: { wbgt: 30, reference: 25, work: 100, rest: 20 },
+    heatPenalty: 0,
+  } as Parameters<typeof fatigueAdvice>[3];
+  const result = fatigueAdvice(lines, inventory, 4, estimate);
+  const heavy = simulationLineWeight(lines[0]!).max;
+  const expected = Math.round(
+    ((1234 / 2553 + 1234 / 1935) / 4) * 100 * (heavy > 33 ? 1.04 : heavy > 25 ? 1.02 : 1),
+  );
+  assert.equal(result.gauges[1]?.score, expected);
+  assert.equal(result.score, expected);
 });

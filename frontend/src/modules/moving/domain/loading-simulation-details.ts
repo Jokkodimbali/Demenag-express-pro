@@ -346,6 +346,9 @@ export function fatigueAdvice(
   inventory: Inventory,
   crew: number,
   estimate?: MovingEstimate | null,
+  heatOff = false,
+  crewRecommendation?: { crew: number; effort: number; totalMinutes: number } | null,
+  parallelVehicleSolution?: string,
 ) {
   const access = Boolean(inventory.flags.acces);
   const fromFallback = isoSite(inventory.fromFloor, inventory.fromLift, access);
@@ -369,9 +372,6 @@ export function fatigueAdvice(
       : 3;
   const heat = estimate?.heat;
   const effort = estimate?.fatigueEffort;
-  const heatFactor = heat ? 1 + Math.max(0, heat.wbgt - heat.reference) * 0.08 : 1;
-  const scoreFor = (people: number) =>
-    Math.round(((kg / from.limit + kg / to.limit) / people) * 100 * heatFactor);
   const effectiveCrew = Math.max(1, crew);
   const heavy25 = lines
     .filter((line) => simulationLineWeight(line).max > 25 && simulationLineWeight(line).max <= 33)
@@ -379,9 +379,13 @@ export function fatigueAdvice(
   const heavy33 = lines
     .filter((line) => simulationLineWeight(line).max > 33)
     .reduce((sum, line) => sum + line.q, 0);
-  const handlingScore = Math.round(scoreFor(effectiveCrew) * (1 + heavy25 * 0.02 + heavy33 * 0.04));
+  const handlingScore = Math.round(
+    ((kg / from.limit + kg / to.limit) / effectiveCrew) *
+      100 *
+      (1 + heavy25 * 0.02 + heavy33 * 0.04),
+  );
   const effortScore = effort?.percentage ?? 0;
-  const heatScore = estimate?.heatPenalty ?? 0;
+  const heatScore = heatOff ? (estimate?.heatPenalty ?? 0) : 0;
   const score = Math.max(effortScore, handlingScore, heatScore);
   const level =
     score < 50
@@ -393,13 +397,36 @@ export function fatigueAdvice(
           : ['Excessive', '#FF5A5F'];
   const over33 = heavy33;
   const over25 = heavy25;
-  let recommended = crew;
-  while (recommended < 12 && scoreFor(recommended) >= 80) recommended++;
+  const number = (value: number) => Math.round(value).toLocaleString('fr-FR');
+  const duration = (minutes: number) => {
+    const rounded = Math.max(5, Math.round(minutes / 5) * 5);
+    const hours = Math.floor(rounded / 60);
+    const remainder = rounded % 60;
+    return hours
+      ? `${hours} h${remainder ? ` ${String(remainder).padStart(2, '0')}` : ''}`
+      : `${remainder} min`;
+  };
+  const solutions: { text: string; crew?: number }[] = [];
+  if (score >= 80) {
+    if (effortScore >= handlingScore && effortScore >= heatScore) {
+      if (crewRecommendation && crewRecommendation.crew > crew)
+        solutions.push({
+          crew: crewRecommendation.crew,
+          text: `${crewRecommendation.crew} manœuvres : effort ${crewRecommendation.effort} %, durée ${duration(crewRecommendation.totalMinutes)}`,
+        });
+      if (parallelVehicleSolution) solutions.push({ text: parallelVehicleSolution });
+      solutions.push({
+        text: `Relève d’équipe à mi-chantier ou 2 jours : effort ≈ ${Math.round(effortScore / 2)} % par équipe ou par jour`,
+      });
+    }
+    if (handlingScore >= 80)
+      solutions.push({
+        text: `Manutention : aide mécanique (diable, sangles de portage) pour les ${over25 + over33} objets lourds, jamais à bras.`,
+      });
+    if (heatOff && heatScore > 0)
+      solutions.push({ text: 'Réactiver les pauses chaleur dans les réglages du devis.' });
+  }
   const recommendations: string[] = [];
-  if (recommended > crew)
-    recommendations.push(
-      `Passer à ${recommended} manœuvres ramène la charge sous 80 % de la limite ISO (${scoreFor(recommended)} %).`,
-    );
   if (over33)
     recommendations.push(
       `${over33} objet${over33 > 1 ? 's' : ''} de plus de 33 kg : aide mécanique obligatoire (diable, sangles de portage), jamais à bras.`,
@@ -412,13 +439,13 @@ export function fatigueAdvice(
     recommendations.push(
       'Escalier sans ascenseur : un porteur par palier, rotation des postes toutes les 30 min.',
     );
-  if (heat && heat.rest > 15)
+  if (heat && heat.work < 150)
     recommendations.push(
       `Chaleur : ${heat.rest} min de récupération à l’ombre après ${heat.work} min de portage, environ 1 L d’eau par heure et par personne.`,
     );
+  solutions.forEach((solution) => recommendations.push(solution.text));
   if (!recommendations.length)
     recommendations.push('Charge de travail dans les limites ISO pour l’équipe prévue.');
-  const number = (value: number) => Math.round(value).toLocaleString('fr-FR');
   const floorLabel = (floor: number, lift: boolean) =>
     !floor ? 'RDC' : `${floor}${floor > 1 ? 'e' : 'er'} étage ${lift ? 'avec' : 'sans'} ascenseur`;
   return {
@@ -429,57 +456,55 @@ export function fatigueAdvice(
       {
         label: 'Effort physique · ISO 8996',
         score: effortScore,
-        detail: `Portage ${effort?.carrying ?? 0} % · trajets ${effort?.travel ?? 0} % · autres étapes ${effort?.other ?? 0} %`,
+        value: `${effortScore} %`,
+        detail: `Portage ${effort?.carrying ?? 0} % · trajets ${effort?.travel ?? 0} % · arrivée et contrôle ${effort?.other ?? 0} %`,
       },
       {
         label: 'Manutention · ISO 11228-1',
         score: handlingScore,
-        detail: `≈ ${number((kg * 2) / effectiveCrew)} kg portés par manœuvre`,
+        value: `${handlingScore} %`,
+        detail: `≈ ${number((kg * 2) / effectiveCrew)} kg portés par manœuvre${over33 ? ` · ${over33} objet${over33 > 1 ? 's' : ''} > 33 kg` : ''}${over25 ? ` · ${over25} > 25 kg` : ''}`,
       },
       {
         label: 'Chaleur · ISO 7243',
         score: heatScore,
-        detail: heatScore
-          ? 'Pauses chaleur désactivées alors que la chaleur dépasse la référence'
-          : heat
-            ? `${heat.rest} min de repos après ${heat.work} min de portage`
-            : 'Chaleur sous la référence',
+        value:
+          heatOff && heatScore
+            ? `${heatScore} %`
+            : heat?.work && heat.work < 150
+              ? 'Pauses prévues'
+              : 'Sans contrainte',
+        detail:
+          heatOff && heatScore
+            ? 'Pauses chaleur désactivées alors que la chaleur dépasse la référence'
+            : heat?.work && heat.work < 150
+              ? `${heat.rest} min de récupération après ${heat.work} min de portage, entre 9 h et 18 h`
+              : 'Chaleur sous la référence',
       },
     ],
     recommendations,
+    solutions,
     rows: [
-      ['Poids total à porter', `≈ ${number(kg)} kg`],
       [
-        'Durée totale prévue',
+        'Durée totale',
         estimate && Number.isFinite(estimate.totalMinutes)
-          ? `${number(estimate.totalMinutes / 60)} h`
+          ? duration(estimate.totalMinutes)
           : 'Non calculée',
       ],
-      ['Effort départ · arrivée', `${effort?.from ?? 200} · ${effort?.to ?? 200} W/m²`],
-      ['Masse portée par manœuvre', `≈ ${number((kg * 2) / effectiveCrew)} kg`],
       [
-        'Limite ISO 11228-1 au départ',
-        `${number(from.limit)} kg / jour (${from.distance} m équivalents)`,
+        'Effort de portage',
+        `${effort?.from ?? 200} W/m² au départ · ${effort?.to ?? 200} W/m² à l’arrivée`,
       ],
+      ['Poids total à porter', `≈ ${number(kg)} kg`],
       [
-        'Limite ISO 11228-1 à l’arrivée',
-        `${number(to.limit)} kg / jour (${to.distance} m équivalents)`,
-      ],
-      [
-        'Métabolisme ISO 8996',
-        classLevel >= 4 ? 'Classe 4 · très élevé (escalier)' : 'Classe 3 · élevé',
-      ],
-      [
-        'Chaleur ISO 7243',
-        heat
-          ? `WBGT ${String(heat.wbgt).replace('.', ',')} °C · réf. ${heat.reference} °C · ${heat.work < 150 ? `${Math.round((heat.work / (heat.work + heat.rest)) * 100)} % de travail` : 'sans restriction'}`
-          : 'non prise en compte',
+        'Limite ISO 11228-1',
+        `${number(from.limit)} kg au départ · ${number(to.limit)} kg à l’arrivée`,
       ],
       [
         'Départ · arrivée',
         `${floorLabel(inventory.fromFloor, inventory.fromLift)} · ${floorLabel(inventory.toFloor, inventory.toLift)}`,
       ],
-      ['Objets > 25 kg · > 33 kg', `${over25} · ${over33}`],
+      ['Équipe', `${effectiveCrew} manœuvres`],
     ] as [string, string][],
   };
 }

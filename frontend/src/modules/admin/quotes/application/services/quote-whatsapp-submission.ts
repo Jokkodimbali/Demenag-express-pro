@@ -24,7 +24,7 @@ export function startQuoteWhatsAppSubmission({
   previewTier: number;
   customPrice: number | null;
   maximumDistance: number;
-  draft: Pick<Draft, 'date' | 'noDate'>;
+  draft: Pick<Draft, 'date' | 'noDate' | 'route'>;
   setStageError: (message: string) => void;
   openClientSection: () => void;
   whatsappWindow: MutableReference<Window | null>;
@@ -47,6 +47,10 @@ export function startQuoteWhatsAppSubmission({
   }
   if (quoteKind === 'final' && (!draft.date || draft.noDate)) {
     setStageError('Un devis sans date reste provisoire. Choisissez une date pour passer en final.');
+    return;
+  }
+  if (!draft.route) {
+    setStageError('Calculez le trajet avant d’enregistrer et d’envoyer le devis.');
     return;
   }
   const form = document.getElementById('admin-quote-form') as HTMLFormElement | null;
