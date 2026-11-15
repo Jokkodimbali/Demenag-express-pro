@@ -128,7 +128,7 @@ export function AdminTollPoints() {
         setBusy(false);
       }
     },
-    [commands, setTollPoints, vehicles],
+    [commands, setTollPoints, showErrorToast, vehicles],
   );
 
   const updatePoint = useCallback(

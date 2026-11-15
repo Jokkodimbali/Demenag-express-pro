@@ -48,13 +48,13 @@ export async function downloadQuote(
     doc.setFontSize(9);
     doc.setTextColor(90, 97, 104);
     const detailWidth = detail ? doc.getTextWidth(cleanPdfText(detail)) + 6 : 0;
-    if (subtitle)
-      doc.text(
-        doc.splitTextToSize(cleanPdfText(subtitle), pageWidth - margin - titleX - detailWidth)[0] ||
-          '',
-        titleX,
-        headY + 8.4,
-      );
+    if (subtitle) {
+      const subtitleLines = doc.splitTextToSize(
+        cleanPdfText(subtitle),
+        pageWidth - margin - titleX - detailWidth,
+      ) as string[];
+      doc.text(subtitleLines[0] ?? '', titleX, headY + 8.4);
+    }
     if (detail) doc.text(cleanPdfText(detail), right, headY + 8.4, { align: 'right' });
     doc.setFillColor(30, 32, 35);
     doc.rect(margin, headY + 12, contentWidth, 0.7, 'F');
@@ -246,11 +246,11 @@ export async function downloadQuote(
     doc.text('par la route', routeStatsX + 6, y + 19);
     const bounds = settings.distanceBounds ?? [15, 25, 35];
     const tierLabels = referenceTierLabels(bounds);
-    doc.text(
-      doc.splitTextToSize(cleanPdfText(`Tranche : ${tierLabels[price.tier]}`), 42).slice(0, 2),
-      routeStatsX + 6,
-      y + 24.5,
-    );
+    const tierLines = doc.splitTextToSize(
+      cleanPdfText(`Tranche : ${tierLabels[price.tier]}`),
+      42,
+    ) as string[];
+    doc.text(tierLines.slice(0, 2), routeStatsX + 6, y + 24.5);
     y += routeHeight + 8;
   }
 
@@ -483,11 +483,8 @@ export async function downloadQuote(
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8.3);
       doc.setTextColor(30, 32, 35);
-      doc.text(
-        doc.splitTextToSize(cleanPdfText(card.main), cardWidth - 7)[0] || '',
-        x + 5,
-        centerY + 0.6,
-      );
+      const cardLines = doc.splitTextToSize(cleanPdfText(card.main), cardWidth - 7) as string[];
+      doc.text(cardLines[0] ?? '', x + 5, centerY + 0.6);
     });
     y += cardHeight + 3;
   }
@@ -977,7 +974,7 @@ export async function downloadQuote(
         tableHeader();
       }
       drawSectionBand(section);
-      rows.forEach(({ item, labelLines, detailLines, height }, index) => {
+      rows.forEach(({ item, labelLines, detailLines, height }) => {
         if (y + height > 278) {
           doc.addPage();
           y = 24;

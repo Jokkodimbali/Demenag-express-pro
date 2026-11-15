@@ -1,5 +1,5 @@
 import { assetDataUrl } from '../../../shared/adapters/pdf-assets';
-import { addPdfImage, pdfParagraph } from './quote-pdf-render';
+import { addPdfImage } from './quote-pdf-render';
 import type { Settings } from '../../../shared/domain/model';
 import type { jsPDF } from 'jspdf';
 
