@@ -28,7 +28,11 @@ import { fitConfirmationCopy } from '../services/quote-fit-confirmation';
 import { quoteReminder } from '../services/quote-reminder';
 import { quoteContactCard } from '../services/quote-contact-card';
 import { quoteAccountingConfirmation } from '../services/quote-accounting-confirmation';
-import { automaticQuoteEstimateUpdates } from '../services/automatic-quote-estimate';
+import {
+  automaticQuoteEstimateUpdates,
+  shouldPreserveAppliedVehicleEstimate,
+  type AppliedVehicleEstimate,
+} from '../services/automatic-quote-estimate';
 import { buildAdminQuotePdfDocument } from '../services/admin-quote-pdf-document';
 import { defaultAdminQuoteConfig } from '../services/admin-quote-config';
 import { buildAdminQuoteSubmission } from '../services/admin-quote-submission';
@@ -99,6 +103,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const restoredDraft = useRef(false);
   const skipInitialSave = useRef(false);
   const draftSaveQueue = useRef(Promise.resolve());
+  const appliedVehicleEstimate = useRef<AppliedVehicleEstimate | null>(null);
   const [quoteConfig, setQuoteConfig] = useState<AdminQuoteConfig>(defaultAdminQuoteConfig);
   const [questionnaireOpen, setQuestionnaireOpen] = useState(false);
   const [quoteKind, setQuoteKind] = useState<Quote['kind']>('provisional');
@@ -549,6 +554,22 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     ready: estimateInventory.ready,
     stairs: estimateInventory.stairs,
   });
+  function applyVehicleEstimate(vehicleId: string, trips: number) {
+    const vehicle = catalogue?.vehicles.find((candidate) => candidate.id === vehicleId);
+    if (!vehicle || !Number.isInteger(trips) || trips < 1) {
+      showErrorToast('Cette estimation de véhicule ne peut pas être appliquée.');
+      return;
+    }
+    appliedVehicleEstimate.current =
+      quoteConfig.calcMode === 'manual'
+        ? null
+        : { vehicleId, inventoryKey: inventoryEstimateKey, trips };
+    setDraft((current) => ({ ...current, vehicleId, estimatedTrips: trips }));
+    setQuoteConfig((current) => ({ ...current, trips }));
+    showSuccessToast(
+      `${vehicle.shortName || vehicle.name} sélectionné : ${trips} aller${trips > 1 ? 's' : ''}-retour${trips > 1 ? 's' : ''} appliqué${trips > 1 ? 's' : ''} au devis.`,
+    );
+  }
   useEffect(() => {
     const estimatedLabour = automaticEstimateUpdates.labour;
     const estimatedTrips = automaticEstimateUpdates.trips;
@@ -558,14 +579,24 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
           ? current
           : { ...current, options: { ...current.options, labour: estimatedLabour } },
       );
-    if (estimatedTrips !== null)
+    const keepAppliedVehicleEstimate = shouldPreserveAppliedVehicleEstimate({
+      applied: appliedVehicleEstimate.current,
+      selectedVehicleId,
+      inventoryKey: inventoryEstimateKey,
+      configuredTrips: quoteConfig.trips,
+    });
+    if (appliedVehicleEstimate.current && !keepAppliedVehicleEstimate)
+      appliedVehicleEstimate.current = null;
+    if (estimatedTrips !== null && !keepAppliedVehicleEstimate)
       setQuoteConfig((current) =>
         current.trips === estimatedTrips ? current : { ...current, trips: estimatedTrips },
       );
   }, [
     automaticEstimateUpdates.labour,
     automaticEstimateUpdates.trips,
+    quoteConfig.trips,
     inventoryEstimateKey,
+    selectedVehicleId,
     readyAnswer,
     stairsAnswer,
     draft.timeSlot,
@@ -967,6 +998,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     reload,
     draft,
     setDraft,
+    applyVehicleEstimate,
     selected,
     price,
     estimating,

@@ -62,6 +62,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
     pricingSnapshotBusy,
     pricingSnapshotError,
     applyCurrentPricingSnapshot,
+    applyVehicleEstimate,
     quoteSettings,
     contactCard,
     quoteTollPoints,
@@ -651,12 +652,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
               audience={publicRequest ? 'client' : 'admin'}
               referenceMode={publicRequest}
               estimateInventory={estimateInventory}
-              onApplyEstimate={(vehicleId, trips) => {
-                setDraft((current) => ({ ...current, vehicleId, estimatedTrips: trips }));
-                setQuoteConfig((current) =>
-                  current.calcMode === 'manual' ? current : { ...current, trips },
-                );
-              }}
+              onApplyEstimate={applyVehicleEstimate}
             />
           </AdminQuoteStep>
           <AdminQuoteStep
