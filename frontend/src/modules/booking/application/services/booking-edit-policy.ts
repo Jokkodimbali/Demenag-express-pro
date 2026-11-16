@@ -1,5 +1,38 @@
 import type { Booking, RouteTicket, User } from '../../../shared/domain/model';
 import { blankDraft, type Draft } from '../booking-draft';
+import { referenceInventoryNote } from '../../../moving/domain/estimate/reference-inventory-note';
+import { quoteConditionsText } from '../../../shared/messaging/application/services/whatsapp-templates';
+
+function administrativeNotesForEditing(booking: Booking) {
+  let notes = booking.notes;
+  const sourceInventory = booking.inventorySnapshot?.sourceInventory;
+  if (sourceInventory) {
+    const inventoryBlock = referenceInventoryNote(
+      sourceInventory,
+      booking.fromAddress,
+      booking.toAddress,
+    );
+    if (inventoryBlock) notes = notes.split(inventoryBlock).join('\n');
+
+    const conditions = quoteConditionsText(sourceInventory, booking.quotes.at(-1)?.billingMode);
+    if (conditions) notes = notes.split(conditions).join('\n');
+  }
+  const questionnaireLines = new Set(
+    (booking.questionnaireAnswers ?? []).map((answer) =>
+      `${answer.question} : ${answer.answer}`.trim(),
+    ),
+  );
+  return notes
+    .split(/\r?\n/u)
+    .filter((line) => {
+      const normalized = line.trim();
+      if (!normalized || questionnaireLines.has(normalized)) return false;
+      return !/^(?:Estimation\s*:\s*volume\b|Main-d['’](?:oe|œ)uvre\s*:)/iu.test(normalized);
+    })
+    .join('\n')
+    .replace(/\n{2,}/gu, '\n')
+    .trim();
+}
 
 export function bookingEditAccessError(
   user: User | null,
@@ -56,7 +89,7 @@ export function bookingDraftFromExisting(
     timeSlot: booking.timeSlot,
     estimatedTrips: Math.max(1, booking.estimate.trips),
     options: booking.options,
-    notes: booking.notes,
+    notes: administrativeQuote ? administrativeNotesForEditing(booking) : booking.notes,
     questionnaireAnswers: Object.fromEntries(
       (booking.questionnaireAnswers ?? []).map((answer) => [answer.questionId, answer.answer]),
     ),
