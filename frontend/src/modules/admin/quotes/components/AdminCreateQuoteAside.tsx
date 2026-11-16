@@ -46,6 +46,9 @@ export function AdminCreateQuoteAside({
     editingLocked,
     quoteStageChanged,
     savedQuote,
+    quoteJournalRows,
+    quoteJournalLoading,
+    quoteJournalError,
     sendCurrentQuoteOnWhatsApp,
     reminderCanSend,
     reminderHref,
@@ -238,6 +241,34 @@ export function AdminCreateQuoteAside({
             <span className="admin-quote-stage-instruction">
               {uiText['indiquezLeNombreReelDAllersRetoursPuisEnregistrez']}
             </span>
+          )}
+          {quoteKind === 'final' && (
+            <div className={`admin-quote-journal${quoteJournalRows.length ? ' posted' : ''}`}>
+              <strong>
+                {quoteJournalLoading
+                  ? 'VÉRIFICATION DU JOURNAL'
+                  : quoteJournalError
+                    ? 'JOURNAL INDISPONIBLE'
+                    : quoteJournalRows.length
+                      ? 'COMPTABILISÉ DANS LE JOURNAL'
+                      : 'PAS ENCORE COMPTABILISÉ'}
+              </strong>
+              {quoteJournalRows.map((row, index) => (
+                <div className="admin-quote-journal-row" key={`${row.label}-${index}`}>
+                  <span>{row.label}</span>
+                  <b className={row.type}>{row.amount}</b>
+                </div>
+              ))}
+              <small>
+                {quoteJournalLoading
+                  ? 'Chargement des écritures du devis final…'
+                  : quoteJournalError
+                    ? 'Impossible de vérifier les écritures. Consultez le journal comptable.'
+                    : quoteJournalRows.length
+                      ? 'Chaque « Enregistrer » met à jour ces écritures, sans doublon.'
+                      : 'Revenu, manœuvres et menuisier seront ajoutés au journal à l’enregistrement.'}
+              </small>
+            </div>
           )}
           <div className="admin-quote-stage-actions">
             <button

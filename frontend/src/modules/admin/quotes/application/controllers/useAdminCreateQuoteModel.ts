@@ -17,7 +17,7 @@ import {
 import { referenceTierLabels } from '../../../../shared/application/presentation/format';
 import { referenceTrafficDetails } from '../../../../moving/domain/routing/reference-traffic';
 import { useAdminQuoteTraffic } from './useAdminQuoteTraffic';
-import type { Options, Quote } from '../../../../shared/domain/model';
+import type { AccountingEntry, Options, Quote } from '../../../../shared/domain/model';
 import { defaultClientQuestions } from '../../../../booking/domain/questionnaire';
 import { quoteNotificationUrl } from '../services/quote-notification';
 import { createAdminQuotePreview } from '../services/admin-quote-preview';
@@ -28,7 +28,10 @@ import {
 import { fitConfirmationCopy } from '../services/quote-fit-confirmation';
 import { quoteReminder } from '../services/quote-reminder';
 import { quoteContactCard } from '../services/quote-contact-card';
-import { quoteAccountingConfirmation } from '../services/quote-accounting-confirmation';
+import {
+  quoteAccountingConfirmation,
+  quoteAccountingJournalRows,
+} from '../services/quote-accounting-confirmation';
 import {
   automaticQuoteEstimateUpdates,
   shouldPreserveAppliedVehicleEstimate,
@@ -110,6 +113,10 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const [quoteConfig, setQuoteConfig] = useState<AdminQuoteConfig>(defaultAdminQuoteConfig);
   const [questionnaireOpen, setQuestionnaireOpen] = useState(false);
   const [quoteKind, setQuoteKind] = useState<Quote['kind']>('provisional');
+  const [journalSnapshot, setJournalSnapshot] = useState<{
+    key: string;
+    entries: AccountingEntry[] | null;
+  } | null>(null);
   const [resetVersion, setResetVersion] = useState(0);
   const [pdfError, setPdfError] = useState('');
   const [stageError, setStageError] = useState('');
@@ -704,6 +711,33 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const savedQuote = editingBooking
     ? latestQuoteOfKind(editingBooking.quotes, quoteKind)
     : undefined;
+  const journalKey =
+    quoteKind === 'final' &&
+    editingBooking?.status === 'completed' &&
+    latestSavedQuote?.kind === 'final'
+      ? `${editingBooking.id}:${editingBooking.version}:${latestSavedQuote.id}`
+      : null;
+  useEffect(() => {
+    if (!journalKey || user?.role !== 'admin') return;
+    let active = true;
+    void api
+      .accountingEntries()
+      .then((entries) => {
+        if (active) setJournalSnapshot({ key: journalKey, entries });
+      })
+      .catch(() => {
+        if (active) setJournalSnapshot({ key: journalKey, entries: null });
+      });
+    return () => {
+      active = false;
+    };
+  }, [api, journalKey, user?.role]);
+  const journalEntries =
+    journalKey && journalSnapshot?.key === journalKey ? journalSnapshot.entries : null;
+  const quoteJournalRows =
+    editingBooking && savedQuote && journalEntries
+      ? quoteAccountingJournalRows(editingBooking, savedQuote, journalEntries)
+      : [];
   const {
     canSendQuoteWhatsApp,
     reminderDays,
@@ -1038,6 +1072,11 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     previewTotal,
     formulaPrices,
     savedQuote,
+    quoteJournalRows,
+    quoteJournalLoading: Boolean(journalKey && journalSnapshot?.key !== journalKey),
+    quoteJournalError: Boolean(
+      journalKey && journalSnapshot?.key === journalKey && !journalEntries,
+    ),
     canSendQuoteWhatsApp,
     reminderDays,
     reminderWhen,

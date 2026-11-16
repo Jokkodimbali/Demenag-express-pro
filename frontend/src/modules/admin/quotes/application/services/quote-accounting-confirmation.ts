@@ -2,14 +2,22 @@ import type { AccountingEntry, Booking, Quote } from '../../../../shared/domain/
 import { accountingCostCategories } from '../../../../shared/domain/accounting-cost-categories';
 import { money } from '../../../../shared/application/presentation/format';
 
+function entriesForQuote(booking: Booking, quote: Quote, entries: AccountingEntry[]) {
+  return entries.filter(
+    (entry) =>
+      entry.bookingId === booking.id &&
+      (entry.id === quote.id ||
+        entry.reference === quote.id ||
+        entry.reference === quote.reference),
+  );
+}
+
 export function quoteAccountingConfirmation(
   booking: Booking,
   quote: Quote,
   entries: AccountingEntry[],
 ) {
-  const journalEntries = entries.filter(
-    (entry) => entry.bookingId === booking.id && entry.reference === quote.id,
-  );
+  const journalEntries = entriesForQuote(booking, quote, entries);
   const revenue = journalEntries.find((entry) => entry.type === 'revenu');
   if (!revenue) return `Devis final ${quote.reference} enregistré.`;
 
@@ -36,4 +44,24 @@ export function quoteAccountingConfirmation(
     .filter(Boolean)
     .join(' · ')
     .concat('.');
+}
+
+export function quoteAccountingJournalRows(
+  booking: Booking,
+  quote: Quote,
+  entries: AccountingEntry[],
+) {
+  return entriesForQuote(booking, quote, entries)
+    .sort((a, b) => Number(b.type === 'revenu') - Number(a.type === 'revenu'))
+    .map((entry) => ({
+      label:
+        entry.type === 'revenu'
+          ? 'Revenu · déménagement'
+          : entry.label
+              .split(' · ')
+              .slice(0, entry.category === accountingCostCategories.carpenter ? 2 : 1)
+              .join(' · '),
+      amount: `${entry.type === 'revenu' ? '+ ' : '− '}${money(Math.abs(entry.amount))}`,
+      type: entry.type,
+    }));
 }

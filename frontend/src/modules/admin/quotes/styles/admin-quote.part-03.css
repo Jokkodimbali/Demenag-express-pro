@@ -42,6 +42,48 @@
   font-weight: 800;
   letter-spacing: 0.1em;
 }
+.admin-quote-journal {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid #3b4046;
+  border-radius: 12px;
+  background: #1e2023;
+}
+.admin-quote-journal.posted {
+  border-color: #3ddc84;
+}
+.admin-quote-journal > strong {
+  color: #ffd23f;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+.admin-quote-journal.posted > strong {
+  color: #3ddc84;
+}
+.admin-quote-journal-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  color: #d5d9de;
+  font-size: 13.5px;
+}
+.admin-quote-journal-row > span {
+  overflow-wrap: anywhere;
+}
+.admin-quote-journal-row > b {
+  color: #ff5a5f;
+  white-space: nowrap;
+}
+.admin-quote-journal-row > b.revenu {
+  color: #3ddc84;
+}
+.admin-quote-journal > small {
+  color: #aeb4bb;
+  font-size: 12px;
+}
 .admin-quote-stage-switch {
   display: grid;
   grid-template-columns: 1fr 1fr;
