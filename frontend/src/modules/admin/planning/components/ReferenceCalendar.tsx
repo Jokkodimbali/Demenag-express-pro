@@ -931,7 +931,12 @@ export function ReferenceCalendar({
           <span>{uiText['aucunRendezVousCeJour']}</span>
         ) : (
           selected.map((booking) => (
-            <button type="button" key={booking.id} onClick={() => onSelect(booking)}>
+            <button
+              type="button"
+              key={booking.id}
+              className={booking.status === 'completed' ? 'final' : ''}
+              onClick={() => onSelect(booking)}
+            >
               <span className="reference-calendar-selected-heading">
                 <strong>
                   {booking.reference.replace(/^DEM-/u, '')} · {booking.timeSlot || 'Journée'}

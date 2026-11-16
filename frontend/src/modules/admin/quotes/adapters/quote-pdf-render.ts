@@ -47,3 +47,18 @@ export function addPdfImage(
       : 'PNG';
   doc.addImage(data, format, x, top, width, height);
 }
+
+export function addRoundedPdfImage(
+  doc: jsPDF,
+  data: string,
+  x: number,
+  top: number,
+  width: number,
+  height: number,
+): void {
+  const radius = Math.min(width, height) * 0.18;
+  doc.saveGraphicsState();
+  doc.roundedRect(x, top, width, height, radius, radius, null).clip().discardPath();
+  addPdfImage(doc, data, x, top, width, height);
+  doc.restoreGraphicsState();
+}

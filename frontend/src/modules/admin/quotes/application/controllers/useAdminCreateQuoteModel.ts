@@ -15,6 +15,7 @@ import {
   referenceMovingEstimateNote,
 } from '../../../../moving/domain/estimate/reference-inventory-note';
 import { referenceTierLabels } from '../../../../shared/application/presentation/format';
+import { referenceTrafficDetails } from '../../../../moving/domain/routing/reference-traffic';
 import { useAdminQuoteTraffic } from './useAdminQuoteTraffic';
 import type { Options, Quote } from '../../../../shared/domain/model';
 import { defaultClientQuestions } from '../../../../booking/domain/questionnaire';
@@ -38,8 +39,10 @@ import { defaultAdminQuoteConfig } from '../services/admin-quote-config';
 import { buildAdminQuoteSubmission } from '../services/admin-quote-submission';
 import {
   adminQuoteIsLocked,
+  canSaveQuoteStageChange,
   latestBookingQuote,
   latestQuoteOfKind,
+  quoteStageChanged as isQuoteStageChanged,
   quotePdfFilename,
   quoteTollPointsWithSavedPrices,
   quoteVehicleWithSavedPrices,
@@ -107,8 +110,6 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const [quoteConfig, setQuoteConfig] = useState<AdminQuoteConfig>(defaultAdminQuoteConfig);
   const [questionnaireOpen, setQuestionnaireOpen] = useState(false);
   const [quoteKind, setQuoteKind] = useState<Quote['kind']>('provisional');
-  const [quoteKindSaving, setQuoteKindSaving] = useState(false);
-  const [quoteKindNotice, setQuoteKindNotice] = useState('');
   const [resetVersion, setResetVersion] = useState(0);
   const [pdfError, setPdfError] = useState('');
   const [stageError, setStageError] = useState('');
@@ -171,11 +172,6 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       const savedQuote = latestBookingQuote(booking);
       if (!savedQuote) return;
       setQuoteKind(savedQuote.kind);
-      setQuoteKindNotice(
-        savedQuote.kind === 'final'
-          ? visibleUiText.quoteStageFinalNotice
-          : visibleUiText.quoteStageProvisionalNotice,
-      );
       showSuccessToast(
         savedQuote.kind === 'final'
           ? visibleUiText.quoteStageFinalNotice
@@ -251,6 +247,9 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   });
   const editingLocked = adminQuoteIsLocked(state.editingBooking);
   const editingBooking = state.editingBooking;
+  const latestSavedQuote = editingBooking ? latestBookingQuote(editingBooking) : undefined;
+  const quoteStageChanged = isQuoteStageChanged(editingBooking, quoteKind);
+  const canCommitQuoteStage = canSaveQuoteStageChange(editingBooking, quoteKind);
   const quoteSettings = editingBooking?.pricingSettings ?? state.catalogue?.settings;
   const quoteTollPoints = quoteTollPointsWithSavedPrices(appTollPoints, editingBooking);
   const {
@@ -301,7 +300,6 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     setQuoteConfig(defaultAdminQuoteConfig());
     setTollLines([]);
     setQuoteKind('provisional');
-    setQuoteKindNotice('');
     setQuestionnaireOpen(false);
     setStageError('');
     setPdfError('');
@@ -325,61 +323,17 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   }, [location.pathname, location.search, navigate, setDraft, startNewRequest, user]);
   const canCreateFinal = canCreateFinalQuote(editingBooking, draft.date, Boolean(draft.noDate));
   const canSelectFinal = canCreateFinal;
-  async function selectQuoteKind(kind: Quote['kind']) {
-    const reopenCompletedEstimate =
-      kind === 'provisional' && editingBooking?.status === 'completed';
-    if (quoteKindSaving || (kind === quoteKind && !reopenCompletedEstimate)) return;
+  function selectQuoteKind(kind: Quote['kind']) {
+    if (kind === quoteKind) return;
     setStageError('');
-    setQuoteKindNotice('');
-    if (kind === 'final' && editingBooking?.status === 'completed') {
-      setQuoteKind(kind);
-      showSuccessToast('Devis final sélectionné.');
-      return;
-    }
-    const currentQuote = latestBookingQuote(editingBooking);
-    if (!editingBooking || !currentQuote) {
-      setQuoteKind(kind);
-      showSuccessToast(
-        kind === 'final' ? 'Devis final sélectionné.' : 'Devis provisoire sélectionné.',
-      );
-      return;
-    }
-    if (currentQuote.kind === kind && !reopenCompletedEstimate) {
-      setQuoteKind(kind);
-      return;
-    }
-    if (
-      kind === 'final' &&
-      !(latestBookingQuote(editingBooking) ? canSelectFinal : canCreateFinal)
-    ) {
+    if (kind === 'final' && !canSelectFinal) {
       const message =
         'Un devis sans date reste provisoire. Choisissez une date pour passer en final.';
       setStageError(message);
       showErrorToast(message);
       return;
     }
-    setQuoteKindSaving(true);
-    try {
-      const updated = await api.updateQuoteKind(
-        editingBooking.id,
-        currentQuote.id,
-        kind,
-        editingBooking.version,
-      );
-      state.setEditingBooking(updated);
-      setQuoteKind(kind);
-      showSuccessToast(
-        kind === 'final'
-          ? visibleUiText.quoteStageFinalNotice
-          : visibleUiText.quoteStageProvisionalNotice,
-      );
-    } catch (reason) {
-      const message = errorMessage(reason);
-      setStageError(message);
-      showErrorToast(message);
-    } finally {
-      setQuoteKindSaving(false);
-    }
+    setQuoteKind(kind);
   }
   useEffect(() => {
     if (!state.editingBooking) return;
@@ -728,6 +682,23 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const bounds = quoteSettings?.distanceBounds ?? [15, 25, 35];
   const tiers = referenceTierLabels(bounds);
   const effectiveDistance = draft.distanceKmOverride ?? draft.route?.distanceKm;
+  const trafficDetails = selected
+    ? referenceTrafficDetails({
+        distanceKm: effectiveDistance ?? 0,
+        startTime: draft.timeSlot,
+        date: draft.date || undefined,
+        month: draft.month,
+        from: draft.fromAddress,
+        to: draft.toAddress,
+        hasToll: tollLines.some((line) => line.quantity * line.unitPrice > 0),
+        ignoreTraffic: quoteConfig.trafficOff,
+        manualMinutes: quoteConfig.calcMode === 'manual' ? quoteConfig.legMinutes : 0,
+        vehicleId: selected.id,
+      })
+    : null;
+  const estimatedTravelMinutes = trafficDetails?.minutes ?? 0;
+  const freeTravelMinutes = trafficDetails?.freeMinutes ?? 0;
+  const trafficCoefficient = trafficDetails?.coefficient ?? 0;
   const availableMenuLines = preview.availableMenuLines;
   const menuIncluded = preview.menuIncluded;
   const savedQuote = editingBooking
@@ -863,8 +834,8 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 30000);
       showSuccessToast(`PDF du devis ${pdfDocument.booking.reference} téléchargé.`);
-    } catch {
-      const message = 'Le PDF n’a pas pu être généré. Réessayez.';
+    } catch (cause) {
+      const message = errorMessage(cause);
       setPdfError(message);
       showErrorToast(message);
     }
@@ -960,9 +931,6 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     quoteKind,
     setQuoteKind,
     selectQuoteKind,
-    quoteKindSaving,
-    quoteKindNotice,
-    setQuoteKindNotice,
     pdfError,
     setPdfError,
     stageError,
@@ -988,6 +956,9 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     bookingCommands,
     state,
     editingLocked,
+    quoteStageChanged,
+    canCommitQuoteStage,
+    latestSavedQuote,
     editingBooking,
     quoteSettings,
     contactCard,
@@ -1050,6 +1021,10 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     bounds,
     tiers,
     effectiveDistance,
+    estimatedTravelMinutes,
+    freeTravelMinutes,
+    trafficCoefficient,
+    trafficFactors: trafficDetails?.factors ?? [],
     previewTier,
     availableMenuLines,
     menuIncluded,

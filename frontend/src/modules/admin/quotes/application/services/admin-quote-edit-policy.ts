@@ -8,6 +8,18 @@ export function latestBookingQuote(booking: Booking | null): Quote | undefined {
   return booking?.quotes.at(-1);
 }
 
+export function quoteStageChanged(booking: Booking | null, kind: Quote['kind']): boolean {
+  const quote = latestBookingQuote(booking);
+  const savedKind = quote?.kind ?? (booking?.status === 'completed' ? 'final' : 'provisional');
+  return Boolean(booking && savedKind !== kind);
+}
+
+export function canSaveQuoteStageChange(booking: Booking | null, kind: Quote['kind']): boolean {
+  if (!booking || booking.status === 'cancelled' || !quoteStageChanged(booking, kind)) return false;
+  if (latestBookingQuote(booking)) return true;
+  return kind === 'final' && booking.status !== 'completed';
+}
+
 export function adminQuoteIsLocked(booking: Booking | null): boolean {
   return Boolean(
     booking &&

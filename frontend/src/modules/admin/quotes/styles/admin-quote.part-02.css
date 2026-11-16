@@ -321,6 +321,22 @@
   color: #aeb4bb;
   font-size: 12px;
 }
+.admin-quote-traffic-factors {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.admin-quote-traffic-factors > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #272a2e;
+  color: #d5d9de;
+  font-size: 12px;
+}
 .admin-quote-traffic button {
   min-height: 36px;
   flex: 0 0 auto;

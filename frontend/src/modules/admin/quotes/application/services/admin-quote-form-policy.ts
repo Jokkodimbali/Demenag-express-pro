@@ -59,12 +59,7 @@ export function quoteEstimateInventory(
 }
 
 export function canCreateFinalQuote(booking: Booking | null, date: string, noDate: boolean) {
-  return Boolean(
-    booking?.status !== 'cancelled' &&
-    !booking?.quotes.some((quote) => quote.kind === 'final') &&
-    date &&
-    !noDate,
-  );
+  return Boolean(booking?.status !== 'cancelled' && date && !noDate);
 }
 
 export function quoteConfigurationFromBooking(booking: Booking) {

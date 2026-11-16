@@ -2,7 +2,12 @@ import type { RentalKitConfigurationItem, RentalKitItem, Vehicle } from '../../s
 
 export const defaultRentalKitConfiguration: RentalKitConfigurationItem[] = [
   { id: 'vehicle', label: 'Véhicule propre', rule: 'vehicle' },
-  { id: 'driver', label: 'Chauffeur', rule: 'one' },
+  {
+    id: 'driver',
+    label: 'Chauffeur',
+    rule: 'one',
+    image: '/assets/kit-chauffeur.jpg',
+  },
   {
     id: 'blankets',
     label: 'Serviettes de déménagement propres',
@@ -54,9 +59,14 @@ export function defaultRentalKit(
       quantity,
       ...(item.image
         ? { image: item.image }
-        : item.rule === 'vehicle'
-          ? { image: vehicle.image }
-          : {}),
+        : item.id === 'driver'
+          ? { image: '/assets/kit-chauffeur.jpg' }
+          : item.rule === 'vehicle'
+            ? {
+                image:
+                  vehicle.id === 'sprinter' ? '/assets/kit-vehicle-sprinter.jpg' : vehicle.image,
+              }
+            : {}),
     };
   });
 }

@@ -15,13 +15,9 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
     draft,
     setDraft,
     estimateInventory,
+    editingBooking,
     quoteKind,
-    setQuoteKind,
     selectQuoteKind,
-    quoteKindSaving,
-    quoteKindNotice,
-    setQuoteKindNotice,
-    setStageError,
     submitting,
     canSelectFinal,
     movingEstimate,
@@ -35,35 +31,15 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
   const heatActive = heatAvailable && !quoteConfig.heatOff;
 
   function handleQuoteKindSelection(kind: 'provisional' | 'final') {
-    const savedQuote = model.editingBooking?.quotes.at(-1);
-    const finalCommit =
-      kind === 'final' &&
-      model.editingBooking &&
-      !['completed', 'cancelled'].includes(model.editingBooking.status) &&
-      savedQuote?.kind !== 'final';
-    const provisionalCommit =
-      kind === 'provisional' &&
-      model.editingBooking?.status === 'completed' &&
-      savedQuote?.kind === 'final';
-    if (finalCommit || provisionalCommit) {
-      setStageError('');
-      setQuoteKindNotice('');
-      setQuoteKind(kind);
-      window.requestAnimationFrame(() => {
-        const form = document.getElementById('admin-quote-form');
-        if (form instanceof HTMLFormElement) {
-          form.dataset.quoteKindOverride = kind;
-          form.dataset.quoteStageCommit = 'true';
-          if (savedQuote) form.dataset.quoteStageCommitId = savedQuote.id;
-          form.requestSubmit();
-          delete form.dataset.quoteKindOverride;
-          delete form.dataset.quoteStageCommit;
-          delete form.dataset.quoteStageCommitId;
-        }
-      });
+    if (kind === quoteKind) return;
+    if (kind === 'final' && !canSelectFinal) {
+      selectQuoteKind(kind);
       return;
     }
-    void selectQuoteKind(kind);
+    selectQuoteKind(kind);
+    showSuccessToast(
+      `Devis ${kind === 'final' ? 'final' : 'provisoire'} sélectionné. Cliquez sur « Enregistrer » pour appliquer le changement.`,
+    );
   }
 
   return (
@@ -185,13 +161,17 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
             </button>
           </div>
         </div>
-        <div className="admin-quote-reference-setting">
+        <div className="admin-quote-reference-setting admin-quote-stage-setting">
           <span>{visibleUiText.text131}</span>
-          <div role="group" aria-label={visibleUiText.text132}>
+          <div
+            className="admin-quote-stage-selector"
+            role="group"
+            aria-label={visibleUiText.text132}
+          >
             <button
               type="button"
               aria-pressed={quoteKind === 'provisional'}
-              disabled={quoteKindSaving || submitting}
+              disabled={submitting || editingBooking?.status === 'cancelled'}
               className={quoteKind === 'provisional' ? 'active' : ''}
               onClick={() => handleQuoteKindSelection('provisional')}
             >
@@ -200,7 +180,7 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
             <button
               type="button"
               aria-pressed={quoteKind === 'final'}
-              disabled={quoteKindSaving || submitting}
+              disabled={submitting || editingBooking?.status === 'cancelled'}
               className={quoteKind === 'final' ? 'active final' : ''}
               title={
                 !canSelectFinal
@@ -212,8 +192,6 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
               {visibleUiText.text134}
             </button>
           </div>
-          {quoteKindSaving && <small role="status">{visibleUiText.quoteStageSaving}</small>}
-          {quoteKindNotice && <small role="status">{quoteKindNotice}</small>}
         </div>
         <div className="admin-quote-reference-setting">
           <span>{visibleUiText.text140}</span>

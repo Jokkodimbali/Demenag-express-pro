@@ -1,5 +1,6 @@
 import type { LoadingSimulationPdfInput } from '../application/contracts/loading-simulation-pdf';
 import { loadingRules } from '../../moving/application/services/loading-simulation-model';
+import { assetDataUrl } from '../../shared/adapters/pdf-assets';
 
 function pdfLines(
   pdf: InstanceType<(typeof import('jspdf'))['jsPDF']>,
@@ -51,7 +52,9 @@ export async function generateLoadingSimulationPdf({
           y = 18;
         }
       };
-      const imageData = await imageDataUrl('/assets/logo.png');
+      const imageData =
+        (await imageDataUrl('/assets/logo.png')) ??
+        (await assetDataUrl('/assets/logo.png').catch(() => null));
       const trips = plan.trips;
       const tripTotal = (count: number) =>
         `${count} ${count > 1 ? 'allers-retours' : 'aller-retour'}`;
@@ -442,6 +445,13 @@ export async function generateLoadingSimulationPdf({
           pdf.text(safe(`- ${message}`), margin + 3, y);
           y += 4.5;
         });
+      }
+      if (imageData) {
+        const logoFormat = imageData.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG';
+        for (let page = 2; page <= pdf.getNumberOfPages(); page += 1) {
+          pdf.setPage(page);
+          pdf.addImage(imageData, logoFormat, pageWidth - margin - 8, 4, 8, 8);
+        }
       }
       const fileName = safe(`Plan-de-chargement-${draft.customerName || 'devis'}`)
         .replace(/\s+/g, '-')

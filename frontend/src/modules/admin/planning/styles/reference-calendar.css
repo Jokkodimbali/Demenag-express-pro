@@ -639,6 +639,11 @@
   text-align: left;
   cursor: pointer;
 }
+.reference-calendar-selected > button.final {
+  border-color: #287b52;
+  border-left-color: #39a86e;
+  background: #173326;
+}
 .reference-calendar-selected > button > strong {
   color: #fff;
 }
@@ -652,9 +657,15 @@
 .reference-calendar-selected-heading > strong {
   color: #f6d73c;
 }
+.reference-calendar-selected > button.final .reference-calendar-selected-heading > strong {
+  color: #75d49d;
+}
 .reference-calendar-selected-heading > b {
   color: #fff;
   font-size: 12px;
+}
+.reference-calendar-selected > button.final .reference-calendar-selected-heading > b {
+  color: #75d49d;
 }
 .reference-calendar-selected > button > span {
   color: #d5d9de;

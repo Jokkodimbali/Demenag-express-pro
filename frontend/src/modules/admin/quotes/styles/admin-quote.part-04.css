@@ -231,6 +231,24 @@
   font-size: 11.5px;
   font-weight: 700;
 }
+.admin-quote-stage-setting {
+  flex: 0 0 220px;
+  width: 220px;
+  min-width: 220px;
+}
+.admin-quote-stage-selector {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px !important;
+  flex-wrap: nowrap !important;
+  width: 100%;
+}
+.admin-quote-stage-selector button {
+  width: 100%;
+  min-width: 0;
+  padding-right: 6px;
+  padding-left: 6px;
+}
 .admin-quote-reference-setting > div {
   display: flex;
   gap: 4px;

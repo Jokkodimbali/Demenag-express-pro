@@ -126,6 +126,20 @@ export function buildAdminQuotePdfDocument(input: {
       (input.visibleInventoryText || estimateInventory.ready || estimateInventory.stairs)
         ? bookingInventorySnapshot(estimateInventory, estimate)
         : undefined,
+    workPlan:
+      estimate?.planning.map((step, index) => ({
+        id: `estimate-${index + 1}`,
+        time: step.time,
+        title: step.title,
+        detail: step.detail,
+        minutes: step.minutes,
+        review: {
+          status: 'pending' as const,
+          reason: '',
+          checkedAt: null,
+          checkedBy: null,
+        },
+      })) ?? booking?.workPlan,
     estimate: price,
     quotes: booking?.quotes ?? [],
   };

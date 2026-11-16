@@ -44,6 +44,7 @@ export function AdminCreateQuoteAside({
     submitting,
     estimating,
     editingLocked,
+    quoteStageChanged,
     savedQuote,
     sendCurrentQuoteOnWhatsApp,
     reminderCanSend,
@@ -242,7 +243,9 @@ export function AdminCreateQuoteAside({
             <button
               type="button"
               className="admin-quote-action-whatsapp"
-              disabled={submitting || (editingLocked && savedQuote?.kind !== 'final')}
+              disabled={
+                submitting || quoteStageChanged || (editingLocked && savedQuote?.kind !== 'final')
+              }
               onClick={sendCurrentQuoteOnWhatsApp}
             >
               <svg

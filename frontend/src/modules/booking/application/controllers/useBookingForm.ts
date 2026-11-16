@@ -341,17 +341,22 @@ export function useBookingForm({
     e.preventDefault();
     if (submitLock.current) return;
     const isQuoteStageCommit = administrativeQuote && quoteStageCommit && Boolean(editingBooking);
-    const isFinalToProvisionalCommit =
+    const latestSavedQuote = editingBooking?.quotes.at(-1);
+    const isValidQuoteStageCommit = Boolean(
       isQuoteStageCommit &&
-      quoteKindOverride === 'provisional' &&
-      editingBooking?.status === 'completed' &&
-      editingBooking.quotes.at(-1)?.kind === 'final' &&
-      editingBooking.quotes.at(-1)?.id === quoteStageCommitId;
+      editingBooking &&
+      editingBooking.status !== 'cancelled' &&
+      (latestSavedQuote
+        ? latestSavedQuote.kind !== quoteKindOverride && latestSavedQuote.id === quoteStageCommitId
+        : quoteKindOverride === 'final' &&
+          editingBooking.status !== 'completed' &&
+          !quoteStageCommitId),
+    );
     if (
       administrativeQuote &&
       editingBooking &&
       administrativeBookingEditLocked(editingBooking) &&
-      !isFinalToProvisionalCommit
+      !isValidQuoteStageCommit
     ) {
       setSubmitError('Cette réservation est clôturée et ne peut plus être modifiée.');
       return;

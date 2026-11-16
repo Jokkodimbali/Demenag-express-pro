@@ -59,6 +59,8 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
     trafficDuration,
     state,
     editingLocked,
+    canCommitQuoteStage,
+    latestSavedQuote,
     pricingSnapshotBusy,
     pricingSnapshotError,
     applyCurrentPricingSnapshot,
@@ -87,7 +89,6 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
     route,
     refreshTraffic,
     trafficDelay,
-    trafficColor,
     movingEstimate,
     questionnaire,
     visibleInventoryText,
@@ -96,6 +97,10 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
     totalTolls,
     tiers,
     effectiveDistance,
+    estimatedTravelMinutes,
+    freeTravelMinutes,
+    trafficCoefficient,
+    trafficFactors,
     previewTier,
     previewSubtotal,
     previewDiscount,
@@ -105,6 +110,15 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
     changeQuoteOption,
     toggleQuoteSection,
   } = model;
+  const manualTravelTime = quoteConfig.calcMode === 'manual' && quoteConfig.legMinutes > 0;
+  const estimatedTrafficColor =
+    manualTravelTime || quoteConfig.trafficOff
+      ? '#AEB4BB'
+      : trafficCoefficient >= 1.6
+        ? '#FF5A5F'
+        : trafficCoefficient >= 1.25
+          ? '#FFD23F'
+          : '#3DDC84';
   const updateRouteDraft = useCallback<RouteMapDraftUpdater>(
     (update) => setDraft((current) => ({ ...current, ...update(current) })),
     [setDraft],
@@ -235,11 +249,6 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
           {editError}
         </p>
       )}
-      {editingLocked && (
-        <p className="alert error" role="status">
-          {uiText['cetteReservationEstClotureeSonDevisResteConsultableMai']}
-        </p>
-      )}
       {editingReservation && editingBooking && user?.role === 'admin' && !editingLocked && (
         <section
           className="admin-quote-pricing-snapshot"
@@ -266,16 +275,9 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
       <form
         id="admin-quote-form"
         onSubmit={async (event) => {
-          const requestedKind = event.currentTarget.dataset.quoteKindOverride;
-          const quoteStageCommit = event.currentTarget.dataset.quoteStageCommit === 'true';
-          const quoteStageCommitId = event.currentTarget.dataset.quoteStageCommitId;
-          delete event.currentTarget.dataset.quoteKindOverride;
-          delete event.currentTarget.dataset.quoteStageCommit;
-          delete event.currentTarget.dataset.quoteStageCommitId;
-          const submittedKind =
-            requestedKind === 'final' || requestedKind === 'provisional'
-              ? requestedKind
-              : quoteKind;
+          const submittedKind = quoteKind;
+          const quoteStageCommit = Boolean(editingBooking && canCommitQuoteStage);
+          const quoteStageCommitId = quoteStageCommit ? latestSavedQuote?.id : undefined;
           if (!normalizePhoneNumber(draft.customerPhone)) {
             event.preventDefault();
             cancelPendingWhatsApp();
@@ -566,34 +568,73 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                       <strong>{draft.route ? tiers[previewTier] : '—'}</strong>
                     </span>
                   </label>
-                  {draft.from && draft.to && (
+                  {draft.from && draft.to && estimatedTravelMinutes > 0 && (
                     <div className="admin-quote-traffic" role="status">
-                      <span aria-hidden="true" style={{ background: trafficColor }} />
+                      <span aria-hidden="true" style={{ background: estimatedTrafficColor }} />
                       <strong>
-                        {!googleMapsKey
-                          ? 'Trafic en direct inactif'
-                          : traffic
-                            ? `Trajet avec trafic : ${trafficDuration(traffic.minutes)}`
-                            : trafficError
-                              ? 'Trafic indisponible'
-                              : 'Calcul du trafic…'}
+                        {manualTravelTime
+                          ? `Trajet saisi : ${trafficDuration(estimatedTravelMinutes)}`
+                          : `Trajet estimé : ${trafficDuration(estimatedTravelMinutes)}`}
                       </strong>
                       <small>
-                        {!googleMapsKey
-                          ? 'Ajoutez votre clé Google Maps dans Paramètres.'
-                          : traffic
-                            ? `${traffic.future ? 'Prévision Google pour le départ prévu' : 'Google, trafic actuel'}${trafficDelay > 0 ? ` · +${trafficDuration(trafficDelay)} de bouchons` : ''} · mis à jour à ${new Date(traffic.fetchedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`
-                            : trafficError
-                              ? 'Vérifiez la clé et l’activation de Distance Matrix.'
-                              : ''}
+                        {manualTravelTime
+                          ? 'Mode manuel · durée de trajet fixée à la main'
+                          : quoteConfig.trafficOff
+                            ? 'Embouteillages ignorés · circulation fluide'
+                            : `Sans embouteillages : ${trafficDuration(Math.round(freeTravelMinutes * 1.05))} · coefficient ×${trafficCoefficient.toFixed(2).replace('.', ',')}`}
                       </small>
-                      <button
-                        type="button"
-                        disabled={!publicRequest && (!googleMapsKey || !route || trafficBusy)}
-                        onClick={() => void refreshTraffic()}
-                      >
-                        {uiText['actualiser']}
-                      </button>
+                      {!manualTravelTime &&
+                        !quoteConfig.trafficOff &&
+                        trafficFactors.length > 0 && (
+                          <div className="admin-quote-traffic-factors">
+                            {trafficFactors.map((factor) => (
+                              <span key={factor.label}>
+                                {factor.label}
+                                <strong
+                                  style={{
+                                    color:
+                                      factor.factor > 1.001
+                                        ? '#FFD23F'
+                                        : factor.factor < 0.999
+                                          ? '#3DDC84'
+                                          : '#AEB4BB',
+                                  }}
+                                >
+                                  ×{factor.factor.toFixed(2).replace('.', ',')}
+                                </strong>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      {googleMapsKey && traffic && (
+                        <small>
+                          {traffic.future
+                            ? 'Prévision Google pour le départ prévu'
+                            : 'Google, trafic actuel'}
+                          {trafficDelay > 0
+                            ? ` · +${trafficDuration(trafficDelay)} de bouchons`
+                            : ''}
+                          {' · mis à jour à '}
+                          {new Date(traffic.fetchedAt).toLocaleTimeString('fr-FR', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </small>
+                      )}
+                      {googleMapsKey && trafficError && (
+                        <small>
+                          Google Maps indisponible ; l’estimation locale reste utilisée.
+                        </small>
+                      )}
+                      {googleMapsKey && (
+                        <button
+                          type="button"
+                          disabled={!publicRequest && (!route || trafficBusy)}
+                          onClick={() => void refreshTraffic()}
+                        >
+                          {uiText['actualiser']}
+                        </button>
+                      )}
                     </div>
                   )}
                   {draft.route && previewTier === 3 && (
@@ -1016,7 +1057,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
               model.submitting ||
               model.editLoading ||
               Boolean(model.editError) ||
-              model.editingLocked
+              (editingLocked && !canCommitQuoteStage)
             }
             editingReservation={model.editingReservation}
           />
