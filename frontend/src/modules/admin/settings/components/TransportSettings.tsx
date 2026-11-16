@@ -184,7 +184,7 @@ export function TransportSettings({
   const [resettingTariffs, setResettingTariffs] = useState(false);
   const [resetTariffsStatus, setResetTariffsStatus] = useState('');
   const [resetTariffsError, setResetTariffsError] = useState('');
-  const { requestConfirmation, showSuccessToast } = useApp();
+  const { requestConfirmation } = useApp();
   const { claudeConnected, mapsConfigured, setClaudeConnected, setMapsConfigured } =
     useIntegrationSummary();
   const {
@@ -241,7 +241,7 @@ export function TransportSettings({
     setResetTariffsError('');
     try {
       const succeeded = await onResetTariffs();
-      if (succeeded) showSuccessToast(visibleUiText.pricingResetSuccess);
+      if (succeeded) setResetTariffsStatus(visibleUiText.pricingResetSuccess);
     } catch (cause) {
       setResetTariffsError(errorMessage(cause));
     } finally {

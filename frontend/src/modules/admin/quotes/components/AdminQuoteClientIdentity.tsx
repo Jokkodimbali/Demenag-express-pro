@@ -2,6 +2,7 @@ import { ChevronDown } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { uiText } from '../../../shared/content/reference-ui-text';
 import { visibleUiText } from '../../../shared/content/visible-ui-text';
+import { useApp } from '../../../shared/application/context';
 import { normalizedClientPhone } from '../../../shared/domain/client-identity';
 import { today } from '../../../shared/domain/date';
 import { sanitizePhoneInput } from '../../../shared/domain/phone-number';
@@ -53,6 +54,7 @@ export function AdminQuoteClientIdentity({
     vcard: string;
   } | null;
 }) {
+  const { showSuccessToast, showErrorToast } = useApp();
   const [contactFeedback, setContactFeedback] = useState('');
   const [clientNameFocused, setClientNameFocused] = useState(false);
   const clientNameBlurTimeout = useRef<number | undefined>(undefined);
@@ -85,20 +87,29 @@ export function AdminQuoteClientIdentity({
   async function copyNamePart(value: string, label: string) {
     if (await copyContactText(value)) {
       setContactFeedback(`${label} copié : ${value}`);
+      showSuccessToast(`${label} copié dans le presse-papiers.`);
       return;
     }
     setContactFeedback(`${label} : ${value}`);
+    showErrorToast(
+      'La copie automatique est indisponible. Le texte reste affiché pour être copié.',
+    );
   }
 
   async function saveContact() {
     if (!contactCard) return;
     const filename = `${contactCard.name.replace(/[^\p{L}\p{N}-]+/gu, '-')}.vcf`;
-    const result = await saveContactVcards([contactCard.vcard], filename, contactCard.name);
-    setContactFeedback(
-      result === 'downloaded'
-        ? `Contact « ${contactCard.name} » ${quoteText.contactReadyToImport}`
-        : '',
-    );
+    try {
+      const result = await saveContactVcards([contactCard.vcard], filename, contactCard.name);
+      setContactFeedback(
+        result === 'downloaded'
+          ? `Contact « ${contactCard.name} » ${quoteText.contactReadyToImport}`
+          : '',
+      );
+      if (result !== 'cancelled') showSuccessToast(`Contact « ${contactCard.name} » exporté.`);
+    } catch {
+      showErrorToast('Le contact n’a pas pu être exporté.');
+    }
   }
 
   return (

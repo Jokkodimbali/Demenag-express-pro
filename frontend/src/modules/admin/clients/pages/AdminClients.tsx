@@ -43,13 +43,13 @@ function downloadContacts(
   contacts: Pick<ClientRowValue, 'name' | 'phone' | 'bookings'>[],
   filename: string,
   settings: Pick<Settings, 'contactFirstTemplate' | 'contactLastTemplate'>,
-) {
+): Promise<'shared' | 'downloaded' | 'cancelled' | 'empty'> {
   const cards = contacts
     .map((contact) => contactVcard(contact, settings))
     .filter((contact) => contact.valid)
     .map((contact) => contact.vcard);
-  if (!cards.length) return;
-  void saveContactVcards(cards, filename, contacts.length === 1 ? contacts[0].name : 'Clients');
+  if (!cards.length) return Promise.resolve('empty');
+  return saveContactVcards(cards, filename, contacts.length === 1 ? contacts[0].name : 'Clients');
 }
 function amounts(booking: Booking) {
   const final = [...booking.quotes].reverse().find((quote) => quote.kind === 'final');
@@ -336,6 +336,25 @@ export function AdminClients() {
       setBusyKey('');
     }
   }
+
+  async function exportContacts(
+    contacts: Pick<ClientRowValue, 'name' | 'phone' | 'bookings'>[],
+    filename: string,
+  ) {
+    try {
+      const result = await downloadContacts(contacts, filename, catalogue?.settings ?? {});
+      if (result === 'empty') {
+        showErrorToast('Aucun contact valide à exporter.');
+        return;
+      }
+      if (result === 'cancelled') return;
+      showSuccessToast(
+        contacts.length === 1 ? 'Contact exporté.' : `${contacts.length} contacts exportés.`,
+      );
+    } catch (cause) {
+      showErrorToast(errorMessage(cause));
+    }
+  }
   async function hideClient(client: ClientRowValue) {
     const confirmed = await requestConfirmation({
       titleId: 'hide-client-title',
@@ -403,9 +422,7 @@ export function AdminClients() {
           <button
             className="reference-client-contact-export"
             type="button"
-            onClick={() =>
-              downloadContacts(rows, 'Contacts-Demenag-Express.vcf', catalogue?.settings ?? {})
-            }
+            onClick={() => void exportContacts(rows, 'Contacts-Demenag-Express.vcf')}
           >
             {visibleUiText.text204}
           </button>
@@ -445,10 +462,9 @@ export function AdminClients() {
                   onSave={saveClient}
                   onQuote={() => newQuote(client)}
                   onContact={() =>
-                    downloadContacts(
+                    void exportContacts(
                       [client],
                       `${client.name.replace(/[^\p{L}\p{N}-]+/gu, '-')}.vcf`,
-                      catalogue?.settings ?? {},
                     )
                   }
                   onHistory={(reference) =>

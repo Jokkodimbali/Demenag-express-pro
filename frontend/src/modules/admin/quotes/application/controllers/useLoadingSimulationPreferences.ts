@@ -3,7 +3,7 @@ import { useApp } from '../../../../shared/application/context';
 import { errorMessage } from '../../../../shared/application/error-message';
 
 export function useLoadingSimulationPreferences() {
-  const { api, catalogue, setCatalogue, showSuccessToast } = useApp();
+  const { api, catalogue, setCatalogue, showSuccessToast, showErrorToast } = useApp();
   const laborSettings = catalogue?.settings.movingLaborPlanning;
   const blanketLengthCm = laborSettings?.blanketLengthCm ?? 204;
   const blanketWidthCm = laborSettings?.blanketWidthCm ?? 184;
@@ -37,10 +37,21 @@ export function useLoadingSimulationPreferences() {
         showSuccessToast('Stock de serviettes enregistré.');
         return '';
       } catch (cause) {
-        return errorMessage(cause);
+        const message = errorMessage(cause);
+        showErrorToast(message);
+        return message;
       }
     },
-    [api, blanketLengthCm, blanketStock, blanketWidthCm, catalogue, setCatalogue, showSuccessToast],
+    [
+      api,
+      blanketLengthCm,
+      blanketStock,
+      blanketWidthCm,
+      catalogue,
+      setCatalogue,
+      showSuccessToast,
+      showErrorToast,
+    ],
   );
 
   const imageDataUrl = useCallback(async (path: string): Promise<string | null> => {

@@ -514,7 +514,11 @@ export function FleetPlanningPanel({ model }: { model: Model }) {
                                     delete next[`${jobKey}|${editMember.id}`];
                                     return next;
                                   });
-                                  void saveTeam(booking, { crewMessages });
+                                  void saveTeam(
+                                    booking,
+                                    { crewMessages },
+                                    'Message d’équipe réinitialisé.',
+                                  );
                                 }}
                               >
                                 {uiText['retablirLeMessageParDefaut']}
@@ -530,12 +534,16 @@ export function FleetPlanningPanel({ model }: { model: Model }) {
                                 }))
                               }
                               onBlur={() =>
-                                void saveTeam(booking, {
-                                  crewMessages: {
-                                    ...(booking.crewMessages ?? {}),
-                                    [editMember.id]: messageText,
+                                void saveTeam(
+                                  booking,
+                                  {
+                                    crewMessages: {
+                                      ...(booking.crewMessages ?? {}),
+                                      [editMember.id]: messageText,
+                                    },
                                   },
-                                })
+                                  'Message d’équipe enregistré.',
+                                )
                               }
                             />
                           </label>
@@ -592,7 +600,13 @@ export function FleetPlanningPanel({ model }: { model: Model }) {
                                   const crewBriefs = { ...(booking.crewBriefs ?? {}) };
                                   if (crewBriefs[member.id]) delete crewBriefs[member.id];
                                   else crewBriefs[member.id] = new Date().toISOString();
-                                  void saveTeam(booking, { crewBriefs });
+                                  void saveTeam(
+                                    booking,
+                                    { crewBriefs },
+                                    booking.crewBriefs?.[member.id]
+                                      ? 'Statut WhatsApp retiré.'
+                                      : 'Statut WhatsApp enregistré.',
+                                  );
                                 }}
                               >
                                 {booking.crewBriefs?.[member.id]

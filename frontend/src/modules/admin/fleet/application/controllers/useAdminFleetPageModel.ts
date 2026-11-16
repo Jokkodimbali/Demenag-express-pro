@@ -204,6 +204,7 @@ export function useAdminFleetPageModel() {
           setEmployees((current) =>
             current.map((item) => (item.id === updated.id ? updated : item)),
           );
+        showSuccessToast(`Informations de ${employee.name} enregistrées.`);
         return updated;
       } catch (cause) {
         if (employeeSaveQueuesRef.current.get(employee.id) === save) {
@@ -222,10 +223,10 @@ export function useAdminFleetPageModel() {
         }
       }
     },
-    [fleetCommands, showErrorToast],
+    [fleetCommands, showSuccessToast, showErrorToast],
   );
   const saveTeam = useCallback(
-    async (booking: Booking, patch: Partial<Booking>) => {
+    async (booking: Booking, patch: Partial<Booking>, successMessage?: string) => {
       setSavingBooking(booking.id);
       setPageError('');
       const save = queueTeamSave(
@@ -240,6 +241,7 @@ export function useAdminFleetPageModel() {
         setBookings((currentBookings) =>
           currentBookings.map((item) => (item.id === updated.id ? updated : item)),
         );
+        if (successMessage) showSuccessToast(successMessage);
         return updated;
       } catch (cause) {
         setPageError(errorMessage(cause));
@@ -249,7 +251,7 @@ export function useAdminFleetPageModel() {
         if (!bookingSaveQueuesRef.current.has(booking.id)) setSavingBooking('');
       }
     },
-    [fleetCommands, setBookings, showErrorToast],
+    [fleetCommands, setBookings, showSuccessToast, showErrorToast],
   );
 
   const { mapRef } = useAdminFleetMap({
@@ -280,7 +282,9 @@ export function useAdminFleetPageModel() {
     try {
       const found = await fleetCommands.searchAddress(`${normalized}, Sénégal`);
       if (!found[0]) {
-        setMapError('Adresse introuvable : utilisez « Placer sur la carte ».');
+        const message = 'Adresse introuvable : utilisez « Placer sur la carte ».';
+        setMapError(message);
+        showErrorToast(message);
         return;
       }
       await applyMemberPatch(saved, {
@@ -298,7 +302,11 @@ export function useAdminFleetPageModel() {
     const name = newEmployee.name.trim();
     const phone = newEmployee.phone.trim();
     const validationError = newEmployeeValidationError(name, phone);
-    if (validationError) return setPageError(validationError);
+    if (validationError) {
+      setPageError(validationError);
+      showErrorToast(validationError);
+      return;
+    }
     setPageError('');
     setCreatedEmployeeAccess(null);
     try {
@@ -459,7 +467,12 @@ export function useAdminFleetPageModel() {
     memberId: string,
     add: boolean,
   ) => {
-    await saveTeam(booking, { crew: updateTeamMemberRole(booking, role, memberId, add) });
+    const member = employeeById.get(memberId);
+    await saveTeam(
+      booking,
+      { crew: updateTeamMemberRole(booking, role, memberId, add) },
+      `${member?.name ?? 'Membre'} ${add ? 'ajouté(e) à' : 'retiré(e) de'} l’équipe de ${booking.reference}.`,
+    );
   };
 
   const changeReply = async (booking: Booking, member: Driver, reply: 'ok' | 'no' | '') => {
@@ -477,7 +490,11 @@ export function useAdminFleetPageModel() {
     if (reply === 'no') {
       await applyMemberPatch(member, driverRefusalPatch(member, booking, new Date().toISOString()));
     }
-    await saveTeam(booking, changes);
+    await saveTeam(
+      booking,
+      changes,
+      `Réponse de ${member.name} enregistrée pour ${booking.reference}.`,
+    );
   };
 
   const sendBrief = async (booking: Booking, members: Driver[]) => {
@@ -485,6 +502,7 @@ export function useAdminFleetPageModel() {
       setPageError(
         'Terminez ou annulez la série de messages WhatsApp en cours avant de recommencer.',
       );
+      showErrorToast('Terminez ou annulez la série WhatsApp en cours avant de recommencer.');
       return;
     }
     const recipients = teamBriefRecipients({
@@ -498,15 +516,27 @@ export function useAdminFleetPageModel() {
       href: whatsappUrl(recipient.phone, recipient.message, catalogue?.settings),
     }));
     const [first, ...remaining] = recipients;
-    if (!first) return setPageError('Aucun numéro de téléphone dans l’équipe.');
+    if (!first) {
+      const message = 'Aucun numéro de téléphone valide dans l’équipe.';
+      setPageError(message);
+      showErrorToast(message);
+      return;
+    }
     const whatsappWindow = window.open(first.href, '_blank');
+    if (!whatsappWindow) {
+      const message = 'Autorisez les fenêtres surgissantes pour ouvrir WhatsApp.';
+      setPageError(message);
+      showErrorToast(message);
+      return;
+    }
     if (whatsappWindow) whatsappWindow.opener = null;
     setWhatsappBriefQueue(remaining);
     const crewBriefs = {
       ...(booking.crewBriefs ?? {}),
       [first.member.id]: new Date().toISOString(),
     };
-    await saveTeam(booking, { crewBriefs });
+    const saved = await saveTeam(booking, { crewBriefs });
+    if (!saved) return;
     showSuccessToast(
       remaining.length
         ? `Message WhatsApp préparé pour ${first.member.name}. Ouvrez chaque conversation suivante avec le bouton affiché.`
@@ -518,14 +548,21 @@ export function useAdminFleetPageModel() {
     const [next, ...remaining] = whatsappBriefQueue;
     if (!next) return;
     const whatsappWindow = window.open(next.href, '_blank');
+    if (!whatsappWindow) {
+      const message = 'Autorisez les fenêtres surgissantes pour ouvrir WhatsApp.';
+      setPageError(message);
+      showErrorToast(message);
+      return;
+    }
     if (whatsappWindow) whatsappWindow.opener = null;
     setWhatsappBriefQueue(remaining);
-    await saveTeam(next.booking, {
+    const saved = await saveTeam(next.booking, {
       crewBriefs: {
         ...(next.booking.crewBriefs ?? {}),
         [next.member.id]: new Date().toISOString(),
       },
     });
+    if (!saved) return;
     showSuccessToast(
       remaining.length
         ? `Message WhatsApp préparé pour ${next.member.name}. Ouvrez la conversation suivante avec le bouton affiché.`
@@ -539,29 +576,39 @@ export function useAdminFleetPageModel() {
       setCopiedBooking(booking.id);
       window.setTimeout(() => setCopiedBooking(''), 1500);
     };
+    let copied = false;
     try {
       if (navigator.clipboard) await navigator.clipboard.writeText(brief);
       else throw new Error('Clipboard API unavailable');
+      copied = true;
     } catch {
       const textarea = document.createElement('textarea');
       textarea.value = brief;
       document.body.appendChild(textarea);
       textarea.select();
       try {
-        document.execCommand('copy');
+        copied = document.execCommand('copy');
       } catch {
         /* Clipboard fallback is best effort when browser permissions deny copying. */
       } finally {
         textarea.remove();
       }
     }
-    done();
+    if (copied) {
+      done();
+      showSuccessToast(`Consigne de ${booking.reference} copiée.`);
+    } else showErrorToast('La consigne n’a pas pu être copiée.');
   };
 
   const visibleEmployees = useMemo(
     () => visibleTeamMembers(employees, bookings, filterRole, sortByAccepted),
     [employees, filterRole, sortByAccepted, bookings],
   );
+  const cancelWhatsAppBriefs = () => {
+    if (!whatsappBriefQueue.length) return;
+    setWhatsappBriefQueue([]);
+    showSuccessToast('La série de messages WhatsApp a été annulée.');
+  };
   const selected = employeeById.get(selectedEmployee);
   const selectedJob = selected
     ? dayBookings.find((booking) => teamIds(booking).includes(selected.id))
@@ -692,7 +739,7 @@ export function useAdminFleetPageModel() {
     sendBrief,
     whatsappBriefQueue,
     openNextWhatsAppBrief,
-    cancelWhatsAppBriefs: () => setWhatsappBriefQueue([]),
+    cancelWhatsAppBriefs,
     copyBrief,
     visibleEmployees,
     selected,

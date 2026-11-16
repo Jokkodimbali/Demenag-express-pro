@@ -12,7 +12,7 @@ import { administrationQuoteForBooking } from '../../../shared/navigation/config
 
 export function AdminAccounting() {
   const [downloadError, setDownloadError] = useState('');
-  const { api, exportAccounting, catalogue } = useApp();
+  const { api, exportAccounting, catalogue, showSuccessToast, showErrorToast } = useApp();
   const completeClaude = api.completeClaude;
   const {
     month,
@@ -138,7 +138,13 @@ export function AdminAccounting() {
                 forecast.months,
                 allEntries,
                 all ? accountingMonth : month,
-              ).catch(() => setDownloadError('Téléchargement impossible.'));
+              )
+                .then(() => showSuccessToast('Document comptable téléchargé.'))
+                .catch(() => {
+                  const message = 'Téléchargement impossible.';
+                  setDownloadError(message);
+                  showErrorToast(message);
+                });
             }}
           />
           <ReferenceMonthlyCharges
@@ -244,7 +250,16 @@ export function AdminAccounting() {
           <button
             className="button secondary small"
             disabled={loading}
-            onClick={() => exportCsv(entries, all ? 'complet' : month)}
+            onClick={() => {
+              try {
+                exportCsv(entries, all ? 'complet' : month);
+                showSuccessToast('Export comptable CSV téléchargé.');
+              } catch {
+                const message = 'L’export comptable CSV n’a pas pu être généré.';
+                setDownloadError(message);
+                showErrorToast(message);
+              }
+            }}
           >
             <Download size={16} /> {accountingText.export}
           </button>

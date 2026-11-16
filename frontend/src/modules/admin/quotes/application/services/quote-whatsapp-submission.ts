@@ -13,6 +13,7 @@ export function startQuoteWhatsAppSubmission({
   maximumDistance,
   draft,
   setStageError,
+  showErrorToast,
   openClientSection,
   whatsappWindow,
   sendWhatsAppAfterSave,
@@ -26,38 +27,50 @@ export function startQuoteWhatsAppSubmission({
   maximumDistance: number;
   draft: Pick<Draft, 'date' | 'noDate' | 'route'>;
   setStageError: (message: string) => void;
+  showErrorToast: (message: string) => void;
   openClientSection: () => void;
   whatsappWindow: MutableReference<Window | null>;
   sendWhatsAppAfterSave: MutableReference<boolean>;
 }) {
   if (!canSendQuoteWhatsApp) {
-    setStageError('Numéro WhatsApp du client invalide.');
+    const message = 'Numéro WhatsApp du client invalide.';
+    setStageError(message);
+    showErrorToast(message);
     openClientSection();
     return;
   }
   if (quoteKind === 'final' && stairs === 'balcon' && balconyPrice <= 0) {
-    setStageError('Passage par le balcon : fixez le supplément avant le devis final.');
+    const message = 'Passage par le balcon : fixez le supplément avant le devis final.';
+    setStageError(message);
+    showErrorToast(message);
     return;
   }
   if (quoteKind === 'final' && previewTier === 3 && !(Number(customPrice) > 0)) {
-    setStageError(
-      `Distance au-delà de ${maximumDistance} km : fixez le prix par aller-retour avant le devis final.`,
-    );
+    const message = `Distance au-delà de ${maximumDistance} km : fixez le prix par aller-retour avant le devis final.`;
+    setStageError(message);
+    showErrorToast(message);
     return;
   }
   if (quoteKind === 'final' && (!draft.date || draft.noDate)) {
-    setStageError('Un devis sans date reste provisoire. Choisissez une date pour passer en final.');
+    const message =
+      'Un devis sans date reste provisoire. Choisissez une date pour passer en final.';
+    setStageError(message);
+    showErrorToast(message);
     return;
   }
   if (!draft.route) {
-    setStageError('Calculez le trajet avant d’enregistrer et d’envoyer le devis.');
+    const message = 'Calculez le trajet avant d’enregistrer et d’envoyer le devis.';
+    setStageError(message);
+    showErrorToast(message);
     return;
   }
   const form = document.getElementById('admin-quote-form') as HTMLFormElement | null;
   if (!form?.reportValidity()) return;
   whatsappWindow.current = window.open('about:blank', '_blank');
   if (!whatsappWindow.current) {
-    setStageError('Autorisez les fenêtres pour ouvrir WhatsApp après l’enregistrement du devis.');
+    const message = 'Autorisez les fenêtres pour ouvrir WhatsApp après l’enregistrement du devis.';
+    setStageError(message);
+    showErrorToast(message);
     return;
   }
   sendWhatsAppAfterSave.current = true;

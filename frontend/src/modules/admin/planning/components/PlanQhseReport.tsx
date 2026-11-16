@@ -1,6 +1,7 @@
 import { uiText } from '../../../shared/content/reference-ui-text';
 import { useState } from 'react';
 import { ChevronDown, Download, Sparkles } from 'lucide-react';
+import { useApp } from '../../../shared/application/context';
 import type { Booking, WorkPlanStep } from '../../../shared/domain/model';
 import type { ClaudeCompletionInput } from '../../../shared/application/ports';
 
@@ -290,6 +291,7 @@ export function PlanQhseReport({
   report: PlanReport;
   complete: (input: ClaudeCompletionInput) => Promise<string>;
 }) {
+  const { showSuccessToast, showErrorToast } = useApp();
   const [open, setOpen] = useState(false);
   const [analysis, setAnalysis] = useState<{ period: string; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -301,6 +303,7 @@ export function PlanQhseReport({
     const result = await analyzeReport(report, complete);
     setAnalysis({ period: report.period, text: result });
     setBusy(false);
+    showSuccessToast('Analyse du rapport QHSE générée.');
   };
   return (
     <section className="reference-plan-report">
@@ -407,9 +410,15 @@ export function PlanQhseReport({
           <button
             type="button"
             className="reference-plan-report-download"
-            onClick={() =>
-              void downloadReport(report, text).catch(() => setError('Téléchargement impossible.'))
-            }
+            onClick={() => {
+              void downloadReport(report, text)
+                .then(() => showSuccessToast('Rapport QHSE PDF téléchargé.'))
+                .catch(() => {
+                  const message = 'Téléchargement impossible.';
+                  setError(message);
+                  showErrorToast(message);
+                });
+            }}
           >
             <Download size={16} /> {uiText['telechargerLeRapportQHSEPDF']}
           </button>

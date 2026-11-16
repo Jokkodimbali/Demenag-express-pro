@@ -16,7 +16,7 @@ import {
 export type { AdminSearchResult } from '../services/admin-search';
 
 export function useAdminLayoutModel() {
-  const { api } = useApp();
+  const { api, showSuccessToast, showErrorToast } = useApp();
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<AdminSearchResult[]>([]);
@@ -124,8 +124,11 @@ export function useAdminLayoutModel() {
       setNotifications((current) => markAdminNotificationsRead(current, new Date().toISOString()));
       setNotificationCount(0);
       setTodoOpen(false);
+      showSuccessToast('Toutes les notifications ont été marquées comme lues.');
     } catch {
-      setTodoError('Les notifications n’ont pas pu être marquées comme vues.');
+      const message = 'Les notifications n’ont pas pu être marquées comme vues.';
+      setTodoError(message);
+      showErrorToast(message);
     }
   }
 

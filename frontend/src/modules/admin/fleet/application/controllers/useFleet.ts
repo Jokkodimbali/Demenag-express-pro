@@ -17,7 +17,7 @@ import {
 export type { VehicleActivity } from '../services/fleet-policy';
 
 export function useFleet() {
-  const { api, catalogue, setCatalogue } = useApp();
+  const { api, catalogue, setCatalogue, showSuccessToast, showErrorToast } = useApp();
   const [editing, setEditing] = useState<Vehicle | null>(null);
   const [deactivating, setDeactivating] = useState<Vehicle | null>(null);
   const [busy, setBusy] = useState(false);
@@ -68,6 +68,7 @@ export function useFleet() {
     );
     if (photoError) {
       setError(photoError);
+      showErrorToast(photoError);
       return;
     }
     setBusy(true);
@@ -76,8 +77,11 @@ export function useFleet() {
       const value = await vehicleFromForm(data, editing);
       setCatalogue(await new CatalogueService(api).saveVehicle(catalogue, value));
       setEditing(null);
+      showSuccessToast(isNewVehicle ? `${value.name} ajouté.` : `${value.name} modifié.`);
     } catch (e) {
-      setError(errorMessage(e));
+      const message = errorMessage(e);
+      setError(message);
+      showErrorToast(message);
     } finally {
       setBusy(false);
     }
@@ -94,9 +98,12 @@ export function useFleet() {
     setError('');
     try {
       setCatalogue(await new CatalogueService(api).deactivateVehicle(catalogue, deactivating));
+      showSuccessToast(`${deactivating.name} désactivé.`);
       setDeactivating(null);
     } catch (reason) {
-      setError(errorMessage(reason));
+      const message = errorMessage(reason);
+      setError(message);
+      showErrorToast(message);
     } finally {
       setBusy(false);
     }
@@ -112,8 +119,11 @@ export function useFleet() {
           ...vehicleAvailabilityUpdate(vehicle),
         }),
       );
+      showSuccessToast(vehicle.active ? `${vehicle.name} désactivé.` : `${vehicle.name} activé.`);
     } catch (reason) {
-      setError(errorMessage(reason));
+      const message = errorMessage(reason);
+      setError(message);
+      showErrorToast(message);
     } finally {
       setBusy(false);
     }
@@ -125,8 +135,11 @@ export function useFleet() {
     setError('');
     try {
       setCatalogue(await new CatalogueService(api).saveVehicle(catalogue, vehicle));
+      showSuccessToast(`Dimensions de ${vehicle.name} enregistrées.`);
     } catch (reason) {
-      setError(errorMessage(reason));
+      const message = errorMessage(reason);
+      setError(message);
+      showErrorToast(message);
       throw reason;
     } finally {
       setBusy(false);
@@ -141,8 +154,13 @@ export function useFleet() {
       setCatalogue(
         await new CatalogueService(api).saveBookingAvailability(catalogue, bookingsEnabled),
       );
+      showSuccessToast(
+        bookingsEnabled ? 'Les réservations sont ouvertes.' : 'Les réservations sont fermées.',
+      );
     } catch (reason) {
-      setError(errorMessage(reason));
+      const message = errorMessage(reason);
+      setError(message);
+      showErrorToast(message);
     } finally {
       setBusy(false);
     }
@@ -167,13 +185,16 @@ export function useFleet() {
     try {
       const saved = await api.updateDriver({ ...driver, vehicleId: vehicle.id });
       setDrivers((values) => assignedDriversAfterVehicleAssignment(values, saved, vehicle.id));
+      showSuccessToast(`${driver.name} affecté(e) à ${vehicle.name}.`);
       setDriverChoices((values) => {
         const remaining = { ...values };
         delete remaining[vehicle.id];
         return remaining;
       });
     } catch (reason) {
-      setError(errorMessage(reason));
+      const message = errorMessage(reason);
+      setError(message);
+      showErrorToast(message);
     } finally {
       setBusy(false);
     }
@@ -187,13 +208,16 @@ export function useFleet() {
     try {
       const saved = await api.updateDriver({ ...driver, vehicleId: null });
       setDrivers((values) => unassignedDriverUpdate(values, saved));
+      showSuccessToast(`${driver.name} retiré(e) de ${vehicle.name}.`);
       setDriverChoices((values) => {
         const remaining = { ...values };
         delete remaining[vehicle.id];
         return remaining;
       });
     } catch (reason) {
-      setError(errorMessage(reason));
+      const message = errorMessage(reason);
+      setError(message);
+      showErrorToast(message);
     } finally {
       setBusy(false);
     }

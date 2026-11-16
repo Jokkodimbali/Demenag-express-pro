@@ -2,6 +2,7 @@ import { uiText } from '../../../shared/content/reference-ui-text';
 import { useRef, useState } from 'react';
 import { Modal } from '../../../shared/feedback/Modal';
 import { dataUrl } from '../../../shared/application/validation/image-data-url';
+import { useApp } from '../../../shared/application/context';
 
 type TracePoint = { x: number; y: number };
 
@@ -22,6 +23,7 @@ export function VehiclePhotoEditor({
   previewClassName: string;
   required?: boolean;
 }) {
+  const { showErrorToast } = useApp();
   const [error, setError] = useState('');
   const [tracing, setTracing] = useState(false);
   const [adjusting, setAdjusting] = useState(false);
@@ -29,6 +31,10 @@ export function VehiclePhotoEditor({
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [points, setPoints] = useState<TracePoint[]>([]);
   const drag = useRef<{ x: number; y: number } | null>(null);
+  function reportError(message: string) {
+    setError(message);
+    showErrorToast(message);
+  }
 
   async function chooseFile(file: File | null) {
     if (!file) return;
@@ -38,7 +44,7 @@ export function VehiclePhotoEditor({
       onChange(await normalizeImage(source));
       setPoints([]);
     } catch {
-      setError('Image trop volumineuse. Choisissez un fichier inférieur à 2,5 Mo.');
+      reportError('Image trop volumineuse. Choisissez un fichier inférieur à 2,5 Mo.');
     }
   }
 
@@ -84,7 +90,8 @@ export function VehiclePhotoEditor({
       canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
       canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
       const context = canvas.getContext('2d', { willReadFrequently: true });
-      if (!context) return setError('Le détourage automatique est indisponible sur ce navigateur.');
+      if (!context)
+        return reportError('Le détourage automatique est indisponible sur ce navigateur.');
       context.drawImage(image, 0, 0, canvas.width, canvas.height);
       const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
       const { data } = pixels;
@@ -132,7 +139,7 @@ export function VehiclePhotoEditor({
       onChange(canvas.toDataURL('image/webp', 0.9));
       setError('');
     };
-    image.onerror = () => setError('Cette image ne peut pas être traitée.');
+    image.onerror = () => reportError('Cette image ne peut pas être traitée.');
     image.src = value;
   }
 
@@ -154,7 +161,7 @@ export function VehiclePhotoEditor({
       canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
       canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
       const context = canvas.getContext('2d');
-      if (!context) return setError('Le détourage manuel est indisponible sur ce navigateur.');
+      if (!context) return reportError('Le détourage manuel est indisponible sur ce navigateur.');
       context.fillStyle = '#27292D';
       context.fillRect(0, 0, canvas.width, canvas.height);
       context.beginPath();
@@ -183,7 +190,7 @@ export function VehiclePhotoEditor({
       setPoints([]);
       setError('');
     };
-    image.onerror = () => setError('Cette image ne peut pas être traitée.');
+    image.onerror = () => reportError('Cette image ne peut pas être traitée.');
     image.src = value;
   }
 
@@ -195,7 +202,7 @@ export function VehiclePhotoEditor({
       canvas.width = dimensions.width;
       canvas.height = dimensions.height;
       const context = canvas.getContext('2d');
-      if (!context) return setError('Le cadrage est indisponible sur ce navigateur.');
+      if (!context) return reportError('Le cadrage est indisponible sur ce navigateur.');
       context.fillStyle = '#27292D';
       context.fillRect(0, 0, canvas.width, canvas.height);
       const scale =
@@ -215,7 +222,7 @@ export function VehiclePhotoEditor({
       setZoom(1);
       setError('');
     };
-    image.onerror = () => setError('Cette image ne peut pas être cadrée.');
+    image.onerror = () => reportError('Cette image ne peut pas être cadrée.');
     image.src = value;
   }
 

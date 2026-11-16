@@ -133,6 +133,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     api,
     requestConfirmation,
     showSuccessToast,
+    showErrorToast,
   } = useApp();
   useEffect(() => {
     if (user?.role !== 'admin') {
@@ -170,10 +171,18 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
           ? visibleUiText.quoteStageFinalNotice
           : visibleUiText.quoteStageProvisionalNotice,
       );
+      showSuccessToast(
+        savedQuote.kind === 'final'
+          ? visibleUiText.quoteStageFinalNotice
+          : visibleUiText.quoteStageProvisionalNotice,
+      );
       return reassignTeamsAfterScheduleChange(api, booking, previousBooking, () =>
-        setStageError(
-          'Le devis a changé d’étape, mais la réaffectation automatique de l’équipe n’a pas abouti. Vérifiez le planning.',
-        ),
+        (() => {
+          const message =
+            'Le devis a changé d’étape, mais la réaffectation automatique de l’équipe n’a pas abouti. Vérifiez le planning.';
+          setStageError(message);
+          showErrorToast(message);
+        })(),
       );
     },
     getRentalKit: () => rentalKit,
@@ -187,6 +196,8 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         sendWhatsAppAfterSave.current = false;
         return;
       }
+      const whatsappRequested = sendWhatsAppAfterSave.current;
+      showSuccessToast(`Devis ${booking.reference} enregistré.`);
       if (sendWhatsAppAfterSave.current) {
         sendWhatsAppAfterSave.current = false;
         const href = quoteNotificationUrl(
@@ -197,6 +208,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         if (whatsappWindow.current) whatsappWindow.current.location.replace(href);
         else window.location.assign(href);
         whatsappWindow.current = null;
+        showSuccessToast('Devis ouvert dans WhatsApp. Vérifiez le destinataire avant l’envoi.');
       }
       void (async () => {
         try {
@@ -211,9 +223,16 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
             link.click();
             link.remove();
             window.setTimeout(() => URL.revokeObjectURL(url), 30000);
+            showSuccessToast(
+              whatsappRequested
+                ? `Devis ${booking.reference} enregistré, PDF téléchargé et WhatsApp ouvert. Vérifiez le destinataire avant l’envoi.`
+                : `PDF du devis ${booking.reference} téléchargé.`,
+            );
           }
         } catch {
-          setPdfError('Le devis est enregistré, mais le PDF n’a pas pu être téléchargé.');
+          const message = 'Le devis est enregistré, mais le PDF n’a pas pu être téléchargé.';
+          setPdfError(message);
+          showErrorToast(message);
         }
       })();
       if (savedQuote.kind !== 'final') return;
@@ -309,11 +328,15 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     setQuoteKindNotice('');
     if (kind === 'final' && editingBooking?.status === 'completed') {
       setQuoteKind(kind);
+      showSuccessToast('Devis final sélectionné.');
       return;
     }
     const currentQuote = latestBookingQuote(editingBooking);
     if (!editingBooking || !currentQuote) {
       setQuoteKind(kind);
+      showSuccessToast(
+        kind === 'final' ? 'Devis final sélectionné.' : 'Devis provisoire sélectionné.',
+      );
       return;
     }
     if (currentQuote.kind === kind && !reopenCompletedEstimate) {
@@ -324,9 +347,10 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       kind === 'final' &&
       !(latestBookingQuote(editingBooking) ? canSelectFinal : canCreateFinal)
     ) {
-      setStageError(
-        'Un devis sans date reste provisoire. Choisissez une date pour passer en final.',
-      );
+      const message =
+        'Un devis sans date reste provisoire. Choisissez une date pour passer en final.';
+      setStageError(message);
+      showErrorToast(message);
       return;
     }
     setQuoteKindSaving(true);
@@ -345,7 +369,9 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
           : visibleUiText.quoteStageProvisionalNotice,
       );
     } catch (reason) {
-      setStageError(errorMessage(reason));
+      const message = errorMessage(reason);
+      setStageError(message);
+      showErrorToast(message);
     } finally {
       setQuoteKindSaving(false);
     }
@@ -694,13 +720,17 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   function sendCurrentQuoteOnWhatsApp() {
     if (editingLocked && editingBooking && savedQuote?.kind === 'final') {
       if (!canSendQuoteWhatsApp) {
-        setStageError('Numéro WhatsApp du client invalide.');
+        const message = 'Numéro WhatsApp du client invalide.';
+        setStageError(message);
+        showErrorToast(message);
         setOpenQuoteSections((current) => ({ ...current, client: true }));
         return;
       }
       const whatsappTab = window.open('about:blank', '_blank');
       if (!whatsappTab) {
-        setStageError('Autorisez les fenêtres pour ouvrir WhatsApp.');
+        const message = 'Autorisez les fenêtres pour ouvrir WhatsApp.';
+        setStageError(message);
+        showErrorToast(message);
         return;
       }
       setStageError('');
@@ -709,24 +739,32 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         savedQuote,
         editingBooking.pricingSettings ?? catalogue?.settings,
       );
+      let pdfDownloaded = false;
       void (async () => {
         try {
           const settings = editingBooking.pricingSettings ?? catalogue?.settings;
-          if (settings) {
-            const blob = await exportQuote(editingBooking, savedQuote, settings);
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = quotePdfFilename(savedQuote, editingBooking.reference);
-            document.body.append(link);
-            link.click();
-            link.remove();
-            window.setTimeout(() => URL.revokeObjectURL(url), 30000);
-          }
+          if (!settings) throw new Error('Paramètres PDF indisponibles.');
+          const blob = await exportQuote(editingBooking, savedQuote, settings);
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = quotePdfFilename(savedQuote, editingBooking.reference);
+          document.body.append(link);
+          link.click();
+          link.remove();
+          window.setTimeout(() => URL.revokeObjectURL(url), 30000);
+          pdfDownloaded = true;
         } catch {
-          setPdfError('Le devis est enregistré, mais le PDF n’a pas pu être téléchargé.');
+          const message =
+            'Le PDF n’a pas pu être téléchargé, mais le message WhatsApp va s’ouvrir.';
+          setPdfError(message);
+          showErrorToast(message);
         } finally {
           whatsappTab.location.replace(href);
+          if (pdfDownloaded)
+            showSuccessToast(
+              'PDF téléchargé et devis ouvert dans WhatsApp. Vérifiez le destinataire avant l’envoi.',
+            );
         }
       })();
       return;
@@ -741,6 +779,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       maximumDistance: bounds[2],
       draft,
       setStageError,
+      showErrorToast,
       openClientSection: () => setOpenQuoteSections((current) => ({ ...current, client: true })),
       whatsappWindow,
       sendWhatsAppAfterSave,
@@ -748,7 +787,13 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   }
   async function downloadCurrentQuote() {
     const pdfSettings = quoteSettings ?? catalogue?.settings;
-    if (!pdfSettings || !selected) return;
+    if (!pdfSettings || !selected) {
+      const message =
+        'Sélectionnez un véhicule et attendez le chargement des paramètres avant de télécharger le PDF.';
+      setPdfError(message);
+      showErrorToast(message);
+      return;
+    }
     setPdfError('');
     try {
       const pdfDocument = buildAdminQuotePdfDocument({
@@ -786,8 +831,11 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       link.click();
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 30000);
+      showSuccessToast(`PDF du devis ${pdfDocument.booking.reference} téléchargé.`);
     } catch {
-      setPdfError('Le PDF n’a pas pu être généré. Réessayez.');
+      const message = 'Le PDF n’a pas pu être généré. Réessayez.';
+      setPdfError(message);
+      showErrorToast(message);
     }
   }
   const onTollToggle = (line: (typeof tollLines)[number], checked: boolean) =>
@@ -846,8 +894,11 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         editingBooking.version,
       );
       state.setEditingBooking(updated);
+      showSuccessToast('Tarifs actuels appliqués à la réservation.');
     } catch (reason) {
-      setPricingSnapshotError(errorMessage(reason));
+      const message = errorMessage(reason);
+      setPricingSnapshotError(message);
+      showErrorToast(message);
     } finally {
       setPricingSnapshotBusy(false);
     }

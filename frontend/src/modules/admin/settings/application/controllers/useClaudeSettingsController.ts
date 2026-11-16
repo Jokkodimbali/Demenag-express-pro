@@ -36,6 +36,7 @@ export function useClaudeSettingsController() {
     const validationError = claudeApiKeyValidationError(key);
     if (validationError) {
       setError(validationError);
+      showErrorToast(validationError);
       return;
     }
     setBusy(true);
@@ -99,6 +100,7 @@ export function useClaudeSettingsController() {
     try {
       const selected = await api.selectClaudeModel(model);
       setStatus((current) => ({ ...current, model: selected.model, models: selected.models }));
+      showSuccessToast(`Modèle ${selected.model} sélectionné.`);
     } catch (cause) {
       const message = errorMessage(cause);
       setError(message);

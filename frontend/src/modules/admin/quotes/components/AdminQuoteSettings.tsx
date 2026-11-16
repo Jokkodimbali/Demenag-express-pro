@@ -1,5 +1,6 @@
 import { visibleUiText } from '../../../shared/content/visible-ui-text';
 import { money } from '../../../shared/application/presentation/format';
+import { useApp } from '../../../shared/application/context';
 import { AdminQuoteCheaperVehicle } from './AdminQuoteCheaperVehicle';
 import type { useAdminCreateQuoteModel } from '../application/controllers/useAdminCreateQuoteModel';
 import type { Catalogue } from '../../../shared/domain/model';
@@ -7,6 +8,7 @@ import type { Catalogue } from '../../../shared/domain/model';
 type Model = ReturnType<typeof useAdminCreateQuoteModel>;
 
 export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalogue: Catalogue }) {
+  const { showSuccessToast } = useApp();
   const {
     quoteConfig,
     setQuoteConfig,
@@ -79,14 +81,16 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
               type="button"
               aria-pressed={quoteConfig.billingMode === 'driver-rental'}
               className={quoteConfig.billingMode === 'driver-rental' ? 'active' : ''}
-              onClick={() =>
+              onClick={() => {
                 setQuoteConfig((current) => ({
                   ...current,
                   billingMode: 'driver-rental',
                   menuIncluded: false,
                   overtimeMinutes: 0,
-                }))
-              }
+                }));
+                if (quoteConfig.billingMode !== 'driver-rental')
+                  showSuccessToast('Formule économique sélectionnée. Le devis a été recalculé.');
+              }}
             >
               <strong>{visibleUiText.quoteEconomicFormula}</strong>
               <b>{money(formulaPrices.economic)}</b>
@@ -98,14 +102,16 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
               type="button"
               aria-pressed={quoteConfig.billingMode === 'standard'}
               className={quoteConfig.billingMode === 'standard' ? 'active' : ''}
-              onClick={() =>
+              onClick={() => {
                 setQuoteConfig((current) => ({
                   ...current,
                   billingMode: 'standard',
                   menuIncluded: false,
                   overtimeMinutes: 0,
-                }))
-              }
+                }));
+                if (quoteConfig.billingMode !== 'standard')
+                  showSuccessToast('Formule standard sélectionnée. Le devis a été recalculé.');
+              }}
             >
               <strong>{visibleUiText.quoteStandardFormula}</strong>
               <b>{money(formulaPrices.standard)}</b>
@@ -115,13 +121,15 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
               type="button"
               aria-pressed={quoteConfig.billingMode === 'complete'}
               className={quoteConfig.billingMode === 'complete' ? 'active' : ''}
-              onClick={() =>
+              onClick={() => {
                 setQuoteConfig((current) => ({
                   ...current,
                   billingMode: 'complete',
                   overtimeMinutes: 0,
-                }))
-              }
+                }));
+                if (quoteConfig.billingMode !== 'complete')
+                  showSuccessToast('Formule complète sélectionnée. Le devis a été recalculé.');
+              }}
             >
               <strong>{visibleUiText.quoteCompleteFormula}</strong>
               <b>{money(formulaPrices.complete)}</b>

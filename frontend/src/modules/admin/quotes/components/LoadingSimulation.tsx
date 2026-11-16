@@ -23,6 +23,7 @@ import type {
 import { useLoadingSimulationPdfExporter } from '../../../booking/application/loading-simulation-pdf-context';
 import { useLoadingSimulationPreferences } from '../application/controllers/useLoadingSimulationPreferences';
 import { visibleUiText } from '../../../shared/content/visible-ui-text';
+import { useApp } from '../../../shared/application/context';
 
 const scripts = new Map<string, Promise<void>>();
 function loadScript(src: string) {
@@ -74,6 +75,7 @@ export function LoadingSimulation({
   onCrewRecommendation?: (crew: number) => void;
   laborPlanning?: MovingLaborPlanningSettings;
 }) {
+  const { showSuccessToast, showErrorToast } = useApp();
   const { blanketLengthCm, blanketWidthCm, blanketStock, saveBlanketStock, imageDataUrl } =
     useLoadingSimulationPreferences();
   const exportPdf = useLoadingSimulationPdfExporter();
@@ -395,20 +397,36 @@ export function LoadingSimulation({
   }, [playing, trip]);
 
   async function downloadPlan() {
-    if (!plan) return;
+    if (!plan) {
+      const message = 'Le plan de chargement n’est pas prêt à être téléchargé.';
+      setPdfError(message);
+      showErrorToast(message);
+      return;
+    }
     setPdfError('');
-    const created = await exportPdf({
-      plan,
-      draft,
-      vehicle,
-      blanketLengthCm: quoteBlanketLengthCm,
-      blanketWidthCm: quoteBlanketWidthCm,
-      stock,
-      estimate,
-      details,
-      imageDataUrl,
-    });
-    if (!created) setPdfError('Le plan de chargement n’a pas pu être généré. Réessayez.');
+    try {
+      const created = await exportPdf({
+        plan,
+        draft,
+        vehicle,
+        blanketLengthCm: quoteBlanketLengthCm,
+        blanketWidthCm: quoteBlanketWidthCm,
+        stock,
+        estimate,
+        details,
+        imageDataUrl,
+      });
+      if (created) showSuccessToast('Plan de chargement PDF téléchargé.');
+      else {
+        const message = 'Le plan de chargement n’a pas pu être généré. Réessayez.';
+        setPdfError(message);
+        showErrorToast(message);
+      }
+    } catch {
+      const message = 'Le plan de chargement n’a pas pu être généré. Réessayez.';
+      setPdfError(message);
+      showErrorToast(message);
+    }
   }
 
   async function saveStock() {

@@ -166,7 +166,7 @@ export function ReferenceCalendar({
   onOpenTeam,
   onExportWeek,
 }: CalendarProps) {
-  const { catalogue } = useApp();
+  const { catalogue, showSuccessToast, showErrorToast } = useApp();
   const amount = (booking: Booking) => {
     const total = liveBookingPrice(booking, catalogue).total;
     return booking.status === 'completed'
@@ -417,7 +417,13 @@ export function ReferenceCalendar({
                 employees,
                 timelineAnchor,
                 Boolean(vehicleFilter || statusFilter || employeeFilter),
-              ).catch(() => setExportError('Le PDF de la semaine n’a pas pu être généré.'));
+              )
+                .then(() => showSuccessToast('PDF du planning téléchargé.'))
+                .catch(() => {
+                  const message = 'Le PDF de la semaine n’a pas pu être généré.';
+                  setExportError(message);
+                  showErrorToast(message);
+                });
             }}
           >
             {visibleUiText.text144}

@@ -30,12 +30,14 @@ import { LoadingSimulation } from '../components/LoadingSimulation';
 import { adminQuoteVehicleText as quoteText } from '../content/admin-quote-vehicle';
 import { quoteConditionsText } from '../../../shared/messaging/application/services/whatsapp-templates';
 import { normalizePhoneNumber } from '../../../shared/domain/phone-number';
+import { useApp } from '../../../shared/application/context';
 import type { RouteMapDraftUpdater } from '../../../moving/maps/route-map-state';
 
 const RouteMap = lazy(() => import('../../../moving/maps/RouteMap'));
 
 export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: boolean }) {
   const model = useAdminCreateQuoteModel(publicRequest);
+  const { showErrorToast } = useApp();
   const [activeStep, setActiveStep] = useState(1);
   const {
     editingReservation,
@@ -277,7 +279,9 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             event.preventDefault();
             cancelPendingWhatsApp();
             setOpenQuoteSections((current) => ({ ...current, client: true }));
-            setStageError('Saisissez un numéro valide avec son indicatif international.');
+            const message = 'Saisissez un numéro valide avec son indicatif international.';
+            setStageError(message);
+            showErrorToast(message);
             return;
           }
           if (publicRequest && !draft.date) {
@@ -285,6 +289,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             cancelPendingWhatsApp();
             setOpenQuoteSections((current) => ({ ...current, client: true }));
             setStageError('Choisissez une date.');
+            showErrorToast('Choisissez une date.');
             return;
           }
           if (
@@ -295,6 +300,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             event.preventDefault();
             cancelPendingWhatsApp();
             setStageError('Passage par le balcon : fixez le supplément avant le devis final.');
+            showErrorToast('Passage par le balcon : fixez le supplément avant le devis final.');
             return;
           }
           if (
@@ -307,12 +313,18 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             setStageError(
               `Distance au-delà de ${(quoteSettings ?? catalogue.settings).distanceBounds[2]} km : fixez le prix par aller-retour avant le devis final.`,
             );
+            showErrorToast(
+              `Distance au-delà de ${(quoteSettings ?? catalogue.settings).distanceBounds[2]} km : fixez le prix par aller-retour avant le devis final.`,
+            );
             return;
           }
           if (submittedKind === 'final' && (!draft.date || draft.noDate)) {
             event.preventDefault();
             cancelPendingWhatsApp();
             setStageError(
+              'Un devis sans date reste provisoire. Choisissez une date pour passer en final.',
+            );
+            showErrorToast(
               'Un devis sans date reste provisoire. Choisissez une date pour passer en final.',
             );
             return;
@@ -327,6 +339,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             setActiveStep(2);
             setOpenQuoteSections((current) => ({ ...current, route: true }));
             setStageError('Calculez le trajet avant d’enregistrer le devis.');
+            showErrorToast('Calculez le trajet avant d’enregistrer le devis.');
             cancelPendingWhatsApp();
             return;
           }

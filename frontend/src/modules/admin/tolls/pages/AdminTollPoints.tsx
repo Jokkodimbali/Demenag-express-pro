@@ -120,6 +120,7 @@ export function AdminTollPoints() {
         const point = await commands.createTollPoint(input);
         setTollPoints((current) => [...current.filter((item) => item.id !== point.id), point]);
         setSelectedId(point.id);
+        showSuccessToast(`Péage « ${point.name} » ajouté.`);
       } catch (reason) {
         const message = errorMessage(reason);
         setError(message);
@@ -128,7 +129,7 @@ export function AdminTollPoints() {
         setBusy(false);
       }
     },
-    [commands, setTollPoints, showErrorToast, vehicles],
+    [commands, setTollPoints, showSuccessToast, showErrorToast, vehicles],
   );
 
   const updatePoint = useCallback(
@@ -155,11 +156,15 @@ export function AdminTollPoints() {
               const latest = currentPoints.current.find((item) => item.id === point.id);
               if (!latest) return;
               if (latest.name.trim().length < 2) {
-                setError('Le nom du péage doit contenir au moins deux caractères.');
+                const message = 'Le nom du péage doit contenir au moins deux caractères.';
+                setError(message);
+                showErrorToast(message);
                 return;
               }
               if (latest.heavyPrice < 0) {
-                setError('Le tarif du péage ne peut pas être négatif.');
+                const message = 'Le tarif du péage ne peut pas être négatif.';
+                setError(message);
+                showErrorToast(message);
                 return;
               }
               const savedPoint = await commands.updateTollPoint(point.id, latest);

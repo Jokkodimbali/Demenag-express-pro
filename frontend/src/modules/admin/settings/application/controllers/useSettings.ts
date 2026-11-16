@@ -109,18 +109,29 @@ export function useSettings() {
     const persist = async () => {
       const current = catalogueRef.current;
       if (!current) return;
-      const updated = await api.updateCatalogue({
-        ...current,
-        settings: { ...current.settings, ...patch },
-      });
-      catalogueRef.current = updated;
-      setCatalogue(updated);
+      try {
+        const updated = await api.updateCatalogue({
+          ...current,
+          settings: { ...current.settings, ...patch },
+        });
+        catalogueRef.current = updated;
+        setCatalogue(updated);
+        showSuccessToast('Paramètres enregistrés.');
+      } catch (cause) {
+        const message = errorMessage(cause);
+        setError(message);
+        showErrorToast(message);
+        throw cause;
+      }
     };
     saveQueue.current = saveQueue.current.then(persist, persist);
     return saveQueue.current;
   }
 
-  async function replaceCatalogue(transform: (current: Catalogue) => Catalogue) {
+  async function replaceCatalogue(
+    transform: (current: Catalogue) => Catalogue,
+    successMessage = 'Paramètres enregistrés.',
+  ) {
     await flushPending();
     let succeeded = false;
     const persist = async () => {
@@ -138,7 +149,7 @@ export function useSettings() {
         succeeded = true;
         if (mounted.current) {
           setSaved(true);
-          showSuccessToast('Paramètres enregistrés.');
+          showSuccessToast(successMessage);
         }
       } catch (cause) {
         if (mounted.current) {
@@ -155,13 +166,23 @@ export function useSettings() {
     return succeeded;
   }
   async function resetReferenceDefaults() {
-    const updated = await replaceCatalogue(resetCatalogueTariffsToReference);
+    const updated = await replaceCatalogue(
+      resetCatalogueTariffsToReference,
+      'Tarifs de référence rétablis.',
+    );
     if (!updated) return false;
     const currentFinance = {
       ...defaultAccountingFinanceConfiguration(),
       ...(await api.accountingConfiguration()),
     };
-    await api.saveAccountingConfiguration(resetAccountingChargesToReference(currentFinance));
+    try {
+      await api.saveAccountingConfiguration(resetAccountingChargesToReference(currentFinance));
+    } catch (cause) {
+      const message = errorMessage(cause);
+      setError(message);
+      showErrorToast(message);
+      throw cause;
+    }
     return true;
   }
   async function saveVehicleDimensions(vehicle: Catalogue['vehicles'][number]) {
@@ -173,8 +194,11 @@ export function useSettings() {
       const updated = await new CatalogueService(api).saveVehicle(current, vehicle);
       catalogueRef.current = updated;
       setCatalogue(updated);
+      showSuccessToast(`Dimensions de ${vehicle.name} enregistrées.`);
     } catch (cause) {
-      setVehicleDimensionsError(errorMessage(cause));
+      const message = errorMessage(cause);
+      setVehicleDimensionsError(message);
+      showErrorToast(message);
       throw cause;
     } finally {
       setVehicleDimensionsBusy(false);

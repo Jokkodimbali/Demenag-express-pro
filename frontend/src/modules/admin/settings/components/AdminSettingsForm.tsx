@@ -38,7 +38,10 @@ export function Settings() {
     }
   }
   async function resetAssemblyToReference() {
-    const updated = await replaceCatalogue(resetCatalogueAssemblyToReference);
+    const updated = await replaceCatalogue(
+      resetCatalogueAssemblyToReference,
+      'Paramètres de montage rétablis par défaut.',
+    );
     if (updated) setResetRevision((revision) => revision + 1);
     return updated;
   }

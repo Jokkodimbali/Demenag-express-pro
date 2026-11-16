@@ -16,7 +16,7 @@ import { VehiclePhotoEditor } from '../../fleet/components/VehiclePhotoEditor';
 const standardIds = new Set(['sprinter', 'trafic', 'master']);
 
 export function ReferenceVehicleSettings({ catalogue }: { catalogue: Catalogue }) {
-  const { api, setCatalogue, showSuccessToast } = useApp();
+  const { api, setCatalogue, showSuccessToast, showErrorToast } = useApp();
   const commands = useBookingCommands();
   const [editing, setEditing] = useState<Vehicle | null>(null);
   const [removing, setRemoving] = useState<Vehicle | null>(null);
@@ -30,7 +30,12 @@ export function ReferenceVehicleSettings({ catalogue }: { catalogue: Catalogue }
   function addVehicle() {
     const base =
       catalogue.vehicles.find((vehicle) => vehicle.id === 'master') ?? catalogue.vehicles[0];
-    if (!base) return;
+    if (!base) {
+      const message = 'Aucun véhicule de référence n’est disponible pour créer cette fiche.';
+      setError(message);
+      showErrorToast(message);
+      return;
+    }
     setError('');
     setEditing({
       ...base,
@@ -57,10 +62,24 @@ export function ReferenceVehicleSettings({ catalogue }: { catalogue: Catalogue }
     const dimensions = ['length', 'height', 'width', 'wheelWidth'].map((key) =>
       Number.parseFloat(String(data.get(key)).replace(',', '.')),
     );
-    if (!String(data.get('name') ?? '').trim()) return setError('Indiquez le nom du véhicule.');
-    if (!dimensions.every((value) => Number.isFinite(value) && value > 0))
-      return setError('Renseignez les 4 dimensions (nombres positifs).');
-    if (!hasPhoto) return setError('Importez la photo de profil et la photo intérieure.');
+    if (!String(data.get('name') ?? '').trim()) {
+      const message = 'Indiquez le nom du véhicule.';
+      setError(message);
+      showErrorToast(message);
+      return;
+    }
+    if (!dimensions.every((value) => Number.isFinite(value) && value > 0)) {
+      const message = 'Renseignez les 4 dimensions (nombres positifs).';
+      setError(message);
+      showErrorToast(message);
+      return;
+    }
+    if (!hasPhoto) {
+      const message = 'Importez la photo de profil et la photo intérieure.';
+      setError(message);
+      showErrorToast(message);
+      return;
+    }
 
     setBusy(true);
     setError('');
@@ -83,7 +102,9 @@ export function ReferenceVehicleSettings({ catalogue }: { catalogue: Catalogue }
           : `${vehicle.name} ajouté. Pensez à régler ses tarifs ci-dessus.`,
       );
     } catch (cause) {
-      setError(errorMessage(cause));
+      const message = errorMessage(cause);
+      setError(message);
+      showErrorToast(message);
     } finally {
       setBusy(false);
     }
@@ -99,19 +120,24 @@ export function ReferenceVehicleSettings({ catalogue }: { catalogue: Catalogue }
         (booking) => booking.vehicle.id === removing.id,
       ).length;
       if (reservationsUsingVehicle > 0) {
-        setError(
-          `Impossible : ce véhicule est utilisé dans ${reservationsUsingVehicle} réservation${reservationsUsingVehicle > 1 ? 's' : ''}.`,
-        );
+        const message = `Impossible : ce véhicule est utilisé dans ${reservationsUsingVehicle} réservation${reservationsUsingVehicle > 1 ? 's' : ''}.`;
+        setError(message);
+        showErrorToast(message);
         return;
       }
       if (drivers.some((driver) => driver.vehicleId === removing.id)) {
-        setError('Impossible : un membre de l’équipe est affecté à ce véhicule.');
+        const message = 'Impossible : un membre de l’équipe est affecté à ce véhicule.';
+        setError(message);
+        showErrorToast(message);
         return;
       }
       setCatalogue(await new CatalogueService(api).removeVehicle(catalogue, removing));
+      showSuccessToast(`${removing.name} supprimé.`);
       setRemoving(null);
     } catch (cause) {
-      setError(errorMessage(cause));
+      const message = errorMessage(cause);
+      setError(message);
+      showErrorToast(message);
     } finally {
       setBusy(false);
     }

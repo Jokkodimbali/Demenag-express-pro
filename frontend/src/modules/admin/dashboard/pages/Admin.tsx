@@ -75,7 +75,7 @@ function referenceMoney(value: number | null) {
 
 export function Admin() {
   const { bookings, loading, error, recordBookingReminder, removeBooking } = useAdministration();
-  const { catalogue, showSuccessToast } = useApp();
+  const { catalogue, showSuccessToast, showErrorToast } = useApp();
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const [reservationFilter, setReservationFilter] = useState<ReservationFilter>('all');
@@ -157,9 +157,10 @@ export function Admin() {
       await recordBookingReminder(booking.id);
       showSuccessToast(`Rappel enregistré pour ${booking.customerName || booking.reference}.`);
     } catch (reason) {
-      setActionError(
-        reason instanceof Error ? reason.message : 'Le rappel n’a pas pu être enregistré.',
-      );
+      const message =
+        reason instanceof Error ? reason.message : 'Le rappel n’a pas pu être enregistré.';
+      setActionError(message);
+      showErrorToast(message);
     } finally {
       setReminderBusy('');
     }
@@ -173,9 +174,10 @@ export function Admin() {
       showSuccessToast(`Réservation ${deleteTarget.reference} placée dans la corbeille.`);
       setDeleteTarget(null);
     } catch (reason) {
-      setDeleteError(
-        reason instanceof Error ? reason.message : 'La réservation n’a pas pu être supprimée.',
-      );
+      const message =
+        reason instanceof Error ? reason.message : 'La réservation n’a pas pu être supprimée.';
+      setDeleteError(message);
+      showErrorToast(message);
     } finally {
       setDeleteBusy(false);
     }

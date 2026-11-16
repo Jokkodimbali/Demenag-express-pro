@@ -171,6 +171,7 @@ function PlanRow({
   save: (stepId: string, patch: ReviewPatch) => Promise<void>;
   viewPhoto: (photo: string) => void;
 }) {
+  const { showErrorToast } = useApp();
   const initial = {
     status: step.review.status,
     reason: step.review.reason,
@@ -198,7 +199,11 @@ function PlanRow({
     const send = () => {
       void save(step.id, next)
         .then(() => setError(''))
-        .catch((cause) => setError(errorMessage(cause)));
+        .catch((cause) => {
+          const message = errorMessage(cause);
+          setError(message);
+          showErrorToast(message);
+        });
     };
     if (delayed) timer.current = setTimeout(send, 450);
     else send();
@@ -297,7 +302,11 @@ function PlanRow({
                       if (file)
                         void photoData(file)
                           .then((photo) => commit({ photo }))
-                          .catch((cause) => setError(errorMessage(cause)));
+                          .catch((cause) => {
+                            const message = errorMessage(cause);
+                            setError(message);
+                            showErrorToast(message);
+                          });
                     }}
                   />
                 </label>

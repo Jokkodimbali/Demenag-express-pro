@@ -5,6 +5,7 @@ import { uiText } from '../../../shared/content/reference-ui-text';
 import type { useAdminCreateQuoteModel } from '../application/controllers/useAdminCreateQuoteModel';
 import type { Catalogue, Vehicle } from '../../../shared/domain/model';
 import { visibleUiText } from '../../../shared/content/visible-ui-text';
+import { useApp } from '../../../shared/application/context';
 import { adminQuoteVehicleText as quoteText } from '../content/admin-quote-vehicle';
 import { AdminQuoteCalculationDetails } from './AdminQuoteCalculationDetails';
 
@@ -21,6 +22,7 @@ export function AdminCreateQuoteAside({
   catalogue: Catalogue;
   selected: Vehicle;
 }) {
+  const { showSuccessToast, showErrorToast } = useApp();
   const {
     displayBusinessPhone,
     quoteKind,
@@ -270,18 +272,19 @@ export function AdminCreateQuoteAside({
                   setReminderNotice('');
                   void bookingCommands
                     .recordReminder(editingBooking.id)
-                    .then(() =>
-                      setReminderNotice(
-                        `Rappel WhatsApp envoyé à ${draft.customerName || 'client'} (${reminderWhen}).`,
-                      ),
-                    )
-                    .catch((reason: unknown) =>
-                      setStageError(
+                    .then(() => {
+                      const message = `Rappel WhatsApp enregistré pour ${draft.customerName || 'client'} (${reminderWhen}).`;
+                      setReminderNotice(message);
+                      showSuccessToast(message);
+                    })
+                    .catch((reason: unknown) => {
+                      const message =
                         reason instanceof Error
                           ? reason.message
-                          : 'Le rappel n’a pas pu être enregistré.',
-                      ),
-                    );
+                          : 'Le rappel n’a pas pu être enregistré.';
+                      setStageError(message);
+                      showErrorToast(message);
+                    });
                 }}
               >
                 <svg
