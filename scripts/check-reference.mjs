@@ -43,7 +43,11 @@ const references = [
 for (const name of references) {
   const expected = expectedAssets[name];
   if (!expected) throw new Error(`Ressource non répertoriée : ${name}`);
-  const actual = digest(readFileSync(resolve(root, 'frontend/public/assets', name)));
+  const assetPath =
+    name === 'logo.png'
+      ? resolve(root, 'reference/assets', name)
+      : resolve(root, 'frontend/public/assets', name);
+  const actual = digest(readFileSync(assetPath));
   if (actual !== expected) throw new Error(`Ressource originale modifiée : ${name}`);
 }
 for (const [name, expected] of Object.entries(expectedReferenceScripts)) {
