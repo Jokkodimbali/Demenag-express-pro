@@ -521,10 +521,7 @@ export async function downloadQuote(
       doc.text(cleanPdfText(card.label), x + 5, centerY + 0.6);
       doc.setFontSize(8.3);
       doc.setTextColor(30, 32, 35);
-      const cardLines = doc.splitTextToSize(
-        cleanPdfText(card.main),
-        contentWidth - 32,
-      ) as string[];
+      const cardLines = doc.splitTextToSize(cleanPdfText(card.main), contentWidth - 32) as string[];
       doc.text(cardLines[0] ?? '', x + 25, centerY + 0.6);
     });
     y += cardHeight + 3;
