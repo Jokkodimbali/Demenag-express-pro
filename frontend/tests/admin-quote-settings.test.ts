@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { Settings } from '../src/modules/shared/domain/model';
-import { quoteSettingsForEditing } from '../src/modules/admin/quotes/application/services/admin-quote-form-policy';
+import {
+  quoteConfigWithManualTaxiFee,
+  quoteSettingsForEditing,
+} from '../src/modules/admin/quotes/application/services/admin-quote-form-policy';
+import { defaultAdminQuoteConfig } from '../src/modules/admin/quotes/application/services/admin-quote-config';
 
 test('un devis existant reprend les réglages taxi actuels en gardant son ancien tarif de manœuvre', () => {
   const bookingSettings = {
@@ -29,4 +33,14 @@ test('sans instantané de réservation, le formulaire utilise les réglages cour
   } as Settings;
 
   assert.equal(quoteSettingsForEditing(undefined, currentSettings), currentSettings);
+});
+
+test('saisir un montant taxi personnalisé active les frais et met à jour le calcul', () => {
+  const updated = quoteConfigWithManualTaxiFee(
+    { ...defaultAdminQuoteConfig(), taxiFeeApplied: false },
+    '10000',
+  );
+
+  assert.equal(updated.taxiFeeApplied, true);
+  assert.equal(updated.taxiFeeAmountOverride, 10_000);
 });

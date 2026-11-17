@@ -76,6 +76,15 @@ export function quoteSettingsForEditing(
   };
 }
 
+export function quoteConfigWithManualTaxiFee(config: AdminQuoteConfig, value: string) {
+  if (value === '') return config;
+  return {
+    ...config,
+    taxiFeeApplied: true,
+    taxiFeeAmountOverride: Math.min(10_000_000, Math.max(0, Math.round(Number(value) || 0))),
+  };
+}
+
 export function quoteConfigurationFromBooking(booking: Booking) {
   const quote = booking.quotes.at(-1);
   const priceWithoutTaxi =

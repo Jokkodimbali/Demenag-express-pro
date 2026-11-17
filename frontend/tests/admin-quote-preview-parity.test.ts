@@ -264,6 +264,7 @@ test('les frais taxi suivent les allers-retours et sont répartis sur les manœu
     8_500,
   );
   assert.equal(adjusted.taxiFeeLine?.total, 10_000);
+  assert.equal(adjusted.total, (preview.total ?? 0) - 20_000);
 
   const economic = createAdminQuotePreview({
     ...input,

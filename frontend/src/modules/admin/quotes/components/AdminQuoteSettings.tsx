@@ -5,6 +5,7 @@ import { useApp } from '../../../shared/application/context';
 import { AdminQuoteCheaperVehicle } from './AdminQuoteCheaperVehicle';
 import type { useAdminCreateQuoteModel } from '../application/controllers/useAdminCreateQuoteModel';
 import type { Catalogue } from '../../../shared/domain/model';
+import { quoteConfigWithManualTaxiFee } from '../application/services/admin-quote-form-policy';
 
 type Model = ReturnType<typeof useAdminCreateQuoteModel>;
 
@@ -394,21 +395,14 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
                   step="1"
                   inputMode="numeric"
                   aria-label="Montant des frais taxi en FCFA"
-                  disabled={!taxiAvailable || !quoteConfig.taxiFeeApplied}
+                  disabled={!taxiAvailable}
                   value={
                     taxiAmountDraft ?? quoteConfig.taxiFeeAmountOverride ?? taxiCalculatedAmount
                   }
                   onChange={(event) => {
                     const value = event.currentTarget.value;
                     setTaxiAmountDraft(value);
-                    if (value === '') return;
-                    setQuoteConfig((current) => ({
-                      ...current,
-                      taxiFeeAmountOverride: Math.min(
-                        10000000,
-                        Math.max(0, Math.round(Number(value) || 0)),
-                      ),
-                    }));
+                    setQuoteConfig((current) => quoteConfigWithManualTaxiFee(current, value));
                   }}
                   onBlur={(event) => {
                     if (event.currentTarget.value === '') {
