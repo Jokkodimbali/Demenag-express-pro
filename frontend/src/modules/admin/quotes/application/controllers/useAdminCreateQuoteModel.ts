@@ -60,6 +60,7 @@ import {
   quoteDateLabel,
   quoteEstimateInventory,
   quoteQuestionnaireSummary,
+  quoteSettingsForEditing,
   toggleQuoteToll,
   totalTollCost,
 } from '../services/admin-quote-form-policy';
@@ -257,7 +258,10 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const latestSavedQuote = editingBooking ? latestBookingQuote(editingBooking) : undefined;
   const quoteStageChanged = isQuoteStageChanged(editingBooking, quoteKind);
   const canCommitQuoteStage = canSaveQuoteStageChange(editingBooking, quoteKind);
-  const quoteSettings = editingBooking?.pricingSettings ?? state.catalogue?.settings;
+  const quoteSettings = quoteSettingsForEditing(
+    editingBooking?.pricingSettings,
+    state.catalogue?.settings,
+  );
   const quoteTollPoints = quoteTollPointsWithSavedPrices(appTollPoints, editingBooking);
   const {
     catalogue,

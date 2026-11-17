@@ -1,4 +1,4 @@
-import type { Booking, ClientQuestion } from '../../../../shared/domain/model';
+import type { Booking, ClientQuestion, Settings } from '../../../../shared/domain/model';
 import type { Draft } from '../../../../booking/application/booking-draft';
 import type { TollExtraLine } from '../../../../moving/domain/tolls/toll-selection';
 import type { Inventory } from '../../../../moving/domain/inventory/inventory';
@@ -61,6 +61,19 @@ export function quoteEstimateInventory(
 
 export function canCreateFinalQuote(booking: Booking | null, date: string, noDate: boolean) {
   return Boolean(booking?.status !== 'cancelled' && date && !noDate);
+}
+
+export function quoteSettingsForEditing(
+  bookingSettings: Settings | undefined,
+  currentSettings: Settings | undefined,
+): Settings | undefined {
+  if (!bookingSettings) return currentSettings;
+  if (!currentSettings) return bookingSettings;
+  return {
+    ...bookingSettings,
+    taxiFeeEnabled: currentSettings.taxiFeeEnabled ?? bookingSettings.taxiFeeEnabled ?? false,
+    taxiFeePerKm: currentSettings.taxiFeePerKm ?? bookingSettings.taxiFeePerKm ?? 0,
+  };
 }
 
 export function quoteConfigurationFromBooking(booking: Booking) {
