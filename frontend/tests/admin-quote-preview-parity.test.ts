@@ -261,10 +261,11 @@ test('les frais taxi suivent les allers-retours et sont répartis sur les manœu
   });
   assert.equal(
     adjusted.previewLines.find((line) => line.label.startsWith('Manœuvres'))?.unitPrice,
-    8_500,
+    12_500,
   );
-  assert.equal(adjusted.taxiFeeLine?.total, 10_000);
-  assert.equal(adjusted.total, (preview.total ?? 0) - 20_000);
+  assert.equal(adjusted.taxiFeeLine?.quantity, 3);
+  assert.equal(adjusted.taxiFeeLine?.total, 30_000);
+  assert.equal(adjusted.total, preview.total);
 
   const economic = createAdminQuotePreview({
     ...input,

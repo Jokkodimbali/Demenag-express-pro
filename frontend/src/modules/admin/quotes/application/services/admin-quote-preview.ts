@@ -91,11 +91,11 @@ export function createAdminQuotePreview(input: {
   const taxiDistance = Math.max(0, draft.distanceKmOverride ?? draft.route?.distanceKm ?? 0);
   const taxiTrips = Math.max(1, config.trips);
   const calculatedTaxiFeeAmount = Math.round(
-    taxiDistance * taxiTrips * Math.max(0, settings?.taxiFeePerKm ?? 0),
+    taxiDistance * Math.max(0, settings?.taxiFeePerKm ?? 0),
   );
   const taxiFeeAmount =
     settings?.taxiFeeEnabled && config.taxiFeeApplied && config.billingMode !== 'driver-rental'
-      ? (config.taxiFeeAmountOverride ?? calculatedTaxiFeeAmount)
+      ? (config.taxiFeeAmountOverride ?? calculatedTaxiFeeAmount) * taxiTrips
       : 0;
   const manoeuvreOvertime = manoeuvreOvertimeLine(
     estimate,
@@ -197,7 +197,7 @@ export function createAdminQuotePreview(input: {
       ? {
           label:
             config.taxiFeeAmountOverride === null ? 'Frais taxi' : 'Frais taxi · montant modifié',
-          quantity: config.taxiFeeAmountOverride === null ? taxiDistance * taxiTrips : 1,
+          quantity: config.taxiFeeAmountOverride === null ? taxiDistance * taxiTrips : taxiTrips,
           unitPrice:
             config.taxiFeeAmountOverride === null
               ? (settings?.taxiFeePerKm ?? 0)

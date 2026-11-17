@@ -87,9 +87,14 @@ export function quoteConfigWithManualTaxiFee(config: AdminQuoteConfig, value: st
 
 export function quoteConfigurationFromBooking(booking: Booking) {
   const quote = booking.quotes.at(-1);
+  const taxiTrips = Math.max(1, quote?.price.trips ?? booking.estimate.trips);
+  const savedTaxiFeeAmount =
+    quote?.pricingInput?.taxiFeeAmount ??
+    quote?.price.lines.find((line) => line.label === 'Frais taxi · montant modifié')?.total ??
+    null;
   const priceWithoutTaxi =
-    quote?.price && quote.pricingInput?.taxiFeeAmount
-      ? removeTaxiFromManoeuvrePrice(quote.price, quote.pricingInput.taxiFeeAmount)
+    quote?.price && savedTaxiFeeAmount
+      ? removeTaxiFromManoeuvrePrice(quote.price, savedTaxiFeeAmount)
       : quote?.price;
   const sourcePrice = quote?.price ?? booking.estimate;
   const customPrice =
@@ -116,12 +121,10 @@ export function quoteConfigurationFromBooking(booking: Booking) {
     menuIncluded: quote?.menuIncluded ?? false,
     overtimeMinutes: quote?.overtimeMinutes ?? 0,
     taxiFeeApplied:
-      Boolean(quote?.pricingInput?.taxiFeeAmount) ||
+      Boolean(savedTaxiFeeAmount) ||
       (quote?.price.lines.some((line) => line.label.startsWith('Frais taxi')) ?? false),
     taxiFeeAmountOverride:
-      quote?.pricingInput?.taxiFeeAmount ??
-      quote?.price.lines.find((line) => line.label === 'Frais taxi · montant modifié')?.total ??
-      null,
+      savedTaxiFeeAmount === null ? null : Math.round(savedTaxiFeeAmount / taxiTrips),
     rentalKit: quote?.rentalKit ?? null,
   };
   const tollLines = (quote?.tolls ?? []).map((line) => ({

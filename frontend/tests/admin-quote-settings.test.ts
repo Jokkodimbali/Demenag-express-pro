@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { Settings } from '../src/modules/shared/domain/model';
+import type { Booking, Price, Settings } from '../src/modules/shared/domain/model';
 import {
   quoteConfigWithManualTaxiFee,
+  quoteConfigurationFromBooking,
   quoteSettingsForEditing,
 } from '../src/modules/admin/quotes/application/services/admin-quote-form-policy';
 import { defaultAdminQuoteConfig } from '../src/modules/admin/quotes/application/services/admin-quote-config';
@@ -43,4 +44,37 @@ test('saisir un montant taxi personnalisé active les frais et met à jour le ca
 
   assert.equal(updated.taxiFeeApplied, true);
   assert.equal(updated.taxiFeeAmountOverride, 10_000);
+});
+
+test('un devis enregistré recharge son montant taxi par aller-retour', () => {
+  const price: Price = {
+    lines: [{ label: 'Manœuvres', quantity: 5, unitPrice: 12_500, total: 62_500 }],
+    total: 62_500,
+    discount: 0,
+    tier: 0,
+    trips: 3,
+    currency: 'XOF',
+  };
+  const booking = {
+    estimate: { ...price, trips: 1 },
+    pricingSettings: { labourPrice: 6_500 } as Settings,
+    quotes: [
+      {
+        id: 'quote-1',
+        reference: 'DV-1',
+        kind: 'provisional',
+        createdAt: '2026-11-17T00:00:00.000Z',
+        price,
+        notes: '',
+        pricingInput: {
+          taxiFeeAmount: 30_000,
+        },
+      },
+    ],
+  } as Booking;
+
+  const restored = quoteConfigurationFromBooking(booking).config;
+
+  assert.equal(restored.taxiFeeApplied, true);
+  assert.equal(restored.taxiFeeAmountOverride, 10_000);
 });

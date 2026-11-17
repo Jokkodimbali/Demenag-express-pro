@@ -38,7 +38,7 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
   const taxiDistanceKm = Math.max(0, effectiveDistance ?? 0);
   const taxiRate = Math.max(0, quoteSettings.taxiFeePerKm ?? 0);
   const taxiTrips = Math.max(1, quoteConfig.trips);
-  const taxiCalculatedAmount = Math.round(taxiDistanceKm * taxiRate * taxiTrips);
+  const taxiCalculatedAmount = Math.round(taxiDistanceKm * taxiRate);
   const taxiAvailable = quoteConfig.billingMode !== 'driver-rental' && taxiCrew > 0;
   const taxiAmount = quoteConfig.taxiFeeAmountOverride ?? taxiCalculatedAmount;
   const taxiDistanceLabel = new Intl.NumberFormat('fr-FR', {
@@ -387,14 +387,14 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
                 <strong>{taxiTrips}</strong>
               </div>
               <label className="admin-quote-taxi-field admin-quote-taxi-amount">
-                <span>Montant taxi en FCFA</span>
+                <span>Montant taxi par aller-retour (FCFA)</span>
                 <input
                   type="number"
                   min="0"
                   max="10000000"
                   step="1"
                   inputMode="numeric"
-                  aria-label="Montant des frais taxi en FCFA"
+                  aria-label="Montant des frais taxi par aller-retour en FCFA"
                   disabled={!taxiAvailable}
                   value={
                     taxiAmountDraft ?? quoteConfig.taxiFeeAmountOverride ?? taxiCalculatedAmount
@@ -416,11 +416,11 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
             <div className="admin-quote-taxi-summary">
               <span>
                 {quoteConfig.taxiFeeApplied && taxiAvailable
-                  ? `Répartis sur ${taxiCrew} manœuvre${taxiCrew > 1 ? 's' : ''}`
+                  ? `${money(taxiAmount)} × ${taxiTrips} aller(s)-retour(s), répartis sur ${taxiCrew} manœuvre${taxiCrew > 1 ? 's' : ''}`
                   : 'Montant non appliqué au devis'}
               </span>
               {quoteConfig.taxiFeeApplied && taxiAvailable && (
-                <strong>+{money(taxiAmount / taxiCrew)} par manœuvre</strong>
+                <strong>+{money((taxiAmount * taxiTrips) / taxiCrew)} par manœuvre</strong>
               )}
             </div>
           </section>
