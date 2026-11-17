@@ -18,6 +18,7 @@ import {
 } from '../../../moving/domain/estimate/moving-estimate';
 import { BookingConfirmation } from '../../../booking/components/BookingConfirmation';
 import { routes } from '../../../shared/navigation/config/routes';
+import { vehicleImageForDisplay } from '../../../shared/application/presentation/vehicle-image';
 import { useAdminCreateQuoteModel } from '../application/controllers/useAdminCreateQuoteModel';
 import { AdminCreateQuoteAside } from '../components/AdminCreateQuoteAside';
 import { AdminQuoteVehicleBilling } from '../components/AdminQuoteVehicleBilling';
@@ -409,7 +410,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                       aria-pressed={draft.vehicleId === vehicle.id}
                       onClick={() => setDraft((current) => ({ ...current, vehicleId: vehicle.id }))}
                     >
-                      <img src={vehicle.image} alt="" />
+                      <img src={vehicleImageForDisplay(vehicle.image)} alt="" />
                       <span>
                         <strong>
                           {vehicle.shortName || vehicle.name.replace(/\s+(?:III|IV)$/i, '')}

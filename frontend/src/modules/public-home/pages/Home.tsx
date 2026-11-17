@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../../shared/application/context';
 import { useBookingDraft } from '../../booking/application/booking-draft-context';
 import { money, tierLabels } from '../../shared/application/presentation/format';
+import { vehicleImageForDisplay } from '../../shared/application/presentation/vehicle-image';
 import { routes } from '../../shared/navigation/config/routes';
 
 export function Home() {
@@ -35,7 +36,7 @@ export function Home() {
           <p>{uiText['choisissezVotreVehiculeIndiquezLeTrajetEtRecevezUneEst']}</p>
         </div>
         <div className="reference-hero-vehicle">
-          <img src="/assets/sprinter-profil.png" alt={uiText['mercedesSprinter']} />
+          <img src="/assets/sprinter-profil.webp" alt={uiText['mercedesSprinter']} />
           <div className="reference-hero-length">
             <span>{uiText['longueur2']}</span>
             <strong>{uiText['430M']}</strong>
@@ -78,7 +79,7 @@ export function Home() {
                       className={item.id === vehicle.id ? 'selected' : ''}
                       onClick={() => setDraft((current) => ({ ...current, vehicleId: item.id }))}
                     >
-                      <img src={item.image} alt="" />
+                      <img src={vehicleImageForDisplay(item.image)} alt="" />
                       <span>
                         <strong>
                           {item.shortName || item.name.replace(/\s+(?:III|IV)$/i, '')}
@@ -93,8 +94,14 @@ export function Home() {
               </div>
               <div className="reference-vehicle-detail">
                 <div className="reference-vehicle-images">
-                  <img src={vehicle.image} alt={`Profil du ${vehicle.name}`} />
-                  <img src={vehicle.interior} alt={`Intérieur du ${vehicle.name}`} />
+                  <img
+                    src={vehicleImageForDisplay(vehicle.image)}
+                    alt={`Profil du ${vehicle.name}`}
+                  />
+                  <img
+                    src={vehicleImageForDisplay(vehicle.interior)}
+                    alt={`Intérieur du ${vehicle.name}`}
+                  />
                 </div>
                 <strong>{vehicle.name.toUpperCase()}</strong>
                 <div className="reference-vehicle-facts">
