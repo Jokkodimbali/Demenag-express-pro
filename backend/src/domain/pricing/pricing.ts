@@ -167,10 +167,11 @@ export function calculatePrice(
     requireValue(
       line.label.trim().length >= 2 &&
         (Number.isInteger(line.quantity) ||
+          (line.label.startsWith('Frais taxi') && line.quantity > 0) ||
           (line.label.startsWith('Manœuvres · heures au-delà') &&
             line.quantity >= 0.5 &&
             (line.quantity * 2) % 1 === 0)) &&
-        line.quantity >= 0.5 &&
+        (line.quantity >= 0.5 || (line.label.startsWith('Frais taxi') && line.quantity > 0)) &&
         Number.isInteger(line.unitPrice) &&
         (line.unitPrice >= 0 || line.label.startsWith('Remise jour creux')),
       messages.chargeSupplementaireInvalide,

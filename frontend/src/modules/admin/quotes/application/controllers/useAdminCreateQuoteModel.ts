@@ -605,7 +605,9 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     price,
     extras,
     labourPrice,
-    applySnapshotLabourPrice: Boolean(editingBooking?.pricingSnapshot),
+    applySnapshotLabourPrice: Boolean(
+      editingBooking?.pricingSnapshot || latestSavedQuote?.pricingInput?.taxiFeeAmount,
+    ),
     simulationNeeds: rentalKitNeeds,
   });
   const formulaPrices = {
@@ -624,7 +626,9 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       price,
       extras,
       labourPrice,
-      applySnapshotLabourPrice: Boolean(editingBooking?.pricingSnapshot),
+      applySnapshotLabourPrice: Boolean(
+        editingBooking?.pricingSnapshot || latestSavedQuote?.pricingInput?.taxiFeeAmount,
+      ),
       simulationNeeds: rentalKitNeeds,
     }).total,
     standard: createAdminQuotePreview({
@@ -637,7 +641,9 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       price,
       extras,
       labourPrice,
-      applySnapshotLabourPrice: Boolean(editingBooking?.pricingSnapshot),
+      applySnapshotLabourPrice: Boolean(
+        editingBooking?.pricingSnapshot || latestSavedQuote?.pricingInput?.taxiFeeAmount,
+      ),
       simulationNeeds: rentalKitNeeds,
     }).total,
     complete: createAdminQuotePreview({
@@ -650,7 +656,9 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       price,
       extras,
       labourPrice,
-      applySnapshotLabourPrice: Boolean(editingBooking?.pricingSnapshot),
+      applySnapshotLabourPrice: Boolean(
+        editingBooking?.pricingSnapshot || latestSavedQuote?.pricingInput?.taxiFeeAmount,
+      ),
       simulationNeeds: rentalKitNeeds,
     }).total,
   };
@@ -679,6 +687,8 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     tier: previewTier,
     rentalKit,
     rentalOvertimeAmount,
+    taxiFeeLine,
+    taxiCrew,
     manoeuvreOvertime,
     previewLines,
     subtotal: previewSubtotal,
@@ -1065,6 +1075,8 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     previewLines,
     rentalKit,
     rentalOvertimeAmount,
+    taxiFeeLine,
+    taxiCrew,
     manoeuvreOvertimeLine: manoeuvreOvertime,
     previewSubtotal,
     previewDiscount,

@@ -1,0 +1,3 @@
+ALTER TABLE "demenag"."settings"
+  ADD COLUMN IF NOT EXISTS "taxi_fee_enabled" BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS "taxi_fee_per_km" INTEGER NOT NULL DEFAULT 0;

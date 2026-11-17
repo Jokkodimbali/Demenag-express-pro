@@ -337,11 +337,21 @@ export const quoteSchema = z.object({
   notes: z.string().trim().max(10000),
   extraLines: z
     .array(
-      z.object({
-        label: z.string().trim().min(2).max(100),
-        quantity: z.number().min(0.5).multipleOf(0.5).max(100),
-        unitPrice: z.number().int().positive().max(10000000),
-      }),
+      z
+        .object({
+          label: z.string().trim().min(2).max(100),
+          quantity: z.number().positive().max(10000),
+          unitPrice: z.number().int().positive().max(10000000),
+        })
+        .superRefine((line, context) => {
+          if (line.label.startsWith('Frais taxi')) return;
+          if (line.quantity < 0.5 || !Number.isInteger(line.quantity * 2))
+            context.addIssue({
+              code: 'custom',
+              path: ['quantity'],
+              message: 'La quantité doit être un nombre entier ou un multiple de 0,5.',
+            });
+        }),
     )
     .max(20)
     .default([]),
@@ -658,6 +668,8 @@ export const catalogueSchema = z.object({
     quoteTerms: z.string().max(10000).default(''),
     quoteTermsEnabled: z.boolean().default(true),
     rentalOvertimeHourlyRate: z.number().int().min(0).max(10000000).default(10000),
+    taxiFeeEnabled: z.boolean().default(false),
+    taxiFeePerKm: z.number().int().min(0).max(10000000).default(0),
     rentalKitConfiguration: z
       .array(
         z.object({

@@ -184,6 +184,8 @@ export type Settings = BookingRules & {
   quoteTerms?: string;
   quoteTermsEnabled?: boolean;
   rentalOvertimeHourlyRate?: number;
+  taxiFeeEnabled?: boolean;
+  taxiFeePerKm?: number;
   rentalKitConfiguration?: RentalKitConfigurationItem[];
   invoiceFooter: string;
   tiktokUrl: string | null;
@@ -463,6 +465,7 @@ export type QuotePricingInput = {
   options: Options;
   labourUnitPriceOverride: number | null;
   extraLines: Array<{ label: string; quantity: number; unitPrice: number }>;
+  taxiFeeAmount?: number;
   billingMode?: 'complete' | 'standard' | 'driver-rental';
   menuIncluded?: boolean;
   overtimeMinutes?: number;

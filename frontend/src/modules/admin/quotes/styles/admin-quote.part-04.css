@@ -330,6 +330,114 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+.admin-quote-taxi-card {
+  display: grid;
+  flex: 1 1 100%;
+  gap: 14px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #3b4046;
+  border-radius: 12px;
+  background: #1e2023;
+}
+.admin-quote-taxi-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.admin-quote-taxi-header > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.admin-quote-taxi-header strong {
+  color: #f4f5f6;
+  font-size: 14px;
+}
+.admin-quote-taxi-header span,
+.admin-quote-taxi-field > span,
+.admin-quote-taxi-summary > span {
+  color: #aeb4bb;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.admin-quote-taxi-toggle {
+  flex: 0 0 auto;
+  min-width: 94px;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid #555b61;
+  border-radius: 9px;
+  background: #272a2e;
+  color: #f4f5f6;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.admin-quote-taxi-toggle.active {
+  border-color: #f6d73c;
+  background: #f6d73c;
+  color: #1e2023;
+}
+.admin-quote-taxi-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.admin-quote-taxi-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid #3b4046;
+}
+.admin-quote-taxi-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 7px;
+}
+.admin-quote-taxi-field strong {
+  color: #f4f5f6;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.admin-quote-taxi-amount input {
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid #555b61;
+  border-radius: 8px;
+  background: #272a2e;
+  color: #f6d73c;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+}
+.admin-quote-taxi-amount input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.admin-quote-taxi-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #272a2e;
+}
+.admin-quote-taxi-summary strong {
+  color: #f6d73c;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
 .admin-quote-calculation-value {
   display: flex;
   min-width: 0;

@@ -455,24 +455,27 @@ export async function downloadQuote(
       ]
         .filter(Boolean)
         .join('\n');
-  const loadingCards: { ok: boolean; main: string }[] = [];
-  if (inventory?.ready === 'oui') loadingCards.push({ ok: true, main: 'Prêt à être chargé' });
+  const loadingCards: { ok: boolean; label: string; main: string }[] = [];
+  if (inventory?.ready === 'oui')
+    loadingCards.push({ ok: true, label: 'MATÉRIEL', main: 'Prêt à être chargé' });
   else if (inventory?.ready === 'non')
-    loadingCards.push({ ok: false, main: 'À emballer sur place' });
+    loadingCards.push({ ok: false, label: 'MATÉRIEL', main: 'À emballer sur place' });
   if (inventory?.stairs === 'oui')
-    loadingCards.push({ ok: true, main: 'Tout passe par l’escalier' });
+    loadingCards.push({ ok: true, label: 'PASSAGE', main: 'Tout passe par l’escalier' });
   else if (inventory?.stairs === 'balcon')
     loadingCards.push({
       ok: false,
+      label: 'PASSAGE',
       main: inventory.balcPx ? `Par le balcon · +${pdfMoney(inventory.balcPx)}` : 'Par le balcon',
     });
   else if (inventory?.stairs === 'non')
-    loadingCards.push({ ok: false, main: 'Démontage ou monte-meuble' });
-  else if (inventory?.stairs === 'verif') loadingCards.push({ ok: false, main: 'À confirmer' });
+    loadingCards.push({ ok: false, label: 'PASSAGE', main: 'Démontage ou monte-meuble' });
+  else if (inventory?.stairs === 'verif')
+    loadingCards.push({ ok: false, label: 'PASSAGE', main: 'À confirmer' });
   if (loadingCards.length) {
     const pad = 4;
-    const cardHeight = 13;
-    const cardWidth = (contentWidth - pad * 2) / loadingCards.length;
+    const rowHeight = 5.8;
+    const cardHeight = 7.2 + loadingCards.length * rowHeight;
     if (y + cardHeight > 280) {
       doc.addPage();
       y = 24;
@@ -491,8 +494,13 @@ export async function downloadQuote(
       align: 'right',
     });
     loadingCards.forEach((card, index) => {
-      const x = margin + pad + 1 + index * cardWidth;
-      const centerY = y + 9.2;
+      const x = margin + pad + 1;
+      const centerY = y + 9.2 + index * rowHeight;
+      if (index > 0) {
+        doc.setDrawColor(224, 227, 230);
+        doc.setLineWidth(0.2);
+        doc.line(x, centerY - rowHeight / 2, right - pad - 1, centerY - rowHeight / 2);
+      }
       const color: [number, number, number] = card.ok ? [30, 140, 80] : [214, 140, 20];
       doc.setFillColor(...color);
       doc.circle(x + 1.9, centerY, 1.9, 'F');
@@ -508,10 +516,16 @@ export async function downloadQuote(
         doc.text('!', x + 1.9, centerY + 0.6, { align: 'center' });
       }
       doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(90, 97, 104);
+      doc.text(cleanPdfText(card.label), x + 5, centerY + 0.6);
       doc.setFontSize(8.3);
       doc.setTextColor(30, 32, 35);
-      const cardLines = doc.splitTextToSize(cleanPdfText(card.main), cardWidth - 7) as string[];
-      doc.text(cardLines[0] ?? '', x + 5, centerY + 0.6);
+      const cardLines = doc.splitTextToSize(
+        cleanPdfText(card.main),
+        contentWidth - 32,
+      ) as string[];
+      doc.text(cardLines[0] ?? '', x + 25, centerY + 0.6);
     });
     y += cardHeight + 3;
   }

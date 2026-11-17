@@ -12,6 +12,10 @@ import {
 import { manoeuvreOvertimeLine } from './manoeuvre-overtime';
 import { quoteInventoryLines } from './quote-inventory-lines';
 import { quoteTransportLines } from './quote-transport-lines';
+import {
+  applyTaxiToManoeuvrePrice,
+  manoeuvreCount,
+} from '../../../../../../../shared/quote-taxi-allocation.js';
 
 type ExtraOption = [keyof Options, string, string];
 type QuoteLine = { label: string; quantity: number; unitPrice: number; total: number };
@@ -84,6 +88,15 @@ export function createAdminQuotePreview(input: {
           ((config.overtimeMinutes ?? 0) * (settings?.rentalOvertimeHourlyRate ?? 10000)) / 60,
         )
       : 0;
+  const taxiDistance = Math.max(0, draft.distanceKmOverride ?? draft.route?.distanceKm ?? 0);
+  const taxiTrips = Math.max(1, config.trips);
+  const calculatedTaxiFeeAmount = Math.round(
+    taxiDistance * taxiTrips * Math.max(0, settings?.taxiFeePerKm ?? 0),
+  );
+  const taxiFeeAmount =
+    settings?.taxiFeeEnabled && config.taxiFeeApplied && config.billingMode !== 'driver-rental'
+      ? (config.taxiFeeAmountOverride ?? calculatedTaxiFeeAmount)
+      : 0;
   const manoeuvreOvertime = manoeuvreOvertimeLine(
     estimate,
     settings?.movingLaborPlanning,
@@ -114,6 +127,7 @@ export function createAdminQuotePreview(input: {
       .filter(
         (line) =>
           !line.label.startsWith('Transport ') &&
+          !line.label.startsWith('Frais taxi') &&
           !line.label.startsWith('Allers-retours suivants') &&
           !line.label.startsWith('Remise jour creux') &&
           (config.billingMode === 'complete' ||
@@ -146,7 +160,7 @@ export function createAdminQuotePreview(input: {
     includeMenu,
   });
   const balconyPrice = Math.max(0, Math.round(Number(estimateInventory.balcPx) || 0));
-  const previewLines: QuoteLine[] = [
+  const basePreviewLines: QuoteLine[] = [
     ...lines,
     ...(estimateInventory.stairs === 'balcon'
       ? [
@@ -177,31 +191,52 @@ export function createAdminQuotePreview(input: {
         ]
       : []),
   ];
-  const subtotal = previewLines.reduce((sum, line) => sum + line.total, 0);
+  const taxiCrew = manoeuvreCount(basePreviewLines);
+  const taxiFeeLine =
+    taxiFeeAmount > 0 && taxiCrew > 0
+      ? {
+          label:
+            config.taxiFeeAmountOverride === null ? 'Frais taxi' : 'Frais taxi · montant modifié',
+          quantity: config.taxiFeeAmountOverride === null ? taxiDistance * taxiTrips : 1,
+          unitPrice:
+            config.taxiFeeAmountOverride === null
+              ? (settings?.taxiFeePerKm ?? 0)
+              : config.taxiFeeAmountOverride,
+          total: taxiFeeAmount,
+        }
+      : null;
+  const baseSubtotal = basePreviewLines.reduce((sum, line) => sum + line.total, 0);
   const discount =
     config.discountType === 'pct'
-      ? Math.round((subtotal * Math.min(100, config.discount)) / 100)
-      : Math.min(subtotal, config.discount);
+      ? Math.round((baseSubtotal * Math.min(100, config.discount)) / 100)
+      : Math.min(baseSubtotal, config.discount);
   const discountLabel = `Remise${config.discountType === 'pct' && config.discount ? ` (${Math.min(100, config.discount)} %)` : ''}${config.discountReason.trim() ? ` · ${config.discountReason.trim()}` : ''}`;
-  const total = subtotal - discount;
-  const priceSnapshot: Price = {
-    lines: previewLines,
-    total,
-    discount,
-    discountLabel,
-    discountType: config.discountType,
-    discountValue: config.discount,
-    discountReason: config.discountReason,
-    tier,
-    trips: config.trips,
-    currency: 'XOF',
-  };
+  const priceSnapshot: Price = applyTaxiToManoeuvrePrice(
+    {
+      lines: basePreviewLines,
+      total: baseSubtotal - discount,
+      discount,
+      discountLabel,
+      discountType: config.discountType,
+      discountValue: config.discount,
+      discountReason: config.discountReason,
+      tier,
+      trips: config.trips,
+      currency: 'XOF',
+    },
+    taxiFeeLine?.total ?? 0,
+  );
+  const previewLines = priceSnapshot.lines;
+  const subtotal = previewLines.reduce((sum, line) => sum + line.total, 0);
+  const total = baseSubtotal - discount + (taxiFeeLine?.total ?? 0);
   return {
     tier,
     transportUnit,
     transportLines,
     rentalKit,
     rentalOvertimeAmount,
+    taxiFeeLine,
+    taxiCrew,
     manoeuvreOvertime,
     lines,
     previewLines,

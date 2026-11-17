@@ -329,6 +329,14 @@ export async function catalogueFromForm(data: FormData, catalogue: Catalogue): P
             String(catalogue.settings.rentalOvertimeHourlyRate ?? 10000),
         ),
       ),
+      taxiFeeEnabled:
+        data.getAll('taxiFeeEnabledConfigured').length === 0
+          ? (catalogue.settings.taxiFeeEnabled ?? false)
+          : data.getAll('taxiFeeEnabled').includes('on'),
+      taxiFeePerKm: Math.max(
+        0,
+        integer(data.get('taxiFeePerKm') ?? String(catalogue.settings.taxiFeePerKm ?? 0)),
+      ),
       rentalKitConfiguration,
       paymentWave: data.has('paymentWaveConfigured')
         ? data.get('paymentWave') === 'on'

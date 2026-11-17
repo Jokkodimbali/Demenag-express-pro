@@ -16,6 +16,8 @@ export type AdminQuoteConfig = {
   billingMode: 'complete' | 'standard' | 'driver-rental';
   menuIncluded: boolean;
   overtimeMinutes: number;
+  taxiFeeApplied: boolean;
+  taxiFeeAmountOverride: number | null;
   rentalKit: RentalKitItem[] | null;
 };
 
@@ -66,6 +68,12 @@ export async function readAdminQuoteDraft(
           : 'complete',
         menuIncluded: parsed.quoteConfig.menuIncluded === true,
         overtimeMinutes: Math.max(0, Number(parsed.quoteConfig.overtimeMinutes) || 0),
+        taxiFeeApplied: parsed.quoteConfig.taxiFeeApplied === true,
+        taxiFeeAmountOverride:
+          Number.isSafeInteger(parsed.quoteConfig.taxiFeeAmountOverride) &&
+          Number(parsed.quoteConfig.taxiFeeAmountOverride) >= 0
+            ? Number(parsed.quoteConfig.taxiFeeAmountOverride)
+            : null,
         rentalKit:
           parsed.quoteConfig.rentalKit === null || Array.isArray(parsed.quoteConfig.rentalKit)
             ? parsed.quoteConfig.rentalKit

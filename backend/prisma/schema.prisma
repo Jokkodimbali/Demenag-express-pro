@@ -179,6 +179,8 @@ model ParametreApplication {
   conditionsDevisActives         Boolean @default(true) @map("quote_terms_enabled")
   cleApiGoogleMaps               String  @default("") @map("google_maps_api_key")
   tarifHeureLocation            Int     @default(10000) @map("rental_overtime_hourly_rate")
+  fraisTaxiActifs               Boolean @default(false) @map("taxi_fee_enabled")
+  tarifTaxiKm                   Int     @default(0) @map("taxi_fee_per_km")
   materielLocation              Json    @default("[]") @map("rental_kit_configuration")
   piedFacture                   String  @default("Merci pour votre confiance.") @map("invoice_footer")
   tiktokUrl                     String? @map("tiktok_url")

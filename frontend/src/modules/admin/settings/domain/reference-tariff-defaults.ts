@@ -55,6 +55,8 @@ export function resetCatalogueTariffsToReference(catalogue: Catalogue): Catalogu
     assemblyPrice: 7500,
     montageP: copyAssemblyPriceDefaults(),
     rentalOvertimeHourlyRate: 10000,
+    taxiFeeEnabled: false,
+    taxiFeePerKm: 0,
     movingLaborPlanning: {
       ...defaultMovingLaborPlanning,
       ...catalogue.settings.movingLaborPlanning,

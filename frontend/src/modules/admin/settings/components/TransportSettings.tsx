@@ -371,6 +371,25 @@ export function TransportSettings({
               <span className="reference-settings-card-title">{uiText['supplementsFixes']}</span>
               <div className="reference-settings-fixed-fields">
                 <label>
+                  <span>Frais taxi activés sur les devis</span>
+                  <input type="hidden" name="taxiFeeEnabledConfigured" value="1" />
+                  <input
+                    type="checkbox"
+                    name="taxiFeeEnabled"
+                    defaultChecked={catalogue.settings.taxiFeeEnabled ?? false}
+                  />
+                </label>
+                <label>
+                  <span>Frais taxi par kilomètre (FCFA)</span>
+                  <input
+                    style={inputStyle}
+                    type="number"
+                    min="0"
+                    name="taxiFeePerKm"
+                    defaultValue={catalogue.settings.taxiFeePerKm ?? 0}
+                  />
+                </label>
+                <label>
                   <span>{visibleUiText.text202}</span>
                   <input
                     style={inputStyle}

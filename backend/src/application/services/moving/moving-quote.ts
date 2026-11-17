@@ -3,6 +3,10 @@ import { messages } from '../../../domain/shared/messages/fr.js';
 import type { Booking, QuoteInput, User } from '../../../domain/shared/model.js';
 import { requireAdministrator } from '../../../domain/security/access-policy.js';
 import { calculatePrice } from '../../../domain/pricing/pricing.js';
+import {
+  applyTaxiToManoeuvrePrice,
+  manoeuvreCount,
+} from '../../../../../shared/quote-taxi-allocation.js';
 import { captureAccountingCosts } from '../../../domain/accounting/accounting-costs.js';
 import {
   inventoryAssemblyLines,
@@ -128,9 +132,16 @@ export async function createQuote(
     (overtimeMinutes * (pricingSettings.rentalOvertimeHourlyRate ?? 10000)) / 60,
   );
   const rentalOvertimeHourlyRate = pricingSettings.rentalOvertimeHourlyRate ?? 10000;
+  const taxiFeeAmount = input.extraLines
+    .filter((line) => line.label.startsWith('Frais taxi'))
+    .reduce((sum, line) => sum + Math.round(line.quantity * line.unitPrice), 0);
+  requireValue(
+    taxiFeeAmount === 0 || billingMode !== 'driver-rental',
+    'Les frais taxi ne sont pas disponibles en formule Économique.',
+  );
   const additionalLines = [
     ...inventoryLines,
-    ...input.extraLines,
+    ...input.extraLines.filter((line) => !line.label.startsWith('Frais taxi')),
     ...(sourceInventory?.stairs === 'balcon'
       ? [
           {
@@ -150,7 +161,7 @@ export async function createQuote(
         ]
       : []),
   ];
-  const price = calculatePrice(
+  const basePrice = calculatePrice(
     vehicle,
     quoteSettings,
     booking.distanceKm,
@@ -165,6 +176,11 @@ export async function createQuote(
     input.discountReason,
     booking.date,
   );
+  requireValue(
+    taxiFeeAmount === 0 || manoeuvreCount(basePrice.lines) > 0,
+    'Les frais taxi nécessitent des manœuvres facturés.',
+  );
+  const price = applyTaxiToManoeuvrePrice(basePrice, taxiFeeAmount);
   requireValue(
     input.kind !== 'final' || price.total !== null,
     messages.renseignezLeTarifDuTransportAvantDeFinaliser,
@@ -235,6 +251,7 @@ export async function createQuote(
       options: pricingOptions,
       labourUnitPriceOverride: input.labourUnitPriceOverride ?? null,
       extraLines: additionalLines,
+      taxiFeeAmount,
       billingMode,
       menuIncluded,
       overtimeMinutes,

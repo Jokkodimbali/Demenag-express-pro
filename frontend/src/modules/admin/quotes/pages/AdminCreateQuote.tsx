@@ -104,6 +104,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
     previewTier,
     previewSubtotal,
     previewDiscount,
+    taxiFeeLine,
     manoeuvreOvertimeLine,
     confirmVehicleFit,
     onTollToggle,
@@ -370,7 +371,18 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             movingEstimate?.volume
               ? { ...draft.options, labour: movingEstimate.crew }
               : draft.options,
-            manoeuvreOvertimeLine ? [manoeuvreOvertimeLine] : [],
+            [
+              ...(taxiFeeLine
+                ? [
+                    {
+                      label: taxiFeeLine.label,
+                      quantity: taxiFeeLine.quantity,
+                      unitPrice: taxiFeeLine.unitPrice,
+                    },
+                  ]
+                : []),
+              ...(manoeuvreOvertimeLine ? [manoeuvreOvertimeLine] : []),
+            ],
             submittedKind,
             quoteStageCommitId,
             quoteStageCommit,

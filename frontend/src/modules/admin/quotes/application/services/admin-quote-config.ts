@@ -16,6 +16,8 @@ export function defaultAdminQuoteConfig(): AdminQuoteConfig {
     billingMode: 'complete',
     menuIncluded: false,
     overtimeMinutes: 0,
+    taxiFeeApplied: false,
+    taxiFeeAmountOverride: null,
     rentalKit: null,
   };
 }

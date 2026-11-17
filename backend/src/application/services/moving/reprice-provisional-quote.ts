@@ -1,6 +1,7 @@
 import { messages } from '../../../domain/shared/messages/fr.js';
 import type { Booking, Quote, QuotePricingInput, Settings } from '../../../domain/shared/model.js';
 import { calculatePrice, labourUnitPrice } from '../../../domain/pricing/pricing.js';
+import { applyTaxiToManoeuvrePrice } from '../../../../../shared/quote-taxi-allocation.js';
 
 export function repriceProvisionalQuote(
   booking: Booking,
@@ -53,8 +54,14 @@ export function repriceProvisionalQuote(
   const pricingInput: QuotePricingInput = quote.pricingInput ?? legacyPricingInput();
   const rentalOvertimeHourlyRate =
     pricingInput.rentalOvertimeHourlyRate ?? settings.rentalOvertimeHourlyRate ?? 10000;
+  const taxiFeeAmount =
+    pricingInput.taxiFeeAmount ??
+    pricingInput.extraLines
+      .filter((line) => line.label.startsWith('Frais taxi'))
+      .reduce((sum, line) => sum + Math.round(line.quantity * line.unitPrice), 0);
   const extraLines = pricingInput.extraLines.filter(
     (line) =>
+      !line.label.startsWith('Frais taxi') &&
       !line.label.startsWith('Dépassement du planning prévisionnel') &&
       (pricingInput.billingMode === 'complete' ||
         pricingInput.menuIncluded ||
@@ -82,7 +89,7 @@ export function repriceProvisionalQuote(
       : pricingInput.billingMode === 'standard'
         ? { ...pricingInput.options, desk: 0, wardrobe: 0, bed: 0 }
         : pricingInput.options;
-  const price = calculatePrice(
+  const basePrice = calculatePrice(
     booking.vehicle,
     effectiveSettings,
     distanceKm,
@@ -97,5 +104,9 @@ export function repriceProvisionalQuote(
     pricingInput.discountReason,
     booking.date,
   );
-  return { price, pricingInput: { ...pricingInput, extraLines, rentalOvertimeHourlyRate } };
+  const price = applyTaxiToManoeuvrePrice(basePrice, taxiFeeAmount);
+  return {
+    price,
+    pricingInput: { ...pricingInput, extraLines, taxiFeeAmount, rentalOvertimeHourlyRate },
+  };
 }

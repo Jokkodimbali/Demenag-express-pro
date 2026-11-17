@@ -120,6 +120,8 @@ export function cheaperCompatibleVehicle(input: {
       billingMode: 'complete' as const,
       menuIncluded: false,
       overtimeMinutes: 0,
+      taxiFeeApplied: false,
+      taxiFeeAmountOverride: null,
       rentalKit: null,
     };
     return createAdminQuotePreview({

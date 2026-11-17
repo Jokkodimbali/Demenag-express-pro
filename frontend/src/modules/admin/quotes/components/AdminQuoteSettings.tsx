@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { visibleUiText } from '../../../shared/content/visible-ui-text';
 import { money } from '../../../shared/application/presentation/format';
 import { useApp } from '../../../shared/application/context';
@@ -9,9 +10,11 @@ type Model = ReturnType<typeof useAdminCreateQuoteModel>;
 
 export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalogue: Catalogue }) {
   const { showSuccessToast } = useApp();
+  const [taxiAmountDraft, setTaxiAmountDraft] = useState<string | null>(null);
   const {
     quoteConfig,
     setQuoteConfig,
+    effectiveDistance,
     draft,
     setDraft,
     estimateInventory,
@@ -22,6 +25,7 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
     canSelectFinal,
     movingEstimate,
     economicCrew,
+    taxiCrew,
     formulaPrices,
     cheaperVehicle,
   } = model;
@@ -29,6 +33,17 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
     movingEstimate?.volume && (catalogue.settings.movingLaborPlanning?.heat ?? 0) > 0,
   );
   const heatActive = heatAvailable && !quoteConfig.heatOff;
+  const quoteSettings = model.quoteSettings ?? catalogue.settings;
+  const taxiDistanceKm = Math.max(0, effectiveDistance ?? 0);
+  const taxiRate = Math.max(0, quoteSettings.taxiFeePerKm ?? 0);
+  const taxiTrips = Math.max(1, quoteConfig.trips);
+  const taxiCalculatedAmount = Math.round(taxiDistanceKm * taxiRate * taxiTrips);
+  const taxiAvailable = quoteConfig.billingMode !== 'driver-rental' && taxiCrew > 0;
+  const taxiAmount = quoteConfig.taxiFeeAmountOverride ?? taxiCalculatedAmount;
+  const taxiDistanceLabel = new Intl.NumberFormat('fr-FR', {
+    maximumFractionDigits: 1,
+  }).format(taxiDistanceKm);
+  useEffect(() => setTaxiAmountDraft(null), [taxiDistanceKm, taxiRate, taxiTrips]);
 
   function handleQuoteKindSelection(kind: 'provisional' | 'final') {
     if (kind === quoteKind) return;
@@ -63,6 +78,7 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
                   billingMode: 'driver-rental',
                   menuIncluded: false,
                   overtimeMinutes: 0,
+                  taxiFeeApplied: false,
                 }));
                 if (quoteConfig.billingMode !== 'driver-rental')
                   showSuccessToast('Formule économique sélectionnée. Le devis a été recalculé.');
@@ -325,6 +341,96 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
             })}
           </div>
         </div>
+        {quoteSettings.taxiFeeEnabled && (
+          <section className="admin-quote-taxi-card" aria-labelledby="admin-quote-taxi-title">
+            <div className="admin-quote-taxi-header">
+              <div>
+                <strong id="admin-quote-taxi-title">Frais taxi</strong>
+                <span>
+                  {!taxiAvailable
+                    ? quoteConfig.billingMode === 'driver-rental'
+                      ? 'Indisponibles pour la location avec chauffeur.'
+                      : 'Indisponibles sans manœuvre estimé.'
+                    : 'Calculés selon la distance et les allers-retours estimés.'}
+                </span>
+              </div>
+              <button
+                type="button"
+                aria-pressed={quoteConfig.taxiFeeApplied}
+                disabled={!taxiAvailable}
+                className={`admin-quote-taxi-toggle${quoteConfig.taxiFeeApplied ? ' active' : ''}`}
+                onClick={() => {
+                  const enabled = !quoteConfig.taxiFeeApplied;
+                  setQuoteConfig((current) => ({ ...current, taxiFeeApplied: enabled }));
+                  showSuccessToast(
+                    enabled
+                      ? 'Frais taxi activés. Le devis a été recalculé.'
+                      : 'Frais taxi désactivés. Le devis a été recalculé.',
+                  );
+                }}
+              >
+                {quoteConfig.taxiFeeApplied ? 'Activés' : 'Activer'}
+              </button>
+            </div>
+            <div className="admin-quote-taxi-fields" aria-label="Calcul des frais taxi">
+              <div className="admin-quote-taxi-field">
+                <span>Distance estimée</span>
+                <strong>{taxiDistanceLabel} km</strong>
+              </div>
+              <div className="admin-quote-taxi-field">
+                <span>Tarif kilométrique</span>
+                <strong>{money(taxiRate)} / km</strong>
+              </div>
+              <div className="admin-quote-taxi-field">
+                <span>Allers-retours</span>
+                <strong>{taxiTrips}</strong>
+              </div>
+              <label className="admin-quote-taxi-field admin-quote-taxi-amount">
+                <span>Montant taxi en FCFA</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="10000000"
+                  step="1"
+                  inputMode="numeric"
+                  aria-label="Montant des frais taxi en FCFA"
+                  disabled={!taxiAvailable || !quoteConfig.taxiFeeApplied}
+                  value={
+                    taxiAmountDraft ?? quoteConfig.taxiFeeAmountOverride ?? taxiCalculatedAmount
+                  }
+                  onChange={(event) => {
+                    const value = event.currentTarget.value;
+                    setTaxiAmountDraft(value);
+                    if (value === '') return;
+                    setQuoteConfig((current) => ({
+                      ...current,
+                      taxiFeeAmountOverride: Math.min(
+                        10000000,
+                        Math.max(0, Math.round(Number(value) || 0)),
+                      ),
+                    }));
+                  }}
+                  onBlur={(event) => {
+                    if (event.currentTarget.value === '') {
+                      setQuoteConfig((current) => ({ ...current, taxiFeeAmountOverride: null }));
+                      setTaxiAmountDraft(null);
+                    }
+                  }}
+                />
+              </label>
+            </div>
+            <div className="admin-quote-taxi-summary">
+              <span>
+                {quoteConfig.taxiFeeApplied && taxiAvailable
+                  ? `Répartis sur ${taxiCrew} manœuvre${taxiCrew > 1 ? 's' : ''}`
+                  : 'Montant non appliqué au devis'}
+              </span>
+              {quoteConfig.taxiFeeApplied && taxiAvailable && (
+                <strong>+{money(taxiAmount / taxiCrew)} par manœuvre</strong>
+              )}
+            </div>
+          </section>
+        )}
         {(draft.questionnaireAnswers['key-stairs']?.startsWith('Non, par le balcon') ||
           draft.inventory.stairs === 'balcon') && (
           <label className="admin-quote-reference-setting">

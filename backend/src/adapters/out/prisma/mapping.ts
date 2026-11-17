@@ -237,6 +237,8 @@ export const fromSettings = (row: ParametreApplication): Settings => ({
   quoteTerms: row.conditionsDevis,
   quoteTermsEnabled: row.conditionsDevisActives,
   rentalOvertimeHourlyRate: row.tarifHeureLocation,
+  taxiFeeEnabled: row.fraisTaxiActifs,
+  taxiFeePerKm: row.tarifTaxiKm,
   rentalKitConfiguration: Array.isArray(row.materielLocation)
     ? (row.materielLocation as Settings['rentalKitConfiguration'])
     : [],
@@ -314,6 +316,8 @@ export const toSettings = (value: Settings) => ({
   conditionsDevis: value.quoteTerms ?? '',
   conditionsDevisActives: value.quoteTermsEnabled ?? true,
   tarifHeureLocation: value.rentalOvertimeHourlyRate ?? 10000,
+  fraisTaxiActifs: value.taxiFeeEnabled ?? false,
+  tarifTaxiKm: value.taxiFeePerKm ?? 0,
   materielLocation: (value.rentalKitConfiguration ?? []) as Prisma.InputJsonValue,
   piedFacture: value.invoiceFooter,
   tiktokUrl: value.tiktokUrl ?? null,

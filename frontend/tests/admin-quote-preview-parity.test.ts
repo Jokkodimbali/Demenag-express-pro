@@ -3,6 +3,7 @@ import test from 'node:test';
 import type { AdminQuoteConfig } from '../src/modules/admin/quotes/application/admin-quote-draft-storage.ts';
 import { blankDraft } from '../src/modules/booking/application/booking-draft.ts';
 import { createAdminQuotePreview } from '../src/modules/admin/quotes/application/services/admin-quote-preview.ts';
+import { defaultAdminQuoteConfig } from '../src/modules/admin/quotes/application/services/admin-quote-config.ts';
 import { calculatePrice } from '../../backend/src/domain/pricing/pricing.ts';
 import {
   inventoryAssemblyLines,
@@ -214,4 +215,59 @@ test('l’aperçu du devis reprend une seule fois transport, trajets suivants et
   }
 
   assert.equal(checked, 336);
+});
+
+test('les frais taxi suivent les allers-retours et sont répartis sur les manœuvres sans ligne client', () => {
+  const taxiSettings = { ...settings, taxiFeeEnabled: true, taxiFeePerKm: 1_000 };
+  const draft = blankDraft({ vehicles: [vehicle], settings: taxiSettings } as Catalogue);
+  draft.vehicleId = vehicle.id;
+  draft.route = {
+    id: 'route-taxi',
+    from: [14.69, -17.44],
+    to: [14.73, -17.48],
+    distanceKm: 10,
+    durationMinutes: 35,
+    geometry: [],
+    expiresAt: '2026-12-01T00:00:00.000Z',
+  };
+  draft.options = { labour: 5, desk: 0, wardrobe: 0, bed: 0 };
+  const config = { ...defaultAdminQuoteConfig(), trips: 3, taxiFeeApplied: true };
+  const input = {
+    draft,
+    estimateInventory: draft.inventory,
+    config,
+    vehicle,
+    estimate: null,
+    settings: taxiSettings,
+    price: null,
+    extras,
+    labourPrice: 6_500,
+    simulationNeeds: null,
+  };
+  const preview = createAdminQuotePreview(input);
+  const labour = preview.previewLines.find((line) => line.label.startsWith('Manœuvres'));
+  assert.equal(preview.taxiFeeLine?.total, 30_000);
+  assert.equal(preview.taxiFeeLine?.quantity, 30);
+  assert.equal(labour?.unitPrice, 12_500);
+  assert.equal(labour?.total, 62_500);
+  assert.equal(
+    preview.previewLines.some((line) => line.label.startsWith('Frais taxi')),
+    false,
+  );
+
+  const adjusted = createAdminQuotePreview({
+    ...input,
+    config: { ...config, taxiFeeAmountOverride: 10_000 },
+  });
+  assert.equal(
+    adjusted.previewLines.find((line) => line.label.startsWith('Manœuvres'))?.unitPrice,
+    8_500,
+  );
+  assert.equal(adjusted.taxiFeeLine?.total, 10_000);
+
+  const economic = createAdminQuotePreview({
+    ...input,
+    config: { ...config, billingMode: 'driver-rental' },
+  });
+  assert.equal(economic.taxiFeeLine, null);
 });

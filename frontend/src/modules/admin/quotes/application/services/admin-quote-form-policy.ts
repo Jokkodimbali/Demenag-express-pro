@@ -4,6 +4,7 @@ import type { TollExtraLine } from '../../../../moving/domain/tolls/toll-selecti
 import type { Inventory } from '../../../../moving/domain/inventory/inventory';
 import type { AdminQuoteConfig } from './admin-quote-draft-storage';
 import { labourUnitPriceOverrideFromQuote } from '../../../../moving/domain/pricing/labour-price';
+import { removeTaxiFromManoeuvrePrice } from '../../../../../../../shared/quote-taxi-allocation.js';
 
 export function inventoryItemCount(inventory: Inventory) {
   return (
@@ -64,6 +65,10 @@ export function canCreateFinalQuote(booking: Booking | null, date: string, noDat
 
 export function quoteConfigurationFromBooking(booking: Booking) {
   const quote = booking.quotes.at(-1);
+  const priceWithoutTaxi =
+    quote?.price && quote.pricingInput?.taxiFeeAmount
+      ? removeTaxiFromManoeuvrePrice(quote.price, quote.pricingInput.taxiFeeAmount)
+      : quote?.price;
   const sourcePrice = quote?.price ?? booking.estimate;
   const customPrice =
     sourcePrice.tier === 3
@@ -81,13 +86,20 @@ export function quoteConfigurationFromBooking(booking: Booking) {
     discountReason: quote?.price.discountReason ?? '',
     customPrice,
     labourUnitPriceOverride: labourUnitPriceOverrideFromQuote(
-      quote?.price,
+      priceWithoutTaxi,
       booking.pricingSettings,
       booking.workAccess,
     ),
     billingMode: quote?.billingMode ?? 'complete',
     menuIncluded: quote?.menuIncluded ?? false,
     overtimeMinutes: quote?.overtimeMinutes ?? 0,
+    taxiFeeApplied:
+      Boolean(quote?.pricingInput?.taxiFeeAmount) ||
+      (quote?.price.lines.some((line) => line.label.startsWith('Frais taxi')) ?? false),
+    taxiFeeAmountOverride:
+      quote?.pricingInput?.taxiFeeAmount ??
+      quote?.price.lines.find((line) => line.label === 'Frais taxi · montant modifié')?.total ??
+      null,
     rentalKit: quote?.rentalKit ?? null,
   };
   const tollLines = (quote?.tolls ?? []).map((line) => ({
