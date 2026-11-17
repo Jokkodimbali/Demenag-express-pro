@@ -13,11 +13,36 @@ const Account = lazy(() =>
 const Admin = lazy(() =>
   import('../../admin/dashboard/pages/Admin').then((m) => ({ default: m.Admin })),
 );
-const AdminCreateQuote = lazy(() =>
-  import('../../admin/quotes/pages/AdminCreateQuote').then((m) => ({
-    default: m.AdminCreateQuote,
-  })),
-);
+function loadQuoteSimulation(): Promise<void> {
+  if (window.DemSim) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = '/reference/loading-sim.js';
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Chargement de la simulation impossible.'));
+    document.head.appendChild(script);
+  });
+}
+function QuoteSimulationUnavailable() {
+  return (
+    <div className="container alert error" role="alert">
+      <p>Le calcul du devis est momentanément indisponible.</p>
+      <button type="button" className="button secondary" onClick={() => window.location.reload()}>
+        Réessayer
+      </button>
+    </div>
+  );
+}
+const AdminCreateQuote = lazy(async () => {
+  const [module, simulationReady] = await Promise.all([
+    import('../../admin/quotes/pages/AdminCreateQuote'),
+    loadQuoteSimulation()
+      .then(() => true)
+      .catch(() => false),
+  ]);
+  return { default: simulationReady ? module.AdminCreateQuote : QuoteSimulationUnavailable };
+});
 const AdminPlanning = lazy(() =>
   import('../../admin/planning/pages/AdminPlanning').then((m) => ({ default: m.AdminPlanning })),
 );
