@@ -18,6 +18,8 @@ export function defaultAdminQuoteConfig(): AdminQuoteConfig {
     overtimeMinutes: 0,
     taxiFeeApplied: false,
     taxiFeeAmountOverride: null,
+    taxiCompanyApproachAmountOverride: null,
+    taxiCompanyApproachAmountBasis: 'once',
     rentalKit: null,
   };
 }

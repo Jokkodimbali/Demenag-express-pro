@@ -122,6 +122,8 @@ export function cheaperCompatibleVehicle(input: {
       overtimeMinutes: 0,
       taxiFeeApplied: false,
       taxiFeeAmountOverride: null,
+      taxiCompanyApproachAmountOverride: null,
+      taxiCompanyApproachAmountBasis: 'once' as const,
       rentalKit: null,
     };
     return createAdminQuotePreview({

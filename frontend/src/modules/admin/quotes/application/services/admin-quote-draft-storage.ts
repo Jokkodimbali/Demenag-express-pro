@@ -18,6 +18,8 @@ export type AdminQuoteConfig = {
   overtimeMinutes: number;
   taxiFeeApplied: boolean;
   taxiFeeAmountOverride: number | null;
+  taxiCompanyApproachAmountOverride: number | null;
+  taxiCompanyApproachAmountBasis: 'once' | 'per-manoeuvre';
   rentalKit: RentalKitItem[] | null;
 };
 
@@ -74,6 +76,15 @@ export async function readAdminQuoteDraft(
           Number(parsed.quoteConfig.taxiFeeAmountOverride) >= 0
             ? Number(parsed.quoteConfig.taxiFeeAmountOverride)
             : null,
+        taxiCompanyApproachAmountOverride:
+          Number.isSafeInteger(parsed.quoteConfig.taxiCompanyApproachAmountOverride) &&
+          Number(parsed.quoteConfig.taxiCompanyApproachAmountOverride) >= 0
+            ? parsed.quoteConfig.taxiCompanyApproachAmountBasis === 'per-manoeuvre'
+              ? Number(parsed.quoteConfig.taxiCompanyApproachAmountOverride) *
+                Math.max(1, parsed.draft.options.labour)
+              : Number(parsed.quoteConfig.taxiCompanyApproachAmountOverride)
+            : null,
+        taxiCompanyApproachAmountBasis: 'once',
         rentalKit:
           parsed.quoteConfig.rentalKit === null || Array.isArray(parsed.quoteConfig.rentalKit)
             ? parsed.quoteConfig.rentalKit

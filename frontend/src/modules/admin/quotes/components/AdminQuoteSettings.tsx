@@ -12,6 +12,9 @@ type Model = ReturnType<typeof useAdminCreateQuoteModel>;
 export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalogue: Catalogue }) {
   const { showSuccessToast } = useApp();
   const [taxiAmountDraft, setTaxiAmountDraft] = useState<string | null>(null);
+  const [taxiCompanyApproachAmountDraft, setTaxiCompanyApproachAmountDraft] = useState<
+    string | null
+  >(null);
   const {
     quoteConfig,
     setQuoteConfig,
@@ -27,6 +30,9 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
     movingEstimate,
     economicCrew,
     taxiCrew,
+    taxiCompanyApproachDistanceKm,
+    taxiCompanyApproachBusy,
+    taxiCompanyApproachError,
     formulaPrices,
     cheaperVehicle,
   } = model;
@@ -39,12 +45,31 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
   const taxiRate = Math.max(0, quoteSettings.taxiFeePerKm ?? 0);
   const taxiTrips = Math.max(1, quoteConfig.trips);
   const taxiCalculatedAmount = Math.round(taxiDistanceKm * taxiRate);
-  const taxiAvailable = quoteConfig.billingMode !== 'driver-rental' && taxiCrew > 0;
+  const companyLocationConfigured =
+    quoteSettings.businessLatitude != null && quoteSettings.businessLongitude != null;
+  const taxiCompanyApproachCalculatedAmount = Math.round(
+    Math.max(0, taxiCompanyApproachDistanceKm ?? 0) * taxiRate,
+  );
+  const taxiAvailable =
+    quoteConfig.billingMode !== 'driver-rental' &&
+    taxiCrew > 0 &&
+    (!companyLocationConfigured || taxiCompanyApproachDistanceKm != null);
   const taxiAmount = quoteConfig.taxiFeeAmountOverride ?? taxiCalculatedAmount;
+  const taxiCompanyApproachAmount =
+    quoteConfig.taxiCompanyApproachAmountOverride ?? taxiCompanyApproachCalculatedAmount;
   const taxiDistanceLabel = new Intl.NumberFormat('fr-FR', {
     maximumFractionDigits: 1,
   }).format(taxiDistanceKm);
-  useEffect(() => setTaxiAmountDraft(null), [taxiDistanceKm, taxiRate, taxiTrips]);
+  const taxiCompanyApproachDistanceLabel =
+    taxiCompanyApproachDistanceKm == null
+      ? '—'
+      : new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(
+          taxiCompanyApproachDistanceKm,
+        );
+  useEffect(() => {
+    setTaxiAmountDraft(null);
+    setTaxiCompanyApproachAmountDraft(null);
+  }, [taxiDistanceKm, taxiRate, taxiTrips, taxiCompanyApproachDistanceKm]);
 
   function handleQuoteKindSelection(kind: 'provisional' | 'final') {
     if (kind === quoteKind) return;
@@ -351,7 +376,10 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
                   {!taxiAvailable
                     ? quoteConfig.billingMode === 'driver-rental'
                       ? 'Indisponibles pour la location avec chauffeur.'
-                      : 'Indisponibles sans manœuvre estimé.'
+                      : companyLocationConfigured &&
+                          (taxiCompanyApproachBusy || taxiCompanyApproachDistanceKm == null)
+                        ? 'Calcul de la distance depuis les locaux en cours ou indisponible.'
+                        : 'Indisponibles sans manœuvre estimé.'
                     : 'Calculés selon la distance et les allers-retours estimés.'}
                 </span>
               </div>
@@ -386,6 +414,12 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
                 <span>Allers-retours</span>
                 <strong>{taxiTrips}</strong>
               </div>
+              {companyLocationConfigured && (
+                <div className="admin-quote-taxi-field">
+                  <span>Locaux → départ client</span>
+                  <strong>{taxiCompanyApproachDistanceLabel} km</strong>
+                </div>
+              )}
               <label className="admin-quote-taxi-field admin-quote-taxi-amount">
                 <span>Montant taxi par aller-retour (FCFA)</span>
                 <input
@@ -412,17 +446,62 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
                   }}
                 />
               </label>
+              {companyLocationConfigured && (
+                <label className="admin-quote-taxi-field admin-quote-taxi-amount">
+                  <span>Trajet locaux → client (FCFA, une fois)</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="10000000"
+                    step="1"
+                    inputMode="numeric"
+                    aria-label="Frais du trajet depuis les locaux en FCFA"
+                    disabled={!taxiAvailable}
+                    value={
+                      taxiCompanyApproachAmountDraft ??
+                      quoteConfig.taxiCompanyApproachAmountOverride ??
+                      taxiCompanyApproachCalculatedAmount
+                    }
+                    onChange={(event) => {
+                      const value = event.currentTarget.value;
+                      setTaxiCompanyApproachAmountDraft(value);
+                      if (value === '') return;
+                      setQuoteConfig((current) => ({
+                        ...current,
+                        taxiFeeApplied: true,
+                        taxiCompanyApproachAmountOverride: Math.min(
+                          10_000_000,
+                          Math.max(0, Math.round(Number(value) || 0)),
+                        ),
+                      }));
+                    }}
+                    onBlur={(event) => {
+                      if (event.currentTarget.value === '') {
+                        setQuoteConfig((current) => ({
+                          ...current,
+                          taxiCompanyApproachAmountOverride: null,
+                        }));
+                        setTaxiCompanyApproachAmountDraft(null);
+                      }
+                    }}
+                  />
+                </label>
+              )}
             </div>
             <div className="admin-quote-taxi-summary">
               <span>
                 {quoteConfig.taxiFeeApplied && taxiAvailable
-                  ? `${money(taxiAmount)} × ${taxiTrips} aller(s)-retour(s), répartis sur ${taxiCrew} manœuvre${taxiCrew > 1 ? 's' : ''}`
+                  ? `(${money(taxiAmount)} × ${taxiTrips} aller(s)-retour(s) + ${money(taxiCompanyApproachAmount)} trajet locaux, une fois) ÷ ${taxiCrew} manœuvre${taxiCrew > 1 ? 's' : ''}`
                   : 'Montant non appliqué au devis'}
               </span>
               {quoteConfig.taxiFeeApplied && taxiAvailable && (
-                <strong>+{money((taxiAmount * taxiTrips) / taxiCrew)} par manœuvre</strong>
+                <strong>
+                  +{money((taxiAmount * taxiTrips + taxiCompanyApproachAmount) / taxiCrew)} par
+                  manœuvre
+                </strong>
               )}
             </div>
+            {taxiCompanyApproachError && <small role="alert">{taxiCompanyApproachError}</small>}
           </section>
         )}
         {(draft.questionnaireAnswers['key-stairs']?.startsWith('Non, par le balcon') ||

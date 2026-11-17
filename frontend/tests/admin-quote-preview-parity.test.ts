@@ -247,7 +247,7 @@ test('les frais taxi suivent les allers-retours et sont répartis sur les manœu
   const preview = createAdminQuotePreview(input);
   const labour = preview.previewLines.find((line) => line.label.startsWith('Manœuvres'));
   assert.equal(preview.taxiFeeLine?.total, 30_000);
-  assert.equal(preview.taxiFeeLine?.quantity, 30);
+  assert.equal(preview.taxiFeeLine?.quantity, 3);
   assert.equal(labour?.unitPrice, 12_500);
   assert.equal(labour?.total, 62_500);
   assert.equal(
@@ -272,4 +272,80 @@ test('les frais taxi suivent les allers-retours et sont répartis sur les manœu
     config: { ...config, billingMode: 'driver-rental' },
   });
   assert.equal(economic.taxiFeeLine, null);
+});
+
+test('les frais locaux et les taxis par rotation sont ajoutés aux manœuvres sans écart d’arrondi', () => {
+  const taxiSettings = {
+    ...settings,
+    taxiFeeEnabled: true,
+    taxiFeePerKm: 333,
+    businessLatitude: 14.69,
+    businessLongitude: -17.44,
+  };
+  const draft = blankDraft({ vehicles: [vehicle], settings: taxiSettings } as Catalogue);
+  draft.vehicleId = vehicle.id;
+  draft.route = {
+    id: 'route-taxi-rounding',
+    from: [14.7, -17.45],
+    to: [14.73, -17.48],
+    distanceKm: 10.25,
+    durationMinutes: 35,
+    geometry: [],
+    expiresAt: '2026-12-01T00:00:00.000Z',
+  };
+  draft.options = { labour: 5, desk: 0, wardrobe: 0, bed: 0 };
+  const config = { ...defaultAdminQuoteConfig(), trips: 3, taxiFeeApplied: true };
+  const input = {
+    draft,
+    estimateInventory: draft.inventory,
+    config,
+    vehicle,
+    estimate: null,
+    settings: taxiSettings,
+    price: null,
+    extras,
+    labourPrice: 6_500,
+    simulationNeeds: null,
+    taxiPickupDistanceKm: 5,
+  };
+
+  const preview = createAdminQuotePreview(input);
+  const withoutTaxi = createAdminQuotePreview({
+    ...input,
+    config: { ...config, taxiFeeApplied: false },
+  });
+  const submittedTaxiAmount = preview.taxiFeeLines.reduce(
+    (sum, line) => sum + Math.round(line.quantity * line.unitPrice),
+    0,
+  );
+  const previewLabour = preview.previewLines.find((line) => line.label.startsWith('Manœuvres'));
+  const baseLabour = withoutTaxi.previewLines.find((line) => line.label.startsWith('Manœuvres'));
+
+  assert.equal(preview.taxiFeeLines.length, 2);
+  assert.equal(preview.taxiFeeLines[0]?.quantity, 3);
+  assert.equal(preview.taxiFeeLines[0]?.unitPrice, 3_413);
+  assert.equal(preview.taxiFeeLines[0]?.total, 10_239);
+  assert.equal(preview.taxiFeeLines[1]?.quantity, 1);
+  assert.equal(preview.taxiFeeLines[1]?.total, 1_665);
+  assert.equal(submittedTaxiAmount, 11_904);
+  assert.equal(preview.total - withoutTaxi.total, 11_904);
+  assert.equal(previewLabour?.total - (baseLabour?.total ?? 0), 11_904);
+  assert.equal(previewLabour?.unitPrice, 8_880.8);
+
+  const adjusted = createAdminQuotePreview({
+    ...input,
+    config: {
+      ...config,
+      taxiFeeAmountOverride: 10_000,
+      taxiCompanyApproachAmountOverride: 2_000,
+    },
+  });
+  assert.equal(adjusted.taxiFeeLines[0]?.total, 30_000);
+  assert.equal(adjusted.taxiFeeLines[1]?.quantity, 1);
+  assert.equal(adjusted.taxiFeeLines[1]?.total, 2_000);
+  assert.equal(adjusted.total - withoutTaxi.total, 32_000);
+  assert.equal(
+    adjusted.previewLines.find((line) => line.label.startsWith('Manœuvres'))?.unitPrice,
+    12_900,
+  );
 });

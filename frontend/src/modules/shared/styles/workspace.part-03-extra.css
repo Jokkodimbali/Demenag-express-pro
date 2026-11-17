@@ -58,6 +58,126 @@
 .reference-company-fields input {
   font-weight: 400;
 }
+.company-location-picker {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding-top: 14px;
+  border-top: 1px solid #3b4046;
+}
+.company-location-heading {
+  display: grid;
+  gap: 5px;
+}
+.company-location-heading strong {
+  color: #f4f5f6;
+  font-size: 13px;
+}
+.company-location-heading span,
+.company-location-status {
+  color: #aeb4bb;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.company-location-search {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+.company-location-search input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid #3b4046;
+  border-radius: 10px;
+  background: #1e2023;
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+}
+.company-location-search button,
+.company-location-results button {
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid #4a5057;
+  border-radius: 10px;
+  background: #1e2023;
+  color: #f4f5f6;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.company-location-search button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+.company-location-current {
+  justify-self: start;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid #665b22;
+  border-radius: 9px;
+  background: #383116;
+  color: #f6d73c;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.company-location-current:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+.company-location-results {
+  display: grid;
+  gap: 6px;
+  max-height: 180px;
+  overflow: auto;
+}
+.company-location-results button {
+  width: 100%;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.company-location-map {
+  z-index: 0;
+  width: 100%;
+  height: clamp(240px, 38vw, 380px);
+  overflow: hidden;
+  border: 1px solid #3b4046;
+  border-radius: 12px;
+  background: #1e2023;
+}
+.company-location-marker-host {
+  border: 0;
+  background: transparent;
+}
+.company-location-marker {
+  display: block;
+  width: 20px;
+  height: 20px;
+  border: 3px solid #fff;
+  border-radius: 50% 50% 50% 0;
+  background: #f6d73c;
+  box-shadow: 0 2px 10px #0009;
+  transform: rotate(-45deg);
+}
+.company-location-status {
+  display: grid;
+  gap: 4px;
+  overflow-wrap: anywhere;
+}
+.company-location-status [role='alert'] {
+  color: #ff8d8d;
+}
+@media (max-width: 520px) {
+  .company-location-search {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 .reference-quote-terms textarea {
   min-height: 220px;
   resize: vertical;

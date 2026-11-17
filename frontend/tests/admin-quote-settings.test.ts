@@ -78,3 +78,38 @@ test('un devis enregistré recharge son montant taxi par aller-retour', () => {
   assert.equal(restored.taxiFeeApplied, true);
   assert.equal(restored.taxiFeeAmountOverride, 10_000);
 });
+
+test('un ancien frais locaux unique reste compté une fois à la réouverture', () => {
+  const price: Price = {
+    lines: [{ label: 'Manœuvres', quantity: 5, unitPrice: 7_500, total: 37_500 }],
+    total: 37_500,
+    discount: 0,
+    tier: 0,
+    trips: 3,
+    currency: 'XOF',
+  };
+  const booking = {
+    estimate: { ...price, trips: 1 },
+    pricingSettings: { labourPrice: 6_500 } as Settings,
+    quotes: [
+      {
+        id: 'quote-legacy-approach',
+        reference: 'DV-3',
+        kind: 'provisional',
+        createdAt: '2026-11-17T00:00:00.000Z',
+        price,
+        notes: '',
+        pricingInput: {
+          taxiFeeAmount: 5_000,
+          extraLines: [
+            { label: 'Frais taxi · approche entreprise', quantity: 1, unitPrice: 5_000 },
+          ],
+        },
+      },
+    ],
+  } as Booking;
+
+  const restored = quoteConfigurationFromBooking(booking).config;
+
+  assert.equal(restored.taxiCompanyApproachAmountOverride, 5_000);
+});

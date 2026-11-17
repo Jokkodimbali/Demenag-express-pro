@@ -17,6 +17,7 @@ import {
 import { referenceTierLabels } from '../../../../shared/application/presentation/format';
 import { referenceTrafficDetails } from '../../../../moving/domain/routing/reference-traffic';
 import { useAdminQuoteTraffic } from './useAdminQuoteTraffic';
+import { useCompanyApproachDistance } from './useCompanyApproachDistance';
 import type { AccountingEntry, Options, Quote } from '../../../../shared/domain/model';
 import { defaultClientQuestions } from '../../../../booking/domain/questionnaire';
 import { quoteNotificationUrl } from '../services/quote-notification';
@@ -599,6 +600,11 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         : null,
     [estimateInventory, selected, quoteSettings?.movingLaborPlanning],
   );
+  const taxiCompanyApproach = useCompanyApproachDistance(
+    quoteSettings?.businessLatitude,
+    quoteSettings?.businessLongitude,
+    draft.route?.from,
+  );
   const preview = createAdminQuotePreview({
     draft,
     estimateInventory,
@@ -613,6 +619,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       editingBooking?.pricingSnapshot || latestSavedQuote?.pricingInput?.taxiFeeAmount,
     ),
     simulationNeeds: rentalKitNeeds,
+    taxiPickupDistanceKm: taxiCompanyApproach.distanceKm,
   });
   const formulaPrices = {
     economic: createAdminQuotePreview({
@@ -634,6 +641,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         editingBooking?.pricingSnapshot || latestSavedQuote?.pricingInput?.taxiFeeAmount,
       ),
       simulationNeeds: rentalKitNeeds,
+      taxiPickupDistanceKm: taxiCompanyApproach.distanceKm,
     }).total,
     standard: createAdminQuotePreview({
       draft,
@@ -649,6 +657,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         editingBooking?.pricingSnapshot || latestSavedQuote?.pricingInput?.taxiFeeAmount,
       ),
       simulationNeeds: rentalKitNeeds,
+      taxiPickupDistanceKm: taxiCompanyApproach.distanceKm,
     }).total,
     complete: createAdminQuotePreview({
       draft,
@@ -664,6 +673,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         editingBooking?.pricingSnapshot || latestSavedQuote?.pricingInput?.taxiFeeAmount,
       ),
       simulationNeeds: rentalKitNeeds,
+      taxiPickupDistanceKm: taxiCompanyApproach.distanceKm,
     }).total,
   };
   const economicMovingEstimate = useMemo(
@@ -691,7 +701,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     tier: previewTier,
     rentalKit,
     rentalOvertimeAmount,
-    taxiFeeLine,
+    taxiFeeLines,
     taxiCrew,
     manoeuvreOvertime,
     previewLines,
@@ -1069,6 +1079,9 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     bounds,
     tiers,
     effectiveDistance,
+    taxiCompanyApproachDistanceKm: taxiCompanyApproach.distanceKm,
+    taxiCompanyApproachBusy: taxiCompanyApproach.busy,
+    taxiCompanyApproachError: taxiCompanyApproach.error,
     estimatedTravelMinutes,
     freeTravelMinutes,
     trafficCoefficient,
@@ -1079,7 +1092,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     previewLines,
     rentalKit,
     rentalOvertimeAmount,
-    taxiFeeLine,
+    taxiFeeLines,
     taxiCrew,
     manoeuvreOvertimeLine: manoeuvreOvertime,
     previewSubtotal,

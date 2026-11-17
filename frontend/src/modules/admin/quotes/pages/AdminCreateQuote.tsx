@@ -104,7 +104,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
     previewTier,
     previewSubtotal,
     previewDiscount,
-    taxiFeeLine,
+    taxiFeeLines,
     manoeuvreOvertimeLine,
     confirmVehicleFit,
     onTollToggle,
@@ -372,15 +372,11 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
               ? { ...draft.options, labour: movingEstimate.crew }
               : draft.options,
             [
-              ...(taxiFeeLine
-                ? [
-                    {
-                      label: taxiFeeLine.label,
-                      quantity: taxiFeeLine.quantity,
-                      unitPrice: taxiFeeLine.unitPrice,
-                    },
-                  ]
-                : []),
+              ...taxiFeeLines.map((line) => ({
+                label: line.label,
+                quantity: line.quantity,
+                unitPrice: line.unitPrice,
+              })),
               ...(manoeuvreOvertimeLine ? [manoeuvreOvertimeLine] : []),
             ],
             submittedKind,

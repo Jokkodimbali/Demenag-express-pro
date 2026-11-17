@@ -32,6 +32,7 @@ export function createAdminQuotePreview(input: {
   labourPrice: number;
   applySnapshotLabourPrice?: boolean;
   simulationNeeds: { blankets: number; straps: number } | null;
+  taxiPickupDistanceKm?: number | null;
 }) {
   const {
     draft,
@@ -90,13 +91,16 @@ export function createAdminQuotePreview(input: {
       : 0;
   const taxiDistance = Math.max(0, draft.distanceKmOverride ?? draft.route?.distanceKm ?? 0);
   const taxiTrips = Math.max(1, config.trips);
-  const calculatedTaxiFeeAmount = Math.round(
-    taxiDistance * Math.max(0, settings?.taxiFeePerKm ?? 0),
-  );
-  const taxiFeeAmount =
-    settings?.taxiFeeEnabled && config.taxiFeeApplied && config.billingMode !== 'driver-rental'
-      ? (config.taxiFeeAmountOverride ?? calculatedTaxiFeeAmount) * taxiTrips
-      : 0;
+  const taxiRate = Math.max(0, settings?.taxiFeePerKm ?? 0);
+  const taxiRoundTripAmount = config.taxiFeeAmountOverride ?? Math.round(taxiDistance * taxiRate);
+  const taxiCompanyApproachAmount =
+    config.taxiCompanyApproachAmountOverride ??
+    Math.round(Math.max(0, input.taxiPickupDistanceKm ?? 0) * taxiRate);
+  const taxiAvailable =
+    settings?.taxiFeeEnabled &&
+    config.taxiFeeApplied &&
+    config.billingMode !== 'driver-rental' &&
+    (settings.businessLatitude == null || input.taxiPickupDistanceKm != null);
   const manoeuvreOvertime = manoeuvreOvertimeLine(
     estimate,
     settings?.movingLaborPlanning,
@@ -192,19 +196,37 @@ export function createAdminQuotePreview(input: {
       : []),
   ];
   const taxiCrew = manoeuvreCount(basePreviewLines);
-  const taxiFeeLine =
-    taxiFeeAmount > 0 && taxiCrew > 0
-      ? {
-          label:
-            config.taxiFeeAmountOverride === null ? 'Frais taxi' : 'Frais taxi · montant modifié',
-          quantity: config.taxiFeeAmountOverride === null ? taxiDistance * taxiTrips : taxiTrips,
-          unitPrice:
-            config.taxiFeeAmountOverride === null
-              ? (settings?.taxiFeePerKm ?? 0)
-              : config.taxiFeeAmountOverride,
-          total: taxiFeeAmount,
-        }
-      : null;
+  const taxiCompanyApproachTotal = taxiCompanyApproachAmount;
+  const taxiFeeAmount =
+    taxiCrew > 0 && taxiAvailable ? taxiRoundTripAmount * taxiTrips + taxiCompanyApproachTotal : 0;
+  const taxiFeeLines: QuoteLine[] =
+    taxiCrew > 0 && taxiAvailable
+      ? [
+          ...(taxiRoundTripAmount > 0
+            ? [
+                {
+                  label:
+                    config.taxiFeeAmountOverride === null
+                      ? 'Frais taxi · déménagement'
+                      : 'Frais taxi · montant modifié',
+                  quantity: taxiTrips,
+                  unitPrice: taxiRoundTripAmount,
+                  total: taxiRoundTripAmount * taxiTrips,
+                },
+              ]
+            : []),
+          ...(taxiCompanyApproachAmount > 0
+            ? [
+                {
+                  label: 'Frais taxi · approche entreprise',
+                  quantity: 1,
+                  unitPrice: taxiCompanyApproachAmount,
+                  total: taxiCompanyApproachTotal,
+                },
+              ]
+            : []),
+        ]
+      : [];
   const baseSubtotal = basePreviewLines.reduce((sum, line) => sum + line.total, 0);
   const discount =
     config.discountType === 'pct'
@@ -224,18 +246,21 @@ export function createAdminQuotePreview(input: {
       trips: config.trips,
       currency: 'XOF',
     },
-    taxiFeeLine?.total ?? 0,
+    taxiFeeAmount,
   );
   const previewLines = priceSnapshot.lines;
   const subtotal = previewLines.reduce((sum, line) => sum + line.total, 0);
-  const total = baseSubtotal - discount + (taxiFeeLine?.total ?? 0);
+  const total = baseSubtotal - discount + taxiFeeAmount;
   return {
     tier,
     transportUnit,
     transportLines,
     rentalKit,
     rentalOvertimeAmount,
-    taxiFeeLine,
+    taxiFeeLines,
+    taxiFeeLine:
+      taxiFeeLines.find((line) => !line.label.startsWith('Frais taxi · approche entreprise')) ??
+      null,
     taxiCrew,
     manoeuvreOvertime,
     lines,

@@ -1,6 +1,6 @@
 # Règles de calcul
 
-Document relevé dans le code du dépôt le 12 novembre 2026. Les calculs ne sont pas tous réalisés au même endroit : l’estimation de durée est dans le frontend ; le montant définitif est calculé côté backend. Les valeurs initiales peuvent être remplacées par les paramètres enregistrés dans PostgreSQL. Une modification du code source doit être accompagnée de la mise à jour des tests correspondants.
+Document relevé dans le code du dépôt et mis à jour le 17 novembre 2026. Les calculs ne sont pas tous réalisés au même endroit : l’estimation de durée est dans le frontend ; le montant définitif est calculé côté backend. Les valeurs initiales peuvent être remplacées par les paramètres enregistrés dans PostgreSQL. Une modification du code source doit être accompagnée de la mise à jour des tests correspondants.
 
 ## Repères monétaires et unités
 
@@ -53,14 +53,80 @@ Si le pourcentage de trajets suivants est 100 %, une ligne de quantité égale a
 
 Les valeurs historiques de départ sont 6 500 FCFA de main-d’œuvre de base, 500 FCFA par étage et 500 FCFA par côté avec ascenseur. La grille détaillée de main-d’œuvre peut contenir des prix par étages et types d’accès et être persistée.
 
+## Frais taxi ajoutés aux manœuvres
+
+Les frais taxi sont calculés par devis et intégrés au montant de la ligne **Manœuvres**. Ils ne sont pas présentés comme une ligne taxi distincte au client.
+
+### Valeurs utilisées
+
+| Symbole | Valeur                                                                                                                                                                            |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `d`     | Distance du déménagement en km : distance modifiée par l’administrateur si elle existe, sinon distance de l’itinéraire du devis                                                   |
+| `d₀`    | Distance routière en km entre les locaux de l’entreprise et le point de départ du client                                                                                          |
+| `p`     | Tarif taxi en FCFA par km, réglé dans les paramètres                                                                                                                              |
+| `R`     | Nombre d’allers-retours retenu dans le devis : estimation automatique du chargement ou nombre saisi en mode manuel. Un aller-retour correspond à un chargement et un déchargement |
+| `N`     | Quantité de manœuvres facturées retenue dans le devis                                                                                                                             |
+
+### Formule
+
+1. Calculer le trajet des locaux vers le client **une seule fois par devis** :
+
+   `F_locaux = arrondi(d₀ × p)`
+
+2. Calculer le taxi nécessaire aux rotations du déménagement :
+
+   `F_rotation = arrondi(d × p)`
+
+   `F_déménagement = F_rotation × R`
+
+3. Additionner ces deux frais, puis répartir le total sur les manœuvres :
+
+   `F_total = F_locaux + F_déménagement`
+
+   `Ajout par manœuvre = F_total ÷ N`
+
+   `Prix unitaire des manœuvres = prix unitaire de base + ajout par manœuvre`
+
+Le trajet des locaux n’est pas multiplié par `R` ni par `N` : son montant est compté une fois dans `F_total`, puis sa part est répartie sur les `N` manœuvres. Seul le taxi du déménagement est multiplié par le nombre de rotations.
+
+Les distances sont calculées depuis l’itinéraire du devis et, pour le trajet des locaux, depuis les coordonnées enregistrées dans les paramètres de l’entreprise jusqu’au départ du client. Chaque montant calculé à partir d’une distance est arrondi au FCFA le plus proche avant multiplication par les rotations.
+
+### Montants modifiables
+
+- **Montant taxi par aller-retour** : remplace `F_rotation`, puis reste multiplié par `R`.
+- **Trajet locaux → client, une fois** : remplace `F_locaux` et n’est ajouté qu’une fois.
+
+Les montants saisis restent enregistrés avec le devis. À sa réouverture, l’application reprend les valeurs sauvegardées et les répartit sur la quantité de manœuvres du devis.
+
+### Exemple
+
+Avec `N = 5` manœuvres, un trajet locaux → client réglé à 10 000 FCFA, un taxi de déménagement à 6 500 FCFA par aller-retour et `R = 3` :
+
+| Calcul                                     |     Montant |
+| ------------------------------------------ | ----------: |
+| Trajet des locaux, une fois                | 10 000 FCFA |
+| Taxi du déménagement : 6 500 × 3 rotations | 19 500 FCFA |
+| Total ajouté aux manœuvres                 | 29 500 FCFA |
+| Ajout réparti par manœuvre : 29 500 ÷ 5    |  5 900 FCFA |
+
+Si le prix de base est de 6 500 FCFA par manœuvre, le nouveau prix unitaire est de 12 400 FCFA. Le total du devis augmente de 29 500 FCFA.
+
+### Conditions d’application et remise
+
+Les frais sont appliqués seulement si l’option taxi est activée dans les paramètres et dans le devis, si au moins une manœuvre est facturée et si la formule n’est pas **Économique / location avec chauffeur**. Quand les coordonnées des locaux sont configurées, l’option reste indisponible jusqu’au calcul de l’itinéraire vers le départ du client.
+
+La remise générale est calculée sur le sous-total de base du devis. Les frais taxi sont ensuite ajoutés au prix des manœuvres : la remise ne réduit donc pas ces frais.
+
+Code source associé : `frontend/src/modules/admin/quotes/application/services/admin-quote-preview.ts` pour l’aperçu, `shared/quote-taxi-allocation.js` pour la répartition sur les manœuvres, et `backend/src/application/services/moving/moving-quote.ts` pour le calcul enregistré.
+
 ### Remises, extras et total
 
 | Étape                          | Calcul/validation                                                                                 |
 | ------------------------------ | ------------------------------------------------------------------------------------------------- |
-| Sous-total                     | Somme des montants de chaque ligne, extras compris                                                |
+| Sous-total de base             | Somme des lignes du devis avant ajout des frais taxi                                              |
 | Remise en pourcentage          | `round(sousTotal × min(100, remise) / 100)`                                                       |
 | Remise fixe                    | `min(remiseFCFA, sousTotal)`                                                                      |
-| Total final                    | `sousTotal − remise effective`                                                                    |
+| Total final                    | `sousTotal de base − remise effective + frais taxi`                                               |
 | Ligne extra                    | `round(quantité × prixUnitaire)` ; libellé, quantité et prix doivent passer la validation backend |
 | Montant de ligne et sous-total | Doivent rester entiers sûrs et sous la limite maximale stockable                                  |
 

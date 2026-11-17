@@ -176,6 +176,8 @@ export type Settings = BookingRules & {
   contactLastTemplate?: string;
   businessName: string;
   businessAddress: string;
+  businessLatitude?: number | null;
+  businessLongitude?: number | null;
   businessEmail?: string;
   businessNinea?: string;
   businessRccm?: string;

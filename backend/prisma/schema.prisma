@@ -170,6 +170,8 @@ model ParametreApplication {
   modeleNomContactWhatsapp        String  @default("{nom} · {date}") @map("contact_last_template")
   nomEntreprise                 String  @default("Demenag Express") @map("business_name")
   adresseEntreprise             String  @default("Dakar, Sénégal") @map("business_address")
+  latitudeEntreprise            Float?  @map("business_latitude")
+  longitudeEntreprise           Float?  @map("business_longitude")
   emailEntreprise               String  @default("") @map("business_email")
   nineaEntreprise               String  @default("") @map("business_ninea")
   rccmEntreprise                String  @default("") @map("business_rccm")

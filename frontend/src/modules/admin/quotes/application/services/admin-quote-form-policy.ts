@@ -73,6 +73,9 @@ export function quoteSettingsForEditing(
     ...bookingSettings,
     taxiFeeEnabled: currentSettings.taxiFeeEnabled ?? bookingSettings.taxiFeeEnabled ?? false,
     taxiFeePerKm: currentSettings.taxiFeePerKm ?? bookingSettings.taxiFeePerKm ?? 0,
+    businessLatitude: currentSettings.businessLatitude ?? bookingSettings.businessLatitude ?? null,
+    businessLongitude:
+      currentSettings.businessLongitude ?? bookingSettings.businessLongitude ?? null,
   };
 }
 
@@ -92,6 +95,26 @@ export function quoteConfigurationFromBooking(booking: Booking) {
     quote?.pricingInput?.taxiFeeAmount ??
     quote?.price.lines.find((line) => line.label === 'Frais taxi · montant modifié')?.total ??
     null;
+  const savedTaxiRoundTripOverride =
+    quote?.pricingInput?.extraLines?.find((line) => line.label === 'Frais taxi · montant modifié')
+      ?.unitPrice ??
+    (!quote?.pricingInput?.extraLines?.length &&
+    quote?.price.lines.find((line) => line.label === 'Frais taxi · montant modifié')?.total != null
+      ? Math.round(
+          quote.price.lines.find((line) => line.label === 'Frais taxi · montant modifié')!.total /
+            taxiTrips,
+        )
+      : !quote?.pricingInput?.extraLines?.length && savedTaxiFeeAmount != null
+        ? Math.round(savedTaxiFeeAmount / taxiTrips)
+        : null);
+  const savedPerManoeuvreApproachLine = quote?.pricingInput?.extraLines?.find(
+    (line) => line.label === 'Frais taxi · approche entreprise par manœuvre',
+  );
+  const savedTaxiCompanyApproachOverride = savedPerManoeuvreApproachLine
+    ? Math.round(savedPerManoeuvreApproachLine.quantity * savedPerManoeuvreApproachLine.unitPrice)
+    : quote?.pricingInput?.extraLines?.find(
+        (line) => line.label === 'Frais taxi · approche entreprise',
+      )?.unitPrice;
   const priceWithoutTaxi =
     quote?.price && savedTaxiFeeAmount
       ? removeTaxiFromManoeuvrePrice(quote.price, savedTaxiFeeAmount)
@@ -123,8 +146,9 @@ export function quoteConfigurationFromBooking(booking: Booking) {
     taxiFeeApplied:
       Boolean(savedTaxiFeeAmount) ||
       (quote?.price.lines.some((line) => line.label.startsWith('Frais taxi')) ?? false),
-    taxiFeeAmountOverride:
-      savedTaxiFeeAmount === null ? null : Math.round(savedTaxiFeeAmount / taxiTrips),
+    taxiFeeAmountOverride: savedTaxiRoundTripOverride ?? null,
+    taxiCompanyApproachAmountOverride: savedTaxiCompanyApproachOverride ?? null,
+    taxiCompanyApproachAmountBasis: 'once',
     rentalKit: quote?.rentalKit ?? null,
   };
   const tollLines = (quote?.tolls ?? []).map((line) => ({

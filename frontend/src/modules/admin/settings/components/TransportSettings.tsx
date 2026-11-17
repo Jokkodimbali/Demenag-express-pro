@@ -168,6 +168,7 @@ export function TransportSettings({
   onSaveVehicleDimensions,
   vehicleDimensionsBusy,
   vehicleDimensionsError,
+  onSaveBusinessLocation,
 }: {
   catalogue: Catalogue;
   onSaveInventoryCatalog: (types: CustomInventoryType[], hiddenKeys: string[]) => Promise<void>;
@@ -177,6 +178,7 @@ export function TransportSettings({
   onSaveVehicleDimensions: (vehicle: Vehicle) => Promise<void>;
   vehicleDimensionsBusy: boolean;
   vehicleDimensionsError: string;
+  onSaveBusinessLocation: (latitude: number, longitude: number) => Promise<void>;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [scenario, setScenario] = useState<LabourMatrixScenario>('none');
@@ -869,7 +871,10 @@ export function TransportSettings({
           'Documents et communication',
           `Entreprise · conditions générales · paiement ${paymentMethods} · WhatsApp`,
           <>
-            <CompanyQuoteSettings catalogue={catalogue} />
+            <CompanyQuoteSettings
+              catalogue={catalogue}
+              onSaveBusinessLocation={onSaveBusinessLocation}
+            />
             <QuoteTermsSettings catalogue={catalogue} />
             <PaymentSettings catalogue={catalogue} />
             <ReferenceWhatsappSettings catalogue={catalogue} />

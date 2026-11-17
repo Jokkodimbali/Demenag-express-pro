@@ -56,6 +56,9 @@ export function Settings() {
         onSaveVehicleDimensions={saveVehicleDimensions}
         vehicleDimensionsBusy={vehicleDimensionsBusy}
         vehicleDimensionsError={vehicleDimensionsError}
+        onSaveBusinessLocation={(latitude, longitude) =>
+          updateSettings({ businessLatitude: latitude, businessLongitude: longitude })
+        }
       />
       {error && (
         <p role="alert" className="alert error">

@@ -660,6 +660,8 @@ export const catalogueSchema = z.object({
     contactLastTemplate: z.string().max(200).default('{nom} · {date}'),
     businessName: z.string().trim().min(2).max(100),
     businessAddress: z.string().trim().max(300).default(''),
+    businessLatitude: z.number().finite().min(-90).max(90).nullable().optional(),
+    businessLongitude: z.number().finite().min(-180).max(180).nullable().optional(),
     businessEmail: z.string().trim().max(200).default(''),
     businessNinea: z.string().trim().max(100).default(''),
     businessRccm: z.string().trim().max(100).default(''),
@@ -730,7 +732,10 @@ export const catalogueSchema = z.object({
       .max(100)
       .optional(),
     hiddenInventoryKeys: z.array(z.string().max(100)).max(100).optional(),
-  }),
+  }).refine(
+    (settings) => (settings.businessLatitude == null) === (settings.businessLongitude == null),
+    { message: 'Renseignez les deux coordonnées de l’entreprise.', path: ['businessLatitude'] },
+  ),
 });
 
 export const employeeProofSchema = z.object({

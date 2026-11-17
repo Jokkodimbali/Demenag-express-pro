@@ -2,8 +2,15 @@ import { visibleUiText } from '../../../shared/content/visible-ui-text';
 import type { Catalogue } from '../../../shared/domain/model';
 import { referenceSettingsText as text } from '../../../shared/content/reference-settings-text';
 import { sanitizePhoneInput } from '../../../shared/domain/phone-number';
+import { CompanyLocationPicker } from './CompanyLocationPicker';
 
-export function CompanyQuoteSettings({ catalogue }: { catalogue: Catalogue }) {
+export function CompanyQuoteSettings({
+  catalogue,
+  onSaveBusinessLocation,
+}: {
+  catalogue: Catalogue;
+  onSaveBusinessLocation: (latitude: number, longitude: number) => Promise<void>;
+}) {
   return (
     <section className="reference-settings-wide reference-settings-card">
       <span className="reference-settings-card-title">{text.companyTitle}</span>
@@ -77,6 +84,12 @@ export function CompanyQuoteSettings({ catalogue }: { catalogue: Catalogue }) {
           />
         </label>
       </div>
+      <CompanyLocationPicker
+        latitude={catalogue.settings.businessLatitude}
+        longitude={catalogue.settings.businessLongitude}
+        address={catalogue.settings.businessAddress}
+        onSave={onSaveBusinessLocation}
+      />
     </section>
   );
 }
