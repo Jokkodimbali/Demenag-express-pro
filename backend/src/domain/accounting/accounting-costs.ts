@@ -62,8 +62,12 @@ export function captureAccountingCosts(
         (providedCrew && providedCrew > 0 ? providedCrew : 0) ||
         source?.crew ||
         booking.inventorySnapshot?.moverCount ||
-        price.lines.find((line) => /man[œo]uvre/i.test(line.label))?.quantity ||
-        booking.estimate.lines.find((line) => /man[œo]uvre/i.test(line.label))?.quantity ||
+        price.lines
+          .filter((line) => /man[œo]uvre/i.test(line.label) && !/heures au-delà/i.test(line.label))
+          .reduce((sum, line) => sum + line.quantity, 0) ||
+        booking.estimate.lines
+          .filter((line) => /man[œo]uvre/i.test(line.label) && !/heures au-delà/i.test(line.label))
+          .reduce((sum, line) => sum + line.quantity, 0) ||
         0;
   let carpenters = 0;
   let carpenterAmount = 0;

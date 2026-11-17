@@ -90,31 +90,37 @@ export function quoteConfigWithManualTaxiFee(config: AdminQuoteConfig, value: st
 
 export function quoteConfigurationFromBooking(booking: Booking) {
   const quote = booking.quotes.at(-1);
+  const pricingInput = quote?.pricingInput;
   const taxiTrips = Math.max(1, quote?.price.trips ?? booking.estimate.trips);
   const savedTaxiFeeAmount =
     quote?.pricingInput?.taxiFeeAmount ??
     quote?.price.lines.find((line) => line.label === 'Frais taxi · montant modifié')?.total ??
     null;
-  const savedTaxiRoundTripOverride =
-    quote?.pricingInput?.extraLines?.find((line) => line.label === 'Frais taxi · montant modifié')
-      ?.unitPrice ??
-    (!quote?.pricingInput?.extraLines?.length &&
-    quote?.price.lines.find((line) => line.label === 'Frais taxi · montant modifié')?.total != null
-      ? Math.round(
-          quote.price.lines.find((line) => line.label === 'Frais taxi · montant modifié')!.total /
-            taxiTrips,
-        )
-      : !quote?.pricingInput?.extraLines?.length && savedTaxiFeeAmount != null
-        ? Math.round(savedTaxiFeeAmount / taxiTrips)
-        : null);
   const savedPerManoeuvreApproachLine = quote?.pricingInput?.extraLines?.find(
     (line) => line.label === 'Frais taxi · approche entreprise par manœuvre',
   );
-  const savedTaxiCompanyApproachOverride = savedPerManoeuvreApproachLine
-    ? Math.round(savedPerManoeuvreApproachLine.quantity * savedPerManoeuvreApproachLine.unitPrice)
-    : quote?.pricingInput?.extraLines?.find(
-        (line) => line.label === 'Frais taxi · approche entreprise',
-      )?.unitPrice;
+  const hasSavedApproachOverride =
+    pricingInput != null && 'taxiCompanyApproachAmountOverride' in pricingInput;
+  const savedTaxiCompanyApproachOverride = hasSavedApproachOverride
+    ? (pricingInput.taxiCompanyApproachAmountOverride ?? null)
+    : savedPerManoeuvreApproachLine
+      ? Math.round(savedPerManoeuvreApproachLine.quantity * savedPerManoeuvreApproachLine.unitPrice)
+      : pricingInput?.extraLines?.find((line) => line.label === 'Frais taxi · approche entreprise')
+          ?.unitPrice;
+  const savedRoundTripLine = quote?.pricingInput?.extraLines?.find(
+    (line) => line.label === 'Frais taxi · montant modifié',
+  );
+  const hasSavedRoundTripOverride =
+    pricingInput != null && 'taxiRoundTripAmountOverride' in pricingInput;
+  const savedTaxiRoundTripOverride = hasSavedRoundTripOverride
+    ? (pricingInput.taxiRoundTripAmountOverride ?? null)
+    : (savedRoundTripLine?.unitPrice ??
+      (savedTaxiFeeAmount != null
+        ? Math.round(
+            Math.max(0, savedTaxiFeeAmount - (savedTaxiCompanyApproachOverride ?? 0)) / taxiTrips,
+          )
+        : (quote?.price.lines.find((line) => line.label === 'Frais taxi · montant modifié')
+            ?.total ?? null)));
   const priceWithoutTaxi =
     quote?.price && savedTaxiFeeAmount
       ? removeTaxiFromManoeuvrePrice(quote.price, savedTaxiFeeAmount)
@@ -150,6 +156,12 @@ export function quoteConfigurationFromBooking(booking: Booking) {
     taxiCompanyApproachAmountOverride: savedTaxiCompanyApproachOverride ?? null,
     taxiCompanyApproachAmountBasis: 'once',
     rentalKit: quote?.rentalKit ?? null,
+    customLines: (quote?.pricingInput?.customLines ?? []).map((line, index) => ({
+      id: `saved-custom-${index + 1}`,
+      label: line.label,
+      quantity: line.quantity,
+      unitPrice: line.unitPrice,
+    })),
   };
   const tollLines = (quote?.tolls ?? []).map((line) => ({
     id: line.tollPointId,

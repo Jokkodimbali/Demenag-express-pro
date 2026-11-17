@@ -106,3 +106,45 @@ test('un prix de manœuvre personnalisé est conservé, un prix automatique suit
   };
   assert.equal(liveBookingPrice(custom, updated).lines[1]?.unitPrice, 7500);
 });
+
+test('le recalcul du devis provisoire conserve les frais taxi répartis en FCFA entiers', () => {
+  const taxiPrice: Price = {
+    ...price,
+    total: 101_904,
+    lines: [
+      { label: 'Transport Sprinter', quantity: 2, unitPrice: 30_000, total: 60_000 },
+      { label: 'Manœuvre', quantity: 1, unitPrice: 8_380, total: 8_380 },
+      { label: 'Manœuvre', quantity: 4, unitPrice: 8_381, total: 33_524 },
+    ],
+  };
+  const savedQuote = {
+    id: 'quote-with-taxi',
+    reference: 'DV-TAXI',
+    kind: 'provisional',
+    createdAt: '2026-11-17T00:00:00.000Z',
+    price: taxiPrice,
+    notes: '',
+    pricingInput: { taxiFeeAmount: 11_904, labourUnitPriceOverride: null },
+  };
+  const taxiBooking = {
+    ...booking,
+    estimate: taxiPrice,
+    quotes: [savedQuote],
+  } as unknown as Booking;
+  const result = liveBookingPrice(taxiBooking, {
+    ...catalogue,
+    vehicles: [{ ...booking.vehicle, prices: [30_000, 37_000, 44_000] }],
+  });
+  const manoeuvres = result.lines.filter((line) => line.label.startsWith('Manœuvre'));
+
+  assert.equal(
+    manoeuvres.reduce((sum, line) => sum + line.quantity, 0),
+    5,
+  );
+  assert.equal(
+    manoeuvres.reduce((sum, line) => sum + line.total, 0),
+    41_904,
+  );
+  assert.ok(manoeuvres.every((line) => Number.isInteger(line.unitPrice)));
+  assert.equal(result.total, 101_904);
+});

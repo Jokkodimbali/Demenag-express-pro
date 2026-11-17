@@ -125,6 +125,7 @@ export function cheaperCompatibleVehicle(input: {
       taxiCompanyApproachAmountOverride: null,
       taxiCompanyApproachAmountBasis: 'once' as const,
       rentalKit: null,
+      customLines: [],
     };
     return createAdminQuotePreview({
       draft,

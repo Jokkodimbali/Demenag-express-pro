@@ -53,10 +53,12 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
   const taxiAvailable =
     quoteConfig.billingMode !== 'driver-rental' &&
     taxiCrew > 0 &&
-    (!companyLocationConfigured || taxiCompanyApproachDistanceKm != null);
+    companyLocationConfigured &&
+    taxiCompanyApproachDistanceKm != null;
   const taxiAmount = quoteConfig.taxiFeeAmountOverride ?? taxiCalculatedAmount;
   const taxiCompanyApproachAmount =
     quoteConfig.taxiCompanyApproachAmountOverride ?? taxiCompanyApproachCalculatedAmount;
+  const taxiTotalAmount = taxiAmount * taxiTrips + taxiCompanyApproachAmount;
   const taxiDistanceLabel = new Intl.NumberFormat('fr-FR', {
     maximumFractionDigits: 1,
   }).format(taxiDistanceKm);
@@ -376,10 +378,13 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
                   {!taxiAvailable
                     ? quoteConfig.billingMode === 'driver-rental'
                       ? 'Indisponibles pour la location avec chauffeur.'
-                      : companyLocationConfigured &&
-                          (taxiCompanyApproachBusy || taxiCompanyApproachDistanceKm == null)
-                        ? 'Calcul de la distance depuis les locaux en cours ou indisponible.'
-                        : 'Indisponibles sans manœuvre estimé.'
+                      : !companyLocationConfigured
+                        ? 'Renseignez la position des locaux dans Paramètres.'
+                        : taxiCrew <= 0
+                          ? 'Indisponibles sans manœuvre estimée.'
+                          : taxiCompanyApproachBusy || taxiCompanyApproachDistanceKm == null
+                            ? 'Calcul de la distance depuis les locaux en cours ou indisponible.'
+                            : 'Indisponibles pour ce devis.'
                     : 'Calculés selon la distance et les allers-retours estimés.'}
                 </span>
               </div>
@@ -491,14 +496,11 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
             <div className="admin-quote-taxi-summary">
               <span>
                 {quoteConfig.taxiFeeApplied && taxiAvailable
-                  ? `(${money(taxiAmount)} × ${taxiTrips} aller(s)-retour(s) + ${money(taxiCompanyApproachAmount)} trajet locaux, une fois) ÷ ${taxiCrew} manœuvre${taxiCrew > 1 ? 's' : ''}`
+                  ? `(${money(taxiAmount)} × ${taxiTrips} aller(s)-retour(s) + ${money(taxiCompanyApproachAmount)} trajet locaux, une fois) = ${money(taxiTotalAmount)} à répartir sur ${taxiCrew} manœuvre${taxiCrew > 1 ? 's' : ''}`
                   : 'Montant non appliqué au devis'}
               </span>
               {quoteConfig.taxiFeeApplied && taxiAvailable && (
-                <strong>
-                  +{money((taxiAmount * taxiTrips + taxiCompanyApproachAmount) / taxiCrew)} par
-                  manœuvre
-                </strong>
+                <strong>≈ {money(taxiTotalAmount / taxiCrew)} en moyenne par manœuvre</strong>
               )}
             </div>
             {taxiCompanyApproachError && <small role="alert">{taxiCompanyApproachError}</small>}

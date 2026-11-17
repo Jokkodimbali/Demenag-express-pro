@@ -113,3 +113,80 @@ test('un ancien frais locaux unique reste compté une fois à la réouverture', 
 
   assert.equal(restored.taxiCompanyApproachAmountOverride, 5_000);
 });
+
+test('un devis réouvert reprend séparément les deux montants taxi modifiés', () => {
+  const price: Price = {
+    lines: [
+      { label: 'Manœuvres', quantity: 1, unitPrice: 8_880, total: 8_880 },
+      { label: 'Manœuvres', quantity: 4, unitPrice: 8_881, total: 35_524 },
+    ],
+    total: 44_404,
+    discount: 0,
+    tier: 0,
+    trips: 3,
+    currency: 'XOF',
+  };
+  const booking = {
+    estimate: { ...price, trips: 1 },
+    pricingSettings: { labourPrice: 6_500 } as Settings,
+    quotes: [
+      {
+        id: 'quote-taxi-overrides',
+        reference: 'DV-4',
+        kind: 'provisional',
+        createdAt: '2026-11-17T00:00:00.000Z',
+        price,
+        notes: '',
+        pricingInput: {
+          taxiFeeAmount: 11_904,
+          taxiRoundTripAmountOverride: 3_413,
+          taxiCompanyApproachAmountOverride: 1_665,
+          extraLines: [{ label: 'Inventaire', quantity: 1, unitPrice: 0 }],
+        },
+      },
+    ],
+  } as Booking;
+
+  const restored = quoteConfigurationFromBooking(booking).config;
+
+  assert.equal(restored.taxiFeeApplied, true);
+  assert.equal(restored.taxiFeeAmountOverride, 3_413);
+  assert.equal(restored.taxiCompanyApproachAmountOverride, 1_665);
+});
+
+test('un devis avec montants taxi calculés reprend les réglages actuels à la réouverture', () => {
+  const price: Price = {
+    lines: [{ label: 'Manœuvres', quantity: 5, unitPrice: 8_880, total: 44_400 }],
+    total: 44_400,
+    discount: 0,
+    tier: 0,
+    trips: 3,
+    currency: 'XOF',
+  };
+  const booking = {
+    estimate: { ...price, trips: 1 },
+    pricingSettings: { labourPrice: 6_500 } as Settings,
+    quotes: [
+      {
+        id: 'quote-auto-taxi',
+        reference: 'DV-5',
+        kind: 'provisional',
+        createdAt: '2026-11-17T00:00:00.000Z',
+        price,
+        notes: '',
+        pricingInput: {
+          taxiFeeAmount: 11_900,
+          taxiRoundTripAmountOverride: null,
+          taxiCompanyApproachAmountOverride: null,
+          extraLines: [{ label: 'Inventaire', quantity: 1, unitPrice: 0 }],
+        },
+      },
+    ],
+  } as Booking;
+
+  const restored = quoteConfigurationFromBooking(booking).config;
+
+  assert.equal(restored.taxiFeeApplied, true);
+  assert.equal(restored.taxiFeeAmountOverride, null);
+  assert.equal(restored.taxiCompanyApproachAmountOverride, null);
+});

@@ -355,6 +355,24 @@ export const quoteSchema = z.object({
     )
     .max(20)
     .default([]),
+  customLines: z
+    .array(
+      z.object({
+        label: z.string().trim().min(1).max(100),
+        quantity: z.number().int().positive().max(10000),
+        unitPrice: z.number().int().nonnegative().max(10000000),
+      }),
+    )
+    .max(20)
+    .default([]),
+  taxiRoundTripAmountOverride: z.number().int().nonnegative().max(10000000).nullable().optional(),
+  taxiCompanyApproachAmountOverride: z
+    .number()
+    .int()
+    .nonnegative()
+    .max(10000000)
+    .nullable()
+    .optional(),
   tolls: z
     .array(
       z.object({
@@ -515,227 +533,230 @@ export const catalogueSchema = z.object({
       (v) => new Set(v.map((x) => x.id)).size === v.length,
       messages.chaqueVehiculeDoitEtrePresentUneFois,
     ),
-  settings: z.object({
-    distanceBounds: z
-      .tuple([
-        z.number().int().min(1).max(1000),
-        z.number().int().min(2).max(1000),
-        z.number().int().min(3).max(1000),
-      ])
-      .refine((v) => v[0] < v[1] && v[1] < v[2], messages.lesBornesDoiventEtreCroissantes),
-    bookingsEnabled: z.boolean(),
-    maxAdvanceDays: z.number().int().min(1).max(730),
-    minNoticeHours: z.number().int().min(0).max(720),
-    maxOptions: z.number().int().min(0).max(20),
-    maxTrips: z.number().int().min(1).max(20),
-    clientCancellation: z.boolean(),
-    cancellationNoticeHours: z.number().int().min(0).max(720),
-    enabledSlots: z
-      .array(
-        z.object({
-          label: z.string().trim().min(2).max(100),
-          startHour: z.number().int().min(0).max(23),
-        }),
-      )
-      .min(0)
-      .max(24)
-      .refine((v) => new Set(v.map((slot) => slot.label)).size === v.length),
-    labourPrice: z.number().int().min(0).max(1000000),
-    labourFloorPrice: z.number().int().min(0).max(1000000).default(500),
-    labourLiftPrice: z.number().int().min(0).max(1000000).default(500),
-    labourMatrix: z
-      .object({
-        none: z.array(z.array(z.number().int().min(0).max(1000000)).length(6)).length(6),
-        from: z.array(z.array(z.number().int().min(0).max(1000000)).length(6)).length(6),
-        to: z.array(z.array(z.number().int().min(0).max(1000000)).length(6)).length(6),
-        both: z.array(z.array(z.number().int().min(0).max(1000000)).length(6)).length(6),
-      })
-      .optional(),
-    movingLaborPlanning: z
-      .object({
-        maxHandlingHours: z.number().min(0.5).max(12),
-        maxDayHours: z.number().min(1).max(16),
-        defaultStartHour: z.number().int().min(0).max(23),
-        maxMoversPerVehicle: z.number().int().min(2).max(20),
-        cubicMetersPerHourPerMover: z.number().min(0.1).max(50),
-        pauseMinutes: z.number().int().min(0).max(180),
-        teamVolumePerMover: z.number().min(1).max(100).default(6),
-        tripSetupMinutes: z.number().int().min(0).max(180).default(15),
-        handlingCalibration: z.number().min(0.5).max(5).default(1),
-        carryDistanceMeters: z.number().int().min(1).max(200).default(15),
-        heat: z.number().int().min(0).max(1).optional(),
-        wbgtAdj: z.number().min(-10).max(10).optional(),
-        maxTotalHours: z.number().min(1).max(48).default(12),
-        metabolicReference: z.number().min(50).max(1000).default(200),
-        effortGround: z.number().min(50).max(1000).default(200),
-        effortLift: z.number().min(50).max(1000).default(210),
-        effortStairs: z.number().min(50).max(1000).default(230),
-        effortPerFloor: z.number().min(0).max(200).default(12),
-        effortMaximum: z.number().min(50).max(1500).default(290),
-        followingTripDiscountPercent: z.number().int().min(10).max(100).default(60),
-        lowDemandDiscountPercent: z.number().int().min(0).max(50).default(10),
-        manoeuvreOvertimeThresholdHours: z.number().min(1).max(24).default(8),
-        manoeuvreOvertimeHourlyRate: z.number().int().min(0).max(10000000).default(0),
-        fill: z.number().min(30).max(100).default(85),
-        fillF: z.number().min(30).max(100).default(75),
-        blanketLengthCm: z.number().int().min(50).max(400).optional(),
-        blanketWidthCm: z.number().int().min(50).max(400).optional(),
-        blanketStock: z.number().int().min(0).optional(),
-      })
-      .default({
-        maxHandlingHours: 3,
-        maxDayHours: 8,
-        defaultStartHour: 8,
-        maxMoversPerVehicle: 6,
-        cubicMetersPerHourPerMover: 2.7,
-        pauseMinutes: 30,
-        teamVolumePerMover: 6,
-        tripSetupMinutes: 15,
-        handlingCalibration: 1,
-        carryDistanceMeters: 15,
-        heat: 1,
-        wbgtAdj: 0,
-        maxTotalHours: 12,
-        metabolicReference: 200,
-        effortGround: 200,
-        effortLift: 210,
-        effortStairs: 230,
-        effortPerFloor: 12,
-        effortMaximum: 290,
-        followingTripDiscountPercent: 60,
-        lowDemandDiscountPercent: 10,
-        manoeuvreOvertimeThresholdHours: 8,
-        manoeuvreOvertimeHourlyRate: 0,
-        fill: 85,
-        fillF: 75,
-      }),
-    assemblyPrice: z.number().int().min(0).max(1000000),
-    montageP: z
-      .record(
-        z.string().min(1).max(60),
-        z.union([
-          z.number().int().min(0).max(10000000),
+  settings: z
+    .object({
+      distanceBounds: z
+        .tuple([
+          z.number().int().min(1).max(1000),
+          z.number().int().min(2).max(1000),
+          z.number().int().min(3).max(1000),
+        ])
+        .refine((v) => v[0] < v[1] && v[1] < v[2], messages.lesBornesDoiventEtreCroissantes),
+      bookingsEnabled: z.boolean(),
+      maxAdvanceDays: z.number().int().min(1).max(730),
+      minNoticeHours: z.number().int().min(0).max(720),
+      maxOptions: z.number().int().min(0).max(20),
+      maxTrips: z.number().int().min(1).max(20),
+      clientCancellation: z.boolean(),
+      cancellationNoticeHours: z.number().int().min(0).max(720),
+      enabledSlots: z
+        .array(
           z.object({
-            local: z.number().int().min(0).max(10000000).optional(),
-            import: z.number().int().min(0).max(10000000).optional(),
-            u: z.number().int().min(0).max(10000000).optional(),
-            uI: z.number().int().min(0).max(10000000).optional(),
-            sz: z
-              .record(
-                z.string(),
-                z.object({
-                  local: z.number().int().min(0).max(10000000).optional(),
-                  import: z.number().int().min(0).max(10000000).optional(),
-                }),
-              )
-              .optional(),
+            label: z.string().trim().min(2).max(100),
+            startHour: z.number().int().min(0).max(23),
           }),
-        ]),
-      )
-      .default({}),
-    businessPhone: z.union([z.literal(''), phoneNumberSchema]).default(''),
-    whatsappPhone: phoneNumberSchema,
-    whatsappCountryCode: z
-      .string()
-      .regex(/^[1-9][0-9]{0,3}$/)
-      .default('221'),
-    whatsappMode: z.enum(['api', 'wame', 'web', 'app']).default('api'),
-    whatsappQuoteTemplate: z
-      .string()
-      .trim()
-      .min(1)
-      .max(1000)
-      .default(
-        'Bonjour {nom},\n\nVoici votre devis final Demenag Express n° {num} :\n- Date : {date}{heure}\n- Trajet : {trajet}\n- Véhicule : {vehicule}, {voyages}\n- Montant total : {total}\n\nCe montant est définitif.\nJe vous envoie le PDF du devis final juste après ce message.\n\nMerci pour votre confiance.',
-      ),
-    whatsappProvisionalTemplate: z
-      .string()
-      .trim()
-      .min(1)
-      .max(1000)
-      .default(
-        'Bonjour {nom},\n\nMerci pour votre demande. Voici votre devis provisoire Demenag Express n° {num} :\n- Date : {date}{heure}\n- Trajet : {trajet}\n- Véhicule : {vehicule}, {voyages}\n- Montant estimé : {total}\n\nCe montant est une estimation établie d’après votre inventaire. Il sera confirmé par le devis final.\nJe vous envoie le PDF du devis juste après ce message.\n\nPour confirmer ou modifier votre demande, répondez simplement ici.',
-      ),
-    contactFirstTemplate: z.string().max(200).default('{ref} {prenom}'),
-    contactLastTemplate: z.string().max(200).default('{nom} · {date}'),
-    businessName: z.string().trim().min(2).max(100),
-    businessAddress: z.string().trim().max(300).default(''),
-    businessLatitude: z.number().finite().min(-90).max(90).nullable().optional(),
-    businessLongitude: z.number().finite().min(-180).max(180).nullable().optional(),
-    businessEmail: z.string().trim().max(200).default(''),
-    businessNinea: z.string().trim().max(100).default(''),
-    businessRccm: z.string().trim().max(100).default(''),
-    quoteValidityDays: z.number().int().min(0).max(365).default(15),
-    bookingDepositPercent: z.number().int().min(0).max(100).default(0),
-    quoteTerms: z.string().max(10000).default(''),
-    quoteTermsEnabled: z.boolean().default(true),
-    rentalOvertimeHourlyRate: z.number().int().min(0).max(10000000).default(10000),
-    taxiFeeEnabled: z.boolean().default(false),
-    taxiFeePerKm: z.number().int().min(0).max(10000000).default(0),
-    rentalKitConfiguration: z
-      .array(
-        z.object({
-          id: z.string().trim().min(1).max(80),
-          label: z.string().trim().min(1).max(200),
-          rule: z.enum([
-            'vehicle',
-            'one',
-            'blankets',
-            'liftingStraps',
-            'gloves',
-            'tieDownStraps',
-            'fixed',
+        )
+        .min(0)
+        .max(24)
+        .refine((v) => new Set(v.map((slot) => slot.label)).size === v.length),
+      labourPrice: z.number().int().min(0).max(1000000),
+      labourFloorPrice: z.number().int().min(0).max(1000000).default(500),
+      labourLiftPrice: z.number().int().min(0).max(1000000).default(500),
+      labourMatrix: z
+        .object({
+          none: z.array(z.array(z.number().int().min(0).max(1000000)).length(6)).length(6),
+          from: z.array(z.array(z.number().int().min(0).max(1000000)).length(6)).length(6),
+          to: z.array(z.array(z.number().int().min(0).max(1000000)).length(6)).length(6),
+          both: z.array(z.array(z.number().int().min(0).max(1000000)).length(6)).length(6),
+        })
+        .optional(),
+      movingLaborPlanning: z
+        .object({
+          maxHandlingHours: z.number().min(0.5).max(12),
+          maxDayHours: z.number().min(1).max(16),
+          defaultStartHour: z.number().int().min(0).max(23),
+          maxMoversPerVehicle: z.number().int().min(2).max(20),
+          cubicMetersPerHourPerMover: z.number().min(0.1).max(50),
+          pauseMinutes: z.number().int().min(0).max(180),
+          teamVolumePerMover: z.number().min(1).max(100).default(6),
+          tripSetupMinutes: z.number().int().min(0).max(180).default(15),
+          handlingCalibration: z.number().min(0.5).max(5).default(1),
+          carryDistanceMeters: z.number().int().min(1).max(200).default(15),
+          heat: z.number().int().min(0).max(1).optional(),
+          wbgtAdj: z.number().min(-10).max(10).optional(),
+          maxTotalHours: z.number().min(1).max(48).default(12),
+          metabolicReference: z.number().min(50).max(1000).default(200),
+          effortGround: z.number().min(50).max(1000).default(200),
+          effortLift: z.number().min(50).max(1000).default(210),
+          effortStairs: z.number().min(50).max(1000).default(230),
+          effortPerFloor: z.number().min(0).max(200).default(12),
+          effortMaximum: z.number().min(50).max(1500).default(290),
+          followingTripDiscountPercent: z.number().int().min(10).max(100).default(60),
+          lowDemandDiscountPercent: z.number().int().min(0).max(50).default(10),
+          manoeuvreOvertimeThresholdHours: z.number().min(1).max(24).default(8),
+          manoeuvreOvertimeHourlyRate: z.number().int().min(0).max(10000000).default(0),
+          fill: z.number().min(30).max(100).default(85),
+          fillF: z.number().min(30).max(100).default(75),
+          blanketLengthCm: z.number().int().min(50).max(400).optional(),
+          blanketWidthCm: z.number().int().min(50).max(400).optional(),
+          blanketStock: z.number().int().min(0).optional(),
+        })
+        .default({
+          maxHandlingHours: 3,
+          maxDayHours: 8,
+          defaultStartHour: 8,
+          maxMoversPerVehicle: 6,
+          cubicMetersPerHourPerMover: 2.7,
+          pauseMinutes: 30,
+          teamVolumePerMover: 6,
+          tripSetupMinutes: 15,
+          handlingCalibration: 1,
+          carryDistanceMeters: 15,
+          heat: 1,
+          wbgtAdj: 0,
+          maxTotalHours: 12,
+          metabolicReference: 200,
+          effortGround: 200,
+          effortLift: 210,
+          effortStairs: 230,
+          effortPerFloor: 12,
+          effortMaximum: 290,
+          followingTripDiscountPercent: 60,
+          lowDemandDiscountPercent: 10,
+          manoeuvreOvertimeThresholdHours: 8,
+          manoeuvreOvertimeHourlyRate: 0,
+          fill: 85,
+          fillF: 75,
+        }),
+      assemblyPrice: z.number().int().min(0).max(1000000),
+      montageP: z
+        .record(
+          z.string().min(1).max(60),
+          z.union([
+            z.number().int().min(0).max(10000000),
+            z.object({
+              local: z.number().int().min(0).max(10000000).optional(),
+              import: z.number().int().min(0).max(10000000).optional(),
+              u: z.number().int().min(0).max(10000000).optional(),
+              uI: z.number().int().min(0).max(10000000).optional(),
+              sz: z
+                .record(
+                  z.string(),
+                  z.object({
+                    local: z.number().int().min(0).max(10000000).optional(),
+                    import: z.number().int().min(0).max(10000000).optional(),
+                  }),
+                )
+                .optional(),
+            }),
           ]),
-          quantity: z.number().int().min(0).max(10000).optional(),
-          image: z.string().max(3000000).optional(),
-        }),
-      )
-      .max(100)
-      .default([]),
-    invoiceFooter: z.string().trim().min(2).max(500),
-    tiktokUrl: socialUrlSchema,
-    facebookUrl: socialUrlSchema,
-    instagramUrl: socialUrlSchema,
-    invoiceLogo: imageSchema.nullable(),
-    invoiceStamp: imageSchema.nullable(),
-    invoiceSignature: imageSchema.nullable(),
-    paymentWave: z.boolean().default(true),
-    paymentCash: z.boolean().default(true),
-    paymentQr: imageSchema.nullable().default('/assets/wave-qr.png'),
-    questionnaire: z
-      .array(clientQuestionSchema)
-      .max(100)
-      .refine(
-        (questions) => new Set(questions.map((question) => question.id)).size === questions.length,
-      )
-      .default([]),
-    customInventoryTypes: z
-      .array(
-        z.object({
-          k: z.string().regex(/^u[a-z0-9-]{1,40}$/),
-          n: z.string().trim().min(1).max(100),
-          p: z.string().trim().max(120).optional(),
-          sec: z.string().trim().min(1).max(80),
-          like: z.string().max(100).optional(),
-          L: z.number().finite().min(0).max(100000).or(z.literal('')).optional(),
-          W: z.number().finite().min(0).max(100000).or(z.literal('')).optional(),
-          H: z.number().finite().min(0).max(100000).or(z.literal('')).optional(),
-          kg: z.number().finite().min(0).max(100000).or(z.literal('')).optional(),
-          menuPriceLocal: z.number().int().min(0).max(10000000).or(z.literal('')).optional(),
-          menuPriceImport: z.number().int().min(0).max(10000000).or(z.literal('')).optional(),
-          dm: z.boolean().optional(),
-          up: z.boolean().optional(),
-          frag: z.boolean().optional(),
-          notop: z.boolean().optional(),
-        }),
-      )
-      .max(100)
-      .optional(),
-    hiddenInventoryKeys: z.array(z.string().max(100)).max(100).optional(),
-  }).refine(
-    (settings) => (settings.businessLatitude == null) === (settings.businessLongitude == null),
-    { message: 'Renseignez les deux coordonnées de l’entreprise.', path: ['businessLatitude'] },
-  ),
+        )
+        .default({}),
+      businessPhone: z.union([z.literal(''), phoneNumberSchema]).default(''),
+      whatsappPhone: phoneNumberSchema,
+      whatsappCountryCode: z
+        .string()
+        .regex(/^[1-9][0-9]{0,3}$/)
+        .default('221'),
+      whatsappMode: z.enum(['api', 'wame', 'web', 'app']).default('api'),
+      whatsappQuoteTemplate: z
+        .string()
+        .trim()
+        .min(1)
+        .max(1000)
+        .default(
+          'Bonjour {nom},\n\nVoici votre devis final Demenag Express n° {num} :\n- Date : {date}{heure}\n- Trajet : {trajet}\n- Véhicule : {vehicule}, {voyages}\n- Montant total : {total}\n\nCe montant est définitif.\nJe vous envoie le PDF du devis final juste après ce message.\n\nMerci pour votre confiance.',
+        ),
+      whatsappProvisionalTemplate: z
+        .string()
+        .trim()
+        .min(1)
+        .max(1000)
+        .default(
+          'Bonjour {nom},\n\nMerci pour votre demande. Voici votre devis provisoire Demenag Express n° {num} :\n- Date : {date}{heure}\n- Trajet : {trajet}\n- Véhicule : {vehicule}, {voyages}\n- Montant estimé : {total}\n\nCe montant est une estimation établie d’après votre inventaire. Il sera confirmé par le devis final.\nJe vous envoie le PDF du devis juste après ce message.\n\nPour confirmer ou modifier votre demande, répondez simplement ici.',
+        ),
+      contactFirstTemplate: z.string().max(200).default('{ref} {prenom}'),
+      contactLastTemplate: z.string().max(200).default('{nom} · {date}'),
+      businessName: z.string().trim().min(2).max(100),
+      businessAddress: z.string().trim().max(300).default(''),
+      businessLatitude: z.number().finite().min(-90).max(90).nullable().optional(),
+      businessLongitude: z.number().finite().min(-180).max(180).nullable().optional(),
+      businessEmail: z.string().trim().max(200).default(''),
+      businessNinea: z.string().trim().max(100).default(''),
+      businessRccm: z.string().trim().max(100).default(''),
+      quoteValidityDays: z.number().int().min(0).max(365).default(15),
+      bookingDepositPercent: z.number().int().min(0).max(100).default(0),
+      quoteTerms: z.string().max(10000).default(''),
+      quoteTermsEnabled: z.boolean().default(true),
+      rentalOvertimeHourlyRate: z.number().int().min(0).max(10000000).default(10000),
+      taxiFeeEnabled: z.boolean().default(false),
+      taxiFeePerKm: z.number().int().min(0).max(10000000).default(0),
+      rentalKitConfiguration: z
+        .array(
+          z.object({
+            id: z.string().trim().min(1).max(80),
+            label: z.string().trim().min(1).max(200),
+            rule: z.enum([
+              'vehicle',
+              'one',
+              'blankets',
+              'liftingStraps',
+              'gloves',
+              'tieDownStraps',
+              'fixed',
+            ]),
+            quantity: z.number().int().min(0).max(10000).optional(),
+            image: z.string().max(3000000).optional(),
+          }),
+        )
+        .max(100)
+        .default([]),
+      invoiceFooter: z.string().trim().min(2).max(500),
+      tiktokUrl: socialUrlSchema,
+      facebookUrl: socialUrlSchema,
+      instagramUrl: socialUrlSchema,
+      invoiceLogo: imageSchema.nullable(),
+      invoiceStamp: imageSchema.nullable(),
+      invoiceSignature: imageSchema.nullable(),
+      paymentWave: z.boolean().default(true),
+      paymentCash: z.boolean().default(true),
+      paymentQr: imageSchema.nullable().default('/assets/wave-qr.png'),
+      questionnaire: z
+        .array(clientQuestionSchema)
+        .max(100)
+        .refine(
+          (questions) =>
+            new Set(questions.map((question) => question.id)).size === questions.length,
+        )
+        .default([]),
+      customInventoryTypes: z
+        .array(
+          z.object({
+            k: z.string().regex(/^u[a-z0-9-]{1,40}$/),
+            n: z.string().trim().min(1).max(100),
+            p: z.string().trim().max(120).optional(),
+            sec: z.string().trim().min(1).max(80),
+            like: z.string().max(100).optional(),
+            L: z.number().finite().min(0).max(100000).or(z.literal('')).optional(),
+            W: z.number().finite().min(0).max(100000).or(z.literal('')).optional(),
+            H: z.number().finite().min(0).max(100000).or(z.literal('')).optional(),
+            kg: z.number().finite().min(0).max(100000).or(z.literal('')).optional(),
+            menuPriceLocal: z.number().int().min(0).max(10000000).or(z.literal('')).optional(),
+            menuPriceImport: z.number().int().min(0).max(10000000).or(z.literal('')).optional(),
+            dm: z.boolean().optional(),
+            up: z.boolean().optional(),
+            frag: z.boolean().optional(),
+            notop: z.boolean().optional(),
+          }),
+        )
+        .max(100)
+        .optional(),
+      hiddenInventoryKeys: z.array(z.string().max(100)).max(100).optional(),
+    })
+    .refine(
+      (settings) => (settings.businessLatitude == null) === (settings.businessLongitude == null),
+      { message: 'Renseignez les deux coordonnées de l’entreprise.', path: ['businessLatitude'] },
+    ),
 });
 
 export const employeeProofSchema = z.object({

@@ -10,6 +10,7 @@ import {
   subtractInventoryAssemblyOptions,
 } from '../../backend/src/domain/inventory/inventory-assembly.ts';
 import type { Catalogue, Options, Settings, Vehicle } from '../src/modules/shared/domain/model.ts';
+import { removeTaxiFromManoeuvrePrice } from '../../shared/quote-taxi-allocation.js';
 
 const settings: Settings = {
   distanceBounds: [15, 25, 35],
@@ -218,7 +219,13 @@ test('l’aperçu du devis reprend une seule fois transport, trajets suivants et
 });
 
 test('les frais taxi suivent les allers-retours et sont répartis sur les manœuvres sans ligne client', () => {
-  const taxiSettings = { ...settings, taxiFeeEnabled: true, taxiFeePerKm: 1_000 };
+  const taxiSettings = {
+    ...settings,
+    taxiFeeEnabled: true,
+    taxiFeePerKm: 1_000,
+    businessLatitude: 14.69,
+    businessLongitude: -17.44,
+  };
   const draft = blankDraft({ vehicles: [vehicle], settings: taxiSettings } as Catalogue);
   draft.vehicleId = vehicle.id;
   draft.route = {
@@ -243,6 +250,7 @@ test('les frais taxi suivent les allers-retours et sont répartis sur les manœu
     extras,
     labourPrice: 6_500,
     simulationNeeds: null,
+    taxiPickupDistanceKm: 0,
   };
   const preview = createAdminQuotePreview(input);
   const labour = preview.previewLines.find((line) => line.label.startsWith('Manœuvres'));
@@ -272,6 +280,13 @@ test('les frais taxi suivent les allers-retours et sont répartis sur les manœu
     config: { ...config, billingMode: 'driver-rental' },
   });
   assert.equal(economic.taxiFeeLine, null);
+
+  const missingCompanyLocation = createAdminQuotePreview({
+    ...input,
+    settings: { ...taxiSettings, businessLatitude: null, businessLongitude: null },
+    taxiPickupDistanceKm: null,
+  });
+  assert.equal(missingCompanyLocation.taxiFeeLine, null);
 });
 
 test('les frais locaux et les taxis par rotation sont ajoutés aux manœuvres sans écart d’arrondi', () => {
@@ -318,8 +333,8 @@ test('les frais locaux et les taxis par rotation sont ajoutés aux manœuvres sa
     (sum, line) => sum + Math.round(line.quantity * line.unitPrice),
     0,
   );
-  const previewLabour = preview.previewLines.find((line) => line.label.startsWith('Manœuvres'));
-  const baseLabour = withoutTaxi.previewLines.find((line) => line.label.startsWith('Manœuvres'));
+  const previewLabour = preview.previewLines.filter((line) => line.label.startsWith('Manœuvres'));
+  const baseLabour = withoutTaxi.previewLines.filter((line) => line.label.startsWith('Manœuvres'));
 
   assert.equal(preview.taxiFeeLines.length, 2);
   assert.equal(preview.taxiFeeLines[0]?.quantity, 3);
@@ -329,8 +344,33 @@ test('les frais locaux et les taxis par rotation sont ajoutés aux manœuvres sa
   assert.equal(preview.taxiFeeLines[1]?.total, 1_665);
   assert.equal(submittedTaxiAmount, 11_904);
   assert.equal(preview.total - withoutTaxi.total, 11_904);
-  assert.equal(previewLabour?.total - (baseLabour?.total ?? 0), 11_904);
-  assert.equal(previewLabour?.unitPrice, 8_880.8);
+  assert.equal(
+    previewLabour.reduce((sum, line) => sum + line.total, 0) -
+      baseLabour.reduce((sum, line) => sum + line.total, 0),
+    11_904,
+  );
+  assert.equal(
+    previewLabour.reduce((sum, line) => sum + line.quantity, 0),
+    5,
+  );
+  assert.ok(previewLabour.every((line) => Number.isInteger(line.unitPrice)));
+  assert.equal(
+    previewLabour.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0),
+    previewLabour.reduce((sum, line) => sum + line.total, 0),
+  );
+  assert.deepEqual(
+    previewLabour.map((line) => [line.quantity, line.unitPrice, line.total]),
+    [
+      [1, 8_880, 8_880],
+      [4, 8_881, 35_524],
+    ],
+  );
+  const restoredPrice = removeTaxiFromManoeuvrePrice(preview.priceSnapshot, submittedTaxiAmount);
+  assert.deepEqual(
+    restoredPrice.lines.filter((line) => line.label.startsWith('Manœuvres')),
+    baseLabour,
+  );
+  assert.equal(restoredPrice.total, withoutTaxi.total);
 
   const adjusted = createAdminQuotePreview({
     ...input,
@@ -344,8 +384,10 @@ test('les frais locaux et les taxis par rotation sont ajoutés aux manœuvres sa
   assert.equal(adjusted.taxiFeeLines[1]?.quantity, 1);
   assert.equal(adjusted.taxiFeeLines[1]?.total, 2_000);
   assert.equal(adjusted.total - withoutTaxi.total, 32_000);
-  assert.equal(
-    adjusted.previewLines.find((line) => line.label.startsWith('Manœuvres'))?.unitPrice,
-    12_900,
+  assert.deepEqual(
+    adjusted.previewLines
+      .filter((line) => line.label.startsWith('Manœuvres'))
+      .map((line) => [line.quantity, line.unitPrice, line.total]),
+    [[5, 12_900, 64_500]],
   );
 });

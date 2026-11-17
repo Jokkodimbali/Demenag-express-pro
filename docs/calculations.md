@@ -83,9 +83,9 @@ Les frais taxi sont calculés par devis et intégrés au montant de la ligne **M
 
    `F_total = F_locaux + F_déménagement`
 
-   `Ajout par manœuvre = F_total ÷ N`
+   Comme les prix unitaires et les lignes de facture sont enregistrés en FCFA entiers, poser `q = partie entière de (F_total ÷ N)` et `r = reste de (F_total ÷ N)`. `r` manœuvres reçoivent un ajout de `q + 1` FCFA, les autres un ajout de `q` FCFA. Ainsi, le total réparti reste exactement égal à `F_total`.
 
-   `Prix unitaire des manœuvres = prix unitaire de base + ajout par manœuvre`
+   `Prix unitaire = prix unitaire de base + ajout entier attribué à cette manœuvre`
 
 Le trajet des locaux n’est pas multiplié par `R` ni par `N` : son montant est compté une fois dans `F_total`, puis sa part est répartie sur les `N` manœuvres. Seul le taxi du déménagement est multiplié par le nombre de rotations.
 
@@ -110,6 +110,8 @@ Avec `N = 5` manœuvres, un trajet locaux → client réglé à 10 000 FCFA, un 
 | Ajout réparti par manœuvre : 29 500 ÷ 5    |  5 900 FCFA |
 
 Si le prix de base est de 6 500 FCFA par manœuvre, le nouveau prix unitaire est de 12 400 FCFA. Le total du devis augmente de 29 500 FCFA.
+
+Si le total n’est pas divisible par le nombre de manœuvres, le reste est ventilé en FCFA entiers. Par exemple, `11 904 ÷ 5` donne quatre ajouts de 2 381 FCFA et un ajout de 2 380 FCFA. Les lignes enregistrées restent entières et leur somme augmente exactement de 11 904 FCFA.
 
 ### Conditions d’application et remise
 

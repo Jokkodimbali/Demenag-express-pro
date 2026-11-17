@@ -33,6 +33,7 @@ export function createAdminQuotePreview(input: {
   applySnapshotLabourPrice?: boolean;
   simulationNeeds: { blankets: number; straps: number } | null;
   taxiPickupDistanceKm?: number | null;
+  savedCustomLines?: { label: string; quantity: number; unitPrice: number }[];
 }) {
   const {
     draft,
@@ -46,6 +47,11 @@ export function createAdminQuotePreview(input: {
     labourPrice,
     applySnapshotLabourPrice = false,
   } = input;
+  const savedCustomLineKeys = new Set(
+    (input.savedCustomLines ?? []).map((line) =>
+      JSON.stringify([line.label, line.quantity, line.unitPrice]),
+    ),
+  );
   const bounds = settings?.distanceBounds ?? [15, 25, 35];
   const distance = draft.distanceKmOverride ?? draft.route?.distanceKm;
   const tier = !draft.route
@@ -100,7 +106,9 @@ export function createAdminQuotePreview(input: {
     settings?.taxiFeeEnabled &&
     config.taxiFeeApplied &&
     config.billingMode !== 'driver-rental' &&
-    (settings.businessLatitude == null || input.taxiPickupDistanceKm != null);
+    settings.businessLatitude != null &&
+    settings.businessLongitude != null &&
+    input.taxiPickupDistanceKm != null;
   const manoeuvreOvertime = manoeuvreOvertimeLine(
     estimate,
     settings?.movingLaborPlanning,
@@ -131,6 +139,7 @@ export function createAdminQuotePreview(input: {
       .filter(
         (line) =>
           !line.label.startsWith('Transport ') &&
+          !savedCustomLineKeys.has(JSON.stringify([line.label, line.quantity, line.unitPrice])) &&
           !line.label.startsWith('Frais taxi') &&
           !line.label.startsWith('Allers-retours suivants') &&
           !line.label.startsWith('Remise jour creux') &&
@@ -194,6 +203,14 @@ export function createAdminQuotePreview(input: {
           },
         ]
       : []),
+    ...(config.customLines ?? [])
+      .filter((line) => line.label.trim() && line.quantity > 0 && line.unitPrice > 0)
+      .map((line) => ({
+        label: line.label.trim(),
+        quantity: line.quantity,
+        unitPrice: line.unitPrice,
+        total: line.quantity * line.unitPrice,
+      })),
   ];
   const taxiCrew = manoeuvreCount(basePreviewLines);
   const taxiCompanyApproachTotal = taxiCompanyApproachAmount;

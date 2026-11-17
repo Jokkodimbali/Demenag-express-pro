@@ -132,16 +132,31 @@ export async function createQuote(
     (overtimeMinutes * (pricingSettings.rentalOvertimeHourlyRate ?? 10000)) / 60,
   );
   const rentalOvertimeHourlyRate = pricingSettings.rentalOvertimeHourlyRate ?? 10000;
-  const taxiFeeAmount = input.extraLines
-    .filter((line) => line.label.startsWith('Frais taxi'))
+  const taxiLines = input.extraLines.filter((line) => line.label.startsWith('Frais taxi'));
+  const taxiRoundTripTotal = taxiLines
+    .filter((line) => !line.label.startsWith('Frais taxi · approche entreprise'))
     .reduce((sum, line) => sum + Math.round(line.quantity * line.unitPrice), 0);
+  const taxiCompanyApproachTotal = taxiLines
+    .filter((line) => line.label.startsWith('Frais taxi · approche entreprise'))
+    .reduce((sum, line) => sum + Math.round(line.quantity * line.unitPrice), 0);
+  const taxiFeeAmount = taxiRoundTripTotal + taxiCompanyApproachTotal;
   requireValue(
     taxiFeeAmount === 0 || billingMode !== 'driver-rental',
     'Les frais taxi ne sont pas disponibles en formule Économique.',
   );
+  requireValue(
+    taxiFeeAmount === 0 || catalogue.settings.taxiFeeEnabled,
+    'Activez les frais taxi dans les paramètres avant de les appliquer au devis.',
+  );
+  requireValue(
+    taxiFeeAmount === 0 ||
+      (catalogue.settings.businessLatitude != null && catalogue.settings.businessLongitude != null),
+    'Renseignez la position des locaux dans les paramètres pour calculer les frais taxi.',
+  );
   const additionalLines = [
     ...inventoryLines,
     ...input.extraLines.filter((line) => !line.label.startsWith('Frais taxi')),
+    ...(input.customLines ?? []),
     ...(sourceInventory?.stairs === 'balcon'
       ? [
           {
@@ -251,7 +266,10 @@ export async function createQuote(
       options: pricingOptions,
       labourUnitPriceOverride: input.labourUnitPriceOverride ?? null,
       extraLines: additionalLines,
+      customLines: input.customLines ?? [],
       taxiFeeAmount,
+      taxiRoundTripAmountOverride: input.taxiRoundTripAmountOverride ?? null,
+      taxiCompanyApproachAmountOverride: input.taxiCompanyApproachAmountOverride ?? null,
       billingMode,
       menuIncluded,
       overtimeMinutes,

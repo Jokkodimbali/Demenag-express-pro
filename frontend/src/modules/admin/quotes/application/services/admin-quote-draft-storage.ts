@@ -21,6 +21,7 @@ export type AdminQuoteConfig = {
   taxiCompanyApproachAmountOverride: number | null;
   taxiCompanyApproachAmountBasis: 'once' | 'per-manoeuvre';
   rentalKit: RentalKitItem[] | null;
+  customLines: { id: string; label: string; quantity: number; unitPrice: number }[];
 };
 
 export type AdminQuoteDraft = {
@@ -89,6 +90,24 @@ export async function readAdminQuoteDraft(
           parsed.quoteConfig.rentalKit === null || Array.isArray(parsed.quoteConfig.rentalKit)
             ? parsed.quoteConfig.rentalKit
             : null,
+        customLines: Array.isArray(parsed.quoteConfig.customLines)
+          ? parsed.quoteConfig.customLines
+              .filter(
+                (line) =>
+                  line &&
+                  typeof line.label === 'string' &&
+                  Number.isInteger(line.quantity) &&
+                  line.quantity > 0 &&
+                  Number.isSafeInteger(line.unitPrice) &&
+                  line.unitPrice >= 0,
+              )
+              .map((line) => ({
+                id: typeof line.id === 'string' ? line.id : crypto.randomUUID(),
+                label: line.label.slice(0, 100),
+                quantity: Math.min(10000, line.quantity),
+                unitPrice: Math.min(10000000, line.unitPrice),
+              }))
+          : [],
       },
       draft: {
         ...parsed.draft,
@@ -200,6 +219,19 @@ function isAdminQuoteDraft(value: unknown): value is AdminQuoteDraft {
             typeof item.label === 'string' &&
             Number.isInteger(item.quantity) &&
             item.quantity >= 0,
+        ))) &&
+    (config.customLines === undefined ||
+      (Array.isArray(config.customLines) &&
+        config.customLines.length <= 20 &&
+        config.customLines.every(
+          (line) =>
+            typeof line.id === 'string' &&
+            typeof line.label === 'string' &&
+            line.label.length <= 100 &&
+            Number.isInteger(line.quantity) &&
+            line.quantity > 0 &&
+            Number.isSafeInteger(line.unitPrice) &&
+            line.unitPrice >= 0,
         ))) &&
     Array.isArray(saved.tollLines) &&
     saved.tollLines.every(

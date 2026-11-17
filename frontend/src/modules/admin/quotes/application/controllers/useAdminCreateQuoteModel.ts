@@ -620,6 +620,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     ),
     simulationNeeds: rentalKitNeeds,
     taxiPickupDistanceKm: taxiCompanyApproach.distanceKm,
+    savedCustomLines: latestSavedQuote?.pricingInput?.customLines,
   });
   const formulaPrices = {
     economic: createAdminQuotePreview({
@@ -642,6 +643,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       ),
       simulationNeeds: rentalKitNeeds,
       taxiPickupDistanceKm: taxiCompanyApproach.distanceKm,
+      savedCustomLines: latestSavedQuote?.pricingInput?.customLines,
     }).total,
     standard: createAdminQuotePreview({
       draft,
@@ -658,6 +660,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       ),
       simulationNeeds: rentalKitNeeds,
       taxiPickupDistanceKm: taxiCompanyApproach.distanceKm,
+      savedCustomLines: latestSavedQuote?.pricingInput?.customLines,
     }).total,
     complete: createAdminQuotePreview({
       draft,
@@ -674,6 +677,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       ),
       simulationNeeds: rentalKitNeeds,
       taxiPickupDistanceKm: taxiCompanyApproach.distanceKm,
+      savedCustomLines: latestSavedQuote?.pricingInput?.customLines,
     }).total,
   };
   const economicMovingEstimate = useMemo(

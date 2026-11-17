@@ -467,7 +467,10 @@ export type QuotePricingInput = {
   options: Options;
   labourUnitPriceOverride: number | null;
   extraLines: Array<{ label: string; quantity: number; unitPrice: number }>;
+  customLines?: Array<{ label: string; quantity: number; unitPrice: number }>;
   taxiFeeAmount?: number;
+  taxiRoundTripAmountOverride?: number | null;
+  taxiCompanyApproachAmountOverride?: number | null;
   billingMode?: 'complete' | 'standard' | 'driver-rental';
   menuIncluded?: boolean;
   overtimeMinutes?: number;
@@ -564,6 +567,9 @@ export type QuoteInput = {
   discountReason?: string;
   notes: string;
   extraLines: Array<{ label: string; quantity: number; unitPrice: number }>;
+  customLines?: Array<{ label: string; quantity: number; unitPrice: number }>;
+  taxiRoundTripAmountOverride?: number | null;
+  taxiCompanyApproachAmountOverride?: number | null;
   tolls?: Array<{
     tollPointId: string;
     direction: 'one-way' | 'round-trip';

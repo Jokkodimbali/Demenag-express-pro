@@ -279,8 +279,16 @@ export function simulateAccounting(
         return (
           sum +
           (booking.crew?.manoeuvre.length ||
-            final?.price.lines.find((line) => /man[œo]uvre/i.test(line.label))?.quantity ||
-            booking.estimate.lines.find((line) => /man[œo]uvre/i.test(line.label))?.quantity ||
+            final?.price.lines
+              .filter(
+                (line) => /man[œo]uvre/i.test(line.label) && !/heures au-delà/i.test(line.label),
+              )
+              .reduce((sum, line) => sum + line.quantity, 0) ||
+            booking.estimate.lines
+              .filter(
+                (line) => /man[œo]uvre/i.test(line.label) && !/heures au-delà/i.test(line.label),
+              )
+              .reduce((sum, line) => sum + line.quantity, 0) ||
             booking.inventorySnapshot?.sourceInventory?.crew ||
             0)
         );

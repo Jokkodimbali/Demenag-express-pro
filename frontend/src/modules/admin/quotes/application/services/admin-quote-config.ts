@@ -21,5 +21,6 @@ export function defaultAdminQuoteConfig(): AdminQuoteConfig {
     taxiCompanyApproachAmountOverride: null,
     taxiCompanyApproachAmountBasis: 'once',
     rentalKit: null,
+    customLines: [],
   };
 }

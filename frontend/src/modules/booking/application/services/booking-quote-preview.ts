@@ -12,6 +12,9 @@ export type BookingQuoteConfig = {
   menuIncluded?: boolean;
   overtimeMinutes?: number;
   rentalKit?: RentalKitItem[] | null;
+  customLines?: { id: string; label: string; quantity: number; unitPrice: number }[];
+  taxiFeeAmountOverride?: number | null;
+  taxiCompanyApproachAmountOverride?: number | null;
 };
 
 export function quoteTierForDistance(

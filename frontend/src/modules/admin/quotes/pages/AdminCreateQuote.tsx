@@ -37,7 +37,7 @@ const RouteMap = lazy(() => import('../../../moving/maps/RouteMap'));
 
 export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: boolean }) {
   const model = useAdminCreateQuoteModel(publicRequest);
-  const { showErrorToast } = useApp();
+  const { showErrorToast, showSuccessToast } = useApp();
   const [activeStep, setActiveStep] = useState(1);
   const {
     editingReservation,
@@ -886,6 +886,121 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                           </div>
                         ))}
                     </>
+                  )}
+                  {!publicRequest && (
+                    <div className="admin-quote-custom-quantity-list">
+                      {quoteConfig.customLines.map((line) => (
+                        <div
+                          className="admin-quote-service-row admin-quote-custom-quantity-row"
+                          key={line.id}
+                        >
+                          <input
+                            type="text"
+                            maxLength={100}
+                            value={line.label}
+                            placeholder="Libellé de l’option"
+                            aria-label="Libellé de l’option facturée"
+                            onChange={(event) => {
+                              const label = event.currentTarget.value;
+                              setQuoteConfig((current) => ({
+                                ...current,
+                                customLines: current.customLines.map((item) =>
+                                  item.id === line.id ? { ...item, label } : item,
+                                ),
+                              }));
+                            }}
+                          />
+                          <input
+                            type="number"
+                            min="1"
+                            max="10000"
+                            step="1"
+                            inputMode="numeric"
+                            value={line.quantity}
+                            placeholder="Qté"
+                            aria-label="Quantité de l’option"
+                            onChange={(event) => {
+                              const quantity = Math.max(
+                                1,
+                                Math.min(10000, Math.round(Number(event.currentTarget.value) || 1)),
+                              );
+                              setQuoteConfig((current) => ({
+                                ...current,
+                                customLines: current.customLines.map((item) =>
+                                  item.id === line.id ? { ...item, quantity } : item,
+                                ),
+                              }));
+                            }}
+                          />
+                          <input
+                            type="number"
+                            min="0"
+                            max="10000000"
+                            step="1"
+                            inputMode="numeric"
+                            value={line.unitPrice}
+                            aria-label="Prix unitaire en FCFA"
+                            placeholder="Prix unitaire"
+                            onChange={(event) => {
+                              const unitPrice = Math.max(
+                                0,
+                                Math.min(
+                                  10000000,
+                                  Math.round(Number(event.currentTarget.value) || 0),
+                                ),
+                              );
+                              setQuoteConfig((current) => ({
+                                ...current,
+                                customLines: current.customLines.map((item) =>
+                                  item.id === line.id ? { ...item, unitPrice } : item,
+                                ),
+                              }));
+                            }}
+                          />
+                          <strong className="admin-quote-custom-quantity-total">
+                            {money(line.quantity * line.unitPrice)}
+                          </strong>
+                          <button
+                            type="button"
+                            className="admin-quote-custom-quantity-remove"
+                            aria-label={`Supprimer ${line.label || 'cette ligne'}`}
+                            onClick={() => {
+                              setQuoteConfig((current) => ({
+                                ...current,
+                                customLines: current.customLines.filter(
+                                  (item) => item.id !== line.id,
+                                ),
+                              }));
+                              showSuccessToast('Ligne supprimée du devis.');
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        className="admin-quote-custom-quantity-add"
+                        type="button"
+                        disabled={quoteConfig.customLines.length >= 20}
+                        onClick={() => {
+                          setQuoteConfig((current) => ({
+                            ...current,
+                            customLines: [
+                              ...current.customLines,
+                              {
+                                id: crypto.randomUUID(),
+                                label: '',
+                                quantity: 1,
+                                unitPrice: 0,
+                              },
+                            ],
+                          }));
+                          showSuccessToast('Nouvelle option ajoutée au devis.');
+                        }}
+                      >
+                        + Ajouter une option facturée
+                      </button>
+                    </div>
                   )}
                   {!publicRequest && (
                     <div className="admin-quote-options-bottom">

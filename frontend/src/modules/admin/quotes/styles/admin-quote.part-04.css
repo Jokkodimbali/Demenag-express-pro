@@ -220,6 +220,89 @@
   color: #8a9199;
   font-size: 12px;
 }
+
+.admin-quote-custom-quantity-list {
+  display: grid;
+  gap: 0;
+  margin-top: 2px;
+}
+.admin-quote-service-row.admin-quote-custom-quantity-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 56px minmax(80px, 110px) minmax(72px, auto) 30px;
+  align-items: center;
+  gap: 8px;
+}
+.admin-quote-custom-quantity-row input {
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  padding: 0 9px;
+  border: 1px solid #3b4046;
+  border-radius: 9px;
+  background: #1e2023;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+}
+.admin-quote-custom-quantity-row input::placeholder {
+  color: #8a9199;
+  opacity: 1;
+}
+.admin-quote-custom-quantity-total {
+  color: #f6d73c;
+  font-size: 13px;
+  text-align: right;
+  white-space: nowrap;
+}
+.admin-quote-custom-quantity-row .admin-quote-custom-quantity-remove {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #aeb4bb;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+.admin-quote-custom-quantity-row .admin-quote-custom-quantity-remove:hover {
+  background: #3a2527;
+  color: #ff8a8a;
+}
+.admin-quote-custom-quantity-add {
+  justify-self: start;
+  min-height: 34px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #f6d73c;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.admin-quote-custom-quantity-add:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+@media (max-width: 520px) {
+  .admin-quote-service-row.admin-quote-custom-quantity-row {
+    grid-template-columns: minmax(0, 1fr) 48px minmax(70px, 88px) minmax(64px, auto) 26px;
+    gap: 5px;
+  }
+  .admin-quote-custom-quantity-row input {
+    min-height: 36px;
+    padding: 0 6px;
+    font-size: 12px;
+  }
+  .admin-quote-custom-quantity-total {
+    font-size: 11px;
+  }
+  .admin-quote-custom-quantity-row .admin-quote-custom-quantity-remove {
+    width: 26px;
+  }
+}
 .admin-quote-reference-setting {
   display: flex;
   min-width: 0;

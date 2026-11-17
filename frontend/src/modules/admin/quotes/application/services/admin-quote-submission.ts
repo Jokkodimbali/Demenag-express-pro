@@ -27,6 +27,15 @@ export const buildAdminQuoteSubmission: AdministrativeQuoteSubmissionBuilder = (
     discountReason: config.discountReason,
     notes: input.notes,
     extraLines: input.extraLines,
+    customLines: (config.customLines ?? [])
+      .filter((line) => line.label.trim() && line.quantity > 0 && line.unitPrice > 0)
+      .map(({ label, quantity, unitPrice }) => ({
+        label: label.trim(),
+        quantity,
+        unitPrice,
+      })),
+    taxiRoundTripAmountOverride: config.taxiFeeAmountOverride,
+    taxiCompanyApproachAmountOverride: config.taxiCompanyApproachAmountOverride,
     tolls: quoteTollsFromLines(input.tollLines),
     options: input.options ?? draft.options,
     version: input.version,

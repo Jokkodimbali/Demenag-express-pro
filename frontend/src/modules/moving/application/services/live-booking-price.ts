@@ -5,6 +5,7 @@ import {
   labourUnitPrice,
   labourUnitPriceOverrideFromQuote,
 } from '../../domain/pricing/labour-price';
+import { applyTaxiToManoeuvrePrice } from '../../../../../../shared/quote-taxi-allocation.js';
 import { referenceTierLabels } from '../../../shared/application/presentation/format';
 import {
   referenceLowDemandDiscount,
@@ -96,5 +97,8 @@ export function liveBookingPrice(
     price.discountType === 'pct'
       ? Math.round((subtotal * Math.min(100, value)) / 100)
       : Math.min(subtotal, value);
-  return { ...price, tier, lines, discount, total: subtotal - discount };
+  return applyTaxiToManoeuvrePrice(
+    { ...price, tier, lines, discount, total: subtotal - discount },
+    saved?.pricingInput?.taxiFeeAmount ?? 0,
+  );
 }
