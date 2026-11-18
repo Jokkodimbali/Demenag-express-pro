@@ -18,10 +18,17 @@ import { referenceTierLabels } from '../../../../shared/application/presentation
 import { referenceTrafficDetails } from '../../../../moving/domain/routing/reference-traffic';
 import { useAdminQuoteTraffic } from './useAdminQuoteTraffic';
 import { useCompanyApproachDistance } from './useCompanyApproachDistance';
-import type { AccountingEntry, Options, Quote } from '../../../../shared/domain/model';
+import type {
+  AccountingEntry,
+  AccountingFinanceConfiguration,
+  Options,
+  Quote,
+} from '../../../../shared/domain/model';
 import { defaultClientQuestions } from '../../../../booking/domain/questionnaire';
 import { quoteNotificationUrl } from '../services/quote-notification';
 import { createAdminQuotePreview } from '../services/admin-quote-preview';
+import { quoteGrossMargin } from '../services/quote-gross-margin';
+import { normalizeAccountingConfiguration } from '../../../accounting/application/services/accounting-dashboard';
 import {
   adminQuoteVehicleFitWarnings,
   cheaperCompatibleVehicle,
@@ -113,6 +120,8 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const draftSaveQueue = useRef(Promise.resolve());
   const appliedVehicleEstimate = useRef<AppliedVehicleEstimate | null>(null);
   const [quoteConfig, setQuoteConfig] = useState<AdminQuoteConfig>(defaultAdminQuoteConfig);
+  const [accountingConfiguration, setAccountingConfiguration] =
+    useState<AccountingFinanceConfiguration | null>(null);
   const [questionnaireOpen, setQuestionnaireOpen] = useState(false);
   const [quoteKind, setQuoteKind] = useState<Quote['kind']>('provisional');
   const [journalSnapshot, setJournalSnapshot] = useState<{
@@ -168,6 +177,24 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       active = false;
     };
   }, [api, user?.role]);
+  useEffect(() => {
+    if (publicRequest || user?.role !== 'admin') {
+      setAccountingConfiguration(null);
+      return;
+    }
+    let active = true;
+    void api
+      .accountingConfiguration()
+      .then((configuration) => {
+        if (active) setAccountingConfiguration(normalizeAccountingConfiguration(configuration));
+      })
+      .catch(() => {
+        if (active) setAccountingConfiguration(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [api, publicRequest, user?.role]);
   const bookingCommands = useBookingCommands();
   const state = useBookingForm({
     mode: publicRequest && user?.role !== 'admin' ? 'booking' : 'admin-quote',
@@ -701,6 +728,19 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     [selected, estimateInventory, pricingRoute, draft, quoteConfig, quoteSettings, tollLines],
   );
   const economicCrew = economicMovingEstimate?.crew ?? movingEstimateCrew;
+  const grossMargin = quoteGrossMargin({
+    quoteTotal: preview.total,
+    inventory: draft.inventory,
+    accounting: accountingConfiguration,
+    billingMode: quoteConfig.billingMode,
+    providedCrew:
+      editingBooking?.crew?.manoeuvre.length ||
+      (quoteConfig.billingMode === 'driver-rental' ? economicCrew : movingEstimateCrew),
+    manoeuvreCount: preview.previewLines
+      .filter((line) => /man[œo]uvre/iu.test(line.label) && !/heures au-delà/iu.test(line.label))
+      .reduce((sum, line) => sum + line.quantity, 0),
+    taxiCharges: preview.taxiFeeLines.reduce((sum, line) => sum + line.total, 0),
+  });
   const {
     tier: previewTier,
     rentalKit,
@@ -1021,6 +1061,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     quoteStageChanged,
     canCommitQuoteStage,
     latestSavedQuote,
+    grossMargin,
     editingBooking,
     quoteSettings,
     contactCard,
