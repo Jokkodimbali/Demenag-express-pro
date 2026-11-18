@@ -269,8 +269,8 @@ export function BookingRouteMap({
       />
       {booking.legacyCoordinatesMissing && (
         <small className="muted" role="status">
-          Les adresses sont conservées, mais la sauvegarde ne contenait pas les coordonnées GPS.
-          {admin ? ' Cliquez sur la carte pour les renseigner.' : ''}
+          {uiText['adressesHistoriquesSansCoordonnees']}
+          {admin ? uiText['renseignerCoordonneesSurLaCarte'] : ''}
         </small>
       )}
       {editing && (

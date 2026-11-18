@@ -117,6 +117,9 @@ export const uiText2 = {
   modifierLesLieuxSurLaCarte: ' Modifier les lieux sur la carte',
   cliquezSurLaCarteOuFaitesGlisserUnReperePourLeDeplacer:
     'Cliquez sur la carte ou faites glisser un repère pour le déplacer.',
+  adressesHistoriquesSansCoordonnees:
+    'Les adresses sont conservées, mais la sauvegarde ne contenait pas les coordonnées GPS.',
+  renseignerCoordonneesSurLaCarte: ' Cliquez sur la carte pour les renseigner.',
   a2: 'A',
   b: 'B',
   peagesReperesSurCetItineraire: 'Péages repérés sur cet itinéraire',
