@@ -96,41 +96,37 @@ export async function downloadQuote(
   doc.setFillColor(30, 32, 35);
   doc.rect(0, 0, pageWidth, 40, 'F');
   addRoundedPdfImage(doc, logo, margin, 9, 22, 22);
-  pdfParagraph(
-    doc,
-    settings.businessName || 'DEMENAG EXPRESS PRO MTH',
-    margin + 27,
-    19,
-    91,
-    16,
-    true,
-    [255, 255, 255],
-  );
-  pdfParagraph(
-    doc,
-    `${settings.businessAddress || 'Dakar, Sénégal'}  ·  ${settings.businessPhone}${settings.businessEmail ? `  ·  ${settings.businessEmail}` : ''}`,
-    margin + 27,
-    25.5,
-    100,
-    9,
-    false,
-    [174, 180, 187],
-  );
+  const companyX = margin + 27;
+  const companyWidth = 108;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.setTextColor(255, 255, 255);
+  const companyName = cleanPdfText(settings.businessName || 'DEMENAG EXPRESS PRO MTH');
+  while (doc.getTextWidth(companyName) > companyWidth && doc.getFontSize() > 9)
+    doc.setFontSize(doc.getFontSize() - 0.5);
+  doc.text(companyName, companyX, 16.5);
+
+  // Coordonnées et identifiants gardent chacun une ligne, comme sur la référence.
+  const fitHeaderLine = (value: string, y: number) => {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(174, 180, 187);
+    const text = cleanPdfText(value);
+    while (doc.getTextWidth(text) > companyWidth && doc.getFontSize() > 6)
+      doc.setFontSize(doc.getFontSize() - 0.25);
+    doc.text(text, companyX, y);
+  };
+  const contactDetails = [
+    settings.businessAddress || 'Dakar, Sénégal',
+    settings.businessPhone || '+221 77 510 51 04',
+    settings.businessEmail || '',
+  ].filter(Boolean);
+  fitHeaderLine(contactDetails.join('  ·  '), 22.5);
   const legalDetails = [
     settings.businessNinea ? `NINEA ${settings.businessNinea}` : '',
     settings.businessRccm ? `RCCM ${settings.businessRccm}` : '',
   ].filter(Boolean);
-  if (legalDetails.length)
-    pdfParagraph(
-      doc,
-      legalDetails.join('  ·  '),
-      margin + 27,
-      31,
-      100,
-      7.5,
-      false,
-      [174, 180, 187],
-    );
+  if (legalDetails.length) fitHeaderLine(legalDetails.join('  ·  '), 28.5);
   const documentKind = documentQuote?.kind === 'final' ? 'DEVIS FINAL' : 'DEVIS PROVISOIRE';
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9.5);
@@ -836,7 +832,7 @@ export async function downloadQuote(
   }
 
   const workPlan = booking.workPlan ?? [];
-  if (workPlan.length && inventory) {
+  if (documentQuote?.billingMode === 'driver-rental' && workPlan.length && inventory) {
     const crew = documentQuote?.providedCrew ?? inventory.moverCount;
     const duration = durationLabel(inventory.totalMinutes);
     const subtitle = `${crew} manœuvres · début ${inventory.startTime} · fin prévue ${inventory.endTime} · durée ${duration}`;
@@ -999,7 +995,11 @@ export async function downloadQuote(
   }
 
   const simulationInventory = booking.inventorySnapshot?.sourceInventory;
-  if (simulationInventory && typeof window !== 'undefined') {
+  if (
+    documentQuote?.billingMode === 'driver-rental' &&
+    simulationInventory &&
+    typeof window !== 'undefined'
+  ) {
     try {
       await loadSimulationScript('/reference/loading-sim.js');
       if (!window.THREE) {
@@ -1754,20 +1754,29 @@ export async function downloadQuote(
       `Devis ${isFinal ? 'final' : 'provisoire'} ${pdfReference}  ·  Page ${page} / ${pageCount}`,
     );
     const availableWidth = contentWidth - doc.getTextWidth(pageLabel) - 8;
-    const footer = [
+    const footerCompany = [
       'DEMENAG EXPRESS PRO MTH',
       settings.businessAddress || 'Dakar, Sénégal',
       settings.businessPhone || '+221 77 510 51 04',
+      settings.businessEmail || '',
+    ].filter(Boolean);
+    const footerLegal = [
       settings.businessNinea ? `NINEA ${settings.businessNinea}` : '',
       settings.businessRccm ? `RCCM ${settings.businessRccm}` : '',
     ].filter(Boolean);
-    while (
-      footer.length > 1 &&
-      doc.getTextWidth(cleanPdfText(footer.join('  ·  '))) > availableWidth
-    )
-      footer.splice(footer.length > 3 ? footer.length - 1 : 1, 1);
-    doc.text(cleanPdfText(footer.join('  ·  ')), margin, 293);
-    doc.text(pageLabel, right, 293, { align: 'right' });
+    const companyFooterText = cleanPdfText(footerCompany.join('  ·  '));
+    const legalFooterText = cleanPdfText(footerLegal.join('  ·  '));
+    const footerTop = 291;
+    const footerBottom = 295;
+    doc.setFontSize(7);
+    while (doc.getTextWidth(companyFooterText) > availableWidth && doc.getFontSize() > 5.5)
+      doc.setFontSize(doc.getFontSize() - 0.25);
+    doc.text(companyFooterText, margin, footerTop);
+    doc.setFontSize(7);
+    while (doc.getTextWidth(legalFooterText) > availableWidth && doc.getFontSize() > 5.5)
+      doc.setFontSize(doc.getFontSize() - 0.25);
+    if (legalFooterText) doc.text(legalFooterText, margin, footerBottom);
+    doc.text(pageLabel, right, footerBottom, { align: 'right' });
   }
   const blob = doc.output('blob');
   return blob;

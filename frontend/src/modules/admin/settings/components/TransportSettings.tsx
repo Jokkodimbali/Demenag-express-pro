@@ -169,6 +169,7 @@ export function TransportSettings({
   vehicleDimensionsBusy,
   vehicleDimensionsError,
   onSaveBusinessLocation,
+  onSaveTaxiFeeEnabled,
 }: {
   catalogue: Catalogue;
   onSaveInventoryCatalog: (types: CustomInventoryType[], hiddenKeys: string[]) => Promise<void>;
@@ -179,6 +180,7 @@ export function TransportSettings({
   vehicleDimensionsBusy: boolean;
   vehicleDimensionsError: string;
   onSaveBusinessLocation: (latitude: number, longitude: number) => Promise<void>;
+  onSaveTaxiFeeEnabled: (enabled: boolean) => Promise<void>;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [scenario, setScenario] = useState<LabourMatrixScenario>('none');
@@ -186,6 +188,7 @@ export function TransportSettings({
   const [resettingTariffs, setResettingTariffs] = useState(false);
   const [resetTariffsStatus, setResetTariffsStatus] = useState('');
   const [resetTariffsError, setResetTariffsError] = useState('');
+  const [savingTaxiFee, setSavingTaxiFee] = useState(false);
   const { requestConfirmation } = useApp();
   const { claudeConnected, mapsConfigured, setClaudeConnected, setMapsConfigured } =
     useIntegrationSummary();
@@ -374,11 +377,16 @@ export function TransportSettings({
               <div className="reference-settings-fixed-fields">
                 <label>
                   <span>Frais taxi activés sur les devis</span>
-                  <input type="hidden" name="taxiFeeEnabledConfigured" value="1" />
                   <input
                     type="checkbox"
-                    name="taxiFeeEnabled"
-                    defaultChecked={catalogue.settings.taxiFeeEnabled ?? false}
+                    checked={catalogue.settings.taxiFeeEnabled ?? false}
+                    disabled={savingTaxiFee}
+                    onChange={(event) => {
+                      event.stopPropagation();
+                      const enabled = event.currentTarget.checked;
+                      setSavingTaxiFee(true);
+                      void onSaveTaxiFeeEnabled(enabled).finally(() => setSavingTaxiFee(false));
+                    }}
                   />
                 </label>
                 <label>

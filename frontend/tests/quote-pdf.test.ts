@@ -392,6 +392,26 @@ test('le PDF du devis ajoute le plan choisi et explicite la base des volumes', a
     assert.match(text, /0,5 m³/);
     assert.match(text, /15,5 m³ géométriques/);
     assert.match(text, /14,7 m³ après application de sa réserve de sécurité de 5 %/);
+
+    const standardPdf = await downloadQuote(
+      withInventory,
+      { ...quote, billingMode: 'standard', rentalKit: [], overtimeMinutes: 0 },
+      settings,
+    );
+    const standardText = await extractPdfText(standardPdf);
+    const standardDocument = await getDocument({
+      data: new Uint8Array(await standardPdf.arrayBuffer()),
+    }).promise;
+    assert.equal(
+      standardDocument.numPages,
+      3,
+      'le PDF standard conserve les trois pages de référence',
+    );
+    assert.doesNotMatch(standardText, /2\. Votre location avec chauffeur/);
+    assert.doesNotMatch(standardText, /3\. Planning prévisionnel/);
+    assert.doesNotMatch(standardText, /4\. Plan de chargement/);
+    assert.match(standardText, /Annexe - Inventaire/);
+
     const pdf = await getDocument({ data: new Uint8Array(await blob.arrayBuffer()) }).promise;
     assert.ok(pdf.numPages >= 5, 'le plan est intégré entre le devis et son annexe inventaire');
     for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {

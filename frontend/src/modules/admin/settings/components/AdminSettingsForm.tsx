@@ -59,6 +59,7 @@ export function Settings() {
         onSaveBusinessLocation={(latitude, longitude) =>
           updateSettings({ businessLatitude: latitude, businessLongitude: longitude })
         }
+        onSaveTaxiFeeEnabled={(taxiFeeEnabled) => updateSettings({ taxiFeeEnabled })}
       />
       {error && (
         <p role="alert" className="alert error">
