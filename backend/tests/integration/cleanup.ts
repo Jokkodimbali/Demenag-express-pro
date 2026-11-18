@@ -68,6 +68,9 @@ export async function restoreConfiguration(
 
 export async function deleteScenarioData(context: IntegrationContext, routeIds: string[]) {
   const { db } = context;
+  const persistedRouteIds = routeIds.filter((id) =>
+    /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/iu.test(id),
+  );
   if (context.testAccountingEntryIds.length)
     await db.ecritureComptable.deleteMany({
       where: { id: { in: context.testAccountingEntryIds } },
@@ -92,13 +95,16 @@ export async function deleteScenarioData(context: IntegrationContext, routeIds: 
     await db.reservation.deleteMany({ where: { utilisateurId: { in: userIds } } });
     await db.utilisateur.deleteMany({ where: { id: { in: userIds } } });
   }
-  if (routeIds.length) await db.itineraire.deleteMany({ where: { id: { in: routeIds } } });
+  if (persistedRouteIds.length)
+    await db.itineraire.deleteMany({ where: { id: { in: persistedRouteIds } } });
 
   const [remainingUsers, remainingBookings, remainingRoutes, remainingAccountingEntries] =
     await Promise.all([
       userIds.length ? db.utilisateur.count({ where: { id: { in: userIds } } }) : 0,
       userIds.length ? db.reservation.count({ where: { utilisateurId: { in: userIds } } }) : 0,
-      routeIds.length ? db.itineraire.count({ where: { id: { in: routeIds } } }) : 0,
+      persistedRouteIds.length
+        ? db.itineraire.count({ where: { id: { in: persistedRouteIds } } })
+        : 0,
       context.testAccountingEntryIds.length
         ? db.ecritureComptable.count({ where: { id: { in: context.testAccountingEntryIds } } })
         : 0,

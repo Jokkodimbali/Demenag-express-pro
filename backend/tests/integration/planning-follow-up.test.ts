@@ -22,7 +22,6 @@ test(
         .send({ from: [14.69, -17.44], to: [14.73, -17.48] });
       assert.equal(route.status, 200, JSON.stringify(route.body));
       routeIds.push(route.body.id as string);
-
       const booking = await context.clients.first
         .post('/api/bookings')
         .set(integrationHeader)
