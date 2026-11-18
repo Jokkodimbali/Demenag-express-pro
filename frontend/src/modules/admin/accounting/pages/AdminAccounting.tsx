@@ -37,6 +37,7 @@ export function AdminAccounting() {
     setPendingVoid,
     totals,
     addEntry,
+    addEmployeeCharge,
     voidEntry,
     title,
     maxCategory,
@@ -130,6 +131,7 @@ export function AdminAccounting() {
             period={all ? accountingMonth : month}
             advertising={advertisingSummary}
             bookings={bookings}
+            onAddEmployeeCharge={addEmployeeCharge}
             onDownload={(document) => {
               setDownloadError('');
               void exportAccounting(

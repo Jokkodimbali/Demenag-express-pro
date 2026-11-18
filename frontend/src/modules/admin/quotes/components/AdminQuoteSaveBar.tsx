@@ -7,6 +7,7 @@ type Props = {
   quoteKind: Quote['kind'];
   total: number | null;
   grossMargin: number | null;
+  distanceKm: number | null | undefined;
   trips: number;
   movingEstimate: Pick<MovingEstimate, 'crew' | 'endTime'> | null;
   driverRental: boolean;
@@ -19,6 +20,7 @@ export function AdminQuoteSaveBar({
   quoteKind,
   total,
   grossMargin,
+  distanceKm,
   trips,
   movingEstimate,
   driverRental,
@@ -32,6 +34,14 @@ export function AdminQuoteSaveBar({
         <small>Marge brute estimée</small>
         <strong>{grossMargin == null ? '—' : money(grossMargin)}</strong>
       </section>
+      <div>
+        <small>Distance A → B</small>
+        <strong>
+          {distanceKm == null
+            ? '—'
+            : `${distanceKm.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km`}
+        </strong>
+      </div>
       <div>
         <small>{quoteKind === 'final' ? visibleUiText.text207 : visibleUiText.text208}</small>
         <strong>{total == null ? visibleUiText.text209 : money(total)}</strong>

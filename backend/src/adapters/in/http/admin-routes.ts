@@ -81,6 +81,8 @@ const accountingConfigurationSchema = z.object({
   newVehicleTarget: z.number().int().min(0).max(10_000_000_000),
   profitCapPercent: z.number().min(0).max(100),
   moverCostPerMove: z.number().int().min(0).max(1_000_000_000),
+  overtimeHourlyRate: z.number().int().min(0).max(1_000_000_000).default(500),
+  employeeTransportFee: z.number().int().min(0).max(1_000_000_000).default(2000),
   monthlyProfitTarget: z.number().int().min(0).max(10_000_000_000),
   averageMovingPrice: z.number().int().min(0).max(10_000_000_000),
   vehicleCount: z.number().int().min(0).max(1000),

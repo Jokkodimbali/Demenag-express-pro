@@ -16,6 +16,9 @@ export type AdminQuoteConfig = {
   billingMode: 'complete' | 'standard' | 'driver-rental';
   menuIncluded: boolean;
   overtimeMinutes: number;
+  manoeuvreOvertimeEnabled: boolean | null;
+  manoeuvreOvertimeHours: number | null;
+  manoeuvreOvertimeHourlyRateOverride: number | null;
   taxiFeeApplied: boolean;
   taxiFeeAmountOverride: number | null;
   taxiCompanyApproachAmountOverride: number | null;
@@ -71,6 +74,20 @@ export async function readAdminQuoteDraft(
           : 'complete',
         menuIncluded: parsed.quoteConfig.menuIncluded === true,
         overtimeMinutes: Math.max(0, Number(parsed.quoteConfig.overtimeMinutes) || 0),
+        manoeuvreOvertimeEnabled:
+          typeof parsed.quoteConfig.manoeuvreOvertimeEnabled === 'boolean'
+            ? parsed.quoteConfig.manoeuvreOvertimeEnabled
+            : null,
+        manoeuvreOvertimeHours:
+          Number.isFinite(parsed.quoteConfig.manoeuvreOvertimeHours) &&
+          Number(parsed.quoteConfig.manoeuvreOvertimeHours) >= 0
+            ? Number(parsed.quoteConfig.manoeuvreOvertimeHours)
+            : null,
+        manoeuvreOvertimeHourlyRateOverride:
+          Number.isSafeInteger(parsed.quoteConfig.manoeuvreOvertimeHourlyRateOverride) &&
+          Number(parsed.quoteConfig.manoeuvreOvertimeHourlyRateOverride) >= 0
+            ? Number(parsed.quoteConfig.manoeuvreOvertimeHourlyRateOverride)
+            : null,
         taxiFeeApplied: parsed.quoteConfig.taxiFeeApplied === true,
         taxiFeeAmountOverride:
           Number.isSafeInteger(parsed.quoteConfig.taxiFeeAmountOverride) &&
@@ -210,6 +227,18 @@ function isAdminQuoteDraft(value: unknown): value is AdminQuoteDraft {
     (config.menuIncluded === undefined || typeof config.menuIncluded === 'boolean') &&
     (config.overtimeMinutes === undefined ||
       (Number.isInteger(config.overtimeMinutes) && config.overtimeMinutes >= 0)) &&
+    (config.manoeuvreOvertimeEnabled === undefined ||
+      config.manoeuvreOvertimeEnabled === null ||
+      typeof config.manoeuvreOvertimeEnabled === 'boolean') &&
+    (config.manoeuvreOvertimeHours === undefined ||
+      config.manoeuvreOvertimeHours === null ||
+      (Number.isFinite(config.manoeuvreOvertimeHours) &&
+        config.manoeuvreOvertimeHours >= 0 &&
+        config.manoeuvreOvertimeHours <= 24)) &&
+    (config.manoeuvreOvertimeHourlyRateOverride === undefined ||
+      config.manoeuvreOvertimeHourlyRateOverride === null ||
+      (Number.isSafeInteger(config.manoeuvreOvertimeHourlyRateOverride) &&
+        config.manoeuvreOvertimeHourlyRateOverride >= 0)) &&
     (config.rentalKit === undefined ||
       config.rentalKit === null ||
       (Array.isArray(config.rentalKit) &&

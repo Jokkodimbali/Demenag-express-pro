@@ -483,6 +483,102 @@
   justify-content: center;
   gap: 7px;
 }
+.admin-quote-overtime-card {
+  display: grid;
+  flex: 1 1 100%;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #3b4046;
+  border-radius: 12px;
+  background: #1e2023;
+}
+.admin-quote-overtime-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.admin-quote-overtime-header > div,
+.admin-quote-overtime-controls label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.admin-quote-overtime-header strong {
+  color: #f4f5f6;
+  font-size: 14px;
+}
+.admin-quote-overtime-header span,
+.admin-quote-overtime-card small,
+.admin-quote-overtime-controls label span,
+.admin-quote-overtime-hours > span {
+  color: #aeb4bb;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.admin-quote-overtime-header button,
+.admin-quote-overtime-hours button {
+  min-width: 42px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid #555b61;
+  border-radius: 9px;
+  background: #272a2e;
+  color: #f4f5f6;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.admin-quote-overtime-header button.active {
+  border-color: #f6d73c;
+  background: #f6d73c;
+  color: #1e2023;
+}
+.admin-quote-overtime-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(170px, 0.8fr) auto;
+  align-items: end;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #3b4046;
+}
+.admin-quote-overtime-hours {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.admin-quote-overtime-hours > span {
+  flex: 1;
+}
+.admin-quote-overtime-hours strong {
+  min-width: 54px;
+  color: #f6d73c;
+  text-align: center;
+}
+.admin-quote-overtime-hours button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.admin-quote-overtime-controls input {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 11px;
+  border: 1px solid #3b4046;
+  border-radius: 9px;
+  background: #272a2e;
+  color: #fff;
+  font: inherit;
+  color-scheme: dark;
+}
+.admin-quote-overtime-total {
+  color: #f6d73c;
+  white-space: nowrap;
+}
+.admin-quote-overtime-card small {
+  display: block;
+}
 .admin-quote-taxi-field strong {
   color: #f4f5f6;
   font-size: 14px;
@@ -975,5 +1071,14 @@
   .admin-quote-pricing-snapshot {
     align-items: stretch;
     flex-direction: column;
+  }
+  .admin-quote-overtime-header {
+    align-items: flex-start;
+  }
+  .admin-quote-overtime-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .admin-quote-overtime-total {
+    justify-self: end;
   }
 }

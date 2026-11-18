@@ -91,6 +91,10 @@ export function quoteConfigWithManualTaxiFee(config: AdminQuoteConfig, value: st
 export function quoteConfigurationFromBooking(booking: Booking) {
   const quote = booking.quotes.at(-1);
   const pricingInput = quote?.pricingInput;
+  const savedManoeuvreOvertimeLine = pricingInput?.extraLines?.find((line) =>
+    /^Man[œo]uvres · heures (?:au-delà|après 20 h)/iu.test(line.label),
+  );
+  const savedManoeuvreCount = Math.max(1, quote?.providedCrew ?? booking.options.labour ?? 1);
   const taxiTrips = Math.max(1, quote?.price.trips ?? booking.estimate.trips);
   // Historic totals used one taxi fare for each base rotation plus a final return.
   const legacyTaxiRotationCount = taxiTrips + 1;
@@ -159,6 +163,11 @@ export function quoteConfigurationFromBooking(booking: Booking) {
     billingMode: quote?.billingMode ?? 'complete',
     menuIncluded: quote?.menuIncluded ?? false,
     overtimeMinutes: quote?.overtimeMinutes ?? 0,
+    manoeuvreOvertimeEnabled: Boolean(savedManoeuvreOvertimeLine),
+    manoeuvreOvertimeHours: savedManoeuvreOvertimeLine
+      ? Math.round((savedManoeuvreOvertimeLine.quantity / savedManoeuvreCount) * 2) / 2
+      : null,
+    manoeuvreOvertimeHourlyRateOverride: savedManoeuvreOvertimeLine?.unitPrice ?? null,
     taxiFeeApplied:
       Boolean(savedTaxiFeeAmount) ||
       (quote?.price.lines.some((line) => line.label.startsWith('Frais taxi')) ?? false),

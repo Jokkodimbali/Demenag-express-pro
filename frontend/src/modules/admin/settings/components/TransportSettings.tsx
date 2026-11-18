@@ -189,6 +189,9 @@ export function TransportSettings({
   const [resetTariffsStatus, setResetTariffsStatus] = useState('');
   const [resetTariffsError, setResetTariffsError] = useState('');
   const [savingTaxiFee, setSavingTaxiFee] = useState(false);
+  const [taxiFeeEnabledDraft, setTaxiFeeEnabledDraft] = useState(
+    catalogue.settings.taxiFeeEnabled ?? false,
+  );
   const { requestConfirmation } = useApp();
   const { claudeConnected, mapsConfigured, setClaudeConnected, setMapsConfigured } =
     useIntegrationSummary();
@@ -210,6 +213,9 @@ export function TransportSettings({
     setBlanketWidthCm(planning.blanketWidthCm);
     setBlanketStock(planning.blanketStock);
   }, [planning.blanketLengthCm, planning.blanketWidthCm, planning.blanketStock]);
+  useEffect(() => {
+    setTaxiFeeEnabledDraft(catalogue.settings.taxiFeeEnabled ?? false);
+  }, [catalogue.settings.taxiFeeEnabled]);
   useEffect(() => {
     if (resetRevision) rootRef.current?.closest('form')?.reset();
   }, [resetRevision]);
@@ -251,6 +257,18 @@ export function TransportSettings({
       setResetTariffsError(errorMessage(cause));
     } finally {
       setResettingTariffs(false);
+    }
+  }
+  async function saveTaxiFeeEnabled(enabled: boolean) {
+    const previousValue = catalogue.settings.taxiFeeEnabled ?? false;
+    setTaxiFeeEnabledDraft(enabled);
+    setSavingTaxiFee(true);
+    try {
+      await onSaveTaxiFeeEnabled(enabled);
+    } catch {
+      setTaxiFeeEnabledDraft(previousValue);
+    } finally {
+      setSavingTaxiFee(false);
     }
   }
   const group = (
@@ -379,13 +397,11 @@ export function TransportSettings({
                   <span>Frais taxi activés sur les devis</span>
                   <input
                     type="checkbox"
-                    checked={catalogue.settings.taxiFeeEnabled ?? false}
+                    checked={taxiFeeEnabledDraft}
                     disabled={savingTaxiFee}
                     onChange={(event) => {
                       event.stopPropagation();
-                      const enabled = event.currentTarget.checked;
-                      setSavingTaxiFee(true);
-                      void onSaveTaxiFeeEnabled(enabled).finally(() => setSavingTaxiFee(false));
+                      void saveTaxiFeeEnabled(event.currentTarget.checked);
                     }}
                   />
                 </label>
@@ -439,26 +455,10 @@ export function TransportSettings({
                     defaultValue={liftSupplement}
                   />
                 </label>
-                <label>
-                  <span>{visibleUiText.pricingManoeuvreIncludedHours}</span>
-                  <input
-                    style={inputStyle}
-                    type="number"
-                    min="1"
-                    name="movingLaborPlanning.manoeuvreOvertimeThresholdHours"
-                    defaultValue={planning.manoeuvreOvertimeThresholdHours}
-                  />
-                </label>
-                <label>
-                  <span>{visibleUiText.pricingManoeuvreOvertimeHourly}</span>
-                  <input
-                    style={inputStyle}
-                    type="number"
-                    min="0"
-                    name="movingLaborPlanning.manoeuvreOvertimeHourlyRate"
-                    defaultValue={planning.manoeuvreOvertimeHourlyRate}
-                  />
-                </label>
+                <p className="reference-settings-note">
+                  {visibleUiText.pricingEmployeeWorkHours}.{' '}
+                  {visibleUiText.pricingEmployeeOvertimeRateHint}
+                </p>
                 <span className="reference-settings-kicker">
                   {visibleUiText.pricingAutomaticDiscounts}
                 </span>

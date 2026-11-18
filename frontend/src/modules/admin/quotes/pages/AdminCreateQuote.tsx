@@ -1174,6 +1174,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             quoteKind={quoteKind}
             total={model.previewTotal}
             grossMargin={model.grossMargin}
+            distanceKm={model.effectiveDistance}
             trips={quoteConfig.trips}
             movingEstimate={model.inventoryCount > 0 ? movingEstimate : null}
             driverRental={quoteConfig.billingMode === 'driver-rental'}

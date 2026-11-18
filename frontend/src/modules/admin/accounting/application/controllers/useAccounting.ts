@@ -208,6 +208,39 @@ export function useAccounting() {
     }
   }
 
+  const addEmployeeCharge = useCallback(
+    async (input: {
+      employee: string;
+      kind: 'overtime' | 'transport';
+      amount: number;
+      hours?: number;
+    }) => {
+      const amount = Math.round(input.amount);
+      if (amount <= 0) throw new Error('Le montant doit être supérieur à zéro.');
+      const label =
+        input.kind === 'overtime'
+          ? `Heures supplémentaires · ${input.employee} (${input.hours ?? 0} h)`
+          : `Transport salarié · ${input.employee}`;
+      try {
+        await api.createAccountingEntry({
+          type: 'charge',
+          category: input.kind === 'overtime' ? 'Salaires' : 'Péage / Parking',
+          label,
+          amount,
+          date: `${month}-01`,
+        });
+        setStoredEntries(await api.accountingEntries());
+        showSuccessToast(`${label} enregistré : ${amount.toLocaleString('fr-FR')} FCFA.`);
+      } catch (cause) {
+        const message = errorMessage(cause);
+        setError(message);
+        showErrorToast(message);
+        throw cause;
+      }
+    },
+    [api, month, showErrorToast, showSuccessToast],
+  );
+
   async function voidEntry() {
     if (!pendingVoid) return;
     setBusy(true);
@@ -253,6 +286,7 @@ export function useAccounting() {
     setPendingVoid,
     totals,
     addEntry,
+    addEmployeeCharge,
     voidEntry,
     title,
     maxCategory,

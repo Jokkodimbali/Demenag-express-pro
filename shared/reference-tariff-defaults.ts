@@ -32,6 +32,8 @@ export function createReferenceLabourPriceMatrix(): LabourPriceMatrix {
 
 export const referenceAccountingChargeDefaults = {
   moverCostPerMove: 5000,
+  overtimeHourlyRate: 500,
+  employeeTransportFee: 2000,
   oilChangeCost: 150000,
   oilChangeIntervalMonths: 2,
   vehicleInsuranceAnnual: 200000,

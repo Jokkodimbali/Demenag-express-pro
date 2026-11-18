@@ -260,6 +260,9 @@ export const visibleUiText = {
   assemblyResetSuccess: 'Grille client rétablie.',
   pricingManoeuvreIncludedHours: 'Heures comprises dans le prix d’un manœuvre',
   pricingManoeuvreOvertimeHourly: 'Au-delà, prix par heure et par manœuvre (0 = désactivé)',
+  pricingEmployeeWorkHours: 'Horaires normaux des salariés : 08 h–20 h',
+  pricingEmployeeOvertimeRateHint:
+    'Le tarif des heures supplémentaires se règle dans Comptabilité et peut être ajusté sur chaque devis.',
   pricingSnapshotHeading: 'Tarifs du devis',
   pricingSnapshotNotice:
     'Les tarifs de transport, manœuvre, menuiserie et péages sont ceux enregistrés pour cette réservation. Les dimensions des véhicules suivent les paramètres actuels.',

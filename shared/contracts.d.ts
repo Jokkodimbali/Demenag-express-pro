@@ -13,6 +13,8 @@ export type AccountingFinanceConfiguration = {
   newVehicleTarget: number;
   profitCapPercent: number;
   moverCostPerMove: number;
+  overtimeHourlyRate: number;
+  employeeTransportFee: number;
   monthlyProfitTarget: number;
   averageMovingPrice: number;
   vehicleCount: number;

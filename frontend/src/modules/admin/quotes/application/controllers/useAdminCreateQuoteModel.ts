@@ -648,6 +648,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     simulationNeeds: rentalKitNeeds,
     taxiPickupDistanceKm: taxiCompanyApproach.distanceKm,
     savedCustomLines: latestSavedQuote?.pricingInput?.customLines,
+    accountingOvertimeHourlyRate: accountingConfiguration?.overtimeHourlyRate,
   });
   const formulaPrices = {
     economic: createAdminQuotePreview({
@@ -671,6 +672,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       simulationNeeds: rentalKitNeeds,
       taxiPickupDistanceKm: taxiCompanyApproach.distanceKm,
       savedCustomLines: latestSavedQuote?.pricingInput?.customLines,
+      accountingOvertimeHourlyRate: accountingConfiguration?.overtimeHourlyRate,
     }).total,
     standard: createAdminQuotePreview({
       draft,
@@ -688,6 +690,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       simulationNeeds: rentalKitNeeds,
       taxiPickupDistanceKm: taxiCompanyApproach.distanceKm,
       savedCustomLines: latestSavedQuote?.pricingInput?.customLines,
+      accountingOvertimeHourlyRate: accountingConfiguration?.overtimeHourlyRate,
     }).total,
     complete: createAdminQuotePreview({
       draft,
@@ -705,6 +708,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       simulationNeeds: rentalKitNeeds,
       taxiPickupDistanceKm: taxiCompanyApproach.distanceKm,
       savedCustomLines: latestSavedQuote?.pricingInput?.customLines,
+      accountingOvertimeHourlyRate: accountingConfiguration?.overtimeHourlyRate,
     }).total,
   };
   const economicMovingEstimate = useMemo(
@@ -1077,6 +1081,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     grossMargin,
     editingBooking,
     quoteSettings,
+    accountingConfiguration,
     contactCard,
     quoteTollPoints,
     catalogue,

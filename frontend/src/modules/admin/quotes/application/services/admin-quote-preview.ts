@@ -35,6 +35,7 @@ export function createAdminQuotePreview(input: {
   simulationNeeds: { blankets: number; straps: number } | null;
   taxiPickupDistanceKm?: number | null;
   savedCustomLines?: { label: string; quantity: number; unitPrice: number }[];
+  accountingOvertimeHourlyRate?: number | null;
 }) {
   const {
     draft,
@@ -116,6 +117,13 @@ export function createAdminQuotePreview(input: {
     estimate,
     settings?.movingLaborPlanning,
     config.billingMode,
+    {
+      enabled: config.manoeuvreOvertimeEnabled,
+      hours: config.manoeuvreOvertimeHours,
+      hourlyRate: config.manoeuvreOvertimeHourlyRateOverride,
+      accountingHourlyRate: input.accountingOvertimeHourlyRate,
+      startTime: draft.timeSlot,
+    },
   );
   const fallbackLines = extras
     .filter(([key]) => draft.options[key] > 0)

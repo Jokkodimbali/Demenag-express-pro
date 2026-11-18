@@ -7,6 +7,7 @@ import type { useAdminCreateQuoteModel } from '../application/controllers/useAdm
 import type { Catalogue } from '../../../shared/domain/model';
 import { quoteConfigWithManualTaxiFee } from '../application/services/admin-quote-form-policy';
 import { taxiPaidLegCount, taxiRotationCount } from '../application/services/admin-quote-taxi';
+import { estimatedManoeuvreOvertimeHours } from '../application/services/manoeuvre-overtime';
 
 type Model = ReturnType<typeof useAdminCreateQuoteModel>;
 
@@ -65,6 +66,19 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
   const taxiCompanyApproachAmount =
     quoteConfig.taxiCompanyApproachAmountOverride ?? taxiCompanyApproachCalculatedAmount;
   const taxiTotalAmount = taxiAmount * taxiPaidLegs + taxiCompanyApproachAmount;
+  const manoeuvreOvertimeRate =
+    quoteConfig.manoeuvreOvertimeHourlyRateOverride ??
+    model.accountingConfiguration?.overtimeHourlyRate ??
+    quoteSettings.movingLaborPlanning?.manoeuvreOvertimeHourlyRate ??
+    0;
+  const manoeuvreOvertimeHours =
+    quoteConfig.manoeuvreOvertimeHours ??
+    estimatedManoeuvreOvertimeHours(movingEstimate, draft.timeSlot);
+  const manoeuvreOvertimeTotal =
+    (movingEstimate?.crew ?? 0) * manoeuvreOvertimeHours * manoeuvreOvertimeRate;
+  const manoeuvreOvertimeEnabled =
+    quoteConfig.manoeuvreOvertimeEnabled ??
+    (manoeuvreOvertimeHours > 0 && manoeuvreOvertimeRate > 0);
   const taxiDistanceLabel = new Intl.NumberFormat('fr-FR', {
     maximumFractionDigits: 1,
   }).format(taxiDistanceKm);
@@ -516,6 +530,108 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
               )}
             </div>
             {taxiCompanyApproachError && <small role="alert">{taxiCompanyApproachError}</small>}
+          </section>
+        )}
+        {quoteConfig.billingMode !== 'driver-rental' && (movingEstimate?.crew ?? 0) > 0 && (
+          <section
+            className="admin-quote-overtime-card"
+            aria-labelledby="admin-quote-overtime-title"
+          >
+            <div className="admin-quote-overtime-header">
+              <div>
+                <strong id="admin-quote-overtime-title">
+                  Heures supplémentaires des manœuvres
+                </strong>
+                <span>Salariés : 08 h–20 h · tarif par heure et par personne</span>
+              </div>
+              <button
+                type="button"
+                aria-pressed={manoeuvreOvertimeEnabled}
+                className={manoeuvreOvertimeEnabled ? 'active' : ''}
+                onClick={() => {
+                  const enabled = !manoeuvreOvertimeEnabled;
+                  setQuoteConfig((current) => ({ ...current, manoeuvreOvertimeEnabled: enabled }));
+                  showSuccessToast(
+                    enabled
+                      ? 'Heures supplémentaires activées sur le devis.'
+                      : 'Heures supplémentaires retirées du devis.',
+                  );
+                }}
+              >
+                {manoeuvreOvertimeEnabled ? 'Activées' : 'Activer le supplément'}
+              </button>
+            </div>
+            <div className="admin-quote-overtime-controls">
+              <div className="admin-quote-overtime-hours">
+                <span>Heures au-delà de 20 h, par manœuvre</span>
+                <button
+                  type="button"
+                  aria-label="Retirer une heure supplémentaire"
+                  disabled={manoeuvreOvertimeHours <= 0}
+                  onClick={() => {
+                    const hours = Math.max(0, manoeuvreOvertimeHours - 1);
+                    setQuoteConfig((current) => ({ ...current, manoeuvreOvertimeHours: hours }));
+                    showSuccessToast(
+                      `Heures supplémentaires : ${String(hours).replace('.', ',')} h par manœuvre.`,
+                    );
+                  }}
+                >
+                  −
+                </button>
+                <strong>{String(manoeuvreOvertimeHours).replace('.', ',')} h</strong>
+                <button
+                  type="button"
+                  aria-label="Ajouter une heure supplémentaire"
+                  disabled={manoeuvreOvertimeHours >= 24}
+                  onClick={() => {
+                    const hours = Math.min(24, manoeuvreOvertimeHours + 1);
+                    setQuoteConfig((current) => ({ ...current, manoeuvreOvertimeHours: hours }));
+                    showSuccessToast(
+                      `Heures supplémentaires : ${String(hours).replace('.', ',')} h par manœuvre.`,
+                    );
+                  }}
+                >
+                  +
+                </button>
+              </div>
+              <label>
+                <span>Tarif par heure (FCFA)</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="10000000"
+                  step="1"
+                  value={manoeuvreOvertimeRate}
+                  onChange={(event) =>
+                    setQuoteConfig((current) => ({
+                      ...current,
+                      manoeuvreOvertimeHourlyRateOverride:
+                        event.target.value === ''
+                          ? 0
+                          : Math.min(
+                              10_000_000,
+                              Math.max(0, Math.round(Number(event.target.value))),
+                            ),
+                    }))
+                  }
+                  onBlur={() =>
+                    showSuccessToast(
+                      `Tarif des heures supplémentaires : ${money(manoeuvreOvertimeRate)} / heure.`,
+                    )
+                  }
+                />
+              </label>
+              <strong className="admin-quote-overtime-total">
+                {manoeuvreOvertimeEnabled ? money(manoeuvreOvertimeTotal) : money(0)}
+              </strong>
+            </div>
+            <small>
+              {manoeuvreOvertimeEnabled
+                ? `${movingEstimate?.crew ?? 0} × ${String(manoeuvreOvertimeHours).replace('.', ',')} h × ${money(manoeuvreOvertimeRate)} = ${money(manoeuvreOvertimeTotal)} ajouté au devis.`
+                : manoeuvreOvertimeHours > 0
+                  ? 'Le supplément est désactivé pour ce devis.'
+                  : 'Calcul automatique selon l’heure de début et la fin prévue, après 20 h.'}
+            </small>
           </section>
         )}
         {(draft.questionnaireAnswers['key-stairs']?.startsWith('Non, par le balcon') ||

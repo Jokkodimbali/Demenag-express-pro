@@ -43,6 +43,8 @@ export function normalizeAccountingConfiguration(
     menuPrices: { ...defaults.menuPrices, ...(config.menuPrices ?? {}) },
     advertising: config.advertising ?? {},
     salaries: config.salaries ?? defaults.salaries,
+    overtimeHourlyRate: config.overtimeHourlyRate ?? defaults.overtimeHourlyRate,
+    employeeTransportFee: config.employeeTransportFee ?? defaults.employeeTransportFee,
     annexes: config.annexes ?? defaults.annexes,
     vehiclePurchases: config.vehiclePurchases ?? defaults.vehiclePurchases,
     monthlyFixedChargePostings: config.monthlyFixedChargePostings ?? [],

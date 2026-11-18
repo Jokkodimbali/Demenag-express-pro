@@ -99,6 +99,7 @@ export function AccountingFinanceSections({
   period,
   advertising,
   bookings,
+  onAddEmployeeCharge,
   onDownload,
 }: {
   config: AccountingFinanceConfiguration;
@@ -114,9 +115,18 @@ export function AccountingFinanceSections({
   period: string;
   advertising: AdvertisingRow[];
   bookings: Booking[];
+  onAddEmployeeCharge: (input: {
+    employee: string;
+    kind: 'overtime' | 'transport';
+    amount: number;
+    hours?: number;
+  }) => Promise<void>;
   onDownload: (document: DocumentKey) => void;
 }) {
   const [opened, setOpened] = useState<Record<string, boolean>>({});
+  const [overtimeEmployee, setOvertimeEmployee] = useState<string | null>(null);
+  const [overtimeHours, setOvertimeHours] = useState('');
+  const [employeeChargeBusy, setEmployeeChargeBusy] = useState<string | null>(null);
   const toggle = (key: string) => setOpened((old) => ({ ...old, [key]: !old[key] }));
   const month = current?.key ?? period;
   const advertisingSpend = advertising.reduce((sum, row) => sum + row.spend, 0);
@@ -505,6 +515,37 @@ export function AccountingFinanceSections({
               }
             />
             <button
+              type="button"
+              className="accounting-finance-add employee-charge-button"
+              disabled={config.overtimeHourlyRate <= 0}
+              onClick={() => {
+                setOvertimeEmployee(overtimeEmployee === salary.id ? null : salary.id);
+                setOvertimeHours('');
+              }}
+            >
+              <Plus size={15} /> {accountingFinanceText.addOvertime}
+            </button>
+            <button
+              type="button"
+              className="accounting-finance-add employee-charge-button"
+              disabled={
+                employeeChargeBusy === `${salary.id}-transport` || config.employeeTransportFee <= 0
+              }
+              onClick={() => {
+                setEmployeeChargeBusy(`${salary.id}-transport`);
+                void onAddEmployeeCharge({
+                  employee: salary.name || 'Employé',
+                  kind: 'transport',
+                  amount: config.employeeTransportFee,
+                })
+                  .catch(() => undefined)
+                  .finally(() => setEmployeeChargeBusy(null));
+              }}
+            >
+              {accountingFinanceText.addTransport} · {money(config.employeeTransportFee)}
+            </button>
+            <button
+              type="button"
               className="accounting-finance-remove"
               aria-label={`Retirer ${salary.name || 'ce salaire'}`}
               onClick={() =>
@@ -516,6 +557,52 @@ export function AccountingFinanceSections({
             >
               <Trash2 size={16} />
             </button>
+            {overtimeEmployee === salary.id && (
+              <div className="accounting-overtime-entry">
+                <label>
+                  {accountingFinanceText.overtimeHours}
+                  <input
+                    type="number"
+                    min="0.1"
+                    step="0.5"
+                    value={overtimeHours}
+                    onChange={(event) => setOvertimeHours(event.target.value)}
+                  />
+                </label>
+                <span>
+                  {money((Number(overtimeHours) || 0) * config.overtimeHourlyRate)} (
+                  {money(config.overtimeHourlyRate)} / h)
+                </span>
+                <button
+                  type="button"
+                  className="accounting-finance-add"
+                  disabled={
+                    !Number(overtimeHours) ||
+                    Number(overtimeHours) <= 0 ||
+                    config.overtimeHourlyRate <= 0 ||
+                    employeeChargeBusy === `${salary.id}-overtime`
+                  }
+                  onClick={() => {
+                    const hours = Number(overtimeHours);
+                    setEmployeeChargeBusy(`${salary.id}-overtime`);
+                    void onAddEmployeeCharge({
+                      employee: salary.name || 'Employé',
+                      kind: 'overtime',
+                      hours,
+                      amount: hours * config.overtimeHourlyRate,
+                    })
+                      .then(() => {
+                        setOvertimeHours('');
+                        setOvertimeEmployee(null);
+                      })
+                      .catch(() => undefined)
+                      .finally(() => setEmployeeChargeBusy(null));
+                  }}
+                >
+                  {accountingFinanceText.saveOvertime}
+                </button>
+              </div>
+            )}
           </div>
         ))}
         <button
@@ -530,6 +617,22 @@ export function AccountingFinanceSections({
           <Plus size={16} /> {accountingFinanceText.addSalary}
         </button>
         <div className="accounting-finance-fields">
+          <label>
+            <span>{accountingFinanceText.overtimeHourlyRate}</span>
+            <PriceInput
+              value={config.overtimeHourlyRate}
+              label={accountingFinanceText.overtimeHourlyRate}
+              onSave={(value) => update({ overtimeHourlyRate: value })}
+            />
+          </label>
+          <label>
+            <span>{accountingFinanceText.employeeTransportFee}</span>
+            <PriceInput
+              value={config.employeeTransportFee}
+              label={accountingFinanceText.employeeTransportFee}
+              onSave={(value) => update({ employeeTransportFee: value })}
+            />
+          </label>
           <label>
             <span>{accountingFinanceText.moverPerMove}</span>
             <input
