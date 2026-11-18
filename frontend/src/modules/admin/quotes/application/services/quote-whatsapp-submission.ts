@@ -46,7 +46,7 @@ export function startQuoteWhatsAppSubmission({
     return;
   }
   if (quoteKind === 'final' && previewTier === 3 && !(Number(customPrice) > 0)) {
-    const message = `Distance au-delà de ${maximumDistance} km : fixez le prix par aller-retour avant le devis final.`;
+    const message = `Distance au-delà de ${maximumDistance} km : fixez le prix par chargement et déchargement avant le devis final.`;
     setStageError(message);
     showErrorToast(message);
     return;

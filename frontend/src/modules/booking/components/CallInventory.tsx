@@ -113,7 +113,7 @@ export function CallInventory({
           </strong>
           <span>
             {audience === 'client'
-              ? 'Indiquez les objets à déménager pour estimer le volume et les allers-retours.'
+              ? 'Indiquez les objets à déménager pour estimer le volume et le nombre de chargements et déchargements.'
               : "Cochez et comptez pendant l'appel, le devis se remplit tout seul."}
           </span>
         </div>

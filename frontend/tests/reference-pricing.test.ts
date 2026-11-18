@@ -11,17 +11,17 @@ import {
 import { calculatePrice } from '../../backend/src/domain/pricing/pricing.ts';
 import type { Settings, Vehicle } from '../src/modules/shared/domain/model';
 
-test('réduit les allers-retours suivants au pourcentage de référence et arrondit aux 500 FCFA', () => {
+test('réduit les chargements et déchargements suivants au pourcentage de référence et arrondit aux 500 FCFA', () => {
   const lines = referenceTransportLines('Transport Sprinter', 28000, 3, 60);
   assert.deepEqual(lines, [
     {
-      label: 'Transport Sprinter · 1er aller-retour',
+      label: 'Transport Sprinter · premier chargement et déchargement',
       quantity: 1,
       unitPrice: 28000,
       total: 28000,
     },
     {
-      label: 'Allers-retours suivants (60 % du 1er)',
+      label: 'Chargements et déchargements suivants (60 % du 1er)',
       quantity: 2,
       unitPrice: 17000,
       total: 34000,

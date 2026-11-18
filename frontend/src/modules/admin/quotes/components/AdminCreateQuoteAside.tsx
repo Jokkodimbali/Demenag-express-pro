@@ -213,8 +213,8 @@ export function AdminCreateQuoteAside({
         )}
         <p>
           {quoteKind === 'final'
-            ? `Devis final établi sur la base du nombre réel d'allers-retours effectués (${quoteConfig.trips}), au tarif de la tranche de distance appliquée.`
-            : `Devis temporaire, calculé sur ${quoteConfig.trips} aller(s)-retour(s) estimé(s). Le transport est facturé par aller-retour effectué : le devis final, basé sur le nombre réel d'allers-retours, sera envoyé par Demenag Express à la fin du déménagement.`}
+            ? `Devis final établi sur la base du nombre réel de chargements et déchargements effectués (${quoteConfig.trips}), au tarif de la tranche de distance appliquée.`
+            : `Devis temporaire, calculé sur ${quoteConfig.trips} ${quoteConfig.trips > 1 ? 'chargements et déchargements estimés' : 'chargement et déchargement estimé'}. Le transport est facturé pour chaque opération complète de chargement et de déchargement. Le devis final, basé sur le nombre réel, sera envoyé par Demenag Express à la fin du déménagement.`}
         </p>
       </div>
       {!publicRequest && (

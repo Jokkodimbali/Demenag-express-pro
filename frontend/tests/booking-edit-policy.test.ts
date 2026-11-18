@@ -25,7 +25,7 @@ test('la réédition d’un devis retire son ancien résumé généré sans supp
   const question = { question: 'Le client a-t-il un ascenseur ?', answer: 'Non' };
   const generated = [
     inventoryText,
-    'Estimation : volume ≈ 31,5 m³, soit 4 allers-retours en Master III.',
+    'Estimation : volume ≈ 31,5 m³, soit 4 chargements et déchargements en Master III.',
     "Main-d'œuvre : 6 manœuvres (≈ 965 kg, objet le plus lourd ≈ 56 kg), chargement + déchargement ≈ 5 h 30 · trajet ≈ 25 min · durée ≈ 9 h 55 (13:15 à 23:10) · journée de plus de 8 h.",
     `${question.question} : ${question.answer}`,
     conditions,

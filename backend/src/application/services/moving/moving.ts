@@ -583,7 +583,7 @@ export class MovingService implements MovingUseCases {
           user.role === 'admin'
             ? 'Courses terminées par l’administration'
             : 'Courses terminées par le chauffeur',
-        message: `${updated.reference} : ${user.role === 'admin' ? 'l’administration' : 'le chauffeur'} signale ${updated.trips?.length ?? 0} aller(s)-retour(s) terminé(s). Vérifiez le dossier, créez le devis final puis clôturez la réservation.`,
+        message: `${updated.reference} : ${user.role === 'admin' ? 'l’administration' : 'le chauffeur'} signale ${updated.trips?.length ?? 0} ${updated.trips?.length === 1 ? 'chargement et déchargement terminé' : 'chargements et déchargements terminés'}. Vérifiez le dossier, créez le devis final puis clôturez la réservation.`,
         createdAt: this.clock.now().toISOString(),
         bookingId: updated.id,
       },

@@ -92,7 +92,7 @@ test('Chaque ligne du devis conserve la quantité exacte de sa prestation', () =
   assert.deepEqual(
     price.lines.map(({ label, quantity }) => ({ label, quantity })),
     [
-      { label: 'Transport Sprinter · 15 – 25 km (aller-retour)', quantity: 3 },
+      { label: 'Transport Sprinter · 15 – 25 km (chargement et déchargement)', quantity: 3 },
       { label: 'Manœuvre', quantity: 2 },
       { label: 'Menuisier · bureau', quantity: 1 },
       { label: 'Menuisier · armoire', quantity: 1 },
@@ -102,7 +102,10 @@ test('Chaque ligne du devis conserve la quantité exacte de sa prestation', () =
 test('Le prix personnalisé ne remplace pas la tranche normale après modification du trajet', () => {
   const price = calculatePrice(vehicle, settings, 20, none, 2, 90000);
   assert.equal(price.lines[0].unitPrice, vehicle.prices[1]);
-  assert.equal(price.lines[0].label, 'Transport Sprinter · 15 – 25 km (aller-retour)');
+  assert.equal(
+    price.lines[0].label,
+    'Transport Sprinter · 15 – 25 km (chargement et déchargement)',
+  );
   assert.equal(price.total, 74000);
 });
 test('Le tarif par manœuvre ajoute les étages sans ascenseur et le forfait ascenseur', () => {

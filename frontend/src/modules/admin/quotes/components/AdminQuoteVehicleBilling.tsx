@@ -228,8 +228,8 @@ export function AdminQuoteVehicleBilling({
         <h3>{t.teamAndCalculation}</h3>
         <p>
           {quoteConfig.calcMode === 'manual'
-            ? 'Vous fixez les manœuvres, allers-retours et durée de trajet. L’inventaire ne les modifie plus. Le véhicule reste libre.'
-            : 'L’inventaire calcule les allers-retours et conseille le nombre de manœuvres. Le véhicule reste libre.'}
+            ? 'Vous fixez les manœuvres, le nombre de chargements et déchargements et la durée du trajet. L’inventaire ne les modifie plus. Le véhicule reste libre.'
+            : 'L’inventaire calcule le nombre de chargements et déchargements et conseille le nombre de manœuvres. Le véhicule reste libre.'}
         </p>
         <div className="admin-quote-team-values">
           <div className="admin-quote-calculation-value">
@@ -333,7 +333,10 @@ export function AdminQuoteVehicleBilling({
         {quoteConfig.calcMode === 'manual' && movingEstimate && (
           <span className="admin-quote-team-advice">
             {t.advisedByInventory} {movingEstimate.recommendedCrew} {t.movers}{' '}
-            {movingEstimate.trips} {t.roundTrips}
+            {movingEstimate.trips}{' '}
+            {movingEstimate.trips > 1
+              ? 'chargements et déchargements'
+              : 'chargement et déchargement'}
           </span>
         )}
       </section>

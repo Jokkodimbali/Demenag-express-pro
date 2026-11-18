@@ -8,7 +8,7 @@ export const defaultFinalQuoteTemplate =
   'Bonjour {nom},\n\nVoici votre devis final Demenag Express n° {num} :\n- Date : {date}{heure}\n- Trajet : {trajet}\n- Véhicule : {vehicule}, {voyages}\n- Montant total : {total}\n\nCe montant est définitif.\nJe vous envoie le PDF du devis final juste après ce message.\n\nMerci pour votre confiance.';
 
 export const defaultLegacyFinalQuoteTemplate =
-  'Bonjour {nom}, votre déménagement est terminé. Voici votre devis final Demenag Express {num} : {total} ({allers} aller(s)-retour(s), {vehicule}). Le PDF est disponible dans votre espace client. Merci !';
+  'Bonjour {nom}, votre déménagement est terminé. Voici votre devis final Demenag Express {num} : {total} ({voyages}, {vehicule}). Le PDF est disponible dans votre espace client. Merci !';
 
 export const whatsappPaymentLine = (settings?: {
   paymentWave?: boolean;

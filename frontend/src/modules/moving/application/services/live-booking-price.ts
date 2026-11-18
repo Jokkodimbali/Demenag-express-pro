@@ -56,7 +56,7 @@ export function liveBookingPrice(
       let label = line.label;
       if (label.startsWith('Transport')) {
         unitPrice = tier === 3 ? custom : vehicle.prices[tier];
-        label = `Transport ${vehicle.shortName || vehicle.name} · ${referenceTierLabels(bounds)[tier].toLocaleLowerCase('fr')} (aller-retour)`;
+        label = `Transport ${vehicle.shortName || vehicle.name} · ${referenceTierLabels(bounds)[tier].toLocaleLowerCase('fr')} (chargement et déchargement)`;
       } else if (label.startsWith('Manœuvre'))
         unitPrice = labourOverride ?? labourUnitPrice(settings, booking.workAccess);
       else if (assembly.has(label)) unitPrice = assembly.get(label)!;

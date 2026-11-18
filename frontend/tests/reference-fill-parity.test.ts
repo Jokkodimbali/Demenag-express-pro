@@ -257,28 +257,32 @@ for (const scenario of cases) {
         `${vehicle.id} : capacité`,
       );
       assert.equal(
-        card.trips,
-        `${estimate.trips} aller${estimate.trips > 1 ? 's' : ''}-retour${estimate.trips > 1 ? 's' : ''}`,
-        `${vehicle.id} : trajets`,
+        Number(card.trips.match(/\d+/)?.[0]),
+        estimate.trips,
+        `${vehicle.id} : nombre de chargements et déchargements`,
       );
       const rendered = renderedCards[index]?.[1] ?? '';
       const renderedTrip = rendered.match(
         /<strong class="moving-vehicle-trip-count">([\s\S]*?)<\/strong>/,
       )?.[1];
+      const expectedTripsLabel =
+        estimate.trips === 1
+          ? '1 chargement et déchargement'
+          : `${estimate.trips} chargements et déchargements`;
       const renderedFill = rendered.match(
         /<span class="moving-vehicle-fill">([\s\S]*?)<\/span>/,
       )?.[1];
       assert.equal(
         renderedTrip?.replace(/<[^>]+>/g, ''),
-        card.trips,
-        `${vehicle.id} : trajets affichés`,
+        expectedTripsLabel,
+        `${vehicle.id} : chargements et déchargements affichés`,
       );
       assert.equal(
         renderedFill?.replace(/<[^>]+>/g, ''),
         card.fill,
         `${vehicle.id} : pourcentage affiché`,
       );
-      results.push(`${vehicle.shortName}: ${card.trips}, ${card.fill}`);
+      results.push(`${vehicle.shortName}: ${expectedTripsLabel}, ${card.fill}`);
     }
     t.diagnostic(`Référence = application : ${results.join(' | ')}`);
   });

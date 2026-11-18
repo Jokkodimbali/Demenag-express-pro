@@ -381,7 +381,10 @@ test('le mode automatique du formulaire calcule trajet et équipe avec le plan d
   });
   try {
     const referenceTrips = reference.estTrips(legacyInventory, 'sprinter');
-    assert.ok(referenceTrips > 1, 'le scénario doit exercer plusieurs allers-retours');
+    assert.ok(
+      referenceTrips > 1,
+      'le scénario doit exercer plusieurs chargements et déchargements',
+    );
     const referenceFillPlan = referenceWindow.DemSim!.plan(
       reference.simInputOf({ inv: legacyInventory, vehicle: 'sprinter' }, 'sprinter'),
     );
@@ -440,7 +443,7 @@ test('le mode automatique du formulaire calcule trajet et équipe avec le plan d
       tollLines: [],
     });
     assert.ok(estimate);
-    assert.equal(estimate.trips, referenceTrips, 'nombre estimé d’allers-retours');
+    assert.equal(estimate.trips, referenceTrips, 'nombre estimé de chargements et déchargements');
     assert.equal(
       vehicleFillPercentage(estimate.volume, estimate.trips, estimate.capacity),
       Math.round(
@@ -1706,7 +1709,7 @@ test('le prix de chaque véhicule et la suggestion moins chère reprennent la r�
         labourPrice: quoteSettings.labourPrice,
         simulationNeeds: null,
       });
-      assert.equal(estimate.trips, referenceTrips, `${candidate.id}: allers-retours`);
+      assert.equal(estimate.trips, referenceTrips, `${candidate.id}: chargements et déchargements`);
       assert.equal(estimate.recommendedCrew, referenceLabour.n, `${candidate.id}: manœuvres`);
       assert.equal(
         sitePreview.total,
@@ -1850,7 +1853,7 @@ test('le prix de chaque véhicule et la suggestion moins chère reprennent la r�
   }
 });
 
-test('allers-retours et manœuvres concordent avec la référence pour chaque meuble standard', async (t) => {
+test('chargements et déchargements et manœuvres concordent avec la référence pour chaque meuble standard', async (t) => {
   const aliases: Record<string, string> = {
     'table-basse': 'tbasse',
     'meuble-tv': 'meubletv',
@@ -1934,7 +1937,11 @@ test('allers-retours et manœuvres concordent avec la référence pour chaque me
         });
         assert.ok(referenceEstimate);
         await t.test(`${item.key} / ${format}`, () => {
-          assert.equal(siteEstimate.trips, referenceTrips, 'nombre d’allers-retours');
+          assert.equal(
+            siteEstimate.trips,
+            referenceTrips,
+            'nombre de chargements et déchargements',
+          );
           assert.equal(siteEstimate.recommendedCrew, referenceEstimate.n, 'nombre de manœuvres');
           assert.equal(siteEstimate.carpenterCount, referenceEstimate.m, 'nombre de menuisiers');
         });

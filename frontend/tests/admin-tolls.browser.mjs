@@ -226,7 +226,7 @@ try {
     `${priceText(firstVehiclePrice)} FCFA`,
   );
   await expect(editor.locator('.toll-reference-price-summary')).toContainText(
-    `Aller-retour ${priceText(firstVehiclePrice * 2)} FCFA`,
+    `Aller + retour ${priceText(firstVehiclePrice * 2)} FCFA`,
   );
 
   const updatedName = `Péage modifié ${testTag}`;
@@ -246,7 +246,7 @@ try {
       tarifsVehicules: { sprinter: updatedPrice },
     });
   await expect(editor.locator('.toll-reference-price-summary')).toContainText(
-    `Aller-retour ${priceText(updatedPrice * 2)} FCFA`,
+    `Aller + retour ${priceText(updatedPrice * 2)} FCFA`,
   );
 
   const secondVehicle = orderedVehicles[1];
@@ -391,7 +391,7 @@ try {
 
   expect(pageErrors).toEqual([]);
   console.log(
-    'Péages admin : accès, validation API, carte, ajout au clic, axes/recherche, tarif par véhicule et aller-retour, édition persistée, déplacement, lien Maps, confirmation/suppression, rechargement et responsive vérifiés.',
+    'Péages admin : accès, validation API, carte, ajout au clic, axes/recherche, tarif par véhicule et aller + retour, édition persistée, déplacement, lien Maps, confirmation/suppression, rechargement et responsive vérifiés.',
   );
 } finally {
   await browser.close();

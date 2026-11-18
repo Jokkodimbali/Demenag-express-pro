@@ -46,7 +46,7 @@ test('saisir un montant taxi personnalisé active les frais et met à jour le ca
   assert.equal(updated.taxiFeeAmountOverride, 10_000);
 });
 
-test('un devis enregistré recharge son montant taxi par aller-retour', () => {
+test('un devis enregistré recharge son montant taxi par chargement et déchargement', () => {
   const price: Price = {
     lines: [{ label: 'Manœuvres', quantity: 5, unitPrice: 12_500, total: 62_500 }],
     total: 62_500,

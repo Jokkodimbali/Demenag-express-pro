@@ -211,7 +211,11 @@ export function MovingPlanningPanel({
                   </div>
                   <strong className="moving-vehicle-trip-count">
                     {estimate.trips || '—'}{' '}
-                    {estimate.trips ? (estimate.trips > 1 ? 'allers-retours' : 'aller-retour') : ''}
+                    {estimate.trips
+                      ? estimate.trips > 1
+                        ? 'chargements et déchargements'
+                        : 'chargement et déchargement'
+                      : ''}
                   </strong>
                   <span className="moving-vehicle-fill">
                     {fillPercentage} {uiText['deRemplissage']}

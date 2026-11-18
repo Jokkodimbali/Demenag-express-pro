@@ -3,7 +3,7 @@ import type { MovingEstimate } from './moving-estimate';
 export function movingEstimateNote(estimate: MovingEstimate): string {
   const vehicleName = estimate.vehicleName.replace(/^(Mercedes|Renault)\s+/u, '');
   return [
-    `Estimation des allers-retours : volume ≈ ${estimate.volume.toFixed(1).replace('.', ',')} m³, soit ${estimate.plannedTrips} aller-retour${estimate.plannedTrips > 1 ? 's' : ''} en ${vehicleName}.`,
+    `Estimation des chargements et déchargements : volume ≈ ${estimate.volume.toFixed(1).replace('.', ',')} m³, soit ${estimate.plannedTrips} ${estimate.plannedTrips > 1 ? 'chargements et déchargements' : 'chargement et déchargement'} en ${vehicleName}.`,
     `Main-d’œuvre : ${estimate.crew} manœuvre${estimate.crew > 1 ? 's' : ''}${estimate.carpenterCount ? ` + ${estimate.carpenterCount} menuisier${estimate.carpenterCount > 1 ? 's' : ''}` : ''}, chargement + déchargement ≈ ${formatDuration(estimate.loadingMinutes + estimate.unloadingMinutes)}.`,
     ...(estimate.packingMinutes > 0
       ? [

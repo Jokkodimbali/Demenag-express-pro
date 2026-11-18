@@ -22,7 +22,7 @@ export function tollLine(
 ): TollExtraLine {
   return {
     id: point.id,
-    label: `${tollLabel(point.name)} · ${direction === 'round-trip' ? 'Aller-retour' : 'Aller simple'}`,
+    label: `${tollLabel(point.name)} · ${direction === 'round-trip' ? 'Aller + retour' : 'Aller simple'}`,
     quantity: journeyCount * (direction === 'round-trip' ? 2 : 1),
     unitPrice: savedUnitPrice ?? tollPrice(point, vehicleId),
   };
@@ -30,8 +30,11 @@ export function tollLine(
 
 export function tollPointForLine(label: string, points: TollPoint[]): TollPoint | undefined {
   return points.find((point) =>
-    [' · Aller simple', ' · Aller-retour'].some(
-      (direction) => label === `${tollLabel(point.name)}${direction}`,
-    ),
+    [
+      ' · Aller simple',
+      ' · Aller + retour',
+      ' · Aller-retour',
+      ' · Chargement et déchargement',
+    ].some((direction) => label === `${tollLabel(point.name)}${direction}`),
   );
 }

@@ -99,7 +99,7 @@ export function createAdminQuotePreview(input: {
   const taxiDistance = Math.max(0, draft.distanceKmOverride ?? draft.route?.distanceKm ?? 0);
   // One estimated/specified rotation means one load and one unload. The taxi
   // rule adds one extra rotation after choosing the automatic or manual count.
-  const taxiTrips = taxiRotationCount(estimate?.trips, config.trips);
+  const taxiTrips = taxiRotationCount(estimate?.trips, config.trips, config.calcMode);
   const taxiRate = Math.max(0, settings?.taxiFeePerKm ?? 0);
   const taxiRoundTripAmount = config.taxiFeeAmountOverride ?? Math.round(taxiDistance * taxiRate);
   const taxiCompanyApproachAmount =
@@ -144,6 +144,7 @@ export function createAdminQuotePreview(input: {
           !line.label.startsWith('Transport ') &&
           !savedCustomLineKeys.has(JSON.stringify([line.label, line.quantity, line.unitPrice])) &&
           !line.label.startsWith('Frais taxi') &&
+          !line.label.startsWith('Chargements et déchargements suivants') &&
           !line.label.startsWith('Allers-retours suivants') &&
           !line.label.startsWith('Remise jour creux') &&
           (config.billingMode === 'complete' ||

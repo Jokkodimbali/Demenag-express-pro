@@ -381,12 +381,12 @@ test('le PDF du devis ajoute le plan choisi et explicite la base des volumes', a
     assert.match(text, /Planning prévisionnel/);
     assert.match(text, /Chaleur ISO 7243 : WBGT 26,5 °C/);
     assert.match(text, /Pages suivantes : 3\. Planning prévisionnel heure par heure/);
-    assert.match(text, /Synthèse des allers-retours/);
+    assert.match(text, /Synthèse des chargements et déchargements/);
     assert.ok(
       text.indexOf('Plan de chargement') < text.indexOf('Annexe - Inventaire'),
       'le plan précède l’annexe inventaire comme dans le PDF de référence',
     );
-    assert.match(text, /Aller-retour 1/);
+    assert.match(text, /Chargement et déchargement 1/);
     assert.match(text, /Lecture des volumes/);
     assert.match(text, /0,8 m³/);
     assert.match(text, /0,5 m³/);

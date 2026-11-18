@@ -57,7 +57,7 @@ export async function generateLoadingSimulationPdf({
         (await assetDataUrl('/assets/logo.png').catch(() => null));
       const trips = plan.trips;
       const tripTotal = (count: number) =>
-        `${count} ${count > 1 ? 'allers-retours' : 'aller-retour'}`;
+        `${count} ${count > 1 ? 'chargements et déchargements' : 'chargement et déchargement'}`;
       const number = (value: number) => (Math.round(value * 10) / 10).toString().replace('.', ',');
       const duration = (minutes: number) => {
         const rounded = Math.max(5, Math.round(minutes / 5) * 5);
@@ -104,7 +104,7 @@ export async function generateLoadingSimulationPdf({
       pdf.setTextColor(255, 255, 255);
       pdf.text(
         safe(
-          `Format ${blanketLengthCm} x ${blanketWidthCm} cm - ${trips.length > 1 ? `maximum sur un aller-retour (elles reviennent avec le camion), ${totalBlankets} poses au total` : 'pour l’aller-retour'}${maxBlankets > stock ? ` - stock actuel ${stock} : manque ${maxBlankets - stock}` : ''}`,
+          `Format ${blanketLengthCm} x ${blanketWidthCm} cm - ${trips.length > 1 ? `maximum par chargement et déchargement, ${totalBlankets} poses au total` : 'pour un chargement et un déchargement'}${maxBlankets > stock ? ` - stock actuel ${stock} : manque ${maxBlankets - stock}` : ''}`,
         ),
         margin + 4,
         y + 7.5,
@@ -132,7 +132,7 @@ export async function generateLoadingSimulationPdf({
         pdf.setFont('helvetica', 'bold');
         pdf.setFontSize(11);
         pdf.setTextColor(30, 32, 35);
-        pdf.text(`Aller-retour ${tripIndex + 1}`, margin, y);
+        pdf.text(`Chargement et déchargement ${tripIndex + 1}`, margin, y);
         pdf.setFont('helvetica', 'normal');
         pdf.setFontSize(9);
         pdf.setTextColor(90, 97, 104);

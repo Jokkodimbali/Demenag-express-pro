@@ -714,7 +714,7 @@ export function estimateMovingWork(
     warnings.push('Type de logement non précisé : les effets annexes ne sont pas estimés.');
   if (loadingHours + unloadingHours > labor.maxHandlingHours)
     warnings.push(
-      `Chargement et déchargement dépassent le plafond conseillé de ${labor.maxHandlingHours} h avec ${crew} manœuvres.`,
+      `La durée de chargement et de déchargement dépasse le plafond conseillé de ${labor.maxHandlingHours} h avec ${crew} manœuvres.`,
     );
   if (totalMinutes > labor.maxDayHours * 60)
     warnings.push(

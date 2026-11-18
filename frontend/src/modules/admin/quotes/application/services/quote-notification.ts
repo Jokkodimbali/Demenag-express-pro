@@ -54,7 +54,7 @@ export function quoteNotificationUrl(booking: Booking, quote: Quote, settings?: 
       paiement: paymentLine,
       conditions,
       allers: String(tripCount),
-      voyages: `${tripCount}${tripCount > 1 ? ' allers-retours' : ' aller-retour'}`,
+      voyages: `${tripCount}${tripCount > 1 ? ' chargements et déchargements' : ' chargement et déchargement'}`,
       vehicule: booking.vehicle.shortName || booking.vehicle.name,
       date,
       heure:

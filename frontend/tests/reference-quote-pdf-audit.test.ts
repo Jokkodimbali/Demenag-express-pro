@@ -15,11 +15,11 @@ const html = readFileSync(
 
 test('le récapitulatif automatique répété de l’inventaire est retiré des notes PDF', () => {
   const generatedLines = [
-    'Estimation : volume ~4,3 m³, soit 1 aller-retour en Sprinter.',
+    'Estimation : volume ~4,3 m³, soit un chargement et un déchargement en Sprinter.',
     "Main-d'oeuvre : 3 manœuvres (~ 120 kg, objet le plus lourd ~30 kg), chargement + déchargement ~2 h.",
     "Main-d'oeuvre : 3 manoeuvres (~ 130 kg, objet le plus lourd ~ 56 kg), chargement + déchargement ~ 1 h 35 - trajet ~ 40 min - durée ~ 3 h 25 (12:00 à 15:25).",
     'Main-d’œuvre : 3 manœuvres (≈ 130 kg, objet le plus lourd ≈ 56 kg), chargement + déchargement ≈ 1 h 35 · trajet ≈ 40 min · durée ≈ 3 h 25 (12:00 à 15:25).',
-    'Estimation : volume ≈ 4,3 m³, soit 1 aller-retour en Mercedes Sprinter.',
+    'Estimation : volume ≈ 4,3 m³, soit un chargement et un déchargement en Mercedes Sprinter.',
     'Trajet : ~40 min par trajet (9,8 km).',
     'Planning prévisionnel : de 12:00 à 15:25, durée ~3 h 25 (entre 3 h et 4 h 30).',
     'Déménagement du 2ème étage de Dakar / au 3ème étage de Dakar',
@@ -27,7 +27,7 @@ test('le récapitulatif automatique répété de l’inventaire est retiré des 
     '- 1 table basse : ~ 0,40 m³',
     'Logement : appartement, 2 pièces',
     'À noter : accès par escalier',
-    'Estimation : volume ≈ 4,3 m³, soit 1 aller-retour en Mercedes Sprinter.',
+    'Estimation : volume ≈ 4,3 m³, soit un chargement et un déchargement en Mercedes Sprinter.',
     'Main-d’œuvre : 3 manœuvres (≈ 130 kg, objet le plus lourd ≈ 56 kg), chargement + déchargement ≈ 1 h 35 · trajet ≈ 40 min · durée ≈ 3 h 25 (12:00 à 15:25).',
   ];
   const notes = [
@@ -43,7 +43,10 @@ test('le récapitulatif automatique répété de l’inventaire est retiré des 
     .replace(/^Arrivée :.*$/mu, '')
     .replace(/\n{2,}/gu, '\n');
   const cleaned = withoutInventoryBlock(normalized, undefined, 'Départ', 'Arrivée');
-  assert.equal(cleaned, "FICHE D'APPEL · INVENTAIRE\nAccès : A · 2e étage ; B · 3e étage\nNOTE PERSONNALISÉE : manipuler avec soin.");
+  assert.equal(
+    cleaned,
+    "FICHE D'APPEL · INVENTAIRE\nAccès : A · 2e étage ; B · 3e étage\nNOTE PERSONNALISÉE : manipuler avec soin.",
+  );
 });
 
 test('le PDF provisoire avec notes de planning conserve le contenu manuel sans répétition', async () => {
@@ -52,8 +55,20 @@ test('le PDF provisoire avec notes de planning conserve le contenu manuel sans r
   const inventorySnapshot = {
     items: [
       { section: 'Salon', label: 'Salon', quantity: 1, details: '5 places', volumeM3: 3.75 },
-      { section: 'Salon', label: 'Table basse', quantity: 1, details: 'Moyen : standard', volumeM3: 0.4 },
-      { section: 'Salon', label: 'Tapis', quantity: 1, details: 'Moyen : salon moyen', volumeM3: 0.15 },
+      {
+        section: 'Salon',
+        label: 'Table basse',
+        quantity: 1,
+        details: 'Moyen : standard',
+        volumeM3: 0.4,
+      },
+      {
+        section: 'Salon',
+        label: 'Tapis',
+        quantity: 1,
+        details: 'Moyen : salon moyen',
+        volumeM3: 0.15,
+      },
     ],
     ready: 'oui',
     stairs: 'oui',
@@ -112,11 +127,21 @@ test('le PDF provisoire avec notes de planning conserve le contenu manuel sans r
     reference: 'DV-2026-363976F1',
     kind: 'provisional',
     createdAt: '2026-11-13T00:00:00.000Z',
-    notes: `FICHE D'APPEL · INVENTAIRE\nDépart : ${bookingWithInventory.fromAddress} · étage 2\nArrivée : ${bookingWithInventory.toAddress} · étage 3\n${repeatedPlanning}\n${repeatedPlanning}\nEstimation : volume ~4,3 m³, soit 1 aller-retour en Mercedes Sprinter.\nMain-d'oeuvre : 3 manoeuvres (~ 130 kg, objet le plus lourd ~56 kg), chargement + déchargement ~1 h 35\nNOTE PERSONNALISÉE : accès à confirmer.`,
+    notes: `FICHE D'APPEL · INVENTAIRE\nDépart : ${bookingWithInventory.fromAddress} · étage 2\nArrivée : ${bookingWithInventory.toAddress} · étage 3\n${repeatedPlanning}\n${repeatedPlanning}\nEstimation : volume ~4,3 m³, soit un chargement et un déchargement en Mercedes Sprinter.\nMain-d'oeuvre : 3 manoeuvres (~ 130 kg, objet le plus lourd ~56 kg), chargement + déchargement ~1 h 35\nNOTE PERSONNALISÉE : accès à confirmer.`,
     price: {
       lines: [
-        { label: 'Transport Mercedes Sprinter - moins de 15 km (aller-retour)', quantity: 1, unitPrice: 28000, total: 28000 },
-        { label: 'Manœuvre (2e sans asc. > 3e sans asc.)', quantity: 3, unitPrice: 9000, total: 27000 },
+        {
+          label: 'Transport Mercedes Sprinter - moins de 15 km (chargement et déchargement)',
+          quantity: 1,
+          unitPrice: 28000,
+          total: 28000,
+        },
+        {
+          label: 'Manœuvre (2e sans asc. > 3e sans asc.)',
+          quantity: 3,
+          unitPrice: 9000,
+          total: 27000,
+        },
       ],
       total: 55000,
       discount: 0,
@@ -146,7 +171,11 @@ test('le PDF provisoire avec notes de planning conserve le contenu manuel sans r
   const inventoryPageIndex = pages.findIndex((page) => page.includes('DÉPART (A)'));
   assert.ok(inventoryPageIndex >= 0, 'annexe inventaire présente');
   assert.ok(pages[inventoryPageIndex]?.includes('NOTE PERSONNALISÉE : accès à confirmer.'));
-  assert.equal(pages.join(' ').split('Main-d').length - 1, 1, 'le planning automatique n’est pas répété');
+  assert.equal(
+    pages.join(' ').split('Main-d').length - 1,
+    1,
+    'le planning automatique n’est pas répété',
+  );
   assert.equal(
     pages[inventoryPageIndex]?.split('Estimation').length,
     2,
@@ -155,7 +184,9 @@ test('le PDF provisoire avec notes de planning conserve le contenu manuel sans r
   const inventoryPage = items[inventoryPageIndex] ?? [];
   assert.ok(
     inventoryPage
-      .filter((item) => !item.str.startsWith('PROVISOIRE') && !item.str.startsWith('DEMENAG EXPRESS'))
+      .filter(
+        (item) => !item.str.startsWith('PROVISOIRE') && !item.str.startsWith('DEMENAG EXPRESS'),
+      )
       .every((item) => item.x >= 0 && item.x < 210 && item.y >= 0 && item.y <= 293),
   );
   assert.ok(inventoryPage.some((item) => item.str.includes('Salon')));

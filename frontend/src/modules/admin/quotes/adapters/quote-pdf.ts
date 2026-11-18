@@ -11,6 +11,7 @@ import { quoteAmountInFrench } from './quote-pdf-number';
 import {
   loadingRules,
   simulationInput,
+  displayLoadingTip,
 } from '../../../moving/application/services/loading-simulation-model';
 import type { Inventory } from '../../../moving/domain/inventory/inventory';
 
@@ -344,6 +345,7 @@ export async function downloadQuote(
     y = 24;
   }
   const isFinal = documentQuote?.kind === 'final';
+  const tripCountText = `${price.trips} ${price.trips > 1 ? 'chargements et déchargements' : 'chargement et déchargement'}`;
   const totalBackground: [number, number, number] = isFinal ? [30, 32, 35] : [246, 215, 60];
   const totalForeground: [number, number, number] = isFinal ? [255, 255, 255] : [35, 37, 40];
   doc.setFillColor(...totalBackground);
@@ -356,7 +358,7 @@ export async function downloadQuote(
   doc.setFontSize(9);
   doc.text(
     cleanPdfText(
-      `${price.trips} aller(s)-retour(s)${isFinal ? '' : ' estimé(s)'} · ${booking.vehicle.name}`,
+      `${tripCountText}${isFinal ? '' : price.trips > 1 ? ' estimés' : ' estimé'} · ${booking.vehicle.name}`,
     ),
     margin + 6,
     y + 14.6,
@@ -555,8 +557,8 @@ export async function downloadQuote(
     y += noteLines.length * 4.6 + 4;
   }
   const explanation = isFinal
-    ? `Devis final établi sur la base du nombre réel d’allers-retours effectués (${price.trips}), au tarif de la tranche de distance appliquée.`
-    : `Devis temporaire, calculé sur ${price.trips} aller(s)-retour(s) estimé(s). Le transport est facturé par aller-retour effectué : le devis final, basé sur le nombre réel d’allers-retours, sera envoyé par Demenag Express à la fin du déménagement.`;
+    ? `Devis final établi sur la base du nombre réel de chargements et déchargements effectués (${price.trips}), au tarif de la tranche de distance appliquée.`
+    : `Devis temporaire, calculé sur ${tripCountText}${price.trips > 1 ? ' estimés' : ' estimé'}. Le transport est facturé pour chaque opération complète de chargement et de déchargement. Le devis final, basé sur le nombre réel de chargements et déchargements, sera envoyé par Demenag Express à la fin du déménagement.`;
   y = pdfParagraph(doc, explanation, margin, y, contentWidth, 8, false, [90, 97, 104]);
   if (documentQuote?.billingMode === 'driver-rental') {
     const hourlyRate =
@@ -1024,13 +1026,15 @@ export async function downloadQuote(
       );
       const plan = window.DemSim?.plan(input);
       if (!plan?.trips.length && (input.lines.length > 0 || input.annex > 0.03)) {
-        throw new Error('La simulation ne contient aucun aller-retour exploitable.');
+        throw new Error(
+          'La simulation ne contient aucune opération de chargement et de déchargement exploitable.',
+        );
       }
       if (plan?.trips.length) {
         const route = `${booking.fromAddress || '-'}  >  ${booking.toAddress || '-'}`;
         const vehicleLabel = booking.vehicle.shortName || booking.vehicle.name;
         const tripLabel = (count: number) =>
-          `${count} ${count > 1 ? 'allers-retours' : 'aller-retour'}`;
+          `${count} ${count > 1 ? 'chargements et déchargements' : 'chargement et déchargement'}`;
         const volumeLabel = (value: number) =>
           (Math.round(value * 10) / 10).toString().replace('.', ',');
         let planPage = 0;
@@ -1069,7 +1073,7 @@ export async function downloadQuote(
         doc.setTextColor(255, 255, 255);
         doc.text(
           cleanPdfText(
-            `Format ${blanketLengthCm} x ${blanketWidthCm} cm · ${plan.trips.length > 1 ? `maximum sur un aller-retour, ${totalBlanketPoses} poses au total` : 'pour l’aller-retour'}${maximumBlankets > blanketStock ? ` · stock actuel ${blanketStock}, manque ${maximumBlankets - blanketStock}` : ''}`,
+            `Format ${blanketLengthCm} x ${blanketWidthCm} cm · ${plan.trips.length > 1 ? `maximum par chargement et déchargement, ${totalBlanketPoses} poses au total` : 'pour un chargement et un déchargement'}${maximumBlankets > blanketStock ? ` · stock actuel ${blanketStock}, manque ${maximumBlankets - blanketStock}` : ''}`,
           ),
           margin + 4,
           planY + 7.5,
@@ -1103,7 +1107,11 @@ export async function downloadQuote(
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(11);
           doc.setTextColor(30, 32, 35);
-          doc.text(index === 0 ? 'Synthèse des allers-retours' : 'Synthèse (suite)', margin, planY);
+          doc.text(
+            index === 0 ? 'Synthèse des chargements et déchargements' : 'Synthèse (suite)',
+            margin,
+            planY,
+          );
           planY += 5;
           const rowTrips = plan.trips.slice(index, index + 2);
           rowTrips.forEach((trip, rowIndex) => {
@@ -1117,7 +1125,11 @@ export async function downloadQuote(
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(9.5);
             doc.setTextColor(30, 32, 35);
-            doc.text(`Aller-retour ${index + rowIndex + 1}`, x + 3, planY + cardImageHeight + 5.5);
+            doc.text(
+              `Chargement et déchargement ${index + rowIndex + 1}`,
+              x + 3,
+              planY + cardImageHeight + 5.5,
+            );
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(8.5);
             doc.setTextColor(90, 97, 104);
@@ -1165,7 +1177,7 @@ export async function downloadQuote(
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(11);
           doc.setTextColor(30, 32, 35);
-          doc.text(`Aller-retour ${tripIndex + 1}`, margin, planY);
+          doc.text(`Chargement et déchargement ${tripIndex + 1}`, margin, planY);
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(9);
           doc.setTextColor(90, 97, 104);
@@ -1242,7 +1254,7 @@ export async function downloadQuote(
                 ) as string[];
                 const description = doc.splitTextToSize(
                   cleanPdfText(
-                    `${box.txt}${box.tip ? ` ${box.tip.charAt(0).toUpperCase()}${box.tip.slice(1)}.` : ''}`,
+                    `${box.txt}${box.tip ? ` ${displayLoadingTip(box.tip).charAt(0).toUpperCase()}${displayLoadingTip(box.tip).slice(1)}.` : ''}`,
                   ),
                   cellWidth,
                 ) as string[];
@@ -1713,7 +1725,7 @@ export async function downloadQuote(
       y = inventoryParagraph(`À noter : ${inventoryFlags.join(', ')}.`, 8.5, [30, 32, 35]);
     }
     y = inventoryParagraph(
-      "Volumes estimés à partir de moyennes par meuble, selon le format, la taille et le démontage. Le nombre réel d'allers-retours, de manœuvres et la durée dépendent des accès et de la circulation le jour du déménagement.",
+      'Volumes estimés à partir de moyennes par meuble, selon le format, la taille et le démontage. Le nombre réel de chargements et déchargements, de manœuvres et la durée dépendent des accès et de la circulation le jour du déménagement.',
       8.5,
       [90, 97, 104],
     );

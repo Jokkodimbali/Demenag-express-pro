@@ -8,7 +8,7 @@ export const visibleUiText = {
   text5: 'Manuel',
   text6: 'Conseillé par l’inventaire : ',
   text7: ' manœuvres ·',
-  text8: ' aller(s)-retour(s)',
+  text8: ' chargement(s) et déchargement(s)',
   text9: 'Rappel',
   text10: 'Email administrateur',
   text11: 'admin@exemple.com',
@@ -21,7 +21,7 @@ export const visibleUiText = {
   text18: 'SIMULATION DE CHARGEMENT 3D',
   text19: "Remplissez la fiche d'appel inventaire pour voir le plan de chargement.",
   text20: ' AR',
-  text21: 'Aller-retour ',
+  text21: 'Chargement et déchargement ',
   text22: ' objets · ',
   text23: 'Glisser : tourner · Molette : zoom · Clic droit : déplacer',
   text24: 'Tout afficher',
@@ -217,7 +217,7 @@ export const visibleUiText = {
   text202: 'Location avec chauffeur · dépassement du planning (par heure)',
   text203: 'Contact',
   text204: 'Exporter tous les contacts',
-  text205: 'Allers-retours',
+  text205: 'Chargements et déchargements',
   text206: 'Fin prévue',
   text207: 'TOTAL',
   text208: 'TOTAL ESTIMÉ',
@@ -233,7 +233,7 @@ export const visibleUiText = {
   text218: 'Non inclus',
   text221: 'Moins cher avec',
   text222: 'Prendre ce véhicule',
-  text230: 'aller-retour',
+  text230: 'chargement et déchargement',
   text234: 'VOS INFORMATIONS',
   text235: 'NOUVEAU DEVIS · CLIENT EN AGENCE',
   text240: 'Détail du calcul',
@@ -246,7 +246,7 @@ export const visibleUiText = {
   pricingResetConfirmEyebrow: 'Prix et charges',
   pricingResetConfirmTitle: 'Réinitialiser les prix et les charges ?',
   pricingResetConfirmDescription:
-    'Remet les valeurs par défaut : transport par véhicule (Trafic 15 000, Sprinter 28 000, Master 25 000 sous 15 km), manœuvre 6 500 FCFA (+500 par étage), grille menuisier client, allers-retours suivants à 60 %, jours creux −10 %, dépassement 10 000 FCFA/h ; paie manœuvre 5 000 FCFA, grille de paie menuisier, vidange, assurance, véhicules, dette et objectif. Les salaires, employés, péages et devis déjà enregistrés ne changent pas.',
+    'Remet les valeurs par défaut : transport par véhicule (Trafic 15 000, Sprinter 28 000, Master 25 000 sous 15 km), manœuvre 6 500 FCFA (+500 par étage), grille menuisier client, chargements et déchargements suivants à 60 %, jours creux −10 %, dépassement 10 000 FCFA/h ; paie manœuvre 5 000 FCFA, grille de paie menuisier, vidange, assurance, véhicules, dette et objectif. Les salaires, employés, péages et devis déjà enregistrés ne changent pas.',
   pricingResetConfirmLabel: 'Réinitialiser',
   pricingResetSuccess:
     'Prix et charges remis par défaut. Les devis déjà enregistrés gardent leurs prix.',
@@ -264,7 +264,8 @@ export const visibleUiText = {
   pricingSnapshotAction: 'Appliquer les tarifs actuels',
   pricingSnapshotBusy: 'Application des tarifs…',
   pricingAutomaticDiscounts: 'REMISES AUTOMATIQUES',
-  pricingFollowingTrips: 'Allers-retours suivants, en % du 1er (100 = pas de dégressif)',
+  pricingFollowingTrips:
+    'Chargements et déchargements suivants, en % du 1er (100 = pas de dégressif)',
   pricingLowDemand: 'Remise jour creux sur le transport (lundi à jeudi, du 6 au 24 du mois)',
   clientMoveIdentifiers: 'Identifiants',
   clientRemoveSymbol: '×',
@@ -292,7 +293,7 @@ export const visibleUiText = {
   calculationRows: [
     'Inventaire',
     'Volume',
-    'Allers-retours',
+    'Chargements et déchargements',
     'Poids',
     'Manœuvres',
     'Manutention',
@@ -334,7 +335,7 @@ export function quoteCalculationRules(settings?: {
   const fragileFill = fillRate(labor?.fillF, 75);
   const cadence = (volume: number) => (rate * volume).toFixed(1).replace('.', ',');
   return [
-    `Allers-retours par véhicule : arrondi supérieur du volume total ÷ (volume utile × taux de remplissage). Taux : ${standardFill} % en standard, ${fragileFill} % si des objets fragiles sont signalés. Le pourcentage affiché est le volume total ÷ (nombre d’allers-retours × volume utile), arrondi à l’unité.`,
+    `Chargements et déchargements par véhicule : arrondi supérieur du volume total ÷ (volume utile × taux de remplissage). Taux : ${standardFill} % en standard, ${fragileFill} % si des objets fragiles sont signalés. Le pourcentage affiché est le volume total ÷ (nombre de chargements et déchargements × volume utile), arrondi à l’unité.`,
     `Cadence par manœuvre et par heure au rez-de-chaussée : cartons et sacs ≈ ${cadence(1.4)} m³, meubles ≈ ${cadence(1)} m³, canapés et matelas ≈ ${cadence(1.2)} m³, objets lourds (frigo, armoire montée, buffet…) ≈ ${cadence(0.72)} m³. Déchargement 20 % plus rapide.`,
     "Étages sans ascenseur : de +10 % (cartons) à +25 % (objets lourds) par étage, 40 % de plus si escalier étroit. Avec ascenseur : +5 % d'attente puis +3 % à +15 % par étage, les canapés passant souvent par l'escalier.",
     'Accès camion difficile (portage long) : +20 %. Objets fragiles : +10 %.',

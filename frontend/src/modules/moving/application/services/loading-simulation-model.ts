@@ -14,6 +14,14 @@ export type SimBox = {
   protTxt?: string;
   kg?: number;
 };
+
+export function displayLoadingTip(tip: string): string {
+  return tip.replace(
+    /gagner un aller-retour/iu,
+    'éviter un chargement et un déchargement supplémentaire',
+  );
+}
+
 export type SimTrip = {
   boxes: SimBox[];
   walls: { title: string; steps: SimBox[] }[];
@@ -73,7 +81,7 @@ declare global {
 
 export const format = (value: number) => value.toFixed(1).replace('.', ',');
 export const tripLabel = (count: number) =>
-  `${count} ${count > 1 ? 'allers-retours' : 'aller-retour'}`;
+  `${count} ${count > 1 ? 'chargements et déchargements' : 'chargement et déchargement'}`;
 export const loadingRules = [
   'Arrimage EN 12195-1 / ISO 27956 : la charge doit tenir 0,8 g vers l’avant et 0,5 g sur les côtés et vers l’arrière. Bloquer contre la cloison de cabine, puis sangler chaque mur avec au moins 2 sangles LC 400 daN.',
   'Murs du sol au plafond, serrés, sans vide : combler chaque vide avec cartons, sacs ou matelas.',

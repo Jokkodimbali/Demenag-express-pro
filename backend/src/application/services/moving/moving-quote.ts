@@ -113,14 +113,14 @@ export async function createQuote(
     requireValue(point, 'Un péage sélectionné n’existe plus dans le catalogue.');
     requireValue(
       line.direction !== 'round-trip' || line.quantity % 2 === 0,
-      'Un aller-retour doit compter deux passages par trajet.',
+      'Un trajet au péage avec retour doit compter deux passages.',
     );
     const prefix = /^péage\b/i.test(point.name) ? point.name : `Péage ${point.name}`;
     const unitPrice = point.vehiclePrices[vehicle.id] ?? point.heavyPrice;
     requireValue(Number.isSafeInteger(unitPrice) && unitPrice > 0, 'Tarif de péage invalide.');
     return {
       tollPointId: point.id,
-      label: `${prefix} · ${line.direction === 'round-trip' ? 'Aller-retour' : 'Aller simple'}`,
+      label: `${prefix} · ${line.direction === 'round-trip' ? 'Aller + retour' : 'Aller simple'}`,
       quantity: line.quantity,
       unitPrice,
     };
@@ -202,7 +202,7 @@ export async function createQuote(
   );
   requireValue(
     input.kind !== 'final' || price.tier !== 3 || Number(input.customPrice) > 0,
-    `Distance au-delà de ${pricingSettings.distanceBounds[2]} km : fixez le prix par aller-retour avant le devis final.`,
+    `Distance au-delà de ${pricingSettings.distanceBounds[2]} km : fixez le prix par chargement et déchargement avant le devis final.`,
   );
   const quoteId = existingQuote?.id ?? ids.next();
   const accountingConfiguration =
@@ -339,7 +339,7 @@ export async function updateQuoteKind(
       quote.price.lines.find((line) => line.label.startsWith('Transport'))?.unitPrice;
     requireValue(
       quote.price.tier !== 3 || Number(transportPrice) > 0,
-      `Distance au-delà de ${booking.pricingSettings?.distanceBounds[2] ?? 35} km : fixez le prix par aller-retour avant le devis final.`,
+      `Distance au-delà de ${booking.pricingSettings?.distanceBounds[2] ?? 35} km : fixez le prix par chargement et déchargement avant le devis final.`,
     );
   }
 

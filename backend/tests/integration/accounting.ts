@@ -73,7 +73,8 @@ export async function verifyProvisionalQuoteCreation(
   assert.equal(quote.price.total, lineSubtotal - expectedDiscount);
   const transportLines = quote.price.lines.filter(
     (line) =>
-      line.label.startsWith('Transport') || line.label.startsWith('Allers-retours suivants'),
+      line.label.startsWith('Transport') ||
+      line.label.startsWith('Chargements et déchargements suivants'),
   );
   assert.equal(
     transportLines.reduce((sum, line) => sum + line.quantity, 0),
@@ -194,7 +195,7 @@ export async function verifyProvisionalQuoteCreation(
       trips: 1,
       customPrice: null,
       discount: 0,
-      notes: 'Aller-retour invalide',
+      notes: 'Chargement et déchargement invalide',
       tolls: [{ tollPointId: tollPoint.id, direction: 'round-trip', quantity: 1 }],
       version: detailedBooking.version,
     });
@@ -202,7 +203,7 @@ export async function verifyProvisionalQuoteCreation(
   assert.equal(
     await context.db.devis.count({ where: { reservationId: bookingId } }),
     3,
-    'Un aller-retour avec un nombre impair de passages doit être refusé sans persistance.',
+    'Un chargement et déchargement avec un nombre impair de passages doit être refusé sans persistance.',
   );
   assert.equal(
     await context.db.ecritureComptable.count({ where: { sourceDevisId: quote.id } }),

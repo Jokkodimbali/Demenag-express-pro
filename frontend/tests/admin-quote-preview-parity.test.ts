@@ -219,7 +219,7 @@ test('l’aperçu du devis reprend une seule fois transport, trajets suivants et
   assert.equal(checked, 336);
 });
 
-test('les frais taxi suivent les allers-retours et sont répartis sur les manœuvres sans ligne client', () => {
+test('les frais taxi suivent les chargements et déchargements et sont répartis sur les manœuvres sans ligne client', () => {
   const taxiSettings = {
     ...settings,
     taxiFeeEnabled: true,
@@ -278,6 +278,36 @@ test('les frais taxi suivent les allers-retours et sont répartis sur les manœu
   assert.equal(twoTripPreview.taxiFeeLine?.total, 30_000);
   assert.equal(twoTripManoeuvres?.unitPrice, 12_500);
   assert.equal(twoTripManoeuvres?.total, 62_500);
+
+  const manualDraft = {
+    ...draft,
+    options: { labour: 6, desk: 0, wardrobe: 0, bed: 0 },
+  };
+  const manualEstimate = estimateMovingWork(manualDraft.inventory, vehicle, manualDraft.route, {
+    trips: 7,
+    recommendedTrips: 7,
+  });
+  const manualPreview = createAdminQuotePreview({
+    ...input,
+    draft: manualDraft,
+    estimate: manualEstimate,
+    config: {
+      ...config,
+      calcMode: 'manual',
+      trips: 2,
+      taxiFeeAmountOverride: 13_650,
+      taxiCompanyApproachAmountOverride: 930,
+    },
+  });
+  const manualTaxiTotal = manualPreview.taxiFeeLines.reduce((sum, line) => sum + line.total, 0);
+  const manualManoeuvre = manualPreview.previewLines.find((line) =>
+    line.label.startsWith('Manœuvres'),
+  );
+  assert.equal(manualPreview.taxiFeeLines[0]?.quantity, 3);
+  assert.equal(manualTaxiTotal, 41_880);
+  assert.equal(manualPreview.taxiCrew, 6);
+  assert.equal(manualManoeuvre?.unitPrice, 13_480);
+  assert.equal(manualManoeuvre?.total, 80_880);
   assert.equal(
     preview.previewLines.some((line) => line.label.startsWith('Frais taxi')),
     false,

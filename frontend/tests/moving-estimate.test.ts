@@ -19,6 +19,7 @@ import { referenceTravelMinutes } from '../src/modules/moving/domain/routing/ref
 import {
   referencePlannedTrips,
   simulationInput,
+  displayLoadingTip,
 } from '../src/modules/moving/application/services/loading-simulation-model.ts';
 import type { Vehicle } from '../src/modules/shared/domain/model.ts';
 
@@ -34,6 +35,13 @@ const vehicle: Vehicle = {
   interior: '/assets/sprinter-interieur.png',
   prices: [30000, 37000, 44000],
 };
+
+test('les conseils de chargement utilisent le libellé chargement et déchargement', () => {
+  assert.equal(
+    displayLoadingTip('lourd placé vers les portes pour gagner un aller-retour'),
+    'lourd placé vers les portes pour éviter un chargement et un déchargement supplémentaire',
+  );
+});
 
 test('les taux et pourcentages des cartes véhicule reprennent les formules de référence', () => {
   const reference = readFileSync(

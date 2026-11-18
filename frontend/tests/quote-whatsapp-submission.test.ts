@@ -18,6 +18,7 @@ test('WhatsApp refuse un devis sans trajet avant d’ouvrir un onglet', () => {
     setStageError: (message) => {
       error = message;
     },
+    showErrorToast: () => {},
     openClientSection: () => {},
     whatsappWindow,
     sendWhatsAppAfterSave,

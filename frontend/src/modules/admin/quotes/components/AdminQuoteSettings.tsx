@@ -6,7 +6,7 @@ import { AdminQuoteCheaperVehicle } from './AdminQuoteCheaperVehicle';
 import type { useAdminCreateQuoteModel } from '../application/controllers/useAdminCreateQuoteModel';
 import type { Catalogue } from '../../../shared/domain/model';
 import { quoteConfigWithManualTaxiFee } from '../application/services/admin-quote-form-policy';
-import { taxiRotationCount } from '../application/services/admin-quote-taxi';
+import { taxiBaseTripCount, taxiRotationCount } from '../application/services/admin-quote-taxi';
 
 type Model = ReturnType<typeof useAdminCreateQuoteModel>;
 
@@ -44,8 +44,16 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
   const quoteSettings = model.quoteSettings ?? catalogue.settings;
   const taxiDistanceKm = Math.max(0, effectiveDistance ?? 0);
   const taxiRate = Math.max(0, quoteSettings.taxiFeePerKm ?? 0);
-  const taxiBaseTrips = Math.max(1, movingEstimate?.trips ?? quoteConfig.trips);
-  const taxiTrips = taxiRotationCount(movingEstimate?.trips, quoteConfig.trips);
+  const taxiBaseTrips = taxiBaseTripCount(
+    movingEstimate?.trips,
+    quoteConfig.trips,
+    quoteConfig.calcMode,
+  );
+  const taxiTrips = taxiRotationCount(
+    movingEstimate?.trips,
+    quoteConfig.trips,
+    quoteConfig.calcMode,
+  );
   const taxiCalculatedAmount = Math.round(taxiDistanceKm * taxiRate);
   const companyLocationConfigured =
     quoteSettings.businessLatitude != null && quoteSettings.businessLongitude != null;
@@ -387,7 +395,7 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
                           : taxiCompanyApproachBusy || taxiCompanyApproachDistanceKm == null
                             ? 'Calcul de la distance depuis les locaux en cours ou indisponible.'
                             : 'Indisponibles pour ce devis.'
-                    : 'Calculés selon la distance et les allers-retours estimés.'}
+                    : 'Calculés selon la distance et les chargements et déchargements estimés.'}
                 </span>
               </div>
               <button
@@ -418,7 +426,11 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
                 <strong>{money(taxiRate)} / km</strong>
               </div>
               <div className="admin-quote-taxi-field">
-                <span>Rotations taxi (estimation + 1)</span>
+                <span>
+                  {quoteConfig.calcMode === 'manual'
+                    ? 'Rotations taxi (nombre saisi + 1)'
+                    : 'Rotations taxi (estimation + 1)'}
+                </span>
                 <strong>
                   {taxiBaseTrips} + 1 = {taxiTrips}
                 </strong>
@@ -430,14 +442,14 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
                 </div>
               )}
               <label className="admin-quote-taxi-field admin-quote-taxi-amount">
-                <span>Montant taxi par aller-retour (FCFA)</span>
+                <span>Montant taxi par chargement et déchargement (FCFA)</span>
                 <input
                   type="number"
                   min="0"
                   max="10000000"
                   step="1"
                   inputMode="numeric"
-                  aria-label="Montant des frais taxi par aller-retour en FCFA"
+                  aria-label="Montant des frais taxi par chargement et déchargement en FCFA"
                   disabled={!taxiAvailable}
                   value={
                     taxiAmountDraft ?? quoteConfig.taxiFeeAmountOverride ?? taxiCalculatedAmount

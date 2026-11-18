@@ -184,7 +184,7 @@ export function createTariffDocument(
       [1, 2, 3, 4],
     );
     paragraph(
-      'Le prix est compté par aller-retour effectué entre votre ancien et votre nouveau logement. Le nombre d’allers-retours dépend du volume de vos affaires et du véhicule choisi.',
+      'Le prix est compté pour chaque opération complète de chargement et de déchargement entre votre ancien et votre nouveau logement. Le nombre d’opérations dépend du volume de vos affaires et du véhicule choisi.',
     );
     title('2. Manœuvres');
     table(
@@ -248,7 +248,7 @@ export function createTariffDocument(
       'Ne jamais inventer un prix : utiliser uniquement les montants de ce document. Si une information manque, dire que Demenag Express confirmera et proposer un devis personnalisé.',
       'Toujours annoncer les montants en FCFA, avec une espace pour les milliers (ex. 35 000 FCFA).',
       'Le prix donné par l’agent est une ESTIMATION (devis provisoire). Le prix définitif figure sur le devis final envoyé par Demenag Express après le déménagement.',
-      'Le transport est facturé PAR ALLER-RETOUR effectué. Si le déménagement demande plus d’allers-retours que prévu, le total augmente.',
+      'Le transport est facturé pour chaque opération complète de chargement et de déchargement. Si le déménagement en demande plus que prévu, le total augmente.',
       'Au-delà de 35 km, le prix du transport n’est pas dans la grille : il est fixé au cas par cas par Demenag Express. Répondre « sur devis ».',
       'Les péages sont à la charge du client et ne sont jamais inclus dans le total.',
       'Les remises sont décidées uniquement par Demenag Express. L’agent ne promet jamais de remise.',
@@ -283,7 +283,7 @@ export function createTariffDocument(
       [30, 14, 14, 14, 14, 16],
       [1, 2, 3, 4, 5],
     );
-    title('3. Transport (prix par aller-retour)');
+    title('3. Transport (prix par chargement et déchargement)');
     table(
       ['Véhicule', 'Moins de 15 km', '15 à 25 km', '25 à 35 km', 'Plus de 35 km'],
       vehicles.map((vehicle) => [
@@ -295,7 +295,7 @@ export function createTariffDocument(
       [1, 2, 3, 4],
     );
     paragraph(
-      'Tranches de distance : moins de 15 km ; de 15 à 25 km ; de 25 à 35 km ; plus de 35 km = prix fixé manuellement. Formule : prix d’un aller-retour × nombre d’allers-retours.',
+      'Tranches de distance : moins de 15 km ; de 15 à 25 km ; de 25 à 35 km ; plus de 35 km = prix fixé manuellement. Formule : prix d’un chargement et d’un déchargement × nombre de chargements et déchargements.',
     );
     title('4. Manœuvres (déménagement complet uniquement)');
     paragraph(
@@ -374,7 +374,9 @@ export function createTariffDocument(
         [34, 30, ...vehicles.map(() => 14)],
         vehicles.map((_, index) => index + 2),
       );
-      paragraph('Prix par passage. Un aller-retour passe généralement deux fois au même péage.');
+      paragraph(
+        'Prix par passage. Un trajet qui revient au même péage compte généralement deux passages.',
+      );
     }
     title('8. Paiement, remise et validité');
     paragraph(
@@ -386,7 +388,7 @@ export function createTariffDocument(
       'Volume de chaque objet : gabarit, taille, encombrement et démontage selon le type.',
       'Affaires annexes : forfait selon le logement, diminué des cartons et sacs déjà comptés.',
       'Volume utile : dimensions intérieures moins passages de roue, puis coefficient utile de 0,95.',
-      `Allers-retours : arrondi supérieur de volume total ÷ (volume utile × remplissage). Remplissage ${standardFill} %, ou ${fragileFill} % si objets fragiles. Le pourcentage affiché par véhicule est le volume total ÷ (allers-retours × volume utile), arrondi à l’unité.`,
+      `Chargements et déchargements : arrondi supérieur de volume total ÷ (volume utile × remplissage). Remplissage ${standardFill} %, ou ${fragileFill} % si objets fragiles. Le pourcentage affiché par véhicule est le volume total ÷ (chargements et déchargements × volume utile), arrondi à l’unité.`,
       'Manœuvres : volume, poids, étages, ascenseur, objets lourds et durée plafond. Minimum 2.',
       `Planning : chargement, déchargement, trajets, ${settings.movingLaborPlanning?.tripSetupMinutes ?? 15} minutes de mise en place par voyage et pauses.`,
       'Prix : transport + manœuvres + menuisier + suppléments − remise. Péages indiqués à part.',
@@ -395,7 +397,7 @@ export function createTariffDocument(
     [
       'Les prix sont figés pour chaque réservation au moment de sa création.',
       'Les volumes des véhicules suivent les paramètres actuels.',
-      'Mode automatique : inventaire met à jour allers-retours et manœuvres. Mode manuel : l’admin fixe ces valeurs.',
+      'Mode automatique : l’inventaire estime le nombre de chargements et déchargements ainsi que les manœuvres. Mode manuel : l’admin fixe ces valeurs.',
       'Le devis final rend le montant définitif.',
     ].forEach((line) => paragraph(line, true));
     title('10. Autres exemples chiffrés (calculés par le logiciel)');
@@ -492,7 +494,7 @@ export function createTariffDocument(
     [
       [
         'Combien coûte un déménagement ?',
-        `Cela dépend de la distance, du véhicule, des allers-retours, des étages et du mobilier. Le transport commence à ${money(vehicles[0]?.prices[0] ?? 0)} par aller-retour pour ${vehicles[0]?.shortName ?? 'un véhicule'}.`,
+        `Cela dépend de la distance, du véhicule, des chargements et déchargements, des étages et du mobilier. Le transport commence à ${money(vehicles[0]?.prices[0] ?? 0)} par chargement et déchargement pour ${vehicles[0]?.shortName ?? 'un véhicule'}.`,
       ],
       [
         'C’est quoi la location avec chauffeur ?',
@@ -500,7 +502,7 @@ export function createTariffDocument(
       ],
       [
         'Le prix peut-il changer ?',
-        'Oui, le transport est facturé par aller-retour réellement effectué. Le devis final confirme le montant.',
+        'Oui, le transport est facturé par chargement et déchargement réellement effectué. Le devis final confirme le montant.',
       ],
       [
         'Les péages sont-ils compris ?',
@@ -514,7 +516,7 @@ export function createTariffDocument(
     title('12. Données structurées (lecture machine)');
     [
       'devise = FCFA',
-      'unite_transport = aller-retour',
+      'unite_transport = chargement et déchargement',
       ...vehicles.flatMap((vehicle) =>
         [0, 1, 2].map(
           (tier) =>
@@ -527,7 +529,7 @@ export function createTariffDocument(
       `manoeuvre.supplement_avec_ascenseur = ${settings.labourLiftPrice ?? 500}`,
       `location.depassement_par_heure = ${settings.rentalOvertimeHourlyRate ?? 10000}`,
       'peages.inclus_dans_total = non',
-      'calcul.allers_retours = ceil(volume_total / (volume_utile * remplissage))',
+      'calcul.chargements_dechargements = ceil(volume_total / (volume_utile * remplissage))',
       `calcul.remplissage = ${standardFill / 100} (${fragileFill / 100} si objets fragiles)`,
       'calcul.total = transport + manoeuvres + menuisier + supplements - remise',
       ...furniture.map((item) => {

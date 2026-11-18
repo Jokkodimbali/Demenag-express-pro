@@ -10,7 +10,7 @@ export const uiText3 = {
   autoroute: 'Autoroute',
   prix: 'Prix',
   position: 'Position',
-  allerRetour: 'Aller-retour',
+  allerRetour: 'Aller + retour',
   googleMaps: 'Google Maps',
   clicCarteAjouterGlisserDeplacer: 'Clic sur la carte : ajouter · glisser un point : déplacer',
   enregistrement: 'Enregistrement…',
@@ -60,7 +60,7 @@ export const uiText3 = {
   verificationDuNumero: 'Vérification du numéro…',
   reservationSPrecedenteS: 'réservation(s) précédente(s).',
   estimationDuDemenagement: 'Estimation du déménagement',
-  estimationDESALLERSRETOURS: 'ESTIMATION DES ALLERS-RETOURS',
+  estimationDESALLERSRETOURS: 'ESTIMATION DES CHARGEMENTS ET DÉCHARGEMENTS',
   volume2: 'Volume ≈ ',
   aVerifier: 'À vérifier : ',
   cochezLesObjetsOuPrecisezLeTypeDeLogementPourAfficherL:
@@ -160,7 +160,7 @@ export const uiText3 = {
   ouvre: 'Ouvre : +',
   siWhatsAppNeSOuvrePasEssayezWhatsAppWebSurOrdinateurOu:
     'Si WhatsApp ne s’ouvre pas, essayez « WhatsApp Web » sur ordinateur ou « Application WhatsApp » sur téléphone. Les numéros à 9 chiffres reçoivent automatiquement l’indicatif.',
-  parAllerRetour: ' · par aller-retour',
+  parAllerRetour: ' · par chargement et déchargement',
   supplementsFixes: 'Suppléments fixes',
   manœuvreParPersonne: 'Manœuvre (par personne)',
   supplementParEtageSansAscenseurParManœuvre: 'Supplément par étage sans ascenseur (par manœuvre)',

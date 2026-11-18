@@ -45,7 +45,7 @@ export function createBookingQuotePreview(input: {
     config && selected && hasRoute
       ? [
           {
-            label: `Transport ${selected.shortName || selected.name} · ${tierLabel.toLowerCase()} (aller-retour)`,
+            label: `Transport ${selected.shortName || selected.name} · ${tierLabel.toLowerCase()} (chargement et déchargement)`,
             quantity: trips,
             unitPrice: transportUnit,
             total: transportUnit * trips,

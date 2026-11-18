@@ -46,7 +46,7 @@ export const messages = {
   totalAmount: (amount: string | number) => `TOTAL : ${amount}`,
   precisions: 'Précisions : ',
   montantEtabliSurLaBaseDuNombreReel:
-    'Montant établi sur la base du nombre réel d’allers-retours effectués.',
+    'Montant établi sur la base du nombre réel de chargements et déchargements effectués.',
   estimationProvisoireLaDisponibiliteEtLesConditionsSont:
     'Estimation provisoire. La disponibilité et les conditions sont confirmées par notre équipe. Le montant final dépend des trajets réellement effectués.',
   matin8h12h: 'Matin (8h – 12h)',
@@ -109,7 +109,7 @@ export const messages = {
   versLeDepart: 'Vers le départ',
   versLArrivee: 'Vers l’arrivée',
   historiqueDesDevis: 'Historique des devis',
-  allerSRetourS: ' aller(s)-retour(s)',
+  allerSRetourS: ' chargements et déchargements',
   telecharger: 'Télécharger ',
   confirmerLaReservation: 'Confirmer la réservation',
   demarrerLeDemenagement: 'Démarrer le déménagement',
@@ -135,8 +135,8 @@ export const messages = {
   typeDeDevis: 'Type de devis',
   provisoire: 'Provisoire',
   finalClotureLeDemenagement: 'Final · clôture le déménagement',
-  allersRetours: 'Allers-retours',
-  transportParAllerRetourFcfa: 'Transport par aller-retour (FCFA)',
+  allersRetours: 'Chargements et déchargements',
+  transportParAllerRetourFcfa: 'Transport par chargement et déchargement (FCFA)',
   tarifAConvenir: 'Tarif à convenir',
   remiseFcfa: 'Remise (FCFA)',
   noteDuDevis: 'Note du devis',
@@ -204,7 +204,7 @@ export const messages = {
   provisoire2: 'PROVISOIRE',
   estimation: 'ESTIMATION',
   prixEstimePourVotreDemenagement: 'Prix estimé pour votre déménagement.',
-  text1AllerRetour: ' · 1 aller-retour',
+  text1AllerRetour: ' · un chargement et un déchargement',
   a: 'A',
   votreAdresseDeDepart: 'Votre adresse de départ',
   b: 'B',
@@ -215,7 +215,7 @@ export const messages = {
   calcul: 'Calcul…',
   aCalculer: 'À calculer',
   baseDUnAllerRetourLeDevisFinal:
-    'Base d’un aller-retour. Le devis final dépend du nombre réel de trajets effectués.',
+    'Base d’un chargement et d’un déchargement. Le devis final dépend du nombre réel de chargements et déchargements effectués.',
   meConnecterEtReserver: 'Me connecter et réserver',
   reservationOwner: (name: string | number) => `Réservation au nom de ${name}`,
   votreSelectionEstConserveePendantLaConnexion:
@@ -267,7 +267,7 @@ export const messages = {
   telephoneDeLEntrepriseFormat221: 'Téléphone de l’entreprise (format +221…)',
   tarifsDeTransport: 'TARIFS DE TRANSPORT',
   prixEnFcfaParAllerRetourLesDevis:
-    'Prix en FCFA, par aller-retour. Les devis déjà enregistrés conservent leurs montants.',
+    'Prix en FCFA, par chargement et déchargement. Les devis déjà enregistrés conservent leurs montants.',
   borneDeDistance: 'Borne de distance ',
   km3: ' (km)',
   nomDuVehicule: 'Nom du véhicule',

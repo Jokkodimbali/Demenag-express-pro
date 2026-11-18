@@ -82,7 +82,7 @@ export const messages = {
   ceCreneauADejaCommence: 'Ce créneau a déjà commencé.',
   actionReserveeALAdministration: 'Action réservée à l’administration.',
   ceChangementDeStatutNEstPlusPossible: 'Ce changement de statut n’est plus possible.',
-  nombreDAllersRetoursInvalide: 'Nombre d’allers-retours invalide.',
+  nombreDAllersRetoursInvalide: 'Le nombre de chargements et de déchargements est invalide.',
   quantiteInvalide: 'Quantité invalide.',
   remiseInvalide: 'Remise invalide.',
   prixPersonnaliseInvalide: 'Prix personnalisé invalide.',

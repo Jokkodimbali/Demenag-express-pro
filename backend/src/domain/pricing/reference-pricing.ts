@@ -14,13 +14,23 @@ export function referenceTransportLines(
   const discount = Math.max(10, Math.min(100, followingTripPercent)) / 100;
   if (trips <= 1 || discount >= 1)
     return [
-      { label: `${label} (aller-retour)`, quantity: trips, unitPrice, total: trips * unitPrice },
+      {
+        label: `${label} (chargement et déchargement)`,
+        quantity: trips,
+        unitPrice,
+        total: trips * unitPrice,
+      },
     ];
   const laterUnitPrice = Math.round((unitPrice * discount) / 500) * 500;
   return [
-    { label: `${label} · 1er aller-retour`, quantity: 1, unitPrice, total: unitPrice },
     {
-      label: `Allers-retours suivants (${Math.round(discount * 100)} % du 1er)`,
+      label: `${label} · premier chargement et déchargement`,
+      quantity: 1,
+      unitPrice,
+      total: unitPrice,
+    },
+    {
+      label: `Chargements et déchargements suivants (${Math.round(discount * 100)} % du 1er)`,
       quantity: trips - 1,
       unitPrice: laterUnitPrice,
       total: (trips - 1) * laterUnitPrice,

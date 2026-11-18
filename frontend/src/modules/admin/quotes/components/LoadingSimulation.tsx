@@ -15,6 +15,7 @@ import {
   format,
   tripLabel,
   loadingRules,
+  displayLoadingTip,
 } from '../../../moving/application/services/loading-simulation-model';
 import type {
   SimPlan,
@@ -464,7 +465,7 @@ export function LoadingSimulation({
             <strong>{visibleUiText.text18}</strong>
             <small>
               {plan
-                ? `${plan.trips.length} aller(s)-retour(s) · ${plan.trips.reduce((sum, item) => sum + item.nItems, 0)} objets`
+                ? `${tripLabel(plan.trips.length)} · ${plan.trips.reduce((sum, item) => sum + item.nItems, 0)} objets`
                 : hasItems
                   ? loadingError || 'Chargement de la 3D…'
                   : 'Inventaire vide'}
@@ -480,7 +481,7 @@ export function LoadingSimulation({
                 <div className="loading-simulation-section">
                   {section(
                     'veh',
-                    'Véhicule et allers-retours',
+                    'Véhicule, chargements et déchargements',
                     `${vehicle?.name ?? ''} · ${tripLabel(plan.trips.length)}`,
                   )}
                   {sections.veh && (
@@ -888,7 +889,9 @@ export function LoadingSimulation({
                                   <small>{box.txt}</small>
                                   {box.tip && (
                                     <small>
-                                      {box.tip.charAt(0).toUpperCase() + box.tip.slice(1)}.
+                                      {displayLoadingTip(box.tip).charAt(0).toUpperCase() +
+                                        displayLoadingTip(box.tip).slice(1)}
+                                      .
                                     </small>
                                   )}
                                   {box.protTxt && (

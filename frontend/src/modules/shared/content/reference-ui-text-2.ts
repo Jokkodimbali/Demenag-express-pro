@@ -12,9 +12,9 @@ export const uiText2 = {
   '4': ' / 4',
   ceVehiculeNEstPlusDisponibleChoisissezUnAutreVehiculeA:
     'Ce véhicule n’est plus disponible. Choisissez un autre véhicule avant d’envoyer votre demande.',
-  nombreDAllersRetoursEstimes: 'Nombre d’allers-retours estimés',
+  nombreDAllersRetoursEstimes: 'Nombre de chargements et déchargements estimés',
   leTransportEstFactureParAllerRetourLEquipeConfirmeraLe:
-    'Le transport est facturé par aller-retour. L’équipe confirmera le nombre réel pour le devis final.',
+    'Le tarif de transport s’applique à chaque chargement et déchargement. L’équipe confirmera le nombre réel pour le devis final.',
   retour: 'Retour',
   continuer: 'Continuer ',
   espaceEMPLOYE: 'ESPACE EMPLOYÉ',
@@ -26,7 +26,7 @@ export const uiText2 = {
   photo2: '+ Photo ',
   dimensionsDesVehicules: 'Dimensions des véhicules',
   leVolumeUtileEstCalculeAPartirDesQuatreMesuresLongueur:
-    'Le volume utile est calculé à partir des quatre mesures : longueur × hauteur × largeur, moins l’espace des passages de roue, puis × 0,95 pour les parois et le toit arrondis. Cette valeur est utilisée dans l’estimation des allers-retours.',
+    'Le volume utile est calculé à partir des quatre mesures : longueur × hauteur × largeur, moins l’espace des passages de roue, puis × 0,95 pour les parois et le toit arrondis. Cette valeur est utilisée dans l’estimation des chargements et déchargements.',
   modifierLeVehicule: 'Modifier le véhicule',
   activiteEtChauffeur: 'Activité et chauffeur',
   completezLesDimensionsEtCliquezDirectementSurLesApercu:
@@ -146,7 +146,7 @@ export const uiText2 = {
   coursesEffectuees: ' Courses effectuées : ',
   finSignaleeALAdministrationPour: ' Fin signalée à l’administration pour ',
   allerSRetourSEnAttenteDeVerificationEtCloture:
-    'aller(s)-retour(s). En attente de vérification et clôture.',
+    'chargement(s) et déchargement(s). En attente de vérification et clôture.',
   demarrerLaCourse: ' Démarrer la course ',
   signalerLaFinDesCourses: ' Signaler la fin des courses',
   signalerLaFinDesCoursesALAdministration: ' Signaler la fin des courses à l’administration',
@@ -223,7 +223,7 @@ export const uiText2 = {
   carteDesPeagesCliquezPourDefinirLaPositionDuPointSelec:
     'Carte des péages. Cliquez pour définir la position du point sélectionné.',
   passage: ' / passage · ',
-  '1AllerRetour2Passages': '1 aller-retour = 2 passages',
+  '1AllerRetour2Passages': 'Aller puis retour au péage = 2 passages',
   aucunPeageEnregistreAjoutezLesDansLOngletPeages:
     'Aucun péage enregistré. Ajoutez-les dans l’onglet Péages.',
   px: ' px',

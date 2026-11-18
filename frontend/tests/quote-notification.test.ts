@@ -86,7 +86,7 @@ test('les modèles WhatsApp par défaut reprennent les textes provisoire et fina
     /Merci pour votre demande\. Voici votre devis provisoire Demenag Express n° DV-2026-0108/u,
   );
   assert.match(provisional, /- Date : 10\/11\/2026 à 08h00/u);
-  assert.match(provisional, /- Véhicule : Renault Master, 3 allers-retours/u);
+  assert.match(provisional, /- Véhicule : Renault Master, 3 chargements et déchargements/u);
   assert.match(provisional, /Ce montant est une estimation établie d’après votre inventaire\./u);
   assert.match(final, /Voici votre devis final Demenag Express n° DV-2026-0108/u);
   assert.match(final, /Ce montant est définitif\./u);
@@ -109,7 +109,7 @@ test('le modèle personnalisé remplace les variables et conserve péages et pai
 
   assert.match(
     message,
-    /^Awa Ndiaye\|DEM-2026-0108\|DV-2026-0108\|10\/11\/2026 à 08h00\|Ouakam → Almadies\|Renault Master\|3 allers-retours\|125/u,
+    /^Awa Ndiaye\|DEM-2026-0108\|DV-2026-0108\|10\/11\/2026 à 08h00\|Ouakam → Almadies\|Renault Master\|3 chargements et déchargements\|125/u,
   );
   assert.match(message, /Péages à votre charge/u);
   assert.match(message, /Mode de paiement :/u);

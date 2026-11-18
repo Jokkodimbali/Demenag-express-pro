@@ -57,7 +57,7 @@ export function ReferenceWhatsappSettings({ catalogue }: { catalogue: Catalogue 
     peages: 'Péage · Rufisque : 2 × 1 000 FCFA\nTotal péages : 2 000 FCFA',
     paiement: whatsappPaymentLine(catalogue.settings),
     allers: '3',
-    voyages: '3 allers-retours',
+    voyages: '3 chargements et déchargements',
     vehicule: 'Renault Master',
     date: '18/10/2026',
     heure: ' à 08h00',

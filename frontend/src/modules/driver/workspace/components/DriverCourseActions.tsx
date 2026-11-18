@@ -128,7 +128,9 @@ export function DriverCourseActions({
       {booking.driverFinishedAt ? (
         <p className="driver-course-complete" role="status">
           <Check size={16} /> {uiText['finSignaleeALAdministrationPour']}
-          {trips.length} {uiText['allerSRetourSEnAttenteDeVerificationEtCloture']}
+          {trips.length}{' '}
+          {trips.length > 1 ? 'chargements et déchargements' : 'chargement et déchargement'}. En
+          attente de vérification et clôture.
         </p>
       ) : adminMode && booking.status === 'in_progress' && !openTrip && trips.length > 0 ? (
         <div className="driver-course-form-actions">

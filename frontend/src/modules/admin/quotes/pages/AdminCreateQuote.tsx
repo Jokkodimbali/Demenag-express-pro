@@ -170,7 +170,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
         : 'Adresses de départ et d’arrivée',
     inventory:
       model.inventoryCount > 0
-        ? `${model.inventoryCount} objets · ${String(Math.round((movingEstimate?.volume ?? 0) * 10) / 10).replace('.', ',')} m³ · ${quoteConfig.trips} aller(s)-retour(s)`
+        ? `${model.inventoryCount} objets · ${String(Math.round((movingEstimate?.volume ?? 0) * 10) / 10).replace('.', ',')} m³ · ${quoteConfig.trips} ${quoteConfig.trips > 1 ? 'chargements et déchargements' : 'chargement et déchargement'}`
         : 'Fiche d’appel à remplir',
     formula: `Formule ${quoteConfig.billingMode === 'complete' ? 'Complète' : quoteConfig.billingMode === 'standard' ? 'Standard' : 'Économique'} · ${selected && ['sprinter', 'master', 'trafic'].includes(selected.id) ? selected.id[0].toUpperCase() + selected.id.slice(1) : selected?.shortName || selected?.name || ''}${model.previewTotal == null ? '' : ` · ${money(model.previewTotal)}`}`,
     planning:
@@ -316,10 +316,10 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             event.preventDefault();
             cancelPendingWhatsApp();
             setStageError(
-              `Distance au-delà de ${(quoteSettings ?? catalogue.settings).distanceBounds[2]} km : fixez le prix par aller-retour avant le devis final.`,
+              `Distance au-delà de ${(quoteSettings ?? catalogue.settings).distanceBounds[2]} km : fixez le prix par chargement et déchargement avant le devis final.`,
             );
             showErrorToast(
-              `Distance au-delà de ${(quoteSettings ?? catalogue.settings).distanceBounds[2]} km : fixez le prix par aller-retour avant le devis final.`,
+              `Distance au-delà de ${(quoteSettings ?? catalogue.settings).distanceBounds[2]} km : fixez le prix par chargement et déchargement avant le devis final.`,
             );
             return;
           }
