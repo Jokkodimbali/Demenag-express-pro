@@ -219,7 +219,7 @@ test('l’aperçu du devis reprend une seule fois transport, trajets suivants et
   assert.equal(checked, 336);
 });
 
-test('les frais taxi suivent les chargements et déchargements et sont répartis sur les manœuvres sans ligne client', () => {
+test('les frais taxi facturent chargement et déchargement à chaque rotation puis les répartissent sur les manœuvres', () => {
   const taxiSettings = {
     ...settings,
     taxiFeeEnabled: true,
@@ -255,17 +255,17 @@ test('les frais taxi suivent les chargements et déchargements et sont répartis
   };
   const preview = createAdminQuotePreview(input);
   const labour = preview.previewLines.find((line) => line.label.startsWith('Manœuvres'));
-  assert.equal(preview.taxiFeeLine?.total, 40_000);
-  assert.equal(preview.taxiFeeLine?.quantity, 4);
-  assert.equal(labour?.unitPrice, 14_500);
-  assert.equal(labour?.total, 72_500);
+  assert.equal(preview.taxiFeeLine?.total, 50_000);
+  assert.equal(preview.taxiFeeLine?.quantity, 5);
+  assert.equal(labour?.unitPrice, 16_500);
+  assert.equal(labour?.total, 82_500);
   const automaticEstimate = estimateMovingWork(draft.inventory, vehicle, draft.route, {
     trips: 5,
     recommendedTrips: 5,
   });
   const automaticPreview = createAdminQuotePreview({ ...input, estimate: automaticEstimate });
-  assert.equal(automaticPreview.taxiFeeLine?.quantity, 6);
-  assert.equal(automaticPreview.taxiFeeLine?.total, 60_000);
+  assert.equal(automaticPreview.taxiFeeLine?.quantity, 9);
+  assert.equal(automaticPreview.taxiFeeLine?.total, 90_000);
   const twoTripEstimate = estimateMovingWork(draft.inventory, vehicle, draft.route, {
     trips: 2,
     recommendedTrips: 2,
@@ -319,10 +319,10 @@ test('les frais taxi suivent les chargements et déchargements et sont répartis
   });
   assert.equal(
     adjusted.previewLines.find((line) => line.label.startsWith('Manœuvres'))?.unitPrice,
-    14_500,
+    16_500,
   );
-  assert.equal(adjusted.taxiFeeLine?.quantity, 4);
-  assert.equal(adjusted.taxiFeeLine?.total, 40_000);
+  assert.equal(adjusted.taxiFeeLine?.quantity, 5);
+  assert.equal(adjusted.taxiFeeLine?.total, 50_000);
   assert.equal(adjusted.total, preview.total);
 
   const economic = createAdminQuotePreview({
@@ -387,17 +387,17 @@ test('les frais locaux et les taxis par rotation sont ajoutés aux manœuvres sa
   const baseLabour = withoutTaxi.previewLines.filter((line) => line.label.startsWith('Manœuvres'));
 
   assert.equal(preview.taxiFeeLines.length, 2);
-  assert.equal(preview.taxiFeeLines[0]?.quantity, 4);
+  assert.equal(preview.taxiFeeLines[0]?.quantity, 5);
   assert.equal(preview.taxiFeeLines[0]?.unitPrice, 3_413);
-  assert.equal(preview.taxiFeeLines[0]?.total, 13_652);
+  assert.equal(preview.taxiFeeLines[0]?.total, 17_065);
   assert.equal(preview.taxiFeeLines[1]?.quantity, 1);
   assert.equal(preview.taxiFeeLines[1]?.total, 1_665);
-  assert.equal(submittedTaxiAmount, 15_317);
-  assert.equal(preview.total - withoutTaxi.total, 15_317);
+  assert.equal(submittedTaxiAmount, 18_730);
+  assert.equal(preview.total - withoutTaxi.total, 18_730);
   assert.equal(
     previewLabour.reduce((sum, line) => sum + line.total, 0) -
       baseLabour.reduce((sum, line) => sum + line.total, 0),
-    15_317,
+    18_730,
   );
   assert.equal(
     previewLabour.reduce((sum, line) => sum + line.quantity, 0),
@@ -410,10 +410,7 @@ test('les frais locaux et les taxis par rotation sont ajoutés aux manœuvres sa
   );
   assert.deepEqual(
     previewLabour.map((line) => [line.quantity, line.unitPrice, line.total]),
-    [
-      [3, 9_563, 28_689],
-      [2, 9_564, 19_128],
-    ],
+    [[5, 10_246, 51_230]],
   );
   const restoredPrice = removeTaxiFromManoeuvrePrice(preview.priceSnapshot, submittedTaxiAmount);
   assert.deepEqual(
@@ -430,14 +427,15 @@ test('les frais locaux et les taxis par rotation sont ajoutés aux manœuvres sa
       taxiCompanyApproachAmountOverride: 2_000,
     },
   });
-  assert.equal(adjusted.taxiFeeLines[0]?.total, 40_000);
+  assert.equal(adjusted.taxiFeeLines[0]?.quantity, 5);
+  assert.equal(adjusted.taxiFeeLines[0]?.total, 50_000);
   assert.equal(adjusted.taxiFeeLines[1]?.quantity, 1);
   assert.equal(adjusted.taxiFeeLines[1]?.total, 2_000);
-  assert.equal(adjusted.total - withoutTaxi.total, 42_000);
+  assert.equal(adjusted.total - withoutTaxi.total, 52_000);
   assert.deepEqual(
     adjusted.previewLines
       .filter((line) => line.label.startsWith('Manœuvres'))
       .map((line) => [line.quantity, line.unitPrice, line.total]),
-    [[5, 14_900, 74_500]],
+    [[5, 16_900, 84_500]],
   );
 });

@@ -268,6 +268,7 @@ export async function createQuote(
       extraLines: additionalLines,
       customLines: input.customLines ?? [],
       taxiFeeAmount,
+      taxiPerLegAmountOverride: input.taxiPerLegAmountOverride ?? null,
       taxiRoundTripAmountOverride: input.taxiRoundTripAmountOverride ?? null,
       taxiCompanyApproachAmountOverride: input.taxiCompanyApproachAmountOverride ?? null,
       billingMode,

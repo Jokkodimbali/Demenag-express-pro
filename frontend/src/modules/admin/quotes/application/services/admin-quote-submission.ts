@@ -34,6 +34,7 @@ export const buildAdminQuoteSubmission: AdministrativeQuoteSubmissionBuilder = (
         quantity,
         unitPrice,
       })),
+    taxiPerLegAmountOverride: config.taxiFeeAmountOverride,
     taxiRoundTripAmountOverride: config.taxiFeeAmountOverride,
     taxiCompanyApproachAmountOverride: config.taxiCompanyApproachAmountOverride,
     tolls: quoteTollsFromLines(input.tollLines),

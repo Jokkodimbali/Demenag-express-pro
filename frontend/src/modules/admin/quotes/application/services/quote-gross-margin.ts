@@ -90,6 +90,7 @@ function quoteAccountingCosts(input: {
 
 export function quoteGrossMargin(input: {
   quoteTotal: number | null;
+  hasBillableContent: boolean;
   inventory: Inventory;
   accounting: AccountingFinanceConfiguration | null;
   billingMode: Quote['billingMode'];
@@ -97,8 +98,8 @@ export function quoteGrossMargin(input: {
   manoeuvreCount: number;
   taxiCharges: number;
 }): number | null {
-  const { quoteTotal, accounting, taxiCharges } = input;
-  if (quoteTotal == null || !accounting) return null;
+  const { quoteTotal, hasBillableContent, accounting, taxiCharges } = input;
+  if (!hasBillableContent || quoteTotal == null || !accounting) return null;
   const costs = quoteAccountingCosts({ ...input, accounting });
   return quoteTotal - costs.moverAmount - costs.carpenterAmount - taxiCharges;
 }

@@ -92,6 +92,8 @@ export function quoteConfigurationFromBooking(booking: Booking) {
   const quote = booking.quotes.at(-1);
   const pricingInput = quote?.pricingInput;
   const taxiTrips = Math.max(1, quote?.price.trips ?? booking.estimate.trips);
+  // Historic totals used one taxi fare for each base rotation plus a final return.
+  const legacyTaxiRotationCount = taxiTrips + 1;
   const savedTaxiFeeAmount =
     quote?.pricingInput?.taxiFeeAmount ??
     quote?.price.lines.find((line) => line.label === 'Frais taxi · montant modifié')?.total ??
@@ -108,19 +110,27 @@ export function quoteConfigurationFromBooking(booking: Booking) {
       : pricingInput?.extraLines?.find((line) => line.label === 'Frais taxi · approche entreprise')
           ?.unitPrice;
   const savedRoundTripLine = quote?.pricingInput?.extraLines?.find(
-    (line) => line.label === 'Frais taxi · montant modifié',
+    (line) =>
+      line.label === 'Frais taxi · montant modifié' || line.label === 'Frais taxi · déménagement',
   );
+  const hasSavedPerLegOverride = pricingInput != null && 'taxiPerLegAmountOverride' in pricingInput;
   const hasSavedRoundTripOverride =
     pricingInput != null && 'taxiRoundTripAmountOverride' in pricingInput;
-  const savedTaxiRoundTripOverride = hasSavedRoundTripOverride
-    ? (pricingInput.taxiRoundTripAmountOverride ?? null)
-    : (savedRoundTripLine?.unitPrice ??
-      (savedTaxiFeeAmount != null
-        ? Math.round(
-            Math.max(0, savedTaxiFeeAmount - (savedTaxiCompanyApproachOverride ?? 0)) / taxiTrips,
-          )
-        : (quote?.price.lines.find((line) => line.label === 'Frais taxi · montant modifié')
-            ?.total ?? null)));
+  const savedTaxiPerLegOverride =
+    pricingInput?.taxiPerLegAmountOverride != null
+      ? pricingInput.taxiPerLegAmountOverride
+      : pricingInput?.taxiRoundTripAmountOverride != null
+        ? pricingInput.taxiRoundTripAmountOverride
+        : hasSavedPerLegOverride || hasSavedRoundTripOverride
+          ? null
+          : savedRoundTripLine
+            ? savedRoundTripLine.unitPrice
+            : savedTaxiFeeAmount != null
+              ? Math.round(
+                  Math.max(0, savedTaxiFeeAmount - (savedTaxiCompanyApproachOverride ?? 0)) /
+                    legacyTaxiRotationCount,
+                )
+              : null;
   const priceWithoutTaxi =
     quote?.price && savedTaxiFeeAmount
       ? removeTaxiFromManoeuvrePrice(quote.price, savedTaxiFeeAmount)
@@ -152,7 +162,7 @@ export function quoteConfigurationFromBooking(booking: Booking) {
     taxiFeeApplied:
       Boolean(savedTaxiFeeAmount) ||
       (quote?.price.lines.some((line) => line.label.startsWith('Frais taxi')) ?? false),
-    taxiFeeAmountOverride: savedTaxiRoundTripOverride ?? null,
+    taxiFeeAmountOverride: savedTaxiPerLegOverride ?? null,
     taxiCompanyApproachAmountOverride: savedTaxiCompanyApproachOverride ?? null,
     taxiCompanyApproachAmountBasis: 'once',
     rentalKit: quote?.rentalKit ?? null,

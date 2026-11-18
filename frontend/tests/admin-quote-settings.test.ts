@@ -1,12 +1,33 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { Booking, Price, Settings } from '../src/modules/shared/domain/model';
+import type { Booking, Price, Settings, Vehicle } from '../src/modules/shared/domain/model';
+import { blankDraft } from '../src/modules/booking/application/booking-draft';
 import {
   quoteConfigWithManualTaxiFee,
   quoteConfigurationFromBooking,
   quoteSettingsForEditing,
 } from '../src/modules/admin/quotes/application/services/admin-quote-form-policy';
 import { defaultAdminQuoteConfig } from '../src/modules/admin/quotes/application/services/admin-quote-config';
+import { buildAdminQuoteSubmission } from '../src/modules/admin/quotes/application/services/admin-quote-submission';
+
+test('la soumission conserve le tarif simple pour les champs actuels et historiques', () => {
+  const draft = blankDraft();
+  const submission = buildAdminQuoteSubmission({
+    draft,
+    config: { ...defaultAdminQuoteConfig(), taxiFeeAmountOverride: 13_650 },
+    catalogue: null,
+    fallbackVehicle: {} as Vehicle,
+    kind: 'provisional',
+    tier: 0,
+    version: 1,
+    notes: '',
+    extraLines: [],
+    tollLines: [],
+  });
+
+  assert.equal(submission.taxiPerLegAmountOverride, 13_650);
+  assert.equal(submission.taxiRoundTripAmountOverride, 13_650);
+});
 
 test('un devis existant reprend les réglages taxi actuels en gardant son ancien tarif de manœuvre', () => {
   const bookingSettings = {
@@ -46,7 +67,7 @@ test('saisir un montant taxi personnalisé active les frais et met à jour le ca
   assert.equal(updated.taxiFeeAmountOverride, 10_000);
 });
 
-test('un devis enregistré recharge son montant taxi par chargement et déchargement', () => {
+test('un devis enregistré convertit le total taxi historique en tarif par trajet simple', () => {
   const price: Price = {
     lines: [{ label: 'Manœuvres', quantity: 5, unitPrice: 12_500, total: 62_500 }],
     total: 62_500,
@@ -76,7 +97,7 @@ test('un devis enregistré recharge son montant taxi par chargement et décharge
   const restored = quoteConfigurationFromBooking(booking).config;
 
   assert.equal(restored.taxiFeeApplied, true);
-  assert.equal(restored.taxiFeeAmountOverride, 10_000);
+  assert.equal(restored.taxiFeeAmountOverride, 7_500);
 });
 
 test('un ancien frais locaux unique reste compté une fois à la réouverture', () => {
@@ -152,6 +173,20 @@ test('un devis réouvert reprend séparément les deux montants taxi modifiés',
   assert.equal(restored.taxiFeeApplied, true);
   assert.equal(restored.taxiFeeAmountOverride, 3_413);
   assert.equal(restored.taxiCompanyApproachAmountOverride, 1_665);
+
+  const newPerLeg = quoteConfigurationFromBooking({
+    ...booking,
+    quotes: [
+      {
+        ...booking.quotes[0],
+        pricingInput: {
+          ...booking.quotes[0].pricingInput,
+          taxiPerLegAmountOverride: 3_413,
+        },
+      },
+    ],
+  } as Booking).config;
+  assert.equal(newPerLeg.taxiFeeAmountOverride, 3_413);
 });
 
 test('un devis avec montants taxi calculés reprend les réglages actuels à la réouverture', () => {

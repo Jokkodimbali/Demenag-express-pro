@@ -13,5 +13,9 @@ export function taxiRotationCount(
   configuredTrips: number,
   calcMode: 'auto' | 'manual' = 'auto',
 ): number {
-  return taxiBaseTripCount(estimatedTrips, configuredTrips, calcMode) + 1;
+  return taxiBaseTripCount(estimatedTrips, configuredTrips, calcMode);
+}
+
+export function taxiPaidLegCount(rotationCount: number): number {
+  return Math.max(1, Math.max(0, Math.round(rotationCount)) * 2 - 1);
 }

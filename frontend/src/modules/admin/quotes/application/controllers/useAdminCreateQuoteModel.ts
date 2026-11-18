@@ -728,8 +728,21 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     [selected, estimateInventory, pricingRoute, draft, quoteConfig, quoteSettings, tollLines],
   );
   const economicCrew = economicMovingEstimate?.crew ?? movingEstimateCrew;
+  const hasBillableQuoteContent = Boolean(
+    editingBooking ||
+    draft.route ||
+    inventoryCount > 0 ||
+    Object.values(draft.options).some((quantity) => quantity > 0) ||
+    tollLines.some((line) => line.quantity > 0) ||
+    (quoteConfig.customLines ?? []).some(
+      (line) => line.label.trim() && line.quantity > 0 && line.unitPrice > 0,
+    ) ||
+    (estimateInventory.stairs === 'balcon' && Number(estimateInventory.balcPx) > 0) ||
+    (quoteConfig.billingMode === 'driver-rental' && (quoteConfig.overtimeMinutes ?? 0) > 0),
+  );
   const grossMargin = quoteGrossMargin({
-    quoteTotal: preview.total,
+    quoteTotal: hasBillableQuoteContent ? preview.total : null,
+    hasBillableContent: hasBillableQuoteContent,
     inventory: draft.inventory,
     accounting: accountingConfiguration,
     billingMode: quoteConfig.billingMode,

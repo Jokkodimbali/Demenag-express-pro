@@ -70,6 +70,7 @@ test('la marge reprend les coûts comptables configurés et retire taxi et traje
   assert.equal(
     quoteGrossMargin({
       quoteTotal: 120_000,
+      hasBillableContent: true,
       inventory,
       accounting,
       billingMode: 'complete',
@@ -82,6 +83,7 @@ test('la marge reprend les coûts comptables configurés et retire taxi et traje
   assert.equal(
     quoteGrossMargin({
       quoteTotal: 120_000,
+      hasBillableContent: true,
       inventory,
       accounting,
       billingMode: 'complete',
@@ -97,6 +99,7 @@ test('activer des frais taxi refacturés augmente le devis sans changer la marge
   const inventory = inventoryForQuote();
   const marginWithoutTaxi = quoteGrossMargin({
     quoteTotal: 120_000,
+    hasBillableContent: true,
     inventory,
     accounting,
     billingMode: 'complete',
@@ -107,6 +110,7 @@ test('activer des frais taxi refacturés augmente le devis sans changer la marge
   const taxiAndLocalFees = 41_880;
   const marginWithTaxi = quoteGrossMargin({
     quoteTotal: 120_000 + taxiAndLocalFees,
+    hasBillableContent: true,
     inventory,
     accounting,
     billingMode: 'complete',
@@ -123,11 +127,28 @@ test('la marge reste indisponible tant que les paramètres comptables ne sont pa
   assert.equal(
     quoteGrossMargin({
       quoteTotal: 120_000,
+      hasBillableContent: true,
       inventory: inventoryForQuote(),
       accounting: null,
       billingMode: 'complete',
       providedCrew: 6,
       manoeuvreCount: 6,
+      taxiCharges: 0,
+    }),
+    null,
+  );
+});
+
+test('la marge reste vide tant que le devis ne contient aucun élément facturable', () => {
+  assert.equal(
+    quoteGrossMargin({
+      quoteTotal: 30_000,
+      hasBillableContent: false,
+      inventory: blankInventory(),
+      accounting,
+      billingMode: 'complete',
+      providedCrew: 0,
+      manoeuvreCount: 0,
       taxiCharges: 0,
     }),
     null,

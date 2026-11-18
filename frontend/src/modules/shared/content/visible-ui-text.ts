@@ -218,6 +218,8 @@ export const visibleUiText = {
   text203: 'Contact',
   text204: 'Exporter tous les contacts',
   text205: 'Chargements et déchargements',
+  quoteTaxiPerLegLabel: 'Montant taxi par trajet (chargement ou déchargement, FCFA)',
+  quoteTaxiPerLegAriaLabel: 'Montant taxi par trajet simple, chargement ou déchargement, en FCFA',
   text206: 'Fin prévue',
   text207: 'TOTAL',
   text208: 'TOTAL ESTIMÉ',

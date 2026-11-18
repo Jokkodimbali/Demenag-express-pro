@@ -10,7 +10,7 @@ import {
   inventoryAssemblyOptions,
 } from '../../../../moving/domain/inventory/inventory-assembly';
 import { manoeuvreOvertimeLine } from './manoeuvre-overtime';
-import { taxiRotationCount } from './admin-quote-taxi';
+import { taxiPaidLegCount, taxiRotationCount } from './admin-quote-taxi';
 import { quoteInventoryLines } from './quote-inventory-lines';
 import { quoteTransportLines } from './quote-transport-lines';
 import {
@@ -97,11 +97,11 @@ export function createAdminQuotePreview(input: {
         )
       : 0;
   const taxiDistance = Math.max(0, draft.distanceKmOverride ?? draft.route?.distanceKm ?? 0);
-  // One estimated/specified rotation means one load and one unload. The taxi
-  // rule adds one extra rotation after choosing the automatic or manual count.
-  const taxiTrips = taxiRotationCount(estimate?.trips, config.trips, config.calcMode);
+  // Each rotation has two paid taxi legs, except the final return after unloading.
+  const taxiRotations = taxiRotationCount(estimate?.trips, config.trips, config.calcMode);
+  const taxiPaidLegs = taxiPaidLegCount(taxiRotations);
   const taxiRate = Math.max(0, settings?.taxiFeePerKm ?? 0);
-  const taxiRoundTripAmount = config.taxiFeeAmountOverride ?? Math.round(taxiDistance * taxiRate);
+  const taxiPerLegAmount = config.taxiFeeAmountOverride ?? Math.round(taxiDistance * taxiRate);
   const taxiCompanyApproachAmount =
     config.taxiCompanyApproachAmountOverride ??
     Math.round(Math.max(0, input.taxiPickupDistanceKm ?? 0) * taxiRate);
@@ -219,20 +219,20 @@ export function createAdminQuotePreview(input: {
   const taxiCrew = manoeuvreCount(basePreviewLines);
   const taxiCompanyApproachTotal = taxiCompanyApproachAmount;
   const taxiFeeAmount =
-    taxiCrew > 0 && taxiAvailable ? taxiRoundTripAmount * taxiTrips + taxiCompanyApproachTotal : 0;
+    taxiCrew > 0 && taxiAvailable ? taxiPerLegAmount * taxiPaidLegs + taxiCompanyApproachTotal : 0;
   const taxiFeeLines: QuoteLine[] =
     taxiCrew > 0 && taxiAvailable
       ? [
-          ...(taxiRoundTripAmount > 0
+          ...(taxiPerLegAmount > 0
             ? [
                 {
                   label:
                     config.taxiFeeAmountOverride === null
-                      ? 'Frais taxi · déménagement'
-                      : 'Frais taxi · montant modifié',
-                  quantity: taxiTrips,
-                  unitPrice: taxiRoundTripAmount,
-                  total: taxiRoundTripAmount * taxiTrips,
+                      ? 'Frais taxi · trajet simple'
+                      : 'Frais taxi · montant par trajet modifié',
+                  quantity: taxiPaidLegs,
+                  unitPrice: taxiPerLegAmount,
+                  total: taxiPerLegAmount * taxiPaidLegs,
                 },
               ]
             : []),

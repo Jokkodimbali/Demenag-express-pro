@@ -366,6 +366,7 @@ export const quoteSchema = z.object({
     .max(20)
     .default([]),
   taxiRoundTripAmountOverride: z.number().int().nonnegative().max(10000000).nullable().optional(),
+  taxiPerLegAmountOverride: z.number().int().nonnegative().max(10000000).nullable().optional(),
   taxiCompanyApproachAmountOverride: z
     .number()
     .int()
