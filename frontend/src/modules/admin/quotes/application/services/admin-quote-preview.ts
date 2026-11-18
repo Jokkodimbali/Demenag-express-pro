@@ -96,7 +96,9 @@ export function createAdminQuotePreview(input: {
         )
       : 0;
   const taxiDistance = Math.max(0, draft.distanceKmOverride ?? draft.route?.distanceKm ?? 0);
-  const taxiTrips = Math.max(1, config.trips);
+  // Automatic mode may estimate more/fewer load+unload rotations than the
+  // draft's manual trip count. Taxi must follow that same estimate.
+  const taxiTrips = Math.max(1, estimate?.trips ?? config.trips);
   const taxiRate = Math.max(0, settings?.taxiFeePerKm ?? 0);
   const taxiRoundTripAmount = config.taxiFeeAmountOverride ?? Math.round(taxiDistance * taxiRate);
   const taxiCompanyApproachAmount =

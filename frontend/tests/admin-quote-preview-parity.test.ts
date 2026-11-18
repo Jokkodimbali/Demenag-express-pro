@@ -5,6 +5,7 @@ import { blankDraft } from '../src/modules/booking/application/booking-draft.ts'
 import { createAdminQuotePreview } from '../src/modules/admin/quotes/application/services/admin-quote-preview.ts';
 import { defaultAdminQuoteConfig } from '../src/modules/admin/quotes/application/services/admin-quote-config.ts';
 import { calculatePrice } from '../../backend/src/domain/pricing/pricing.ts';
+import { estimateMovingWork } from '../src/modules/moving/domain/estimate/moving-estimate.ts';
 import {
   inventoryAssemblyLines,
   subtractInventoryAssemblyOptions,
@@ -258,6 +259,13 @@ test('les frais taxi suivent les allers-retours et sont répartis sur les manœu
   assert.equal(preview.taxiFeeLine?.quantity, 3);
   assert.equal(labour?.unitPrice, 12_500);
   assert.equal(labour?.total, 62_500);
+  const automaticEstimate = estimateMovingWork(draft.inventory, vehicle, draft.route, {
+    trips: 5,
+    recommendedTrips: 5,
+  });
+  const automaticPreview = createAdminQuotePreview({ ...input, estimate: automaticEstimate });
+  assert.equal(automaticPreview.taxiFeeLine?.quantity, 5);
+  assert.equal(automaticPreview.taxiFeeLine?.total, 50_000);
   assert.equal(
     preview.previewLines.some((line) => line.label.startsWith('Frais taxi')),
     false,
