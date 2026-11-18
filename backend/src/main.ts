@@ -10,6 +10,7 @@ async function main() {
   const services = compose(
     db,
     new OpenStreetMaps(env.OSRM_URL, env.NOMINATIM_URL, env.MAPS_USER_AGENT),
+    env.ROUTE_TICKET_SECRET || env.DATABASE_URL,
   );
   try {
     await services.ready();

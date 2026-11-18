@@ -10,6 +10,10 @@ export function readEnv() {
       PORT: z.coerce.number().int().min(1).max(65535).default(4000),
       DATABASE_URL: z.string().min(1),
       DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(50).default(5),
+      ROUTE_TICKET_SECRET: z
+        .string()
+        .default('')
+        .refine((value) => value.length === 0 || value.length >= 32),
       FRONTEND_ORIGIN: z
         .string()
         .default(

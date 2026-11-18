@@ -47,6 +47,10 @@ export class PrismaAccounting implements AccountingRepository {
         WHERE d."nature" = 'definitif' AND d."montant_total" IS NOT NULL
           AND r."data"->>'status' IS DISTINCT FROM 'cancelled' ${period}
           AND NOT EXISTS (
+            SELECT 1 FROM jsonb_array_elements(COALESCE(r."data"->'quotes', '[]'::jsonb)) q
+            WHERE q->>'id' = d."id"::text AND q->>'importedFromDesktop' = 'true'
+          )
+          AND NOT EXISTS (
             SELECT 1 FROM "demenag"."accounting_entries" a
             WHERE a."source_quote_id" = d."id"
           )

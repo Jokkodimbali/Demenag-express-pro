@@ -14,7 +14,7 @@ import type {
 import type {
   BookingRepository,
   CatalogueRepository,
-  RouteRepository,
+  RouteTicketCodec,
 } from '../src/application/ports/index.js';
 
 test('a booking keeps its inventory and admin edits preserve or clear planning steps', async () => {
@@ -73,7 +73,7 @@ test('a booking keeps its inventory and admin edits preserve or clear planning s
       get: async () => catalogue,
       listTollPoints: async () => [],
     } as unknown as CatalogueRepository,
-    { find: async () => route } as unknown as RouteRepository,
+    { find: () => route } as unknown as RouteTicketCodec,
     {} as never,
     {} as never,
     { now: () => now },

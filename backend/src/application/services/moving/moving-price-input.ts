@@ -2,11 +2,11 @@ import { AppError, requireValue } from '../../../domain/shared/errors.js';
 import { messages } from '../../../domain/shared/messages/fr.js';
 import { calculatePrice } from '../../../domain/pricing/pricing.js';
 import type { Options, WorkAccess } from '../../../domain/shared/model.js';
-import type { CatalogueRepository, Clock, RouteRepository } from '../../ports/index.js';
+import type { CatalogueRepository, Clock, RouteTicketCodec } from '../../ports/index.js';
 
 export async function movingPriceInput(
   catalogueRepository: CatalogueRepository,
-  routes: RouteRepository,
+  routeTickets: RouteTicketCodec,
   clock: Clock,
   vehicleId: string,
   routeId: string,
@@ -16,7 +16,10 @@ export async function movingPriceInput(
   distanceKmOverride?: number | null,
   workDate?: string | null,
 ) {
-  const [catalogue, route] = await Promise.all([catalogueRepository.get(), routes.find(routeId)]);
+  const [catalogue, route] = await Promise.all([
+    catalogueRepository.get(),
+    routeTickets.find(routeId),
+  ]);
   if (!route || +new Date(route.expiresAt) <= +clock.now())
     throw new AppError(400, messages.recalculezLeTrajetSonEstimationAExpire);
   const vehicle = catalogue.vehicles.find((item) => item.id === vehicleId);

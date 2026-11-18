@@ -3,7 +3,7 @@ import type {
   BookingInput,
   BookingPricingSnapshot,
 } from '../../../domain/shared/model.js';
-import type { Clock, CatalogueRepository, RouteRepository } from '../../ports/index.js';
+import type { Clock, CatalogueRepository, RouteTicketCodec } from '../../ports/index.js';
 import { calculatePrice } from '../../../domain/pricing/pricing.js';
 import { validateDate } from '../../../domain/moving/booking.js';
 import { addressChangeForUpdate } from './moving-address-change.js';
@@ -13,7 +13,7 @@ import { movingPriceInput } from './moving-price-input.js';
 export async function buildAdminRequestUpdate(
   dependencies: {
     catalogue: CatalogueRepository;
-    routes: RouteRepository;
+    routeTickets: RouteTicketCodec;
     clock: Clock;
     capturePricingSnapshot: (
       vehiclePrices: Record<string, [number, number, number]>,
@@ -22,7 +22,7 @@ export async function buildAdminRequestUpdate(
   booking: Booking,
   input: BookingInput,
 ): Promise<Booking> {
-  const { catalogue, routes, clock, capturePricingSnapshot } = dependencies;
+  const { catalogue, routeTickets, clock, capturePricingSnapshot } = dependencies;
   const {
     route,
     vehicle: currentVehicle,
@@ -30,7 +30,7 @@ export async function buildAdminRequestUpdate(
     vehiclePrices,
   } = await movingPriceInput(
     catalogue,
-    routes,
+    routeTickets,
     clock,
     input.vehicleId,
     input.routeId,

@@ -155,7 +155,7 @@ export function useAdminFleetMap({
         popup.textContent = `${employee.name}\n${role.label}\n${employee.address ?? ''}\n${employee.phone}${job ? `\nCe jour : ${job.reference} (${job.timeSlot || 'journée'})` : ''}`;
         marker.bindPopup(popup);
         bounds.push([employee.latitude, employee.longitude]);
-        if (mapLayers.bookings && job?.from) {
+        if (mapLayers.bookings && job?.from && !job.legacyCoordinatesMissing) {
           const isSelectedRoute =
             employee.id === selectedEmployee && selectedRoute?.bookingId === job.id;
           if (isSelectedRoute && selectedRoute.geometry.length > 1) {
@@ -181,6 +181,7 @@ export function useAdminFleetMap({
       }
     if (mapLayers.bookings)
       for (const booking of dayBookings) {
+        if (booking.legacyCoordinatesMissing) continue;
         for (const [point, label, color, address] of [
           [booking.from, 'A', '#2ECC71', booking.fromAddress],
           [booking.to, 'B', '#FF6B6B', booking.toAddress],

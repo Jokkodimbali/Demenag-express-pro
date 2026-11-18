@@ -103,7 +103,7 @@ export function FleetMapPanel({ model }: { model: Model }) {
                   </span>
                 )}
                 <a
-                  href={`https://www.google.com/maps/dir/?api=1&origin=${selected.latitude},${selected.longitude}&destination=${selectedJob.from[0]},${selectedJob.from[1]}&travelmode=driving`}
+                  href={`https://www.google.com/maps/dir/?api=1&origin=${selected.latitude},${selected.longitude}&destination=${encodeURIComponent(selectedJob.legacyCoordinatesMissing ? selectedJob.fromAddress : `${selectedJob.from[0]},${selectedJob.from[1]}`)}&travelmode=driving`}
                   target="_blank"
                   rel="noreferrer"
                 >

@@ -6,7 +6,6 @@ import {
   PrismaBookings,
   PrismaCatalogue,
   PrismaDrivers,
-  PrismaRoutes,
   PrismaSessions,
   PrismaUsers,
   PrismaVehicleReports,
@@ -14,6 +13,7 @@ import {
   PrismaClaudeConfiguration,
 } from './adapters/out/prisma/repositories.js';
 import { ScryptPasswords, clock, ids, tokens } from './adapters/out/security/crypto.js';
+import { SignedRouteTicketCodec } from './adapters/out/security/route-ticket-codec.js';
 import type { RoutingProvider } from './application/ports/index.js';
 import { AdministrationService } from './application/services/administration/administration.js';
 import { AccountingService } from './application/services/accounting/accounting.js';
@@ -25,7 +25,14 @@ import { VehicleReportService } from './application/services/fleet/vehicle-repor
 import { NotificationService } from './application/services/notifications/notifications.js';
 import { ClaudeService } from './application/services/integrations/claude.js';
 import type { PrismaClient } from './generated/prisma/client.js';
-export function compose(db: PrismaClient, routing: RoutingProvider) {
+export function compose(
+  db: PrismaClient,
+  routing: RoutingProvider,
+  routeTicketSecret = process.env.ROUTE_TICKET_SECRET ||
+    process.env.DATABASE_URL ||
+    process.env.TEST_DATABASE_URL ||
+    'demenag-express-local-route-ticket-secret',
+) {
   const notificationRepository = new PrismaNotifications(db);
   const notifications = new RealtimeNotifications(notificationRepository);
   const catalogue = new PrismaCatalogue(db);
@@ -44,7 +51,7 @@ export function compose(db: PrismaClient, routing: RoutingProvider) {
   const moving = new MovingService(
     bookings,
     catalogue,
-    new PrismaRoutes(db),
+    new SignedRouteTicketCodec(routeTicketSecret),
     routing,
     drivers,
     clock,

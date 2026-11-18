@@ -615,7 +615,13 @@ export function useAdminFleetPageModel() {
     : undefined;
 
   useEffect(() => {
-    if (!selected || !selectedJob || selected.latitude == null || selected.longitude == null) {
+    if (
+      !selected ||
+      !selectedJob ||
+      selectedJob.legacyCoordinatesMissing ||
+      selected.latitude == null ||
+      selected.longitude == null
+    ) {
       setSelectedRoute(null);
       setSelectedRouteStatus(null);
       return;

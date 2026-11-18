@@ -12,6 +12,8 @@ import { addRouteLine } from '../../moving/maps/route-line';
 import { addTollMarkers } from '../../moving/maps/toll-markers';
 import { tollsOnRoute } from '../../moving/domain/tolls/tolls-on-route';
 
+const legacyMapCenter: Point = [14.7167, -17.4677];
+
 export function BookingRouteMap({
   booking,
   admin = false,
@@ -29,8 +31,12 @@ export function BookingRouteMap({
   const [selected, setSelected] = useState<'from' | 'to'>('from');
   const [busy, setBusy] = useState(false);
   const [routeTolls, setRouteTolls] = useState<TollPoint[]>([]);
-  const [draftFrom, setDraftFrom] = useState<Point>(booking.from);
-  const [draftTo, setDraftTo] = useState<Point>(booking.to);
+  const [draftFrom, setDraftFrom] = useState<Point>(
+    booking.legacyCoordinatesMissing ? legacyMapCenter : booking.from,
+  );
+  const [draftTo, setDraftTo] = useState<Point>(
+    booking.legacyCoordinatesMissing ? legacyMapCenter : booking.to,
+  );
   const [draftFromAddress, setDraftFromAddress] = useState(booking.fromAddress);
   const [draftToAddress, setDraftToAddress] = useState(booking.toAddress);
   const from = editing ? draftFrom : booking.from;
@@ -76,10 +82,11 @@ export function BookingRouteMap({
     const element = host.current;
     if (!element) return;
     let active = true;
+    const coordinatesMissing = Boolean(booking.legacyCoordinatesMissing);
     setError('');
     setRouteTolls([]);
-    const start: L.LatLngExpression = from;
-    const end: L.LatLngExpression = to;
+    const start: L.LatLngExpression = coordinatesMissing ? legacyMapCenter : from;
+    const end: L.LatLngExpression = coordinatesMissing ? legacyMapCenter : to;
     const map = L.map(element, {
       scrollWheelZoom: true,
       zoomControl: true,
@@ -111,12 +118,25 @@ export function BookingRouteMap({
         });
       }
     };
-    addMarker(from, 'A', 'from');
-    addMarker(to, 'B', 'to');
-    map.fitBounds(L.latLngBounds(start, end), { padding: [50, 50], maxZoom: 13 });
+    if (!coordinatesMissing || editing) {
+      addMarker(from, 'A', 'from');
+      addMarker(to, 'B', 'to');
+    }
+    if (coordinatesMissing) map.setView(legacyMapCenter, 11);
+    else map.fitBounds(L.latLngBounds(start, end), { padding: [50, 50], maxZoom: 13 });
     if (admin && editing) {
       map.getContainer().classList.add('booking-route-map-editing');
       map.on('click', (event) => changePoint(selected, [event.latlng.lat, event.latlng.lng]));
+    }
+
+    if (coordinatesMissing) {
+      const resize = new ResizeObserver(() => map.invalidateSize());
+      resize.observe(element);
+      return () => {
+        active = false;
+        resize.disconnect();
+        map.remove();
+      };
     }
 
     void commands
@@ -150,16 +170,35 @@ export function BookingRouteMap({
       resize.disconnect();
       map.remove();
     };
-  }, [admin, changePoint, commands, editing, from, fromKey, selected, to, toKey, tollPoints]);
+  }, [
+    admin,
+    booking.legacyCoordinatesMissing,
+    changePoint,
+    commands,
+    editing,
+    from,
+    fromKey,
+    selected,
+    to,
+    toKey,
+    tollPoints,
+  ]);
 
   useEffect(() => {
     if (!editing) {
-      setDraftFrom(booking.from);
-      setDraftTo(booking.to);
+      setDraftFrom(booking.legacyCoordinatesMissing ? legacyMapCenter : booking.from);
+      setDraftTo(booking.legacyCoordinatesMissing ? legacyMapCenter : booking.to);
       setDraftFromAddress(booking.fromAddress);
       setDraftToAddress(booking.toAddress);
     }
-  }, [booking.from, booking.fromAddress, booking.to, booking.toAddress, editing]);
+  }, [
+    booking.from,
+    booking.fromAddress,
+    booking.legacyCoordinatesMissing,
+    booking.to,
+    booking.toAddress,
+    editing,
+  ]);
 
   return (
     <div className="booking-route-map-wrap">
@@ -209,8 +248,8 @@ export function BookingRouteMap({
               className="button secondary small"
               type="button"
               onClick={() => {
-                setDraftFrom(booking.from);
-                setDraftTo(booking.to);
+                setDraftFrom(booking.legacyCoordinatesMissing ? legacyMapCenter : booking.from);
+                setDraftTo(booking.legacyCoordinatesMissing ? legacyMapCenter : booking.to);
                 setDraftFromAddress(booking.fromAddress);
                 setDraftToAddress(booking.toAddress);
                 setSelected('from');
@@ -228,6 +267,12 @@ export function BookingRouteMap({
         role="region"
         aria-label={`Carte interactive de l’itinéraire de retrait à dépôt pour la réservation ${booking.reference}`}
       />
+      {booking.legacyCoordinatesMissing && (
+        <small className="muted" role="status">
+          Les adresses sont conservées, mais la sauvegarde ne contenait pas les coordonnées GPS.
+          {admin ? ' Cliquez sur la carte pour les renseigner.' : ''}
+        </small>
+      )}
       {editing && (
         <small className="muted">
           {uiText['cliquezSurLaCarteOuFaitesGlisserUnReperePourLeDeplacer']}

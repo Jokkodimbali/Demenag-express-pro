@@ -34,7 +34,7 @@ import type {
   DriverRepository,
   IdGenerator,
   NotificationPublisher,
-  RouteRepository,
+  RouteTicketCodec,
   RoutingProvider,
 } from '../../ports/index.js';
 import type { MovingUseCases } from '../../ports/use-cases.js';
@@ -60,7 +60,7 @@ export class MovingService implements MovingUseCases {
   constructor(
     private bookings: BookingRepository,
     private catalogue: CatalogueRepository,
-    private routes: RouteRepository,
+    private routeTickets: RouteTicketCodec,
     private routing: RoutingProvider,
     private drivers: DriverRepository,
     private clock: Clock,
@@ -69,7 +69,7 @@ export class MovingService implements MovingUseCases {
     private accounting?: AccountingRepository,
   ) {}
   async route(from: Point, to: Point) {
-    return createRouteTicket(this.routing, this.routes, this.clock, this.ids, from, to);
+    return createRouteTicket(this.routing, this.routeTickets, this.clock, from, to);
   }
   search(query: string) {
     return this.routing.search(query);
@@ -89,7 +89,7 @@ export class MovingService implements MovingUseCases {
     return (
       await movingPriceInput(
         this.catalogue,
-        this.routes,
+        this.routeTickets,
         this.clock,
         vehicleId,
         routeId,
@@ -109,7 +109,7 @@ export class MovingService implements MovingUseCases {
     );
     const { route, vehicle, estimate, settings, vehiclePrices } = await movingPriceInput(
       this.catalogue,
-      this.routes,
+      this.routeTickets,
       this.clock,
       input.vehicleId,
       input.routeId,
@@ -221,7 +221,7 @@ export class MovingService implements MovingUseCases {
       vehiclePrices,
     } = await movingPriceInput(
       this.catalogue,
-      this.routes,
+      this.routeTickets,
       this.clock,
       input.vehicleId,
       input.routeId,
@@ -315,7 +315,7 @@ export class MovingService implements MovingUseCases {
     return buildAdminRequestUpdate(
       {
         catalogue: this.catalogue,
-        routes: this.routes,
+        routeTickets: this.routeTickets,
         clock: this.clock,
         capturePricingSnapshot: (vehiclePrices) => this.capturePricingSnapshot(vehiclePrices),
       },
@@ -793,6 +793,7 @@ export class MovingService implements MovingUseCases {
         ...booking,
         from,
         to,
+        legacyCoordinatesMissing: false,
         fromAddress,
         toAddress,
         distanceKm: route.distanceKm,

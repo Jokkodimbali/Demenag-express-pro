@@ -510,6 +510,8 @@ export type Booking = {
   toAddress: string;
   from: Point;
   to: Point;
+  /** Imported historical records can have addresses without original GPS points. */
+  legacyCoordinatesMissing?: boolean;
   distanceKm: number;
   date: string | null;
   month?: string;

@@ -18,8 +18,14 @@ export function clientBookingCardModel(booking: Booking, catalogue: Catalogue | 
           : 3;
   const mapsUrl = new URL('https://www.google.com/maps/dir/');
   mapsUrl.searchParams.set('api', '1');
-  mapsUrl.searchParams.set('origin', booking.from.join(','));
-  mapsUrl.searchParams.set('destination', booking.to.join(','));
+  mapsUrl.searchParams.set(
+    'origin',
+    booking.legacyCoordinatesMissing ? booking.fromAddress : booking.from.join(','),
+  );
+  mapsUrl.searchParams.set(
+    'destination',
+    booking.legacyCoordinatesMissing ? booking.toAddress : booking.to.join(','),
+  );
   mapsUrl.searchParams.set('travelmode', 'driving');
   const tolls = finalQuote?.tolls ?? [];
 

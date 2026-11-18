@@ -173,9 +173,10 @@ export interface VehicleReportRepository {
   listDriverBreakdowns(driverId: string): Promise<VehicleReportRecord[]>;
   findInspection(driverId: string, date: string): Promise<VehicleReportRecord | null>;
 }
-export interface RouteRepository {
-  save(route: RouteTicket): Promise<void>;
-  find(id: string): Promise<RouteTicket | null>;
+export type RoutePriceTicket = Pick<RouteTicket, 'from' | 'to' | 'distanceKm' | 'expiresAt'>;
+export interface RouteTicketCodec {
+  issue(route: Route, expiresAt: string): RouteTicket;
+  find(id: string): RoutePriceTicket | null;
 }
 export interface RoutingProvider {
   route(from: [number, number], to: [number, number]): Promise<Route>;

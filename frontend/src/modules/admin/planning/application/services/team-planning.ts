@@ -561,8 +561,14 @@ export function newEmployeeValidationError(name: string, phone: string): string 
 
 export function teamCopyBrief(booking: Booking, members: readonly Driver[]) {
   const memberRole = (member: Driver) => roleName(member.role ?? 'chauffeur').toLowerCase();
-  const departureMap = googleMapLink(booking.from, booking.fromAddress);
-  const arrivalMap = googleMapLink(booking.to, booking.toAddress);
+  const departureMap = googleMapLink(
+    booking.legacyCoordinatesMissing ? undefined : booking.from,
+    booking.fromAddress,
+  );
+  const arrivalMap = googleMapLink(
+    booking.legacyCoordinatesMissing ? undefined : booking.to,
+    booking.toAddress,
+  );
   return [
     `Demenag Express · Déménagement ${booking.reference}`,
     `${booking.date ? shortDate(booking.date) : 'Date à définir'} · ${booking.timeSlot || 'Journée'}`,
@@ -659,11 +665,11 @@ export function defaultMissionMessage(
       : []),
     '',
     `Lieu de retrait : ${booking.fromAddress || 'à compléter'}${fromFloor !== undefined ? ` (${floor(fromFloor, Boolean(fromLift))})` : ''}`,
-    `Lien Google Maps : ${googleMapLink(booking.from, booking.fromAddress) || 'adresse de retrait à compléter'}`,
+    `Lien Google Maps : ${googleMapLink(booking.legacyCoordinatesMissing ? undefined : booking.from, booking.fromAddress) || 'adresse de retrait à compléter'}`,
     fromNote ? `Repère : ${fromNote}` : '',
     '',
     `Arrivée : ${booking.toAddress || 'à compléter'}${toFloor !== undefined ? ` (${floor(toFloor, Boolean(toLift))})` : ''}`,
-    googleMapLink(booking.to, booking.toAddress)
+    googleMapLink(booking.legacyCoordinatesMissing ? undefined : booking.to, booking.toAddress)
       ? `Lien Google Maps : ${googleMapLink(booking.to, booking.toAddress)}`
       : '',
     toNote ? `Repère : ${toNote}` : '',
