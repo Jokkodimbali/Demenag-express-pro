@@ -109,7 +109,7 @@ Avec `N = 5` manœuvres, `R₀ = 3` allers-retours estimés ou saisis, un trajet
 | Total ajouté aux manœuvres                 | 36 000 FCFA |
 | Ajout réparti par manœuvre : 36 000 ÷ 5    |  7 200 FCFA |
 
-Si le prix de base est de 6 500 FCFA par manœuvre, le nouveau prix unitaire est de 12 400 FCFA. Le total du devis augmente de 29 500 FCFA.
+Si le prix de base est de 6 500 FCFA par manœuvre, le nouveau prix unitaire est de 13 700 FCFA. Le total du devis augmente de 36 000 FCFA.
 
 Si le total n’est pas divisible par le nombre de manœuvres, le reste est ventilé en FCFA entiers. Par exemple, `11 904 ÷ 5` donne quatre ajouts de 2 381 FCFA et un ajout de 2 380 FCFA. Les lignes enregistrées restent entières et leur somme augmente exactement de 11 904 FCFA.
 

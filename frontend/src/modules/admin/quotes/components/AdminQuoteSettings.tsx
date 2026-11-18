@@ -6,6 +6,7 @@ import { AdminQuoteCheaperVehicle } from './AdminQuoteCheaperVehicle';
 import type { useAdminCreateQuoteModel } from '../application/controllers/useAdminCreateQuoteModel';
 import type { Catalogue } from '../../../shared/domain/model';
 import { quoteConfigWithManualTaxiFee } from '../application/services/admin-quote-form-policy';
+import { taxiRotationCount } from '../application/services/admin-quote-taxi';
 
 type Model = ReturnType<typeof useAdminCreateQuoteModel>;
 
@@ -43,7 +44,8 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
   const quoteSettings = model.quoteSettings ?? catalogue.settings;
   const taxiDistanceKm = Math.max(0, effectiveDistance ?? 0);
   const taxiRate = Math.max(0, quoteSettings.taxiFeePerKm ?? 0);
-  const taxiTrips = Math.max(1, quoteConfig.trips);
+  const taxiBaseTrips = Math.max(1, movingEstimate?.trips ?? quoteConfig.trips);
+  const taxiTrips = taxiRotationCount(movingEstimate?.trips, quoteConfig.trips);
   const taxiCalculatedAmount = Math.round(taxiDistanceKm * taxiRate);
   const companyLocationConfigured =
     quoteSettings.businessLatitude != null && quoteSettings.businessLongitude != null;
@@ -416,8 +418,10 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
                 <strong>{money(taxiRate)} / km</strong>
               </div>
               <div className="admin-quote-taxi-field">
-                <span>Allers-retours</span>
-                <strong>{taxiTrips}</strong>
+                <span>Rotations taxi (estimation + 1)</span>
+                <strong>
+                  {taxiBaseTrips} + 1 = {taxiTrips}
+                </strong>
               </div>
               {companyLocationConfigured && (
                 <div className="admin-quote-taxi-field">
@@ -496,7 +500,7 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
             <div className="admin-quote-taxi-summary">
               <span>
                 {quoteConfig.taxiFeeApplied && taxiAvailable
-                  ? `(${money(taxiAmount)} × ${taxiTrips} aller(s)-retour(s) + ${money(taxiCompanyApproachAmount)} trajet locaux, une fois) = ${money(taxiTotalAmount)} à répartir sur ${taxiCrew} manœuvre${taxiCrew > 1 ? 's' : ''}`
+                  ? `(${money(taxiAmount)} × (${taxiBaseTrips} rotations estimées + 1) + ${money(taxiCompanyApproachAmount)} trajet locaux, une fois) = ${money(taxiTotalAmount)} à répartir sur ${taxiCrew} manœuvre${taxiCrew > 1 ? 's' : ''}`
                   : 'Montant non appliqué au devis'}
               </span>
               {quoteConfig.taxiFeeApplied && taxiAvailable && (

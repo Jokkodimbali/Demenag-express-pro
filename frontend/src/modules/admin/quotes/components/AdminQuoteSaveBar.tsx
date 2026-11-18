@@ -6,6 +6,13 @@ import type { Quote } from '../../../shared/domain/model';
 type Props = {
   quoteKind: Quote['kind'];
   total: number | null;
+  charges: readonly {
+    label: string;
+    quantity: number;
+    unitPrice: number;
+    total: number;
+    includedInManoeuvres?: boolean;
+  }[];
   trips: number;
   movingEstimate: Pick<MovingEstimate, 'crew' | 'endTime'> | null;
   driverRental: boolean;
@@ -17,6 +24,7 @@ type Props = {
 export function AdminQuoteSaveBar({
   quoteKind,
   total,
+  charges,
   trips,
   movingEstimate,
   driverRental,
@@ -24,8 +32,23 @@ export function AdminQuoteSaveBar({
   disabled,
   editingReservation,
 }: Props) {
+  const chargesTotal = charges.reduce(
+    (sum, charge) => sum + (charge.includedInManoeuvres ? 0 : charge.total),
+    0,
+  );
+  const chargeQuoteDifference = total == null ? null : chargesTotal - total;
+
   return (
     <div className="admin-quote-save-bar" aria-live="polite">
+      <section
+        className="admin-quote-save-bar-charges"
+        aria-label="Écart entre les charges et le devis"
+      >
+        <small>Total des charges − total du devis</small>
+        <strong>
+          {chargeQuoteDifference == null ? visibleUiText.text209 : money(chargeQuoteDifference)}
+        </strong>
+      </section>
       <div>
         <small>{quoteKind === 'final' ? visibleUiText.text207 : visibleUiText.text208}</small>
         <strong>{total == null ? visibleUiText.text209 : money(total)}</strong>

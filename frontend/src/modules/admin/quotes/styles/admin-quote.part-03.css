@@ -997,6 +997,11 @@
     gap: 8px 12px;
     padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
   }
+  .admin-quote-save-bar-charges {
+    flex: 0 1 auto;
+    max-width: none;
+    min-height: 0;
+  }
   .admin-quote-save-bar > div:nth-child(2) {
     display: flex;
   }

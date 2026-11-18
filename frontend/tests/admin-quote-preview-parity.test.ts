@@ -266,6 +266,18 @@ test('les frais taxi suivent les allers-retours et sont répartis sur les manœu
   const automaticPreview = createAdminQuotePreview({ ...input, estimate: automaticEstimate });
   assert.equal(automaticPreview.taxiFeeLine?.quantity, 6);
   assert.equal(automaticPreview.taxiFeeLine?.total, 60_000);
+  const twoTripEstimate = estimateMovingWork(draft.inventory, vehicle, draft.route, {
+    trips: 2,
+    recommendedTrips: 2,
+  });
+  const twoTripPreview = createAdminQuotePreview({ ...input, estimate: twoTripEstimate });
+  const twoTripManoeuvres = twoTripPreview.previewLines.find((line) =>
+    line.label.startsWith('Manœuvres'),
+  );
+  assert.equal(twoTripPreview.taxiFeeLine?.quantity, 3);
+  assert.equal(twoTripPreview.taxiFeeLine?.total, 30_000);
+  assert.equal(twoTripManoeuvres?.unitPrice, 12_500);
+  assert.equal(twoTripManoeuvres?.total, 62_500);
   assert.equal(
     preview.previewLines.some((line) => line.label.startsWith('Frais taxi')),
     false,

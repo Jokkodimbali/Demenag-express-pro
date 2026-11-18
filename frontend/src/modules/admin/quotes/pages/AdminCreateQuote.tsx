@@ -1173,6 +1173,10 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
           <AdminQuoteSaveBar
             quoteKind={quoteKind}
             total={model.previewTotal}
+            charges={[
+              ...model.previewLines,
+              ...model.taxiFeeLines.map((line) => ({ ...line, includedInManoeuvres: true })),
+            ]}
             trips={quoteConfig.trips}
             movingEstimate={model.inventoryCount > 0 ? movingEstimate : null}
             driverRental={quoteConfig.billingMode === 'driver-rental'}

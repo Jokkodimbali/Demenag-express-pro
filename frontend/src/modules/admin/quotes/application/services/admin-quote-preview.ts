@@ -10,6 +10,7 @@ import {
   inventoryAssemblyOptions,
 } from '../../../../moving/domain/inventory/inventory-assembly';
 import { manoeuvreOvertimeLine } from './manoeuvre-overtime';
+import { taxiRotationCount } from './admin-quote-taxi';
 import { quoteInventoryLines } from './quote-inventory-lines';
 import { quoteTransportLines } from './quote-transport-lines';
 import {
@@ -98,7 +99,7 @@ export function createAdminQuotePreview(input: {
   const taxiDistance = Math.max(0, draft.distanceKmOverride ?? draft.route?.distanceKm ?? 0);
   // One estimated/specified rotation means one load and one unload. The taxi
   // rule adds one extra rotation after choosing the automatic or manual count.
-  const taxiTrips = Math.max(1, estimate?.trips ?? config.trips) + 1;
+  const taxiTrips = taxiRotationCount(estimate?.trips, config.trips);
   const taxiRate = Math.max(0, settings?.taxiFeePerKm ?? 0);
   const taxiRoundTripAmount = config.taxiFeeAmountOverride ?? Math.round(taxiDistance * taxiRate);
   const taxiCompanyApproachAmount =
