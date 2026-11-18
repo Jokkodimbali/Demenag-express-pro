@@ -49,6 +49,7 @@ export function cheaperCompatibleVehicle(input: {
   hasToll: boolean;
   settings?: Settings;
   estimate: MovingEstimate | null;
+  accountingOvertimeHourlyRate?: number | null;
 }): CheaperVehicle | null {
   if (
     input.manualMode ||
@@ -120,6 +121,9 @@ export function cheaperCompatibleVehicle(input: {
       billingMode: 'complete' as const,
       menuIncluded: false,
       overtimeMinutes: 0,
+      manoeuvreOvertimeEnabled: null,
+      manoeuvreOvertimeHours: null,
+      manoeuvreOvertimeHourlyRateOverride: null,
       taxiFeeApplied: false,
       taxiFeeAmountOverride: null,
       taxiCompanyApproachAmountOverride: null,
@@ -143,6 +147,7 @@ export function cheaperCompatibleVehicle(input: {
       ],
       labourPrice: settings.labourPrice,
       simulationNeeds: null,
+      accountingOvertimeHourlyRate: input.accountingOvertimeHourlyRate,
     }).total;
   };
   const currentTotal = priceFor(input.current, currentEstimate);

@@ -521,6 +521,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
             hasToll: quoteHasPaidTolls(tollLines),
             settings: quoteSettings,
             estimate: movingEstimate,
+            accountingOvertimeHourlyRate: accountingConfiguration?.overtimeHourlyRate,
           })
         : null,
     [
@@ -533,6 +534,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       draft.toAddress,
       estimateInventory,
       movingEstimate,
+      accountingConfiguration?.overtimeHourlyRate,
       pricingRoute,
       quoteSettings,
       selected,

@@ -17,7 +17,7 @@ export function manoeuvreOvertimeLine(
   settings: MovingLaborPlanningSettings | undefined,
   billingMode: 'complete' | 'standard' | 'driver-rental',
   options?: {
-    enabled?: boolean;
+    enabled?: boolean | null;
     hours?: number | null;
     hourlyRate?: number | null;
     accountingHourlyRate?: number | null;
