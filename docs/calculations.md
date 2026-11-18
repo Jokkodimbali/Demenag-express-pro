@@ -59,13 +59,13 @@ Les frais taxi sont calculés par devis et intégrés au montant de la ligne **M
 
 ### Valeurs utilisées
 
-| Symbole | Valeur                                                                                                                                                                            |
-| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `d`     | Distance du déménagement en km : distance modifiée par l’administrateur si elle existe, sinon distance de l’itinéraire du devis                                                   |
-| `d₀`    | Distance routière en km entre les locaux de l’entreprise et le point de départ du client                                                                                          |
-| `p`     | Tarif taxi en FCFA par km, réglé dans les paramètres                                                                                                                              |
-| `R`     | Nombre d’allers-retours retenu dans le devis : estimation automatique du chargement ou nombre saisi en mode manuel. Un aller-retour correspond à un chargement et un déchargement |
-| `N`     | Quantité de manœuvres facturées retenue dans le devis                                                                                                                             |
+| Symbole | Valeur                                                                                                                                                                       |
+| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `d`     | Distance du déménagement en km : distance modifiée par l’administrateur si elle existe, sinon distance de l’itinéraire du devis                                              |
+| `d₀`    | Distance routière en km entre les locaux de l’entreprise et le point de départ du client                                                                                     |
+| `p`     | Tarif taxi en FCFA par km, réglé dans les paramètres                                                                                                                         |
+| `R`     | Nombre de rotations taxi : nombre estimé automatiquement ou saisi en mode manuel, augmenté de 1. Une rotation de déménagement correspond à un chargement et son déchargement |
+| `N`     | Quantité de manœuvres facturées retenue dans le devis                                                                                                                        |
 
 ### Formule
 
@@ -87,7 +87,7 @@ Les frais taxi sont calculés par devis et intégrés au montant de la ligne **M
 
    `Prix unitaire = prix unitaire de base + ajout entier attribué à cette manœuvre`
 
-Le trajet des locaux n’est pas multiplié par `R` ni par `N` : son montant est compté une fois dans `F_total`, puis sa part est répartie sur les `N` manœuvres. Seul le taxi du déménagement est multiplié par le nombre de rotations.
+Le trajet des locaux n’est pas multiplié par `R` ni par `N` : son montant est compté une fois dans `F_total`, puis sa part est répartie sur les `N` manœuvres. Seul le taxi du déménagement est multiplié par le nombre de rotations. Pour `R₀` allers-retours estimés ou saisis, le calcul taxi retient `R = max(1, R₀) + 1`.
 
 Les distances sont calculées depuis l’itinéraire du devis et, pour le trajet des locaux, depuis les coordonnées enregistrées dans les paramètres de l’entreprise jusqu’au départ du client. Chaque montant calculé à partir d’une distance est arrondi au FCFA le plus proche avant multiplication par les rotations.
 
@@ -100,14 +100,14 @@ Les montants saisis restent enregistrés avec le devis. À sa réouverture, l’
 
 ### Exemple
 
-Avec `N = 5` manœuvres, un trajet locaux → client réglé à 10 000 FCFA, un taxi de déménagement à 6 500 FCFA par aller-retour et `R = 3` :
+Avec `N = 5` manœuvres, `R₀ = 3` allers-retours estimés ou saisis, un trajet locaux → client réglé à 10 000 FCFA, et un taxi de déménagement à 6 500 FCFA par rotation, le taxi retient `R = 4` :
 
 | Calcul                                     |     Montant |
 | ------------------------------------------ | ----------: |
 | Trajet des locaux, une fois                | 10 000 FCFA |
-| Taxi du déménagement : 6 500 × 3 rotations | 19 500 FCFA |
-| Total ajouté aux manœuvres                 | 29 500 FCFA |
-| Ajout réparti par manœuvre : 29 500 ÷ 5    |  5 900 FCFA |
+| Taxi du déménagement : 6 500 × 4 rotations | 26 000 FCFA |
+| Total ajouté aux manœuvres                 | 36 000 FCFA |
+| Ajout réparti par manœuvre : 36 000 ÷ 5    |  7 200 FCFA |
 
 Si le prix de base est de 6 500 FCFA par manœuvre, le nouveau prix unitaire est de 12 400 FCFA. Le total du devis augmente de 29 500 FCFA.
 
