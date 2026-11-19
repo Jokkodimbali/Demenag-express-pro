@@ -155,7 +155,6 @@ const page = await context.newPage();
 const pageErrors = [];
 const writes = [];
 const apiCalls = [];
-const estimateInputs = [];
 page.on('pageerror', (error) => pageErrors.push(error.stack ?? error.message));
 page.on('requestfailed', (request) => pageErrors.push(`request failed: ${request.url()} ${request.failure()?.errorText}`));
 page.on('console', (message) => {
@@ -193,7 +192,6 @@ await page.route('**/api/**', async (route) => {
     };
   } else if (path === '/admin/estimates') {
     const input = request.postDataJSON();
-    estimateInputs.push(input);
     const vehicle = vehicles.find((candidate) => candidate.id === input.vehicleId) ?? vehicles[0];
     try {
       body = calculatePrice(
@@ -216,7 +214,6 @@ await page.route('**/api/**', async (route) => {
       await route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ error: String(error) }) });
       return;
     }
-    console.log('MOCK ESTIMATE FULFILL', JSON.stringify({ url: request.url(), lines: body.lines?.length, bytes: JSON.stringify(body).length }));
   }
   if (path === '/admin/quote-draft' && request.method() !== 'GET') {
     await route.fulfill({ status: 204 });
@@ -231,31 +228,13 @@ await page.route('**/api/**', async (route) => {
 
 const baseUrl = 'http://127.0.0.1:5174';
 try {
-  await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
-  const responseProbe = await page.evaluate(async () => {
-    const response = await fetch('/api/admin/estimates', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        vehicleId: 'sprinter',
-        options: { labour: 2, desk: 0, wardrobe: 0, bed: 0 },
-        trips: 1,
-        distanceKmOverride: 12,
-        workAccess: { fromFloor: 0, toFloor: 0, fromLift: false, toLift: false },
-        workDate: '2026-12-10',
-      }),
-    });
-    return { status: response.status, contentType: response.headers.get('content-type'), text: await response.text() };
-  });
-  console.log('API MOCK PROBE', JSON.stringify(responseProbe).slice(0, 500));
   const initialResponse = await page.goto(`${baseUrl}/admin/creer-un-devis`, { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(1500);
   if (!(await page.locator('#admin-quote-form').count())) {
-    console.log('INITIAL DIAGNOSTIC', JSON.stringify({ status: initialResponse?.status(), url: page.url(), body: (await page.locator('body').innerText()).slice(0, 1800), apiCalls, estimateInputs, pageErrors }, null, 2));
+    console.log('INITIAL DIAGNOSTIC', JSON.stringify({ status: initialResponse?.status(), url: page.url(), body: (await page.locator('body').innerText()).slice(0, 1800), apiCalls, pageErrors }, null, 2));
   }
   await expect(page.locator('#admin-quote-form')).toBeVisible({ timeout: 3000 });
   const expandButton = page.getByRole('button', { name: /tout afficher|replier les étapes/i });
-  console.log('FORM START', JSON.stringify({ expandLabel: await expandButton.innerText(), pageText: (await page.locator('body').innerText()).slice(0, 500) }));
   if (/tout afficher/iu.test(await expandButton.innerText())) await expandButton.click();
   await expect(page.locator('.admin-quote-paper')).toBeVisible();
   await expect(page.locator('.call-inventory')).toBeVisible();
@@ -263,10 +242,11 @@ try {
   if ((await page.locator('.inventory-collapse').innerText()) !== 'Réduire')
     await page.locator('.inventory-collapse').click();
   await page.locator('.call-inventory').scrollIntoViewIfNeeded();
-  console.log('INVENTORY STATE', JSON.stringify({ collapse: await page.locator('.inventory-collapse').innerText(), rows: await page.locator('.inventory-row').count(), visibleSalon: await page.locator('.inventory-quantity button[aria-label="Ajouter Salon"]').isVisible().catch(() => false), text: (await page.locator('.call-inventory').innerText()).slice(0, 500) }));
+  const salonSection = page.locator('.inventory-section').filter({ hasText: 'Salon & séjour' }).first();
+  if (!(await salonSection.evaluate((element) => element.open))) await salonSection.locator('summary').click();
 
-  const inventoryRow = page.locator('.inventory-row').filter({ has: page.getByRole('button', { name: 'Ajouter Salon', exact: true }).first() }).first();
-  const inventorySalonStepper = page.locator('.inventory-quantity button[aria-label="Ajouter Salon"]');
+  const inventoryRow = salonSection.locator('.inventory-row').filter({ has: page.getByRole('button', { name: 'Ajouter Salon', exact: true }).first() }).first();
+  const inventorySalonStepper = salonSection.locator('.inventory-quantity button[aria-label="Ajouter Salon"]');
   if (await inventorySalonStepper.count()) {
     const initialCount = Number(await inventorySalonStepper.locator('xpath=..').locator('output').innerText());
     await inventorySalonStepper.click();
@@ -281,6 +261,7 @@ try {
 
   const formulaButtons = page.locator('.admin-quote-formula-options button');
   const quoteKindButtons = page.locator('.admin-quote-stage-selector button');
+  await quoteKindButtons.first().scrollIntoViewIfNeeded();
   const initialKindPositions = await quoteKindButtons.evaluateAll((buttons) => buttons.map((button) => {
     const box = button.getBoundingClientRect();
     return [Math.round(box.x), Math.round(box.y), Math.round(box.width), Math.round(box.height)];
@@ -327,10 +308,12 @@ try {
   const taxiAmount = page.locator('.admin-quote-taxi-amount input').first();
   await taxiAmount.fill('2000');
   await expect(taxiAmount).toHaveValue('2000');
-  await expect(page.locator('.admin-quote-taxi-summary')).toContainText('2000');
+  await expect(page.locator('.admin-quote-taxi-summary')).toContainText(/2[ \u202f]000/u);
 
   const overtimeCard = page.locator('.admin-quote-overtime-card');
-  const overtimeToggle = overtimeCard.getByRole('button', { name: /activer le supplément/i });
+  const overtimeToggle = overtimeCard.locator('.admin-quote-overtime-header button');
+  if ((await overtimeToggle.getAttribute('aria-pressed')) === 'true') await overtimeToggle.click();
+  await expect(overtimeToggle).toHaveAttribute('aria-pressed', 'false');
   await overtimeToggle.click();
   await expect(overtimeToggle).toHaveAttribute('aria-pressed', 'true');
   await overtimeCard.getByRole('button', { name: 'Ajouter une heure supplémentaire' }).click();
