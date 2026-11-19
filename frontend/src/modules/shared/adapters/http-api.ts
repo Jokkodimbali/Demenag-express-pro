@@ -52,9 +52,10 @@ export function createHttpApi(base = import.meta.env.VITE_API_URL || '/api'): Ap
       sessionExpiredListeners.forEach((listener) => listener());
     }
     if (response.status === 204) return undefined as T;
-    const data: unknown = await response
-      .json()
-      .catch(() => ({ message: messages.reponseDuServeurInvalide }));
+    const data: unknown = await response.json().catch((error: unknown) => {
+      if (error instanceof Error && error.name === 'AbortError') throw error;
+      return { message: messages.reponseDuServeurInvalide };
+    });
     if (!response.ok) {
       let message = messages.uneErreurEstSurvenue as string;
       if (

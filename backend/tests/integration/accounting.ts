@@ -297,7 +297,9 @@ export async function verifyAccountingJournal(
   assert.ok(quoteCosts, 'Le devis final doit conserver son instantané de charges.');
   const quoteRow = await context.db.devis.findUniqueOrThrow({ where: { id: quoteId } });
   const quoteMonth = quoteRow.creeLe.toISOString().slice(0, 7);
-  const expectedLabourTotal = quoteCosts.moverAmount + quoteCosts.carpenterAmount;
+  const expectedTaxiTotal = quoteSnapshot?.pricingInput?.taxiFeeAmount ?? 0;
+  const expectedLabourTotal =
+    quoteCosts.moverAmount + quoteCosts.carpenterAmount + expectedTaxiTotal;
   const quoteCharges = initial.body.filter(
     (entry: { reference?: string; type: string }) =>
       entry.reference === quoteId && entry.type === 'charge',
@@ -309,7 +311,9 @@ export async function verifyAccountingJournal(
   );
   assert.equal(
     quoteCharges.length,
-    Number(quoteCosts.moverAmount > 0) + Number(quoteCosts.carpenterAmount > 0),
+    Number(quoteCosts.moverAmount > 0) +
+      Number(quoteCosts.carpenterAmount > 0) +
+      Number(expectedTaxiTotal > 0),
     'Le devis ne doit produire aucune ligne de charge en doublon.',
   );
   for (const [category, amount] of [
@@ -471,6 +475,7 @@ export async function verifyArchivedFinalRevenue(
   const quoteSnapshot = bookingData.quotes.find((item) => item.id === quoteId);
   const quoteCosts = quoteSnapshot?.accountingCosts;
   assert.ok(quoteCosts);
+  const expectedTaxiTotal = quoteSnapshot?.pricingInput?.taxiFeeAmount ?? 0;
   const expectedLabel = `Devis final ${quote.reference} · ${quote.reservation.reference} · ${context.prefix} Client`;
 
   assert.equal(
@@ -541,7 +546,10 @@ export async function verifyArchivedFinalRevenue(
   const archivedRevenue = archived.find((entry) => entry.sourceQuoteKind === 'revenue');
   assert.equal(
     archived.length,
-    1 + Number(quoteCosts.moverAmount > 0) + Number(quoteCosts.carpenterAmount > 0),
+    1 +
+      Number(quoteCosts.moverAmount > 0) +
+      Number(quoteCosts.carpenterAmount > 0) +
+      Number(expectedTaxiTotal > 0),
     'Chaque devis doit archiver exactement son revenu et ses seules charges non nulles.',
   );
   assert.ok(archivedRevenue, 'Le revenu final doit être archivé en base.');
@@ -552,6 +560,7 @@ export async function verifyArchivedFinalRevenue(
   for (const [kind, category, amount] of [
     ['movers', 'Manœuvres', quoteCosts.moverAmount],
     ['assembly', 'Menuisier', quoteCosts.carpenterAmount],
+    ['taxi', 'Taxi / trajet locaux', expectedTaxiTotal],
   ] as const) {
     const row = archived.find((entry) => entry.sourceQuoteKind === kind);
     if (amount > 0) {
@@ -560,7 +569,11 @@ export async function verifyArchivedFinalRevenue(
       assert.equal(row.montant, amount);
       assert.equal(
         row.sourceQuoteQuantity,
-        kind === 'movers' ? quoteCosts.movers : quoteCosts.carpenters,
+        kind === 'movers'
+          ? quoteCosts.movers
+          : kind === 'assembly'
+            ? quoteCosts.carpenters
+            : undefined,
       );
     } else {
       assert.equal(row, undefined, `Aucune charge ${category} n’est créée pour un coût nul.`);

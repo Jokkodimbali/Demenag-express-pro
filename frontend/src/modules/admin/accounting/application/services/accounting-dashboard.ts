@@ -19,6 +19,7 @@ export const accountingCategories = {
     'Salaires',
     accountingCostCategories.movers,
     accountingCostCategories.carpenter,
+    accountingCostCategories.taxi,
     'Carburant',
     'Entretien véhicule',
     'Assurance',

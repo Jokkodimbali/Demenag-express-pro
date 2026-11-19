@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { useApp } from '../../../shared/application/context';
-import { messages } from '../../../shared/content/fr';
 import type { Draft } from '../booking-draft';
 import { useBookingCommands } from './useBookingCommands';
 import type {
@@ -59,7 +58,7 @@ export function useCallInventory({
   audience: 'admin' | 'client';
   referenceMode: boolean;
 }) {
-  const { requestConfirmation, catalogue } = useApp();
+  const { catalogue } = useApp();
   const customInventoryTypes = catalogue?.settings.customInventoryTypes ?? [];
   const hiddenInventoryKeys = catalogue?.settings.hiddenInventoryKeys ?? [];
   const [customLabel, setCustomLabel] = useState('');
@@ -133,15 +132,7 @@ export function useCallInventory({
     });
     if (estimate?.trips) onApplyEstimate(selectedVehicleId, estimate.trips);
   };
-  const clearInventory = async () => {
-    const confirmed = await requestConfirmation({
-      titleId: 'clear-inventory-title',
-      eyebrow: messages.confirmationRequise,
-      title: messages.viderFicheTitre,
-      description: messages.viderFicheDescription,
-      confirmLabel: messages.confirmerAction,
-    });
-    if (!confirmed) return;
+  const clearInventory = () => {
     setInventoryError('');
     setCustomLabel('');
     setActiveWidget(null);

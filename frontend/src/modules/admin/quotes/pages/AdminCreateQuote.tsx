@@ -1025,16 +1025,24 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                           <input
                             type="number"
                             min={0}
+                            max={quoteConfig.discountType === 'pct' ? 100 : 10_000_000}
+                            step={1}
                             value={quoteConfig.discount || ''}
                             aria-label={uiText['remise2']}
                             placeholder={
                               quoteConfig.discountType === 'pct' ? 'Remise en %' : 'Remise en FCFA'
                             }
                             onChange={(event) =>
-                              setQuoteConfig((current) => ({
-                                ...current,
-                                discount: Math.max(0, Number(event.target.value) || 0),
-                              }))
+                              setQuoteConfig((current) => {
+                                const maximum = current.discountType === 'pct' ? 100 : 10_000_000;
+                                return {
+                                  ...current,
+                                  discount: Math.min(
+                                    maximum,
+                                    Math.max(0, Math.round(Number(event.target.value) || 0)),
+                                  ),
+                                };
+                              })
                             }
                           />
                           <div
@@ -1049,7 +1057,14 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                                 className={quoteConfig.discountType === type ? 'selected' : ''}
                                 aria-pressed={quoteConfig.discountType === type}
                                 onClick={() =>
-                                  setQuoteConfig((current) => ({ ...current, discountType: type }))
+                                  setQuoteConfig((current) => ({
+                                    ...current,
+                                    discountType: type,
+                                    discount:
+                                      type === 'pct'
+                                        ? Math.min(100, current.discount)
+                                        : current.discount,
+                                  }))
                                 }
                               >
                                 {type === 'fcfa' ? 'FCFA' : '%'}

@@ -69,6 +69,10 @@ export async function readAdminQuoteDraft(
         heatRest: Math.max(0, Number(parsed.quoteConfig.heatRest) || 0),
         labourUnitPriceOverride: parsed.quoteConfig.labourUnitPriceOverride ?? null,
         discountType: parsed.quoteConfig.discountType ?? 'fcfa',
+        discount: Math.min(
+          parsed.quoteConfig.discountType === 'pct' ? 100 : 10_000_000,
+          Math.max(0, parsed.quoteConfig.discount),
+        ),
         discountReason: parsed.quoteConfig.discountReason ?? '',
         billingMode: ['complete', 'standard', 'driver-rental'].includes(
           parsed.quoteConfig.billingMode,

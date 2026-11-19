@@ -101,6 +101,35 @@ test('un devis automatique reste automatique à la réouverture', () => {
   assert.equal(restored.legMinutes, 0);
 });
 
+test('la remise en pourcentage restaurée respecte le plafond de 100 %', () => {
+  const restored = quoteConfigurationFromBooking({
+    options: { labour: 0, desk: 0, wardrobe: 0, bed: 0 },
+    estimate: { lines: [], total: 0, discount: 0, tier: 0, trips: 1, currency: 'XOF' },
+    quotes: [
+      {
+        id: 'quote-discount',
+        reference: 'DV-DISCOUNT',
+        kind: 'provisional',
+        createdAt: '2026-11-19T00:00:00.000Z',
+        price: {
+          lines: [],
+          total: 0,
+          discount: 0,
+          discountValue: 150,
+          discountType: 'pct',
+          tier: 0,
+          trips: 1,
+          currency: 'XOF',
+        },
+        notes: '',
+      },
+    ],
+  } as Booking).config;
+
+  assert.equal(restored.discountType, 'pct');
+  assert.equal(restored.discount, 100);
+});
+
 test('un devis existant reprend les réglages taxi actuels en gardant son ancien tarif de manœuvre', () => {
   const bookingSettings = {
     labourPrice: 6_500,

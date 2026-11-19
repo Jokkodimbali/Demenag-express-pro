@@ -45,6 +45,45 @@ test('Une panne réseau ou un accès interdit ne déconnecte pas la session', as
   }
 });
 
+test('Une estimation annulée pendant la lecture JSON conserve son erreur d’annulation', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (_input, init) =>
+    ({
+      status: 200,
+      ok: true,
+      json: () =>
+        new Promise((_, reject) => {
+          init?.signal?.addEventListener(
+            'abort',
+            () => reject(new DOMException('Aborted', 'AbortError')),
+            { once: true },
+          );
+        }),
+    }) as Response;
+  try {
+    const api = createHttpApi('/api');
+    const controller = new AbortController();
+    const estimate = api.estimate(
+      'sprinter',
+      'route-test',
+      { labour: 2, desk: 0, wardrobe: 0, bed: 0 },
+      controller.signal,
+      { fromFloor: 0, toFloor: 0, fromLift: false, toLift: false },
+      1,
+      12,
+      '2026-12-10',
+      true,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    controller.abort();
+    await assert.rejects(estimate, (error: unknown) =>
+      error instanceof Error && error.name === 'AbortError',
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('La connexion employé envoie le téléphone et le mot de passe initial', async () => {
   const originalFetch = globalThis.fetch;
   let sentBody = '';

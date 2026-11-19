@@ -267,6 +267,19 @@ export class PrismaBookings implements BookingRepository {
                     },
                   ]
                 : []),
+              ...(costs && costs.taxiAmount > 0
+                ? [
+                    {
+                      type: 'charge',
+                      categorie: 'Taxi / trajet locaux',
+                      libelle: `Taxi et trajet locaux · ${booking.reference}`,
+                      montant: costs.taxiAmount,
+                      date,
+                      sourceDevisId: quote.id,
+                      sourceQuoteKind: 'taxi',
+                    },
+                  ]
+                : []),
             ];
           }),
           skipDuplicates: true,

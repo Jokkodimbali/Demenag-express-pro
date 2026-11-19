@@ -25,7 +25,9 @@ export function applyTaxiToManoeuvrePrice(price, taxiAmount) {
   const adjustedLine = {
     ...template,
     quantity,
-    unitPrice: adjustedTotal / quantity,
+    // The unit price is a whole-FCFA reference value; the line total remains
+    // authoritative when the taxi amount cannot be split evenly.
+    unitPrice: Math.round(adjustedTotal / quantity),
     total: adjustedTotal,
   };
 

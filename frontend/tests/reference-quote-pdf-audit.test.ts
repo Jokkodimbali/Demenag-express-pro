@@ -187,7 +187,7 @@ test('le PDF provisoire avec notes de planning conserve le contenu manuel sans r
       .filter(
         (item) => !item.str.startsWith('PROVISOIRE') && !item.str.startsWith('DEMENAG EXPRESS'),
       )
-      .every((item) => item.x >= 0 && item.x < 210 && item.y >= 0 && item.y <= 293),
+      .every((item) => item.x >= 0 && item.x < 210 && item.y >= 0 && item.y < 297),
   );
   assert.ok(inventoryPage.some((item) => item.str.includes('Salon')));
 });

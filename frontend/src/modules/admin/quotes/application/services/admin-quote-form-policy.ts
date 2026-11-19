@@ -148,6 +148,7 @@ export function quoteConfigurationFromBooking(booking: Booking) {
       ? removeTaxiFromManoeuvrePrice(quote.price, savedTaxiFeeAmount)
       : quote?.price;
   const sourcePrice = quote?.price ?? booking.estimate;
+  const discountType = quote?.price.discountType ?? 'fcfa';
   const customPrice =
     sourcePrice.tier === 3
       ? (sourcePrice.lines.find((line) => line.label.startsWith('Transport'))?.unitPrice ?? null)
@@ -159,8 +160,16 @@ export function quoteConfigurationFromBooking(booking: Booking) {
     trafficOff: false,
     heatOff: false,
     heatRest: 0,
-    discount: quote?.price.discountValue ?? quote?.price.discount ?? booking.estimate.discount,
-    discountType: quote?.price.discountType ?? 'fcfa',
+    discount: Math.min(
+      discountType === 'pct' ? 100 : 10_000_000,
+      Math.max(
+        0,
+        Math.round(
+          quote?.price.discountValue ?? quote?.price.discount ?? booking.estimate.discount,
+        ),
+      ),
+    ),
+    discountType,
     discountReason: quote?.price.discountReason ?? '',
     customPrice,
     labourUnitPriceOverride: labourUnitPriceOverrideFromQuote(

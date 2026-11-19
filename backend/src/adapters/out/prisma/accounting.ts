@@ -122,6 +122,19 @@ export class PrismaAccounting implements AccountingRepository {
           reference: quote.id,
           bookingReference: quote.bookingReference,
         });
+      if (costs.taxiAmount > 0)
+        entries.push({
+          id: `auto-taxi-${quote.id}`,
+          type: 'charge',
+          category: 'Taxi / trajet locaux',
+          label: `Taxi et trajet locaux · ${quote.bookingReference}`,
+          amount: costs.taxiAmount,
+          date,
+          automatic: true,
+          bookingId: quote.reservationId,
+          reference: quote.id,
+          bookingReference: quote.bookingReference,
+        });
       return entries;
     });
     return [

@@ -12,10 +12,17 @@ import { AuthService, normalizePhone } from '../src/application/services/identit
 import { registerSchema } from '../src/adapters/in/http/validation/auth.js';
 import { ScryptPasswords } from '../src/adapters/out/security/crypto.js';
 import {
+  accountingConfigurationForFinalQuote,
   accountingCostsForQuote,
   captureAccountingCosts,
 } from '../src/domain/accounting/accounting-costs.js';
-import type { Booking, Settings, UserCredentials, Vehicle } from '../src/domain/shared/model.js';
+import type {
+  Booking,
+  Quote,
+  Settings,
+  UserCredentials,
+  Vehicle,
+} from '../src/domain/shared/model.js';
 const vehicle: Vehicle = {
   id: 'sprinter',
   name: 'Sprinter',
@@ -518,6 +525,48 @@ test('la location avec chauffeur exclut les manœuvres de l’entreprise des cha
   assert.equal(correctedStoredCosts.moverAmount, 0);
   assert.equal(correctedStoredCosts.carpenters, 1);
   assert.equal(correctedStoredCosts.carpenterAmount, 12_000);
+});
+
+test('les frais taxi enregistrés sur un devis final sont repris comme charge comptable une seule fois', () => {
+  const booking = { estimate: { lines: [] } } as unknown as Booking;
+  const price = { lines: [], total: 100_000 } as unknown as Quote['price'];
+  const quote = {
+    price,
+    billingMode: 'complete',
+    accountingCosts: { movers: 2, moverAmount: 10_000, carpenters: 0, carpenterAmount: 0 },
+    pricingInput: {
+      taxiFeeAmount: 41_880,
+      extraLines: [
+        { label: 'Frais taxi · trajet simple', quantity: 5, unitPrice: 7_590 },
+        { label: 'Frais taxi · approche entreprise', quantity: 1, unitPrice: 3_930 },
+      ],
+    },
+  } as unknown as Quote;
+
+  assert.equal(accountingCostsForQuote(booking, quote, null).taxiAmount, 41_880);
+  assert.equal(
+    accountingCostsForQuote(
+      booking,
+      {
+        ...quote,
+        pricingInput: { ...quote.pricingInput, taxiFeeAmount: undefined },
+      } as unknown as Quote,
+      null,
+    ).taxiAmount,
+    41_880,
+  );
+  assert.equal(
+    accountingCostsForQuote(booking, { ...quote, billingMode: 'driver-rental' }, null).taxiAmount,
+    0,
+  );
+});
+
+test('le devis final utilise les coûts comptables actuellement configurés, avec instantané en secours', () => {
+  const previous = { moverCostPerMove: 5_000, menuPrices: {} };
+  const current = { moverCostPerMove: 6_500, menuPrices: {} };
+
+  assert.equal(accountingConfigurationForFinalQuote(current, previous)?.moverCostPerMove, 6_500);
+  assert.equal(accountingConfigurationForFinalQuote(null, previous)?.moverCostPerMove, 5_000);
 });
 
 test('les charges du devis reprennent l’effectif saisi et les tarifs des objets personnalisés', () => {

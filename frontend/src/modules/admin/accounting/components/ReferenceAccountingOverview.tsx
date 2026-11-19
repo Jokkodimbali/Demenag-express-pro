@@ -18,6 +18,7 @@ import {
 import { money } from '../../../shared/application/presentation/format';
 import { accountingFinanceText as text } from '../content/accounting-finance';
 import type { ClaudeCompletionInput } from '../../../shared/application/ports';
+import { accountingCostCategories } from '../../../shared/domain/accounting-cost-categories';
 
 type Props = {
   config: AccountingFinanceConfiguration;
@@ -93,7 +94,13 @@ export function ReferenceAccountingOverview({
     const averageSampleCount = (finals.length >= 3 ? finals : priced).length;
     const variableEntries = entries.filter(
       (entry) =>
-        entry.type === 'charge' && ['Manœuvres', 'Menuisier', 'Carburant'].includes(entry.category),
+        entry.type === 'charge' &&
+        [
+          accountingCostCategories.movers,
+          accountingCostCategories.carpenter,
+          accountingCostCategories.taxi,
+          'Carburant',
+        ].includes(entry.category),
     );
     const variableCost = finals.length
       ? variableEntries.reduce((sum, entry) => sum + entry.amount, 0) / finals.length

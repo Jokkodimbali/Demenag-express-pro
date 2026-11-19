@@ -7,7 +7,10 @@ import {
   applyTaxiToManoeuvrePrice,
   manoeuvreCount,
 } from '../../../../../shared/quote-taxi-allocation.js';
-import { captureAccountingCosts } from '../../../domain/accounting/accounting-costs.js';
+import {
+  accountingConfigurationForFinalQuote,
+  captureAccountingCosts,
+} from '../../../domain/accounting/accounting-costs.js';
 import {
   inventoryAssemblyLines,
   subtractInventoryAssemblyOptions,
@@ -207,15 +210,10 @@ export async function createQuote(
   const quoteId = existingQuote?.id ?? ids.next();
   const accountingConfiguration =
     input.kind === 'final' ? ((await accounting?.configuration()) ?? null) : null;
-  const quoteAccountingConfiguration = accountingConfiguration
-    ? {
-        moverCostPerMove:
-          booking.pricingSnapshot?.accounting?.moverCostPerMove ??
-          accountingConfiguration.moverCostPerMove,
-        menuPrices:
-          booking.pricingSnapshot?.accounting?.menuPrices ?? accountingConfiguration.menuPrices,
-      }
-    : (booking.pricingSnapshot?.accounting ?? null);
+  const quoteAccountingConfiguration = accountingConfigurationForFinalQuote(
+    accountingConfiguration,
+    booking.pricingSnapshot?.accounting,
+  );
   const providedCrew = Math.max(0, Math.round(input.providedCrew ?? options.labour));
   const accountingCosts =
     input.kind === 'final'

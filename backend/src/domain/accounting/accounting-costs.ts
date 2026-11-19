@@ -15,6 +15,17 @@ const aliases: Record<string, string> = {
 };
 const sizedItems = new Set(['salon', 'tablem', 'lit', 'matelas', 'armoire']);
 const asInt = (value: number) => (Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0);
+export type AccountingQuoteCostConfiguration = Pick<
+  AccountingFinanceConfiguration,
+  'menuPrices' | 'moverCostPerMove'
+>;
+
+export function accountingConfigurationForFinalQuote(
+  current: AccountingQuoteCostConfiguration | null,
+  bookingSnapshot: AccountingQuoteCostConfiguration | null | undefined,
+): AccountingQuoteCostConfiguration | null {
+  return current ?? bookingSnapshot ?? null;
+}
 
 function menuUnitPrice(
   config: Pick<AccountingFinanceConfiguration, 'menuPrices'> | null,
@@ -123,11 +134,24 @@ export function captureAccountingCosts(
 
 export function accountingCostsForQuote(
   booking: Booking,
-  quote: Pick<Quote, 'price' | 'billingMode' | 'accountingCosts' | 'providedCrew'>,
+  quote: Pick<Quote, 'price' | 'billingMode' | 'accountingCosts' | 'providedCrew' | 'pricingInput'>,
   config: Pick<AccountingFinanceConfiguration, 'menuPrices' | 'moverCostPerMove'> | null,
 ) {
   const costs =
     quote.accountingCosts ??
     captureAccountingCosts(booking, quote.price, config, quote.billingMode, quote.providedCrew);
-  return quote.billingMode === 'driver-rental' ? { ...costs, movers: 0, moverAmount: 0 } : costs;
+  const taxiAmount =
+    quote.billingMode === 'driver-rental'
+      ? 0
+      : asInt(
+          quote.pricingInput?.taxiFeeAmount ??
+            quote.pricingInput?.extraLines
+              .filter((line) => line.label.startsWith('Frais taxi'))
+              .reduce((sum, line) => sum + Math.round(line.quantity * line.unitPrice), 0) ??
+            0,
+        );
+  return {
+    ...(quote.billingMode === 'driver-rental' ? { ...costs, movers: 0, moverAmount: 0 } : costs),
+    taxiAmount,
+  };
 }
