@@ -92,7 +92,9 @@ export function quoteConfigurationFromBooking(booking: Booking) {
   const quote = booking.quotes.at(-1);
   const pricingInput = quote?.pricingInput;
   const savedManoeuvreOvertimeLine = pricingInput?.extraLines?.find((line) =>
-    /^Man[œo]uvres · heures (?:au-delà|après 20 h)/iu.test(line.label),
+    /^(?:Majoration de travail de nuit|Man[œo]uvres · heures (?:au-delà|après 20 h))/iu.test(
+      line.label,
+    ),
   );
   const savedManoeuvreCount = Math.max(1, quote?.providedCrew ?? booking.options.labour ?? 1);
   const taxiTrips = Math.max(1, quote?.price.trips ?? booking.estimate.trips);

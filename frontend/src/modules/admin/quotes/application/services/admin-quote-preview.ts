@@ -21,6 +21,12 @@ import {
 type ExtraOption = [keyof Options, string, string];
 type QuoteLine = { label: string; quantity: number; unitPrice: number; total: number };
 
+function isManoeuvreOvertimeLine(label: string) {
+  return /^(?:Majoration de travail de nuit|Man[œo]uvres · heures (?:au-delà|après 20 h))/iu.test(
+    label,
+  );
+}
+
 export function createAdminQuotePreview(input: {
   draft: Draft;
   estimateInventory: Inventory;
@@ -151,6 +157,7 @@ export function createAdminQuotePreview(input: {
         (line) =>
           !line.label.startsWith('Transport ') &&
           !savedCustomLineKeys.has(JSON.stringify([line.label, line.quantity, line.unitPrice])) &&
+          !isManoeuvreOvertimeLine(line.label) &&
           !line.label.startsWith('Frais taxi') &&
           !line.label.startsWith('Chargements et déchargements suivants') &&
           !line.label.startsWith('Allers-retours suivants') &&

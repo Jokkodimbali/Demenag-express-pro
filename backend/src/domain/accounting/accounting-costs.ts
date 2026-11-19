@@ -108,9 +108,14 @@ export function captureAccountingCosts(
     add(item.itemKey, item.quantity, item.size, item.origin, item.dismantle, !!item.menuisier);
   for (const item of source?.custom ?? [])
     add('custom', item.quantity, 1, item.origin, !!item.dismantle, false, item);
+  const nightWorkAmount = price.lines
+    .filter((line) =>
+      /^(?:Majoration de travail de nuit|Man[œo]uvres · heures au-delà)/iu.test(line.label),
+    )
+    .reduce((sum, line) => sum + line.total, 0);
   return {
     movers,
-    moverAmount: asInt(movers * (config?.moverCostPerMove ?? 5_000)),
+    moverAmount: asInt(movers * (config?.moverCostPerMove ?? 5_000) + nightWorkAmount),
     carpenters,
     carpenterAmount: asInt(carpenterAmount),
   };

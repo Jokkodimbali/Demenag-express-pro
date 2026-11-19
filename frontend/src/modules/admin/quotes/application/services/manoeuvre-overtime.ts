@@ -35,7 +35,7 @@ export function manoeuvreOvertimeLine(
   const quantity = (estimate?.crew ?? 0) * hours;
   return quantity > 0 && rate > 0
     ? {
-        label: `Manœuvres · heures après 20 h (${estimate?.crew} × ${String(hours).replace('.', ',')} h)`,
+        label: 'Majoration de travail de nuit',
         quantity,
         unitPrice: rate,
       }

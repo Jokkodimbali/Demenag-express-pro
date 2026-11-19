@@ -97,9 +97,10 @@ export function quoteGrossMargin(input: {
   providedCrew: number;
   manoeuvreCount: number;
   taxiCharges: number;
+  nightWorkCharge?: number;
 }): number | null {
-  const { quoteTotal, hasBillableContent, accounting, taxiCharges } = input;
+  const { quoteTotal, hasBillableContent, accounting, taxiCharges, nightWorkCharge = 0 } = input;
   if (!hasBillableContent || quoteTotal == null || !accounting) return null;
   const costs = quoteAccountingCosts({ ...input, accounting });
-  return quoteTotal - costs.moverAmount - costs.carpenterAmount - taxiCharges;
+  return quoteTotal - costs.moverAmount - costs.carpenterAmount - taxiCharges - nightWorkCharge;
 }

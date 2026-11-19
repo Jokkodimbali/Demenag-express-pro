@@ -318,7 +318,9 @@ export async function downloadQuote(
     doc.text(labelLines, margin + 4, y + 5.6);
     doc.setTextColor(90, 97, 104);
     doc.text(String(line.quantity), qtyX, y + 5.6, { align: 'right' });
-    doc.text(pdfMoney(line.unitPrice), unitX, y + 5.6, { align: 'right' });
+    if (!/^Man[œo]uvre/iu.test(line.label)) {
+      doc.text(pdfMoney(line.unitPrice), unitX, y + 5.6, { align: 'right' });
+    }
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(30, 32, 35);
     doc.text(pdfMoney(line.total), amountX, y + 5.6, { align: 'right' });

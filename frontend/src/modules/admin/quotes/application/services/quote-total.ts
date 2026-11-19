@@ -62,7 +62,9 @@ export function quoteTotal(
       ? inventoryAssemblyLines(booking.inventorySnapshot?.sourceInventory, settings)
       : [];
   const extrasTotal = extras.reduce((sum, line) => {
-    const halfHourCharge = line.label.startsWith('Manœuvres · heures au-delà');
+    const halfHourCharge =
+      line.label.startsWith('Majoration de travail de nuit') ||
+      line.label.startsWith('Manœuvres · heures au-delà');
     if (!line.label.trim() || line.quantity < (halfHourCharge ? 0.5 : 1) || line.unitPrice < 1)
       return sum;
     return sum + line.quantity * line.unitPrice;

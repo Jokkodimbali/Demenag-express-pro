@@ -759,6 +759,9 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       .filter((line) => /man[œo]uvre/iu.test(line.label) && !/heures au-delà/iu.test(line.label))
       .reduce((sum, line) => sum + line.quantity, 0),
     taxiCharges: preview.taxiFeeLines.reduce((sum, line) => sum + line.total, 0),
+    nightWorkCharge: preview.manoeuvreOvertime
+      ? Math.round(preview.manoeuvreOvertime.quantity * preview.manoeuvreOvertime.unitPrice)
+      : 0,
   });
   const {
     tier: previewTier,
