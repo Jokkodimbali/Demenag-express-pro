@@ -259,6 +259,8 @@ export async function createQuote(
         movingLaborPlanning: quoteSettings.movingLaborPlanning,
       },
       trips: input.trips,
+      calcMode: input.calcMode ?? 'auto',
+      legMinutes: input.legMinutes ?? 0,
       customPrice: input.customPrice,
       discount: input.discount,
       discountType: input.discountType ?? 'fcfa',

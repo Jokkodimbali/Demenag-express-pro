@@ -386,6 +386,8 @@ export const quoteSchema = z.object({
     .default([]),
   options: optionsSchema.optional(),
   version: z.number().int().positive(),
+  calcMode: z.enum(['auto', 'manual']).default('auto'),
+  legMinutes: z.number().int().min(0).max(1440).default(0),
   billingMode: z.enum(['complete', 'standard', 'driver-rental']).default('complete'),
   menuIncluded: z.boolean().default(false),
   rentalKit: z

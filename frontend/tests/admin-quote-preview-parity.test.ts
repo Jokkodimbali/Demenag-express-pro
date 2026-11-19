@@ -95,6 +95,55 @@ test('une allocation taxi non divisible reste sur une seule ligne de manœuvres'
   assert.deepEqual(removeTaxiFromManoeuvrePrice(adjusted, 10_001), original);
 });
 
+test('la formule standard exclut les lignes de montage historiques et personnalisées', () => {
+  const draft = blankDraft({ vehicles: [vehicle], settings } as Catalogue);
+  draft.vehicleId = vehicle.id;
+  const config: AdminQuoteConfig = {
+    ...defaultAdminQuoteConfig(),
+    billingMode: 'standard',
+    customLines: [
+      { label: 'Montage/démontage bureau', quantity: 1, unitPrice: 5_000 },
+      { label: 'Cartons supplémentaires', quantity: 2, unitPrice: 1_000 },
+    ],
+  };
+  const preview = createAdminQuotePreview({
+    draft,
+    estimateInventory: draft.inventory,
+    config,
+    vehicle,
+    estimate: null,
+    settings,
+    price: {
+      lines: [
+        {
+          label: 'Menuisier · démontage / montage armoire',
+          quantity: 1,
+          unitPrice: 9_000,
+          total: 9_000,
+        },
+        { label: 'Manœuvre', quantity: 2, unitPrice: 6_500, total: 13_000 },
+      ],
+      total: 22_000,
+      discount: 0,
+      tier: 0,
+      trips: 1,
+      currency: 'XOF',
+    },
+    extras,
+    labourPrice: 6_500,
+    simulationNeeds: null,
+  });
+
+  assert.deepEqual(
+    preview.previewLines.map((line) => line.label),
+    [
+      'Transport Sprinter · moins de 15 km (chargement et déchargement)',
+      'Manœuvre',
+      'Cartons supplémentaires',
+    ],
+  );
+});
+
 test('l’aperçu du devis reprend une seule fois transport, trajets suivants et jour creux', () => {
   const catalogue = { vehicles: [vehicle], settings } as Catalogue;
   const access = { fromFloor: 2, toFloor: 1, fromLift: false, toLift: true };

@@ -386,11 +386,12 @@
   background: #f6d73c;
 }
 .admin-quote-page .call-inventory .inventory-dismantle input:checked::after {
-  color: #1e2023;
-  content: '✓';
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 1;
+  width: 9px;
+  height: 5px;
+  border-bottom: 2px solid #1e2023;
+  border-left: 2px solid #1e2023;
+  content: '';
+  transform: translateY(-1px) rotate(-45deg);
 }
 .admin-quote-page .call-inventory .inventory-origin-toggle {
   display: flex;

@@ -101,7 +101,7 @@ export function quoteConfigurationFromBooking(booking: Booking) {
   );
   const savedManoeuvreCount = Math.max(
     1,
-    savedOvertimeCrewCount || quote?.providedCrew || booking.options.labour || 1,
+    savedOvertimeCrewCount || quote?.providedCrew || booking.options?.labour || 1,
   );
   const taxiTrips = Math.max(1, quote?.price.trips ?? booking.estimate.trips);
   // Historic totals used one taxi fare for each base rotation plus a final return.
@@ -154,8 +154,8 @@ export function quoteConfigurationFromBooking(booking: Booking) {
       : null;
   const config: AdminQuoteConfig = {
     trips: quote?.price.trips ?? booking.estimate.trips,
-    calcMode: 'auto',
-    legMinutes: 0,
+    calcMode: pricingInput?.calcMode === 'manual' ? 'manual' : 'auto',
+    legMinutes: pricingInput?.legMinutes ?? 0,
     trafficOff: false,
     heatOff: false,
     heatRest: 0,

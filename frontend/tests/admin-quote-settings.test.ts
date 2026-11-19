@@ -29,6 +29,78 @@ test('la soumission conserve le tarif simple pour les champs actuels et historiq
   assert.equal(submission.taxiRoundTripAmountOverride, 13_650);
 });
 
+test('la soumission et la réouverture conservent le calcul manuel', () => {
+  const draft = blankDraft();
+  const config = { ...defaultAdminQuoteConfig(), calcMode: 'manual' as const, legMinutes: 47 };
+  const submission = buildAdminQuoteSubmission({
+    draft,
+    config,
+    catalogue: null,
+    fallbackVehicle: {} as Vehicle,
+    kind: 'provisional',
+    tier: 0,
+    version: 1,
+    notes: '',
+    extraLines: [],
+    tollLines: [],
+  });
+  const restored = quoteConfigurationFromBooking({
+    options: { labour: 0, desk: 0, wardrobe: 0, bed: 0 },
+    estimate: { lines: [], total: 0, discount: 0, tier: 0, trips: 1, currency: 'XOF' },
+    quotes: [
+      {
+        id: 'quote-manual',
+        reference: 'DV-MANUAL',
+        kind: 'provisional',
+        createdAt: '2026-11-19T00:00:00.000Z',
+        price: { lines: [], total: 0, discount: 0, tier: 0, trips: 2, currency: 'XOF' },
+        notes: '',
+        pricingInput: { ...submission, settings: {} },
+      },
+    ],
+  } as Booking).config;
+
+  assert.equal(submission.calcMode, 'manual');
+  assert.equal(submission.legMinutes, 47);
+  assert.equal(restored.calcMode, 'manual');
+  assert.equal(restored.legMinutes, 47);
+});
+
+test('un devis automatique reste automatique à la réouverture', () => {
+  const submission = buildAdminQuoteSubmission({
+    draft: blankDraft(),
+    config: { ...defaultAdminQuoteConfig(), calcMode: 'auto', legMinutes: 0 },
+    catalogue: null,
+    fallbackVehicle: {} as Vehicle,
+    kind: 'provisional',
+    tier: 0,
+    version: 1,
+    notes: '',
+    extraLines: [],
+    tollLines: [],
+  });
+  const restored = quoteConfigurationFromBooking({
+    options: { labour: 0, desk: 0, wardrobe: 0, bed: 0 },
+    estimate: { lines: [], total: 0, discount: 0, tier: 0, trips: 1, currency: 'XOF' },
+    quotes: [
+      {
+        id: 'quote-auto',
+        reference: 'DV-AUTO',
+        kind: 'provisional',
+        createdAt: '2026-11-19T00:00:00.000Z',
+        price: { lines: [], total: 0, discount: 0, tier: 0, trips: 1, currency: 'XOF' },
+        notes: '',
+        pricingInput: { ...submission, settings: {} },
+      },
+    ],
+  } as Booking).config;
+
+  assert.equal(submission.calcMode, 'auto');
+  assert.equal(submission.legMinutes, 0);
+  assert.equal(restored.calcMode, 'auto');
+  assert.equal(restored.legMinutes, 0);
+});
+
 test('un devis existant reprend les réglages taxi actuels en gardant son ancien tarif de manœuvre', () => {
   const bookingSettings = {
     labourPrice: 6_500,

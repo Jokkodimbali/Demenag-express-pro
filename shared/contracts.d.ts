@@ -462,6 +462,8 @@ export type QuotePricingSettings = Pick<
 export type QuotePricingInput = {
   settings: QuotePricingSettings;
   trips: number;
+  calcMode?: 'auto' | 'manual';
+  legMinutes?: number;
   customPrice: number | null;
   discount: number;
   discountType: 'fcfa' | 'pct';
@@ -567,6 +569,8 @@ export type BookingInput = {
 export type QuoteInput = {
   kind: 'provisional' | 'final';
   trips: number;
+  calcMode?: 'auto' | 'manual';
+  legMinutes?: number;
   customPrice: number | null;
   labourUnitPriceOverride?: number | null;
   discount: number;

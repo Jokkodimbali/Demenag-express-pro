@@ -3,6 +3,8 @@ import type { RentalKitItem } from '../../../shared/domain/model';
 
 export type BookingQuoteConfig = {
   trips: number;
+  calcMode?: 'auto' | 'manual';
+  legMinutes?: number;
   discount: number;
   discountType: 'fcfa' | 'pct';
   discountReason: string;

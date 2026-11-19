@@ -28,6 +28,23 @@ function isManoeuvreOvertimeLine(label: string) {
   );
 }
 
+function isAssemblyServiceLine(label: string) {
+  const normalized = label
+    .normalize('NFKD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLocaleLowerCase('fr-FR');
+  return (
+    /^menuisier\s/u.test(normalized) || /\b(?:montage|demontage|assemblage)\b/u.test(normalized)
+  );
+}
+
+function includesAssemblyServices(config: AdminQuoteConfig) {
+  return (
+    config.billingMode === 'complete' ||
+    (config.billingMode === 'driver-rental' && config.menuIncluded)
+  );
+}
+
 export function createAdminQuotePreview(input: {
   draft: Draft;
   estimateInventory: Inventory;
@@ -168,9 +185,7 @@ export function createAdminQuotePreview(input: {
           !line.label.startsWith('Chargements et déchargements suivants') &&
           !line.label.startsWith('Allers-retours suivants') &&
           !line.label.startsWith('Remise jour creux') &&
-          (config.billingMode === 'complete' ||
-            (config.billingMode === 'driver-rental' && config.menuIncluded) ||
-            !line.label.startsWith('Menuisier ·')) &&
+          (includesAssemblyServices(config) || !isAssemblyServiceLine(line.label)) &&
           !(config.billingMode === 'driver-rental' && /^Man[œo]uvre/iu.test(line.label)),
       )
       .map((line) => {
@@ -229,7 +244,13 @@ export function createAdminQuotePreview(input: {
         ]
       : []),
     ...(config.customLines ?? [])
-      .filter((line) => line.label.trim() && line.quantity > 0 && line.unitPrice > 0)
+      .filter(
+        (line) =>
+          line.label.trim() &&
+          line.quantity > 0 &&
+          line.unitPrice > 0 &&
+          (includesAssemblyServices(config) || !isAssemblyServiceLine(line.label)),
+      )
       .map((line) => ({
         label: line.label.trim(),
         quantity: line.quantity,

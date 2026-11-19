@@ -20,6 +20,8 @@ export const buildAdminQuoteSubmission: AdministrativeQuoteSubmissionBuilder = (
   return {
     kind: input.kind,
     trips: config.trips,
+    calcMode: config.calcMode,
+    legMinutes: config.legMinutes,
     customPrice: input.tier === 3 ? config.customPrice : null,
     labourUnitPriceOverride: config.labourUnitPriceOverride,
     discount: config.discount,
