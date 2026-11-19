@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, Download, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAccounting } from '../application/controllers/useAccounting';
@@ -12,6 +12,7 @@ import { administrationQuoteForBooking } from '../../../shared/navigation/config
 
 export function AdminAccounting() {
   const [downloadError, setDownloadError] = useState('');
+  const [journalPage, setJournalPage] = useState(1);
   const { api, exportAccounting, catalogue, showSuccessToast, showErrorToast } = useApp();
   const completeClaude = api.completeClaude;
   const {
@@ -56,6 +57,14 @@ export function AdminAccounting() {
       {} as Record<string, string>,
     );
   const accountingMonth = `${currentMonth.year}-${currentMonth.month}`;
+  const journalPageSize = 20;
+  const journalPageCount = Math.max(1, Math.ceil(entries.length / journalPageSize));
+  const activeJournalPage = Math.min(journalPage, journalPageCount);
+  const pageEntries = entries.slice(
+    (activeJournalPage - 1) * journalPageSize,
+    activeJournalPage * journalPageSize,
+  );
+  useEffect(() => setJournalPage(1), [all, month]);
   return (
     <section className="accounting-page">
       <div className="accounting-period">
@@ -131,7 +140,9 @@ export function AdminAccounting() {
             period={all ? accountingMonth : month}
             advertising={advertisingSummary}
             bookings={bookings}
+            entries={entries}
             onAddEmployeeCharge={addEmployeeCharge}
+            onRemoveEmployeeCharge={setPendingVoid}
             onDownload={(document) => {
               setDownloadError('');
               void exportAccounting(
@@ -271,7 +282,7 @@ export function AdminAccounting() {
         ) : entries.length === 0 ? (
           <p className="caption">{accountingText.empty}</p>
         ) : (
-          entries.map((entry) => (
+          pageEntries.map((entry) => (
             <div className="accounting-row" key={entry.id}>
               <div>
                 <strong>{entry.label}</strong>
@@ -307,6 +318,35 @@ export function AdminAccounting() {
               )}
             </div>
           ))
+        )}
+        {!loading && journalPageCount > 1 && (
+          <nav className="accounting-pagination" aria-label={accountingText.journalPagination}>
+            <button
+              type="button"
+              className="button secondary small"
+              disabled={activeJournalPage <= 1}
+              onClick={() => setJournalPage((page) => Math.max(1, page - 1))}
+            >
+              <ChevronLeft size={16} /> {accountingText.previousJournalPage}
+            </button>
+            <span aria-live="polite">
+              {accountingText.journalPageSummary(
+                (activeJournalPage - 1) * journalPageSize + 1,
+                Math.min(activeJournalPage * journalPageSize, entries.length),
+                entries.length,
+                activeJournalPage,
+                journalPageCount,
+              )}
+            </span>
+            <button
+              type="button"
+              className="button secondary small"
+              disabled={activeJournalPage >= journalPageCount}
+              onClick={() => setJournalPage((page) => Math.min(journalPageCount, page + 1))}
+            >
+              {accountingText.nextJournalPage} <ChevronRight size={16} />
+            </button>
+          </nav>
         )}
       </div>
       {pendingVoid && (

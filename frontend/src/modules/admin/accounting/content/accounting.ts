@@ -29,6 +29,11 @@ export const accountingText = {
   chargeBreakdown: 'Répartition des charges',
   noCharges: 'Aucune charge sur la période.',
   journal: 'Journal · ',
+  journalPagination: 'Pagination du journal comptable',
+  previousJournalPage: 'Précédent',
+  nextJournalPage: 'Suivant',
+  journalPageSummary: (from: number, to: number, total: number, page: number, pageCount: number) =>
+    `${from}–${to} sur ${total} écritures · page ${page} / ${pageCount}`,
   export: 'Exporter (CSV)',
   loading: 'Chargement des écritures…',
   empty: 'Aucune écriture sur la période.',

@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 import { ChevronDown, Download, Plus, Trash2 } from 'lucide-react';
-import type { AccountingFinanceConfiguration, Booking } from '../../../shared/domain/model';
+import type {
+  AccountingEntry,
+  AccountingFinanceConfiguration,
+  Booking,
+} from '../../../shared/domain/model';
 import { inventoryItems } from '../../../moving/domain/inventory/inventory';
 import { money } from '../../../shared/application/presentation/format';
 import {
@@ -99,7 +103,9 @@ export function AccountingFinanceSections({
   period,
   advertising,
   bookings,
+  entries,
   onAddEmployeeCharge,
+  onRemoveEmployeeCharge,
   onDownload,
 }: {
   config: AccountingFinanceConfiguration;
@@ -115,12 +121,14 @@ export function AccountingFinanceSections({
   period: string;
   advertising: AdvertisingRow[];
   bookings: Booking[];
+  entries: AccountingEntry[];
   onAddEmployeeCharge: (input: {
     employee: string;
     kind: 'overtime' | 'transport';
     amount: number;
     hours?: number;
   }) => Promise<void>;
+  onRemoveEmployeeCharge: (entry: AccountingEntry) => void;
   onDownload: (document: DocumentKey) => void;
 }) {
   const [opened, setOpened] = useState<Record<string, boolean>>({});
@@ -131,6 +139,13 @@ export function AccountingFinanceSections({
   const month = current?.key ?? period;
   const advertisingSpend = advertising.reduce((sum, row) => sum + row.spend, 0);
   const advertisingClients = advertising.reduce((sum, row) => sum + row.clientCount, 0);
+  const employeeSupplementEntries = entries.filter(
+    (entry) =>
+      entry.type === 'charge' &&
+      !entry.automatic &&
+      (entry.label.startsWith('Heures supplémentaires · ') ||
+        entry.label.startsWith('Transport salarié · ')),
+  );
   const advertisingRevenue = advertising.reduce((sum, row) => sum + row.turnover, 0);
   const financialStatus = current
     ? current.profit <= 0
@@ -616,6 +631,33 @@ export function AccountingFinanceSections({
         >
           <Plus size={16} /> {accountingFinanceText.addSalary}
         </button>
+        {employeeSupplementEntries.length > 0 && (
+          <div className="accounting-employee-supplements">
+            <h4>{accountingFinanceText.employeeSupplementEntries}</h4>
+            {employeeSupplementEntries.map((entry) => (
+              <div className="accounting-employee-supplement" key={entry.id}>
+                <div>
+                  <strong>{entry.label}</strong>
+                  <span>
+                    {new Date(`${entry.date}T12:00:00Z`).toLocaleDateString('fr-FR', {
+                      timeZone: 'UTC',
+                    })}
+                  </span>
+                </div>
+                <strong>{money(entry.amount)}</strong>
+                <button
+                  type="button"
+                  className="accounting-finance-remove"
+                  aria-label={accountingFinanceText.removeEmployeeChargeLabel(entry.label)}
+                  title={accountingFinanceText.removeEmployeeCharge}
+                  onClick={() => onRemoveEmployeeCharge(entry)}
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="accounting-finance-fields">
           <label>
             <span>{accountingFinanceText.overtimeHourlyRate}</span>

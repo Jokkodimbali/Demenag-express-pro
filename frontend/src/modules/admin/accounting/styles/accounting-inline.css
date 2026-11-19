@@ -230,6 +230,29 @@
 .accounting-row > strong {
   white-space: nowrap;
 }
+.accounting-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 14px;
+  border-top: 1px solid #30343a;
+}
+.accounting-pagination > span {
+  color: #aeb4bb;
+  font-size: 12px;
+  text-align: center;
+}
+.accounting-pagination > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.accounting-pagination > button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
 .accounting-void {
   height: 40px;
   width: 40px;
@@ -288,5 +311,13 @@
   .accounting-row-spacer {
     grid-column: 2;
     justify-self: end;
+  }
+  .accounting-pagination {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .accounting-pagination > span {
+    flex: 1 0 100%;
+    order: -1;
   }
 }
