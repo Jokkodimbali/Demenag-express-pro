@@ -275,6 +275,8 @@ export async function createQuote(
       menuIncluded,
       overtimeMinutes,
       rentalOvertimeHourlyRate,
+      manoeuvreOvertimePersonIds: input.manoeuvreOvertimePersonIds ?? [],
+      manoeuvreOvertimeAdditionalPeople: input.manoeuvreOvertimeAdditionalPeople ?? 0,
     },
     ...(accountingCosts ? { accountingCosts } : {}),
   };

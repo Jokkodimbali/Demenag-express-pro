@@ -30,6 +30,7 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
     submitting,
     canSelectFinal,
     movingEstimate,
+    manoeuvreEmployees,
     economicCrew,
     taxiCrew,
     taxiCompanyApproachDistanceKm,
@@ -74,8 +75,15 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
   const manoeuvreOvertimeHours =
     quoteConfig.manoeuvreOvertimeHours ??
     estimatedManoeuvreOvertimeHours(movingEstimate, draft.timeSlot);
+  const selectedOvertimePersonIds = quoteConfig.manoeuvreOvertimePersonIds ?? [];
+  const additionalOvertimePeople =
+    quoteConfig.manoeuvreOvertimeAdditionalPeople ??
+    quoteConfig.manoeuvreOvertimeCrewCount ??
+    (quoteConfig.manoeuvreOvertimePersonIds === null ? (movingEstimate?.crew ?? 0) : 0);
+  const manoeuvreOvertimeCrewCount = selectedOvertimePersonIds.length + additionalOvertimePeople;
+  const additionalOvertimePeopleMax = Math.max(0, 100 - selectedOvertimePersonIds.length);
   const manoeuvreOvertimeTotal =
-    (movingEstimate?.crew ?? 0) * manoeuvreOvertimeHours * manoeuvreOvertimeRate;
+    manoeuvreOvertimeCrewCount * manoeuvreOvertimeHours * manoeuvreOvertimeRate;
   const manoeuvreOvertimeEnabled =
     quoteConfig.manoeuvreOvertimeEnabled ??
     (manoeuvreOvertimeHours > 0 && manoeuvreOvertimeRate > 0);
@@ -563,7 +571,7 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
             </div>
             <div className="admin-quote-overtime-controls">
               <div className="admin-quote-overtime-hours">
-                <span>Heures au-delà de 20 h, par manœuvre</span>
+                <span>Heures au-delà de 20 h, par personne concernée</span>
                 <button
                   type="button"
                   aria-label="Retirer une heure supplémentaire"
@@ -572,7 +580,7 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
                     const hours = Math.max(0, manoeuvreOvertimeHours - 1);
                     setQuoteConfig((current) => ({ ...current, manoeuvreOvertimeHours: hours }));
                     showSuccessToast(
-                      `Heures supplémentaires : ${String(hours).replace('.', ',')} h par manœuvre.`,
+                      `Heures supplémentaires : ${String(hours).replace('.', ',')} h par personne concernée.`,
                     );
                   }}
                 >
@@ -587,7 +595,7 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
                     const hours = Math.min(24, manoeuvreOvertimeHours + 1);
                     setQuoteConfig((current) => ({ ...current, manoeuvreOvertimeHours: hours }));
                     showSuccessToast(
-                      `Heures supplémentaires : ${String(hours).replace('.', ',')} h par manœuvre.`,
+                      `Heures supplémentaires : ${String(hours).replace('.', ',')} h par personne concernée.`,
                     );
                   }}
                 >
@@ -625,9 +633,111 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
                 {manoeuvreOvertimeEnabled ? money(manoeuvreOvertimeTotal) : money(0)}
               </strong>
             </div>
+            <div className="admin-quote-overtime-people">
+              <div className="admin-quote-overtime-people-list">
+                <strong>Personnes concernées</strong>
+                <div className="admin-quote-overtime-person-fields">
+                  {manoeuvreEmployees.length ? (
+                    <label className="admin-quote-overtime-profile-picker">
+                      <span>Ajouter un profil manœuvre</span>
+                      <select
+                        value=""
+                        aria-label="Choisir un profil manœuvre pour la majoration de nuit"
+                        onChange={(event) => {
+                          const employeeId = event.target.value;
+                          if (!employeeId || selectedOvertimePersonIds.includes(employeeId)) return;
+                          setQuoteConfig((current) => {
+                            const currentIds =
+                              current.manoeuvreOvertimePersonIds ?? selectedOvertimePersonIds;
+                            if (currentIds.includes(employeeId)) return current;
+                            const selectedIds = [...currentIds, employeeId];
+                            const legacyCount = current.manoeuvreOvertimeCrewCount;
+                            const additionalPeople =
+                              current.manoeuvreOvertimePersonIds === null && legacyCount != null
+                                ? Math.max(0, legacyCount - selectedIds.length)
+                                : (current.manoeuvreOvertimeAdditionalPeople ?? 0);
+                            return {
+                              ...current,
+                              manoeuvreOvertimePersonIds: selectedIds,
+                              manoeuvreOvertimeAdditionalPeople: additionalPeople,
+                              manoeuvreOvertimeCrewCount: null,
+                            };
+                          });
+                        }}
+                      >
+                        <option value="">Sélectionner un profil…</option>
+                        {manoeuvreEmployees
+                          .filter((employee) => !selectedOvertimePersonIds.includes(employee.id))
+                          .map((employee) => (
+                            <option key={employee.id} value={employee.id}>
+                              {employee.name}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+                  ) : (
+                    <small>Aucun profil manœuvre enregistré.</small>
+                  )}
+                  <label className="admin-quote-overtime-unregistered">
+                    <span>Personnes non enregistrées</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max={additionalOvertimePeopleMax}
+                      step="1"
+                      inputMode="numeric"
+                      value={additionalOvertimePeople}
+                      onChange={(event) =>
+                        setQuoteConfig((current) => ({
+                          ...current,
+                          manoeuvreOvertimeAdditionalPeople:
+                            event.target.value === ''
+                              ? 0
+                              : Math.min(
+                                  additionalOvertimePeopleMax,
+                                  Math.max(0, Math.round(Number(event.target.value) || 0)),
+                                ),
+                          manoeuvreOvertimeCrewCount: null,
+                        }))
+                      }
+                    />
+                  </label>
+                </div>
+                {selectedOvertimePersonIds.length > 0 && (
+                  <div
+                    className="admin-quote-overtime-selected-profiles"
+                    aria-label="Profils sélectionnés"
+                  >
+                    {selectedOvertimePersonIds.map((employeeId) => {
+                      const employee = manoeuvreEmployees.find((item) => item.id === employeeId);
+                      return (
+                        <span key={employeeId}>
+                          {employee?.name ?? 'Profil non disponible'}
+                          <button
+                            type="button"
+                            aria-label={`Retirer ${employee?.name ?? 'ce profil'} de la majoration`}
+                            onClick={() =>
+                              setQuoteConfig((current) => ({
+                                ...current,
+                                manoeuvreOvertimePersonIds: (
+                                  current.manoeuvreOvertimePersonIds ?? selectedOvertimePersonIds
+                                ).filter((id) => id !== employeeId),
+                                manoeuvreOvertimeCrewCount: null,
+                              }))
+                            }
+                          >
+                            ×
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
             <small>
               {manoeuvreOvertimeEnabled
-                ? `${movingEstimate?.crew ?? 0} × ${String(manoeuvreOvertimeHours).replace('.', ',')} h × ${money(manoeuvreOvertimeRate)} = ${money(manoeuvreOvertimeTotal)} ajouté au devis.`
+                ? `${manoeuvreOvertimeCrewCount} personne${manoeuvreOvertimeCrewCount > 1 ? 's' : ''} × ${String(manoeuvreOvertimeHours).replace('.', ',')} h × ${money(manoeuvreOvertimeRate)} = ${money(manoeuvreOvertimeTotal)} ajouté au devis.`
                 : manoeuvreOvertimeHours > 0
                   ? 'Le supplément est désactivé pour ce devis.'
                   : 'Calcul automatique selon l’heure de début et la fin prévue, après 20 h.'}

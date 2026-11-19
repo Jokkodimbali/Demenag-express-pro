@@ -15,6 +15,9 @@ export type BookingQuoteConfig = {
   customLines?: { id: string; label: string; quantity: number; unitPrice: number }[];
   taxiFeeAmountOverride?: number | null;
   taxiCompanyApproachAmountOverride?: number | null;
+  manoeuvreOvertimePersonIds?: string[] | null;
+  manoeuvreOvertimeAdditionalPeople?: number | null;
+  manoeuvreOvertimeCrewCount?: number | null;
 };
 
 export function quoteTierForDistance(

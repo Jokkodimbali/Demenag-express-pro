@@ -21,6 +21,7 @@ import { useCompanyApproachDistance } from './useCompanyApproachDistance';
 import type {
   AccountingEntry,
   AccountingFinanceConfiguration,
+  Driver,
   Options,
   Quote,
 } from '../../../../shared/domain/model';
@@ -122,6 +123,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const [quoteConfig, setQuoteConfig] = useState<AdminQuoteConfig>(defaultAdminQuoteConfig);
   const [accountingConfiguration, setAccountingConfiguration] =
     useState<AccountingFinanceConfiguration | null>(null);
+  const [manoeuvreEmployees, setManoeuvreEmployees] = useState<Driver[]>([]);
   const [questionnaireOpen, setQuestionnaireOpen] = useState(false);
   const [quoteKind, setQuoteKind] = useState<Quote['kind']>('provisional');
   const [journalSnapshot, setJournalSnapshot] = useState<{
@@ -190,6 +192,27 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       })
       .catch(() => {
         if (active) setAccountingConfiguration(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [api, publicRequest, user?.role]);
+  useEffect(() => {
+    if (publicRequest || user?.role !== 'admin') {
+      setManoeuvreEmployees([]);
+      return;
+    }
+    let active = true;
+    void api
+      .drivers()
+      .then((employees) => {
+        if (active)
+          setManoeuvreEmployees(
+            employees.filter((employee) => employee.active && employee.role === 'manoeuvre'),
+          );
+      })
+      .catch(() => {
+        if (active) setManoeuvreEmployees([]);
       });
     return () => {
       active = false;
@@ -1163,6 +1186,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     taxiFeeLines,
     taxiCrew,
     manoeuvreOvertimeLine: manoeuvreOvertime,
+    manoeuvreEmployees,
     previewSubtotal,
     previewDiscount,
     previewDiscountLabel,

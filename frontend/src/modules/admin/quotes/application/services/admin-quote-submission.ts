@@ -45,5 +45,8 @@ export const buildAdminQuoteSubmission: AdministrativeQuoteSubmissionBuilder = (
     rentalKit,
     overtimeMinutes: config.overtimeMinutes,
     providedCrew: input.providedCrew ?? draft.options.labour,
+    manoeuvreOvertimePersonIds: config.manoeuvreOvertimePersonIds ?? [],
+    manoeuvreOvertimeAdditionalPeople:
+      config.manoeuvreOvertimeAdditionalPeople ?? config.manoeuvreOvertimeCrewCount ?? 0,
   };
 };

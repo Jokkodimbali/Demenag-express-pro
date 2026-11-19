@@ -21,29 +21,17 @@ export function applyTaxiToManoeuvrePrice(price, taxiAmount) {
   if (!Number.isInteger(quantity) || !Number.isSafeInteger(adjustedTotal) || adjustedTotal < 0)
     return price;
 
-  const unitPrice = Math.floor(adjustedTotal / quantity);
-  const higherPriceQuantity = adjustedTotal % quantity;
   const template = manoeuvreLines[0];
-  const adjustedLines = [];
-  const basePriceQuantity = quantity - higherPriceQuantity;
-  if (basePriceQuantity > 0)
-    adjustedLines.push({
-      ...template,
-      quantity: basePriceQuantity,
-      unitPrice,
-      total: basePriceQuantity * unitPrice,
-    });
-  if (higherPriceQuantity > 0)
-    adjustedLines.push({
-      ...template,
-      quantity: higherPriceQuantity,
-      unitPrice: unitPrice + 1,
-      total: higherPriceQuantity * (unitPrice + 1),
-    });
+  const adjustedLine = {
+    ...template,
+    quantity,
+    unitPrice: adjustedTotal / quantity,
+    total: adjustedTotal,
+  };
 
   const lines = [];
   price.lines.forEach((line, cursor) => {
-    if (cursor === index) lines.push(...adjustedLines);
+    if (cursor === index) lines.push(adjustedLine);
     if (!isManoeuvre(line)) lines.push(line);
   });
   return { ...price, lines, total: price.total === null ? null : price.total + taxiAmount };

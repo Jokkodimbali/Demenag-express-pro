@@ -478,6 +478,8 @@ export type QuotePricingInput = {
   menuIncluded?: boolean;
   overtimeMinutes?: number;
   rentalOvertimeHourlyRate?: number;
+  manoeuvreOvertimePersonIds?: string[];
+  manoeuvreOvertimeAdditionalPeople?: number;
 };
 export type QuoteTollLine = {
   tollPointId: string;
@@ -588,4 +590,6 @@ export type QuoteInput = {
   rentalKit?: RentalKitItem[];
   overtimeMinutes?: number;
   providedCrew?: number;
+  manoeuvreOvertimePersonIds?: string[];
+  manoeuvreOvertimeAdditionalPeople?: number;
 };

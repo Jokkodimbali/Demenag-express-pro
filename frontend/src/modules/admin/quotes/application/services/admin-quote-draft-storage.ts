@@ -18,6 +18,9 @@ export type AdminQuoteConfig = {
   overtimeMinutes: number;
   manoeuvreOvertimeEnabled: boolean | null;
   manoeuvreOvertimeHours: number | null;
+  manoeuvreOvertimeCrewCount: number | null;
+  manoeuvreOvertimePersonIds: string[] | null;
+  manoeuvreOvertimeAdditionalPeople: number | null;
   manoeuvreOvertimeHourlyRateOverride: number | null;
   taxiFeeApplied: boolean;
   taxiFeeAmountOverride: number | null;
@@ -82,6 +85,23 @@ export async function readAdminQuoteDraft(
           Number.isFinite(parsed.quoteConfig.manoeuvreOvertimeHours) &&
           Number(parsed.quoteConfig.manoeuvreOvertimeHours) >= 0
             ? Number(parsed.quoteConfig.manoeuvreOvertimeHours)
+            : null,
+        manoeuvreOvertimeCrewCount:
+          Number.isInteger(parsed.quoteConfig.manoeuvreOvertimeCrewCount) &&
+          Number(parsed.quoteConfig.manoeuvreOvertimeCrewCount) >= 1 &&
+          Number(parsed.quoteConfig.manoeuvreOvertimeCrewCount) <= 100
+            ? Number(parsed.quoteConfig.manoeuvreOvertimeCrewCount)
+            : null,
+        manoeuvreOvertimePersonIds: Array.isArray(parsed.quoteConfig.manoeuvreOvertimePersonIds)
+          ? parsed.quoteConfig.manoeuvreOvertimePersonIds.filter(
+              (id): id is string => typeof id === 'string' && id.length > 0 && id.length <= 100,
+            )
+          : null,
+        manoeuvreOvertimeAdditionalPeople:
+          Number.isInteger(parsed.quoteConfig.manoeuvreOvertimeAdditionalPeople) &&
+          Number(parsed.quoteConfig.manoeuvreOvertimeAdditionalPeople) >= 0 &&
+          Number(parsed.quoteConfig.manoeuvreOvertimeAdditionalPeople) <= 100
+            ? Number(parsed.quoteConfig.manoeuvreOvertimeAdditionalPeople)
             : null,
         manoeuvreOvertimeHourlyRateOverride:
           Number.isSafeInteger(parsed.quoteConfig.manoeuvreOvertimeHourlyRateOverride) &&
@@ -235,6 +255,23 @@ function isAdminQuoteDraft(value: unknown): value is AdminQuoteDraft {
       (Number.isFinite(config.manoeuvreOvertimeHours) &&
         config.manoeuvreOvertimeHours >= 0 &&
         config.manoeuvreOvertimeHours <= 24)) &&
+    (config.manoeuvreOvertimeCrewCount === undefined ||
+      config.manoeuvreOvertimeCrewCount === null ||
+      (Number.isInteger(config.manoeuvreOvertimeCrewCount) &&
+        config.manoeuvreOvertimeCrewCount >= 1 &&
+        config.manoeuvreOvertimeCrewCount <= 100)) &&
+    (config.manoeuvreOvertimePersonIds === undefined ||
+      config.manoeuvreOvertimePersonIds === null ||
+      (Array.isArray(config.manoeuvreOvertimePersonIds) &&
+        config.manoeuvreOvertimePersonIds.length <= 100 &&
+        config.manoeuvreOvertimePersonIds.every(
+          (id) => typeof id === 'string' && id.length > 0 && id.length <= 100,
+        ))) &&
+    (config.manoeuvreOvertimeAdditionalPeople === undefined ||
+      config.manoeuvreOvertimeAdditionalPeople === null ||
+      (Number.isInteger(config.manoeuvreOvertimeAdditionalPeople) &&
+        config.manoeuvreOvertimeAdditionalPeople >= 0 &&
+        config.manoeuvreOvertimeAdditionalPeople <= 100)) &&
     (config.manoeuvreOvertimeHourlyRateOverride === undefined ||
       config.manoeuvreOvertimeHourlyRateOverride === null ||
       (Number.isSafeInteger(config.manoeuvreOvertimeHourlyRateOverride) &&

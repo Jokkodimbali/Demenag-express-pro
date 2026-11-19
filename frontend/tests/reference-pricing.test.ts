@@ -90,3 +90,41 @@ test('le prix backend applique ensemble la remise des trajets et la remise du jo
   );
   assert.equal(price.lines[2]?.unitPrice, -6000);
 });
+
+test('le prix backend regroupe les lignes personnalisées de même libellé', () => {
+  const settings = {
+    distanceBounds: [15, 25, 35],
+    maxTrips: 10,
+    maxOptions: 10,
+    labourPrice: 6_500,
+    labourFloorPrice: 500,
+    labourLiftPrice: 500,
+    assemblyPrice: 7_500,
+    movingLaborPlanning: { followingTripDiscountPercent: 60, lowDemandDiscountPercent: 0 },
+  } as Settings;
+  const vehicle = {
+    id: 'sprinter',
+    name: 'Sprinter',
+    prices: [28_000, 34_500, 41_500],
+  } as Vehicle;
+  const price = calculatePrice(
+    vehicle,
+    settings,
+    10,
+    { labour: 0, desk: 0, wardrobe: 0, bed: 0 },
+    1,
+    null,
+    0,
+    [
+      { label: 'Frais d’emballage', quantity: 1, unitPrice: 1_000 },
+      { label: ' FRAIS   D’EMBALLAGE ', quantity: 2, unitPrice: 1_500 },
+    ],
+  );
+  const grouped = price.lines.filter((line) =>
+    line.label.toLocaleLowerCase('fr-FR').includes('frais'),
+  );
+
+  assert.equal(grouped.length, 1);
+  assert.equal(grouped[0]?.quantity, 3);
+  assert.equal(grouped[0]?.total, 4_000);
+});

@@ -17,6 +17,7 @@ import {
   applyTaxiToManoeuvrePrice,
   manoeuvreCount,
 } from '../../../../../../../shared/quote-taxi-allocation.js';
+import { consolidateDuplicateQuoteLines } from '../../../../../../../shared/quote-lines.js';
 
 type ExtraOption = [keyof Options, string, string];
 type QuoteLine = { label: string; quantity: number; unitPrice: number; total: number };
@@ -126,6 +127,11 @@ export function createAdminQuotePreview(input: {
     {
       enabled: config.manoeuvreOvertimeEnabled,
       hours: config.manoeuvreOvertimeHours,
+      crewCount:
+        (config.manoeuvreOvertimePersonIds?.length ?? 0) +
+        (config.manoeuvreOvertimeAdditionalPeople ??
+          config.manoeuvreOvertimeCrewCount ??
+          (config.manoeuvreOvertimePersonIds === null ? (estimate?.crew ?? 0) : 0)),
       hourlyRate: config.manoeuvreOvertimeHourlyRateOverride,
       accountingHourlyRate: input.accountingOvertimeHourlyRate,
       startTime: draft.timeSlot,
@@ -192,7 +198,7 @@ export function createAdminQuotePreview(input: {
     includeMenu,
   });
   const balconyPrice = Math.max(0, Math.round(Number(estimateInventory.balcPx) || 0));
-  const basePreviewLines: QuoteLine[] = [
+  const basePreviewLines: QuoteLine[] = consolidateDuplicateQuoteLines([
     ...lines,
     ...(estimateInventory.stairs === 'balcon'
       ? [
@@ -230,7 +236,7 @@ export function createAdminQuotePreview(input: {
         unitPrice: line.unitPrice,
         total: line.quantity * line.unitPrice,
       })),
-  ];
+  ]);
   const taxiCrew = manoeuvreCount(basePreviewLines);
   const taxiCompanyApproachTotal = taxiCompanyApproachAmount;
   const taxiFeeAmount =

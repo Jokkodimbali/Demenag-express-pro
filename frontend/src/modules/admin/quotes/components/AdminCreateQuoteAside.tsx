@@ -131,7 +131,11 @@ export function AdminCreateQuoteAside({
               <div>
                 <span>{line.label}</span>
                 <small>
-                  {line.quantity} × {money(line.unitPrice)}
+                  {/^(?:Man[œo]uvre)/iu.test(line.label)
+                    ? `${line.quantity} manœuvre${line.quantity > 1 ? 's' : ''}`
+                    : !Number.isInteger(line.unitPrice)
+                      ? `${line.quantity} unités · tarif regroupé`
+                      : `${line.quantity} × ${money(line.unitPrice)}`}
                 </small>
               </div>
               <strong>{money(line.total)}</strong>

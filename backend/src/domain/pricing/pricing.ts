@@ -3,6 +3,7 @@ import { messages } from '../shared/messages/fr.js';
 import type { Options, Price, QuotePricingSettings, Vehicle, WorkAccess } from '../shared/model.js';
 import { referenceLowDemandDiscount, referenceTransportLines } from './reference-pricing.js';
 import { referenceAssemblyPriceDefaults } from '../../../../shared/reference-assembly-price-defaults.js';
+import { consolidateDuplicateQuoteLines } from '../../../../shared/quote-lines.js';
 
 const MAX_DATABASE_INTEGER = 2_147_483_647;
 
@@ -184,11 +185,14 @@ export function calculatePrice(
       total: Math.round(line.quantity * line.unitPrice),
     });
   }
+  const consolidatedLines = consolidateDuplicateQuoteLines(lines);
   requireValue(
-    lines.every((line) => Number.isSafeInteger(line.total) && line.total <= MAX_DATABASE_INTEGER),
+    consolidatedLines.every(
+      (line) => Number.isSafeInteger(line.total) && line.total <= MAX_DATABASE_INTEGER,
+    ),
     messages.montantDuDevisDepasseLimiteDeStockage,
   );
-  const subtotal = lines.reduce((sum, line) => sum + line.total, 0);
+  const subtotal = consolidatedLines.reduce((sum, line) => sum + line.total, 0);
   requireValue(
     Number.isSafeInteger(subtotal) && subtotal <= MAX_DATABASE_INTEGER,
     messages.montantDuDevisDepasseLimiteDeStockage,
@@ -200,7 +204,7 @@ export function calculatePrice(
       : Math.min(discount, subtotal);
   const reason = discountReason.trim();
   return {
-    lines,
+    lines: consolidatedLines,
     total: subtotal - effectiveDiscount,
     discount: effectiveDiscount,
     discountLabel: `Remise${discountType === 'pct' && discount ? ` (${Math.min(100, discount)} %)` : ''}${reason ? ` · ${reason}` : ''}`,

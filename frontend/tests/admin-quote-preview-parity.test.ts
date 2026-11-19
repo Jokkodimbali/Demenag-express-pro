@@ -11,7 +11,10 @@ import {
   subtractInventoryAssemblyOptions,
 } from '../../backend/src/domain/inventory/inventory-assembly.ts';
 import type { Catalogue, Options, Settings, Vehicle } from '../src/modules/shared/domain/model.ts';
-import { removeTaxiFromManoeuvrePrice } from '../../shared/quote-taxi-allocation.js';
+import {
+  applyTaxiToManoeuvrePrice,
+  removeTaxiFromManoeuvrePrice,
+} from '../../shared/quote-taxi-allocation.js';
 
 const settings: Settings = {
   distanceBounds: [15, 25, 35],
@@ -63,6 +66,34 @@ const extras: [keyof Options, string, string][] = [
   ['wardrobe', 'Montage armoire', ''],
   ['bed', 'Montage lit', ''],
 ];
+
+function assertNoRepeatedLineLabels(lines: readonly { label: string }[], scenario: string) {
+  const labels = lines.map((line) =>
+    line.label
+      .trim()
+      .replace(/\s+/gu, ' ')
+      .normalize('NFKD')
+      .replace(/\p{Diacritic}/gu, '')
+      .replace(/œ/giu, 'oe')
+      .toLocaleLowerCase('fr-FR'),
+  );
+  assert.equal(new Set(labels).size, labels.length, `${scenario}: libellés répétés`);
+}
+
+test('une allocation taxi non divisible reste sur une seule ligne de manœuvres', () => {
+  const original = {
+    lines: [{ label: 'Manœuvres', quantity: 3, unitPrice: 6_500, total: 19_500 }],
+    total: 19_500,
+  };
+  const adjusted = applyTaxiToManoeuvrePrice(original, 10_001);
+  const labourLines = adjusted.lines.filter((line) => line.label.startsWith('Manœuvres'));
+
+  assert.equal(labourLines.length, 1);
+  assert.equal(labourLines[0]?.quantity, 3);
+  assert.equal(labourLines[0]?.total, 29_501);
+  assert.equal(adjusted.total, 29_501);
+  assert.deepEqual(removeTaxiFromManoeuvrePrice(adjusted, 10_001), original);
+});
 
 test('l’aperçu du devis reprend une seule fois transport, trajets suivants et jour creux', () => {
   const catalogue = { vehicles: [vehicle], settings } as Catalogue;
@@ -150,6 +181,10 @@ test('l’aperçu du devis reprend une seule fois transport, trajets suivants et
                 labourPrice: settings.labourPrice,
                 simulationNeeds: null,
               });
+              assertNoRepeatedLineLabels(
+                preview.previewLines,
+                `${distance} km, ${trips} rotation(s), formule ${billingMode}, aperçu`,
+              );
 
               const remainingOptions = subtractInventoryAssemblyOptions(
                 draft.options,
@@ -195,6 +230,10 @@ test('l’aperçu du devis reprend une seule fois transport, trajets suivants et
                 config.discountReason,
                 draft.date,
               );
+              assertNoRepeatedLineLabels(
+                serverPrice.lines,
+                `${distance} km, ${trips} rotation(s), formule ${billingMode}, serveur`,
+              );
 
               assert.equal(
                 preview.total,
@@ -217,6 +256,48 @@ test('l’aperçu du devis reprend une seule fois transport, trajets suivants et
   }
 
   assert.equal(checked, 336);
+});
+
+test('regroupe les lignes personnalisées répétées sans perdre leur montant', () => {
+  const catalogue = { vehicles: [vehicle], settings } as Catalogue;
+  const draft = blankDraft(catalogue);
+  draft.vehicleId = vehicle.id;
+  draft.route = {
+    id: 'route-custom-deduplication',
+    from: [14.69, -17.44],
+    to: [14.73, -17.48],
+    distanceKm: 10,
+    durationMinutes: 30,
+    geometry: [],
+    expiresAt: '2026-12-01T00:00:00.000Z',
+  };
+  const config = {
+    ...defaultAdminQuoteConfig(),
+    customLines: [
+      { id: 'custom-1', label: 'Frais d’emballage', quantity: 1, unitPrice: 1_000 },
+      { id: 'custom-2', label: '  FRAIS   D’EMBALLAGE ', quantity: 2, unitPrice: 1_500 },
+    ],
+  };
+  const preview = createAdminQuotePreview({
+    draft,
+    estimateInventory: draft.inventory,
+    config,
+    vehicle,
+    estimate: null,
+    settings,
+    price: null,
+    extras,
+    labourPrice: settings.labourPrice,
+    simulationNeeds: null,
+  });
+  const grouped = preview.previewLines.filter((line) =>
+    line.label.toLocaleLowerCase('fr-FR').includes('frais d’emballage'),
+  );
+
+  assertNoRepeatedLineLabels(preview.previewLines, 'lignes personnalisées');
+  assert.equal(grouped.length, 1);
+  assert.equal(grouped[0]?.quantity, 3);
+  assert.equal(grouped[0]?.total, 4_000);
 });
 
 test('les frais taxi facturent chargement et déchargement à chaque rotation puis les répartissent sur les manœuvres', () => {
@@ -254,6 +335,7 @@ test('les frais taxi facturent chargement et déchargement à chaque rotation pu
     taxiPickupDistanceKm: 0,
   };
   const preview = createAdminQuotePreview(input);
+  assertNoRepeatedLineLabels(preview.previewLines, 'taxi avant modification du montant');
   const labour = preview.previewLines.find((line) => line.label.startsWith('Manœuvres'));
   assert.equal(preview.taxiFeeLine?.total, 50_000);
   assert.equal(preview.taxiFeeLine?.quantity, 5);
@@ -317,6 +399,7 @@ test('les frais taxi facturent chargement et déchargement à chaque rotation pu
     ...input,
     config: { ...config, taxiFeeAmountOverride: 10_000 },
   });
+  assertNoRepeatedLineLabels(adjusted.previewLines, 'taxi après modification du montant');
   assert.equal(
     adjusted.previewLines.find((line) => line.label.startsWith('Manœuvres'))?.unitPrice,
     16_500,
@@ -375,6 +458,7 @@ test('les frais locaux et les taxis par rotation sont ajoutés aux manœuvres sa
   };
 
   const preview = createAdminQuotePreview(input);
+  assertNoRepeatedLineLabels(preview.previewLines, 'taxi et trajet locaux');
   const withoutTaxi = createAdminQuotePreview({
     ...input,
     config: { ...config, taxiFeeApplied: false },
@@ -427,6 +511,7 @@ test('les frais locaux et les taxis par rotation sont ajoutés aux manœuvres sa
       taxiCompanyApproachAmountOverride: 2_000,
     },
   });
+  assertNoRepeatedLineLabels(adjusted.previewLines, 'montants taxi modifiés');
   assert.equal(adjusted.taxiFeeLines[0]?.quantity, 5);
   assert.equal(adjusted.taxiFeeLines[0]?.total, 50_000);
   assert.equal(adjusted.taxiFeeLines[1]?.quantity, 1);

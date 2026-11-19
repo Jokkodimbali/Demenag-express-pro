@@ -401,6 +401,8 @@ export const quoteSchema = z.object({
     .default([]),
   overtimeMinutes: z.number().int().min(0).max(100000).default(0),
   providedCrew: z.number().int().min(0).max(100).default(0),
+  manoeuvreOvertimePersonIds: z.array(z.string().trim().min(1).max(100)).max(100).optional(),
+  manoeuvreOvertimeAdditionalPeople: z.number().int().min(0).max(100).optional(),
 });
 export const driverAvailabilitySchema = z
   .array(

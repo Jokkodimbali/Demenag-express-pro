@@ -21,6 +21,7 @@ export function manoeuvreOvertimeLine(
     hours?: number | null;
     hourlyRate?: number | null;
     accountingHourlyRate?: number | null;
+    crewCount?: number | null;
     startTime?: string;
   },
 ) {
@@ -32,10 +33,11 @@ export function manoeuvreOvertimeLine(
   const estimatedHours = estimatedManoeuvreOvertimeHours(estimate, options?.startTime ?? '08:00');
   const hours = options?.hours ?? estimatedHours;
   if (options?.enabled === false || billingMode === 'driver-rental') return null;
-  const quantity = (estimate?.crew ?? 0) * hours;
+  const crewCount = Math.max(0, Math.round(options?.crewCount ?? estimate?.crew ?? 0));
+  const quantity = crewCount * hours;
   return quantity > 0 && rate > 0
     ? {
-        label: 'Majoration de travail de nuit',
+        label: `Majoration de travail de nuit (${crewCount} personne${crewCount > 1 ? 's' : ''})`,
         quantity,
         unitPrice: rate,
       }
