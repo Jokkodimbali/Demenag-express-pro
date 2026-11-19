@@ -29,7 +29,9 @@ function quoteAccountingCosts(input: {
   const movers =
     billingMode === 'driver-rental'
       ? 0
-      : Math.max(0, Math.round(providedCrew || inventory.crew || manoeuvreCount));
+      : manoeuvreCount > 0
+        ? Math.max(0, Math.round(providedCrew || inventory.crew || manoeuvreCount))
+        : 0;
   let carpenters = 0;
   let carpenterAmount = 0;
 
@@ -102,5 +104,7 @@ export function quoteGrossMargin(input: {
   const { quoteTotal, hasBillableContent, accounting, taxiCharges, nightWorkCharge = 0 } = input;
   if (!hasBillableContent || quoteTotal == null || !accounting) return null;
   const costs = quoteAccountingCosts({ ...input, accounting });
-  return quoteTotal - costs.moverAmount - costs.carpenterAmount - taxiCharges - nightWorkCharge;
+  const totalCharges = costs.moverAmount + costs.carpenterAmount + taxiCharges + nightWorkCharge;
+  if (totalCharges <= 0) return null;
+  return quoteTotal - totalCharges;
 }
