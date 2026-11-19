@@ -106,7 +106,8 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     location.state as { calendarAppointment?: { date: string; time: string } } | null
   )?.calendarAppointment;
   const resetQuoteToken = (location.state as { resetQuote?: string } | null)?.resetQuote;
-  const editingReservation = new URLSearchParams(location.search).has('modifier');
+  const editSearchParams = new URLSearchParams(location.search);
+  const editingReservation = editSearchParams.has('modifier') || editSearchParams.has('archive');
   const resetAdminQuote = Boolean(
     resetQuoteToken && !editingReservation && !initialClient && !calendarAppointment,
   );
@@ -304,7 +305,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       }
     },
   });
-  const editingLocked = adminQuoteIsLocked(state.editingBooking);
+  const editingLocked = state.archivedBooking || adminQuoteIsLocked(state.editingBooking);
   const editingBooking = state.editingBooking;
   const latestSavedQuote = editingBooking ? latestBookingQuote(editingBooking) : undefined;
   const quoteStageChanged = isQuoteStageChanged(editingBooking, quoteKind);
@@ -409,7 +410,13 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     [draft.inventory, draft.questionnaireAnswers],
   );
   useEffect(() => {
-    if (editingReservation || publicRequest || resetAdminQuote || user?.role !== 'admin') {
+    if (
+      editingReservation ||
+      publicRequest ||
+      resetAdminQuote ||
+      initialClient ||
+      user?.role !== 'admin'
+    ) {
       restoredDraft.current = true;
       skipInitialSave.current = true;
       return;
@@ -428,7 +435,16 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     return () => {
       active = false;
     };
-  }, [api, editingReservation, publicRequest, resetAdminQuote, setDraft, setTollLines, user?.role]);
+  }, [
+    api,
+    editingReservation,
+    initialClient,
+    publicRequest,
+    resetAdminQuote,
+    setDraft,
+    setTollLines,
+    user?.role,
+  ]);
 
   useEffect(() => {
     if (!initialClient) return;

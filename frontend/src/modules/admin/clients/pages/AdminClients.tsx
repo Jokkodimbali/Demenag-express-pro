@@ -32,7 +32,7 @@ type ClientRowValue = {
   final: number;
   last: string;
   account: User | null;
-  references: string[];
+  references: { booking: Booking; deleted: boolean }[];
   bookings: Booking[];
 };
 const shortDate = (value: string) => {
@@ -77,7 +77,7 @@ function ClientRow({
   onReset: () => void;
   onHide: () => void;
   onContact: () => void;
-  onHistory: (reference: string) => void;
+  onHistory: (booking: Booking, deleted: boolean) => void;
   busy: boolean;
 }) {
   const [name, setName] = useState(value.name),
@@ -162,18 +162,19 @@ function ClientRow({
         <span>{value.moves}</span>
         {value.references.length > 0 && (
           <details className="reference-client-booking-list">
-            <summary aria-label={`Voir les identifiants des ${value.moves} déménagements`}>
+            <summary aria-label={`Voir les ${value.references.length} réservations du client`}>
               {visibleUiText.clientMoveIdentifiers} <span aria-hidden="true">▾</span>
             </summary>
             <div>
-              {value.references.map((reference) => (
+              {value.references.map(({ booking, deleted }) => (
                 <button
                   className="reference-client-history"
-                  key={reference}
+                  key={booking.id}
                   type="button"
-                  onClick={() => onHistory(reference)}
+                  onClick={() => onHistory(booking, deleted)}
                 >
-                  {reference}
+                  {booking.reference}
+                  {deleted ? ' · Corbeille' : ''}
                 </button>
               ))}
             </div>
@@ -216,7 +217,7 @@ function ClientRow({
   );
 }
 export function AdminClients() {
-  const { requestConfirmation, catalogue, showSuccessToast, showErrorToast } = useApp();
+  const { requestConfirmation, catalogue, showSuccessToast, showErrorToast, api } = useApp();
   const { loadDirectory, updateClient, hideClientProfile, resetClientPassword } = useAdminClients();
   const { bookings, loading, error, setRetry } = useAdministration();
   const navigate = useNavigate();
@@ -227,6 +228,7 @@ export function AdminClients() {
     if (next) setQuery(next);
   }, [searchParams]);
   const [profiles, setProfiles] = useState<DirectoryEntry[]>([]);
+  const [trashedBookings, setTrashedBookings] = useState<Booking[]>([]);
   const [hidden, setHidden] = useState<{ phone: string; hiddenAt: string }[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [directoryError, setDirectoryError] = useState('');
@@ -236,12 +238,13 @@ export function AdminClients() {
   const [resetBusy, setResetBusy] = useState(false);
   useEffect(() => {
     let active = true;
-    loadDirectory()
-      .then(([p, h, u]) => {
+    Promise.all([loadDirectory(), api.trashedBookings()])
+      .then(([[p, h, u], trashed]) => {
         if (!active) return;
         setProfiles(p);
         setHidden(h);
         setUsers(u);
+        setTrashedBookings(trashed.map(({ booking }) => booking));
       })
       .catch((e) => {
         if (active) setDirectoryError(errorMessage(e));
@@ -249,10 +252,13 @@ export function AdminClients() {
     return () => {
       active = false;
     };
-  }, [loadDirectory]);
+  }, [api, loadDirectory]);
   const rows = useMemo(() => {
     const summaries = new Map<string, Booking[]>();
-    for (const booking of bookings) {
+    const deletedBookingIds = new Set(trashedBookings.map((booking) => booking.id));
+    const history = new Map<string, Booking>();
+    for (const booking of [...bookings, ...trashedBookings]) history.set(booking.id, booking);
+    for (const booking of history.values()) {
       const key = normalizedClientPhone(booking.phone);
       if (!key) continue;
       const group = summaries.get(key) ?? [];
@@ -268,7 +274,9 @@ export function AdminClients() {
         const latest = [...all].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
         if (hiddenEntry && latest.createdAt <= hiddenEntry.hiddenAt) return [];
         const profile = profileMap.get(key);
-        const active = all.filter((booking) => booking.status !== 'cancelled');
+        const active = all.filter(
+          (booking) => booking.status !== 'cancelled' && !deletedBookingIds.has(booking.id),
+        );
         const last =
           active
             .map((booking) => booking.date)
@@ -295,20 +303,25 @@ export function AdminClients() {
             final,
             last: last ? shortDate(last) : '—',
             account: acct,
-            references: all.map((booking) => booking.reference),
+            references: all.map((booking) => ({
+              booking,
+              deleted: deletedBookingIds.has(booking.id),
+            })),
             bookings: all,
           },
         ];
       })
       .sort((a, b) => b.moves - a.moves || a.name.localeCompare(b.name));
-  }, [bookings, profiles, hidden, users, catalogue]);
+  }, [bookings, trashedBookings, profiles, hidden, users, catalogue]);
   const needle = query.trim().toLocaleLowerCase('fr');
   const filtered = rows.filter(
     (row) =>
       row.name.toLocaleLowerCase('fr').includes(needle) ||
       row.phone.replace(/\D/g, '').includes(query.replace(/\D/g, '') || '!') ||
       row.address.toLocaleLowerCase('fr').includes(needle) ||
-      row.references.some((reference) => reference.toLocaleLowerCase('fr').includes(needle)),
+      row.references.some(({ booking }) =>
+        booking.reference.toLocaleLowerCase('fr').includes(needle),
+      ),
   );
   const pagination = usePagination(filtered, pageSizes.clients, needle);
   async function saveClient(
@@ -328,6 +341,13 @@ export function AdminClients() {
         ),
         { phone: next.phone, name: next.name, address: next.address },
       ]);
+      setTrashedBookings((old) =>
+        old.map((booking) =>
+          normalizedClientPhone(booking.phone) === initial.key
+            ? { ...booking, customerName: next.name, phone: next.phone }
+            : booking,
+        ),
+      );
       setRetry((value) => value + 1);
     } catch (cause) {
       showErrorToast(errorMessage(cause));
@@ -467,9 +487,11 @@ export function AdminClients() {
                       `${client.name.replace(/[^\p{L}\p{N}-]+/gu, '-')}.vcf`,
                     )
                   }
-                  onHistory={(reference) =>
-                    navigate(`${routes.administrationBookings}?q=${encodeURIComponent(reference)}`)
-                  }
+                  onHistory={(booking, deleted) => {
+                    navigate(
+                      `${routes.administrationCreateQuote}?${deleted ? 'archive' : 'modifier'}=${encodeURIComponent(booking.id)}`,
+                    );
+                  }}
                   onHide={() => void hideClient(client)}
                   onReset={() => {
                     setResetError('');

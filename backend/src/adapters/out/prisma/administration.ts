@@ -70,7 +70,6 @@ export class PrismaAdministration implements AdministrationRepository {
   }
   async hideClient(phone: string) {
     const bookings = await this.db.reservation.findMany({
-      where: { supprimeLe: null },
       select: { donnees: true },
     });
     if (!bookings.some((row) => phoneKey((row.donnees as Booking).phone) === phone))
@@ -88,7 +87,6 @@ export class PrismaAdministration implements AdministrationRepository {
       await this.db.$transaction(
         async (tx) => {
           const rows = await tx.reservation.findMany({
-            where: { supprimeLe: null },
             select: { id: true, version: true, donnees: true },
           });
           const matches = rows.filter((row) => phoneKey((row.donnees as Booking).phone) === phone);

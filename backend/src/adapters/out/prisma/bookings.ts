@@ -190,7 +190,6 @@ export class PrismaBookings implements BookingRepository {
     const rows = await this.db.reservation.findMany({
       where: { supprimeLe: { not: null } },
       orderBy: { supprimeLe: 'desc' },
-      take: 200,
     });
     return rows.map((row) => ({
       booking: row.donnees as Booking,

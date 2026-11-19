@@ -15,6 +15,11 @@ import {
 
 export type { AdminSearchResult } from '../services/admin-search';
 
+type AdminSearchData = {
+  bookings: Booking[];
+  clients: { phone: string; name: string; address: string }[];
+};
+
 export function useAdminLayoutModel() {
   const { api, showSuccessToast, showErrorToast } = useApp();
   const navigate = useNavigate();
@@ -27,6 +32,8 @@ export function useAdminLayoutModel() {
   const [notificationCount, setNotificationCount] = useState(0);
   const [notificationBookings, setNotificationBookings] = useState<Booking[] | null>(null);
   const requestId = useRef(0);
+  const searchDataCache = useRef<{ data: AdminSearchData; expiresAt: number } | null>(null);
+  const searchDataRequest = useRef<Promise<AdminSearchData> | null>(null);
   const todoRef = useRef<HTMLDivElement>(null);
   const knownNotificationIds = useRef(new Set<string>());
   const normalizedQuery = normalizeAdminSearchQuery(query);
@@ -82,16 +89,26 @@ export function useAdminLayoutModel() {
     const current = ++requestId.current;
     if (normalizedQuery.length < 2) return;
     const timer = window.setTimeout(() => {
-      void Promise.all([api.bookings(), api.clientProfiles()])
-        .then(([bookings, clients]) => {
+      const cached = searchDataCache.current;
+      const dataRequest =
+        cached && cached.expiresAt > Date.now()
+          ? Promise.resolve(cached.data)
+          : (searchDataRequest.current ??= Promise.all([api.bookings(), api.clientProfiles()]).then(
+              ([bookings, clients]) => ({ bookings, clients }),
+            ));
+      void dataRequest
+        .then((data) => {
+          searchDataCache.current = { data, expiresAt: Date.now() + 30_000 };
+          if (searchDataRequest.current === dataRequest) searchDataRequest.current = null;
           if (requestId.current !== current) return;
-          setResults(findAdminSearchResults(bookings, clients, normalizedQuery));
+          setResults(findAdminSearchResults(data.bookings, data.clients, normalizedQuery));
           setSearching(false);
         })
         .catch(() => {
+          if (searchDataRequest.current === dataRequest) searchDataRequest.current = null;
           if (requestId.current === current) setSearching(false);
         });
-    }, 250);
+    }, 150);
     return () => window.clearTimeout(timer);
   }, [api, normalizedQuery]);
 

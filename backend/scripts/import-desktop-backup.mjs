@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import pg from 'pg';
+import { tsImport } from 'tsx/esm/api';
 import { legacyQuotePrice } from './legacy-quote-lines.mjs';
 
 const { Client } = pg;
@@ -70,6 +71,11 @@ if (!apply) {
   console.log(JSON.stringify({ mode: 'dry-run', ...summary }, null, 2));
   process.exit(0);
 }
+
+const { missingLegacyInventoryPatch } = await tsImport(
+  './legacy-booking-inventory.mjs',
+  import.meta.url,
+);
 
 const connectionString = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
 if (!connectionString) throw new Error('DATABASE_URL_UNPOOLED ou DATABASE_URL est requis.');
@@ -364,7 +370,8 @@ try {
             bed: Math.max(0, integer(quoteLegacy.lit ?? legacy.lit)),
           },
           billingMode: quoteLegacy.bill === 'loc' ? 'driver-rental' : 'complete',
-          menuIncluded: quoteLegacy.bill === 'loc' ? Boolean(quoteLegacy.locMenu) : !quoteLegacy.noMenu,
+          menuIncluded:
+            quoteLegacy.bill === 'loc' ? Boolean(quoteLegacy.locMenu) : !quoteLegacy.noMenu,
           importedFromDesktop: true,
         },
       ],
@@ -376,6 +383,7 @@ try {
       ...(data.plan?.[legacy.id] ? { legacyDesktopPlan: data.plan[legacy.id] } : {}),
       ...(reference !== originalReference ? { legacyOriginalReference: originalReference } : {}),
     };
+    Object.assign(row, missingLegacyInventoryPatch(row));
 
     await db.query(
       `INSERT INTO demenag.bookings

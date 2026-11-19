@@ -227,6 +227,12 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
           {quoteHandoffError}
         </p>
       )}
+      {state.archivedBooking && (
+        <p className="alert info" role="status">
+          Cette réservation est dans la corbeille. Elle est affichée dans le formulaire de devis en
+          lecture seule.
+        </p>
+      )}
       {publicRequest && (
         <div className="reference-request-heading">
           <div>
@@ -1181,6 +1187,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             submitting={model.submitting}
             disabled={
               model.submitting ||
+              state.archivedBooking ||
               model.editLoading ||
               Boolean(model.editError) ||
               (editingLocked && !canCommitQuoteStage)

@@ -69,11 +69,15 @@ export function useBookingForm({
   const { draft, setDraft } = useBookingDraft();
   const navigate = useNavigate();
   const location = useLocation();
-  const editId = new URLSearchParams(location.search).get('modifier');
+  const searchParams = new URLSearchParams(location.search);
+  const editId = searchParams.get('modifier');
+  const archiveId = searchParams.get('archive');
+  const recordId = editId ?? archiveId;
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [fieldErrors, setFieldErrors] = useState<BookingFieldErrors>({});
-  const [editLoading, setEditLoading] = useState(Boolean(editId));
+  const [editLoading, setEditLoading] = useState(Boolean(recordId));
   const [editError, setEditError] = useState('');
+  const [archivedBooking, setArchivedBooking] = useState(Boolean(archiveId));
   const [tollLines, setTollLines] = useState<TollExtraLine[]>([]);
   const [price, setPrice] = useState<Price | null>(null),
     [estimating, setEstimating] = useState(false),
@@ -101,8 +105,9 @@ export function useBookingForm({
   const selected = selectedBookingVehicle(catalogueVehicle, editingBooking);
   const administrativeQuote = mode === 'admin-quote' && user?.role === 'admin';
   useEffect(() => {
-    if (!editId) {
+    if (!recordId) {
       setEditingBooking(null);
+      setArchivedBooking(false);
       setEditLoading(false);
       setEditError('');
       return;
@@ -116,9 +121,17 @@ export function useBookingForm({
     if (!user) return;
     let active = true;
     setEditLoading(true);
+    setArchivedBooking(Boolean(archiveId));
     setEditError('');
-    void api
-      .booking(editId)
+    const bookingRequest = archiveId
+      ? api.trashedBookings().then((items) => {
+          const booking = items.find(({ booking: item }) => item.id === archiveId)?.booking;
+          if (!booking)
+            throw new Error('Cette réservation n’est plus disponible dans la corbeille.');
+          return booking;
+        })
+      : api.booking(recordId);
+    void bookingRequest
       .then(async (booking) => {
         const statusError = bookingEditStatusError(booking, administrativeQuote);
         if (statusError) throw new Error(statusError);
@@ -136,7 +149,7 @@ export function useBookingForm({
     return () => {
       active = false;
     };
-  }, [administrativeQuote, api, authLoading, editId, setDraft, user]);
+  }, [administrativeQuote, api, archiveId, authLoading, recordId, setDraft, user]);
   useEffect(() => {
     setTollLines((current) => repriceTollLines(current, tollPoints, draft.vehicleId));
   }, [draft.vehicleId, tollPoints]);
@@ -565,6 +578,7 @@ export function useBookingForm({
     recognizingClient,
     editingBooking,
     setEditingBooking,
+    archivedBooking,
     editLoading,
     editError,
     recognizeClient,
