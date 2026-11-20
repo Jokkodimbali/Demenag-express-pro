@@ -59,6 +59,16 @@ export function quoteEstimateInventory(
   };
 }
 
+export function quoteInventoryEstimateKey(draft: Draft) {
+  const inventory = quoteEstimateInventory(draft.inventory, draft.questionnaireAnswers);
+  return JSON.stringify({
+    ...draft.inventory,
+    crew: undefined,
+    ready: inventory.ready,
+    stairs: inventory.stairs,
+  });
+}
+
 export function canCreateFinalQuote(booking: Booking | null, date: string, noDate: boolean) {
   return Boolean(booking?.status !== 'cancelled' && date && !noDate);
 }

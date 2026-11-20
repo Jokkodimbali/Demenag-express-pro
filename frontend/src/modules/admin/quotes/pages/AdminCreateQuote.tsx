@@ -47,6 +47,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
     resetVersion,
     quoteConfig,
     setQuoteConfig,
+    quoteEditedSinceSaved,
     questionnaireOpen,
     setQuestionnaireOpen,
     quoteKind,
@@ -91,6 +92,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
     refreshTraffic,
     trafficDelay,
     movingEstimate,
+    effectiveQuoteTrips,
     questionnaire,
     visibleInventoryText,
     estimateText,
@@ -112,10 +114,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
     changeQuoteOption,
     toggleQuoteSection,
   } = model;
-  const displayedTrips =
-    quoteConfig.calcMode === 'auto' && model.movingEstimateTrips > 0
-      ? model.movingEstimateTrips
-      : quoteConfig.trips;
+  const displayedTrips = effectiveQuoteTrips;
   const manualTravelTime = quoteConfig.calcMode === 'manual' && quoteConfig.legMinutes > 0;
   const estimatedTrafficColor =
     manualTravelTime || quoteConfig.trafficOff
@@ -290,6 +289,19 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
           const submittedKind = quoteKind;
           const quoteStageCommit = Boolean(editingBooking && canCommitQuoteStage);
           const quoteStageCommitId = quoteStageCommit ? latestSavedQuote?.id : undefined;
+          if (
+            editingReservation &&
+            latestSavedQuote &&
+            !quoteEditedSinceSaved &&
+            submittedKind === latestSavedQuote.kind
+          ) {
+            event.preventDefault();
+            cancelPendingWhatsApp();
+            showSuccessToast(
+              `Le devis ${editingBooking?.reference ?? ''} est déjà enregistré. Aucun montant ni nombre de rotations n’a été recalculé.`,
+            );
+            return;
+          }
           if (!normalizePhoneNumber(draft.customerPhone)) {
             event.preventDefault();
             cancelPendingWhatsApp();
@@ -417,7 +429,8 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             submittedKind,
             quoteStageCommitId,
             quoteStageCommit,
-            movingEstimate?.trips,
+            effectiveQuoteTrips,
+            quoteEditedSinceSaved,
           );
           cancelPendingWhatsApp();
         }}

@@ -351,6 +351,7 @@ export function useBookingForm({
     quoteStageCommitId?: string,
     quoteStageCommit = false,
     estimatedQuoteTrips?: number,
+    quoteFormChanged = false,
   ) {
     e.preventDefault();
     const submissionQuoteConfig =
@@ -435,27 +436,35 @@ export function useBookingForm({
       if (isQuoteStageCommit && editingBooking) {
         if (!buildAdministrativeQuoteSubmission)
           throw new Error('Le service de mise à jour du devis administratif est indisponible.');
-        const quoteInput = buildAdministrativeQuoteSubmission({
-          draft,
-          kind: quoteKindOverride ?? quoteKind ?? 'provisional',
-          config: submissionQuoteConfig,
-          catalogue: catalogue ?? null,
-          fallbackVehicle: editingBooking.vehicle,
-          tier: quoteTier,
-          version: editingBooking.version,
-          notes: bookingNotes,
-          extraLines: quoteExtraLines,
-          tollLines,
-          options: quoteOptions,
-          getRentalKit,
-          providedCrew: getProvidedCrew?.(),
-        });
-        const updated = await api.updateQuoteStage(
-          editingBooking.id,
-          quoteStageCommitId ?? null,
-          input,
-          quoteInput,
-        );
+        const nextKind = quoteKindOverride ?? quoteKind ?? 'provisional';
+        const updated =
+          !quoteFormChanged && quoteStageCommitId
+            ? await api.updateQuoteKind(
+                editingBooking.id,
+                quoteStageCommitId,
+                nextKind,
+                editingBooking.version,
+              )
+            : await api.updateQuoteStage(
+                editingBooking.id,
+                quoteStageCommitId ?? null,
+                input,
+                buildAdministrativeQuoteSubmission({
+                  draft,
+                  kind: nextKind,
+                  config: submissionQuoteConfig,
+                  catalogue: catalogue ?? null,
+                  fallbackVehicle: editingBooking.vehicle,
+                  tier: quoteTier,
+                  version: editingBooking.version,
+                  notes: bookingNotes,
+                  extraLines: quoteExtraLines,
+                  tollLines,
+                  options: quoteOptions,
+                  getRentalKit,
+                  providedCrew: getProvidedCrew?.(),
+                }),
+              );
         onAdministrativeBookingCreated?.();
         bookingLookup.current = null;
         setEditingBooking(updated);

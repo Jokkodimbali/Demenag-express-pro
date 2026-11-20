@@ -7,6 +7,21 @@ export type AppliedVehicleEstimate = {
   trips: number;
 };
 
+export function persistedVehicleEstimate(
+  vehicleId: string,
+  inventoryKey: string,
+  config: AdminQuoteConfig,
+): AppliedVehicleEstimate | null {
+  if (
+    config.calcMode !== 'auto' ||
+    !vehicleId ||
+    !Number.isInteger(config.trips) ||
+    config.trips < 1
+  )
+    return null;
+  return { vehicleId, inventoryKey, trips: config.trips };
+}
+
 export function shouldPreserveAppliedVehicleEstimate(input: {
   applied: AppliedVehicleEstimate | null;
   selectedVehicleId: string;

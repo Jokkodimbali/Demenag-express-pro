@@ -1,6 +1,41 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { shouldPreserveAppliedVehicleEstimate } from '../src/modules/admin/quotes/application/services/automatic-quote-estimate.ts';
+import {
+  persistedVehicleEstimate,
+  shouldPreserveAppliedVehicleEstimate,
+} from '../src/modules/admin/quotes/application/services/automatic-quote-estimate.ts';
+import { defaultAdminQuoteConfig } from '../src/modules/admin/quotes/application/services/admin-quote-config.ts';
+
+test('une estimation automatique enregistrée est réappliquée sans suivre une nouvelle estimation', () => {
+  const persisted = persistedVehicleEstimate('sprinter', 'inventaire-a', {
+    ...defaultAdminQuoteConfig(),
+    trips: 4,
+  });
+
+  assert.deepEqual(persisted, {
+    vehicleId: 'sprinter',
+    inventoryKey: 'inventaire-a',
+    trips: 4,
+  });
+  assert.equal(
+    shouldPreserveAppliedVehicleEstimate({
+      applied: persisted,
+      selectedVehicleId: 'sprinter',
+      inventoryKey: 'inventaire-a',
+      configuredTrips: 4,
+    }),
+    true,
+  );
+  assert.equal(
+    shouldPreserveAppliedVehicleEstimate({
+      applied: persisted,
+      selectedVehicleId: 'sprinter',
+      inventoryKey: 'inventaire-b',
+      configuredTrips: 4,
+    }),
+    false,
+  );
+});
 
 test('le nombre appliqué depuis une carte véhicule ne bascule pas vers le plan 3D', () => {
   const inventoryKey = '{"salon":1,"frigo":1,"carton":30}';
