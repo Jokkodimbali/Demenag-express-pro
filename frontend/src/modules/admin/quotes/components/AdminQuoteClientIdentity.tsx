@@ -4,6 +4,7 @@ import { uiText } from '../../../shared/content/reference-ui-text';
 import { visibleUiText } from '../../../shared/content/visible-ui-text';
 import { useApp } from '../../../shared/application/context';
 import { normalizedClientPhone } from '../../../shared/domain/client-identity';
+import { normalizePhoneNumber } from '../../../shared/domain/phone-number';
 import { today } from '../../../shared/domain/date';
 import { sanitizePhoneInput } from '../../../shared/domain/phone-number';
 import {
@@ -18,6 +19,7 @@ import {
   savedClientForPhone,
   type ClientSuggestionProfile,
 } from '../application/services/client-suggestions';
+import { adminQuoteValidationToastKeys } from '../application/services/admin-quote-form-policy';
 
 type ClientRecognition = { phone: string; name: string; bookingCount: number } | null;
 
@@ -34,6 +36,7 @@ export function AdminQuoteClientIdentity({
   recognizingClient,
   clientProfiles = [],
   contactCard,
+  onValidationCorrected,
 }: {
   draft: Draft;
   setDraft: React.Dispatch<React.SetStateAction<Draft>>;
@@ -53,6 +56,7 @@ export function AdminQuoteClientIdentity({
     valid: boolean;
     vcard: string;
   } | null;
+  onValidationCorrected: (toastKey: string) => void;
 }) {
   const { showSuccessToast, showErrorToast } = useApp();
   const [contactFeedback, setContactFeedback] = useState('');
@@ -82,6 +86,10 @@ export function AdminQuoteClientIdentity({
       ...current,
       ...clientSuggestionSelection(profile, current.fromAddress || ''),
     }));
+    if (profile.name.trim().length >= 2)
+      onValidationCorrected(adminQuoteValidationToastKeys.clientName);
+    if (normalizePhoneNumber(profile.phone))
+      onValidationCorrected(adminQuoteValidationToastKeys.clientPhone);
   }
 
   async function copyNamePart(value: string, label: string) {
@@ -135,8 +143,8 @@ export function AdminQuoteClientIdentity({
           <div className="admin-quote-identity">
             <div className="admin-quote-client-name">
               <input
-                required
                 maxLength={100}
+                aria-required="true"
                 autoComplete="off"
                 readOnly={Boolean(matchedProfile)}
                 title={matchedProfile ? quoteText.savedClientNameTitle : undefined}
@@ -156,9 +164,12 @@ export function AdminQuoteClientIdentity({
                     150,
                   );
                 }}
-                onChange={(event) =>
-                  setDraft((current) => ({ ...current, customerName: event.target.value }))
-                }
+                onChange={(event) => {
+                  const name = event.target.value;
+                  setDraft((current) => ({ ...current, customerName: name }));
+                  if (name.trim().length >= 2)
+                    onValidationCorrected(adminQuoteValidationToastKeys.clientName);
+                }}
                 placeholder={uiText['nomDuClient']}
                 aria-label={uiText['nomDuClient']}
               />
@@ -192,10 +203,10 @@ export function AdminQuoteClientIdentity({
             </div>
             <div>
               <input
-                required
                 type="tel"
                 inputMode="tel"
                 maxLength={25}
+                aria-required="true"
                 value={draft.customerPhone}
                 onChange={(event) => {
                   const phone = sanitizePhoneInput(event.target.value);
@@ -205,6 +216,10 @@ export function AdminQuoteClientIdentity({
                     customerPhone: phone,
                     ...(profile ? { customerName: profile.name } : {}),
                   }));
+                  if (normalizePhoneNumber(phone))
+                    onValidationCorrected(adminQuoteValidationToastKeys.clientPhone);
+                  if (profile?.name.trim() && profile.name.trim().length >= 2)
+                    onValidationCorrected(adminQuoteValidationToastKeys.clientName);
                 }}
                 placeholder={visibleUiText.text123}
                 aria-label={uiText['telephone']}
@@ -252,24 +267,27 @@ export function AdminQuoteClientIdentity({
                   min={editingReservation ? undefined : today()}
                   value={draft.date}
                   aria-label={uiText['datePrevue']}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    const date = event.target.value;
                     setDraft((current) => ({
                       ...current,
-                      date: event.target.value,
-                      month: event.target.value ? event.target.value.slice(0, 7) : current.month,
-                    }))
-                  }
+                      date,
+                      month: date ? date.slice(0, 7) : current.month,
+                    }));
+                  }}
                 />
               )}
               {draft.noDate && administrativeQuote && (
                 <input
                   type="month"
-                  required
                   value={draft.month}
                   aria-label={uiText['moisSouhaite']}
-                  onChange={(event) =>
-                    setDraft((current) => ({ ...current, month: event.target.value }))
-                  }
+                  aria-required="true"
+                  onChange={(event) => {
+                    const month = event.target.value;
+                    setDraft((current) => ({ ...current, month }));
+                    if (month) onValidationCorrected(adminQuoteValidationToastKeys.dateMonth);
+                  }}
                 />
               )}
               {administrativeQuote && (
@@ -277,14 +295,17 @@ export function AdminQuoteClientIdentity({
                   <input
                     type="checkbox"
                     checked={Boolean(draft.noDate)}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      const noDate = event.target.checked;
                       setDraft((current) => ({
                         ...current,
-                        noDate: event.target.checked,
-                        date: event.target.checked ? '' : current.date,
-                        timeSlot: event.target.checked ? '' : current.timeSlot,
-                      }))
-                    }
+                        noDate,
+                        date: noDate ? '' : current.date,
+                        timeSlot: noDate ? '' : current.timeSlot,
+                      }));
+                      if (noDate) onValidationCorrected(adminQuoteValidationToastKeys.startTime);
+                      else onValidationCorrected(adminQuoteValidationToastKeys.dateMonth);
+                    }}
                   />
                   <span>{uiText['dateADefinirMoisSeulement']}</span>
                 </label>
@@ -294,11 +315,13 @@ export function AdminQuoteClientIdentity({
               <span>{uiText['debut']}</span>
               <input
                 type="time"
-                required={Boolean(draft.date)}
                 value={draft.timeSlot}
-                onChange={(event) =>
-                  setDraft((current) => ({ ...current, timeSlot: event.target.value }))
-                }
+                aria-required={Boolean(draft.date)}
+                onChange={(event) => {
+                  const timeSlot = event.target.value;
+                  setDraft((current) => ({ ...current, timeSlot }));
+                  if (timeSlot) onValidationCorrected(adminQuoteValidationToastKeys.startTime);
+                }}
               />
             </label>
           </div>

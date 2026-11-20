@@ -39,6 +39,7 @@ import {
   bookingDraftFromExisting,
   bookingEditAccessError,
   bookingEditStatusError,
+  preserveExistingAdminQuoteDate,
 } from '../services/booking-edit-policy';
 export function useBookingForm({
   mode = 'booking',
@@ -151,13 +152,26 @@ export function useBookingForm({
     };
   }, [administrativeQuote, api, archiveId, authLoading, recordId, setDraft, user]);
   useEffect(() => {
+    if (!administrativeQuote || !editingBooking?.date) return;
+    setDraft((current) => preserveExistingAdminQuoteDate(current, editingBooking));
+  }, [
+    administrativeQuote,
+    editingBooking,
+    editingBooking?.date,
+    editingBooking?.month,
+    editingBooking?.timeSlot,
+    draft.date,
+    draft.noDate,
+    setDraft,
+  ]);
+  useEffect(() => {
     setTollLines((current) => repriceTollLines(current, tollPoints, draft.vehicleId));
   }, [draft.vehicleId, tollPoints]);
   useEffect(() => {
-    if (!administrativeQuote || adminQuoteInitialized.current) return;
+    if (!administrativeQuote || recordId || adminQuoteInitialized.current) return;
     adminQuoteInitialized.current = true;
     setDraft(blankDraft(catalogue ?? undefined));
-  }, [administrativeQuote, catalogue, setDraft]);
+  }, [administrativeQuote, catalogue, recordId, setDraft]);
   useEffect(() => {
     if (location.hash === '#reserver' && !loading)
       document.getElementById('reserver')?.scrollIntoView({ behavior: 'smooth' });
@@ -420,8 +434,11 @@ export function useBookingForm({
           current.route?.id === draft.route?.id ? { ...current, route: submissionRoute } : current,
         );
       }
+      const submissionDraft = administrativeQuote
+        ? preserveExistingAdminQuoteDate(draft, editingBooking)
+        : draft;
       const input = buildBookingSubmission({
-        draft,
+        draft: submissionDraft,
         routeId: submissionRoute.id,
         administrativeQuote,
         quoteTrips: submissionQuoteConfig?.trips ?? 1,
@@ -450,7 +467,7 @@ export function useBookingForm({
                 quoteStageCommitId ?? null,
                 input,
                 buildAdministrativeQuoteSubmission({
-                  draft,
+                  draft: submissionDraft,
                   kind: nextKind,
                   config: submissionQuoteConfig,
                   catalogue: catalogue ?? null,
@@ -489,7 +506,7 @@ export function useBookingForm({
           if (!buildAdministrativeQuoteSubmission)
             throw new Error('Le service de création du devis administratif est indisponible.');
           const quoteInput = buildAdministrativeQuoteSubmission({
-            draft,
+            draft: submissionDraft,
             kind: quoteKindOverride ?? quoteKind ?? 'provisional',
             config: submissionQuoteConfig,
             catalogue: catalogue ?? null,

@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { bookingDraftFromExisting } from '../src/modules/booking/application/services/booking-edit-policy.ts';
+import {
+  bookingDraftFromExisting,
+  preserveExistingAdminQuoteDate,
+} from '../src/modules/booking/application/services/booking-edit-policy.ts';
+import { blankDraft } from '../src/modules/booking/application/booking-draft.ts';
 import { referenceInventoryNote } from '../src/modules/moving/domain/estimate/reference-inventory-note.ts';
 import { blankInventory } from '../src/modules/moving/domain/inventory/inventory.ts';
 import { quoteConditionsText } from '../src/modules/shared/messaging/application/services/whatsapp-templates.ts';
@@ -64,4 +68,31 @@ test('la réédition d’un devis retire son ancien résumé généré sans supp
 
   const draft = bookingDraftFromExisting(booking, route, true);
   assert.equal(draft.notes, 'Client demande un appel avant le départ.');
+});
+
+test('la réédition restaure une date enregistrée si le formulaire est vide sans choix « date à définir »', () => {
+  const draft = { ...blankDraft(), date: '', noDate: false, month: '2026-11', timeSlot: '' };
+  const restored = preserveExistingAdminQuoteDate(draft, {
+    date: '2026-12-15',
+    month: '2026-12',
+    timeSlot: '15:00',
+  });
+
+  assert.equal(restored.date, '2026-12-15');
+  assert.equal(restored.month, '2026-12');
+  assert.equal(restored.timeSlot, '15:00');
+  assert.equal(restored.noDate, false);
+});
+
+test('le choix explicite « date à définir » conserve la date vide', () => {
+  const draft = { ...blankDraft(), date: '', noDate: true, month: '2026-12', timeSlot: '' };
+  const restored = preserveExistingAdminQuoteDate(draft, {
+    date: '2026-12-15',
+    month: '2026-12',
+    timeSlot: '15:00',
+  });
+
+  assert.equal(restored, draft);
+  assert.equal(restored.date, '');
+  assert.equal(restored.noDate, true);
 });

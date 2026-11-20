@@ -154,7 +154,9 @@ test('le PDF reprend les coordonnées et applique l’activation des conditions 
   assert.match(enabledText, /contact@example\.test/);
   assert.match(enabledText, /NINEA-TEST-2026/);
   assert.match(enabledText, /RCCM-TEST-2026/);
+  assert.match(enabledText, /Émis le 03\/11\/2026/);
   assert.match(enabledText, /21 jours/);
+  assert.match(enabledText, /jusqu'au 24\/11\/2026/);
   assert.match(enabledText, /Acompte à la réservation : 10 000 FCFA \(20 %\)/);
   assert.match(enabledText, /Solde le jour du déménagement : 40 000 FCFA/);
   assert.match(enabledText, new RegExp(clause));

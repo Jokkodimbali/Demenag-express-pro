@@ -23,6 +23,8 @@ export async function buildAdminRequestUpdate(
   input: BookingInput,
 ): Promise<Booking> {
   const { catalogue, routeTickets, clock, capturePricingSnapshot } = dependencies;
+  const date = input.noDate ? null : input.date || booking.date;
+  const timeSlot = date ? (input.date ? input.timeSlot : booking.timeSlot) : '';
   const {
     route,
     vehicle: currentVehicle,
@@ -38,7 +40,7 @@ export async function buildAdminRequestUpdate(
     input.workAccess,
     input.trips ?? 1,
     input.distanceKmOverride,
-    input.date,
+    date,
   );
   const pricingSettings = booking.pricingSettings ?? settings;
   const pricingSnapshot = booking.pricingSnapshot ?? (await capturePricingSnapshot(vehiclePrices));
@@ -59,10 +61,10 @@ export async function buildAdminRequestUpdate(
     undefined,
     'fcfa',
     '',
-    input.date,
+    date,
   );
-  if (input.date && input.date !== booking.date)
-    validateDate(input.date, clock.now(), { ...settings, maxAdvanceDays: 730 }, input.timeSlot);
+  if (date && date !== booking.date)
+    validateDate(date, clock.now(), { ...settings, maxAdvanceDays: 730 }, timeSlot);
   const crewAddressChange = addressChangeForUpdate(
     booking,
     input.fromAddress,
@@ -71,9 +73,7 @@ export async function buildAdminRequestUpdate(
     route.to,
     clock.now().toISOString(),
   );
-  const scheduleChanged =
-    booking.date !== (input.date || null) ||
-    booking.timeSlot !== (input.date ? input.timeSlot : '');
+  const scheduleChanged = booking.date !== date || booking.timeSlot !== timeSlot;
   return {
     ...booking,
     status: 'pending',
@@ -96,11 +96,11 @@ export async function buildAdminRequestUpdate(
     distanceKm: route.distanceKm,
     fromAddress: input.fromAddress,
     toAddress: input.toAddress,
-    date: input.date || null,
-    month: input.date
-      ? input.date.slice(0, 7)
+    date,
+    month: date
+      ? date.slice(0, 7)
       : (input.month ?? booking.month ?? booking.createdAt.slice(0, 7)),
-    timeSlot: input.date ? input.timeSlot : '',
+    timeSlot,
     options: input.options,
     workAccess: input.workAccess ?? booking.workAccess,
     notes: input.notes,

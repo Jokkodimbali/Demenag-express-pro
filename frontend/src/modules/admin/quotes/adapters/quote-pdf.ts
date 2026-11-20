@@ -53,7 +53,7 @@ export async function downloadQuote(
   const right = pageWidth - margin;
 
   const pdfMoney = (value: number | null) => cleanPdfText(money(value));
-  const pdfIssuedAt = new Date();
+  const pdfIssuedAt = documentQuote?.createdAt ? new Date(documentQuote.createdAt) : new Date();
   let y = 15;
 
   function ensureSpace(height: number) {
@@ -409,6 +409,7 @@ export async function downloadQuote(
       pdfIssuedAt,
     );
     const expiry = new Date(`${issueDate}T12:00:00Z`);
+    expiry.setUTCDate(expiry.getUTCDate() + validityDays);
     notices.push({
       bold: false,
       text: `Devis valable ${validityDays} jours${Number.isNaN(expiry.getTime()) ? '' : `, jusqu’au ${expiry.toLocaleDateString('fr-FR', { timeZone: 'Africa/Dakar' })}`}.`,

@@ -649,6 +649,41 @@ test('admin edit clears an emptied inventory snapshot and its work plan', async 
   assert.deepEqual(updated.workPlan, []);
 });
 
+test('admin quote edit preserves its saved date unless date removal is explicit', async () => {
+  const { service, getBooking } = harness();
+  const booking = getBooking();
+  const input: BookingInput = {
+    vehicleId: booking.vehicle.id,
+    routeId: 'route-for-update',
+    trips: 1,
+    customerName: booking.customerName,
+    customerPhone: booking.phone,
+    fromAddress: booking.fromAddress,
+    toAddress: booking.toAddress,
+    date: null,
+    noDate: false,
+    month: '2026-10',
+    timeSlot: '',
+    options: booking.options,
+    notes: booking.notes,
+    requestId: '00000000-0000-4000-8000-000000000001',
+  };
+
+  const preserved = await service.updateAdminRequest(admin, booking.id, input, booking.version);
+  assert.equal(preserved.date, booking.date);
+  assert.equal(preserved.timeSlot, booking.timeSlot);
+
+  const cleared = await service.updateAdminRequest(
+    admin,
+    booking.id,
+    { ...input, noDate: true, month: '2026-12' },
+    preserved.version,
+  );
+  assert.equal(cleared.date, null);
+  assert.equal(cleared.timeSlot, '');
+  assert.equal(cleared.month, '2026-12');
+});
+
 test('admin route change recalculates the latest provisional quote and flags the changed address', async () => {
   const { service, getBooking, setQuotes } = harness();
   const options = { labour: 0, desk: 0, wardrobe: 0, bed: 0 };

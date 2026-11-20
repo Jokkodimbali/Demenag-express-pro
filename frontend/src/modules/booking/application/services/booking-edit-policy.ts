@@ -103,6 +103,20 @@ export function bookingDraftFromExisting(
   };
 }
 
+export function preserveExistingAdminQuoteDate(
+  draft: Draft,
+  booking: Pick<Booking, 'date' | 'month' | 'timeSlot'> | null,
+): Draft {
+  if (!booking?.date || draft.date || draft.noDate) return draft;
+  return {
+    ...draft,
+    date: booking.date,
+    month: booking.month ?? booking.date.slice(0, 7),
+    timeSlot: draft.timeSlot || booking.timeSlot,
+    noDate: false,
+  };
+}
+
 export function administrativeBookingEditLocked(booking: Booking) {
   return (
     ['completed', 'cancelled'].includes(booking.status) ||

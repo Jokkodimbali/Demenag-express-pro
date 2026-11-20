@@ -6,6 +6,14 @@ import type { AdminQuoteConfig } from './admin-quote-draft-storage';
 import { labourUnitPriceOverrideFromQuote } from '../../../../moving/domain/pricing/labour-price';
 import { removeTaxiFromManoeuvrePrice } from '../../../../../../../shared/quote-taxi-allocation.js';
 
+export const adminQuoteValidationToastKeys = {
+  clientName: 'admin-quote-validation-client-name',
+  clientPhone: 'admin-quote-validation-client-phone',
+  route: 'admin-quote-validation-route',
+  dateMonth: 'admin-quote-validation-date-month',
+  startTime: 'admin-quote-validation-start-time',
+} as const;
+
 export function inventoryItemCount(inventory: Inventory) {
   return (
     Object.values(inventory.entries).reduce((sum, entry) => sum + entry.quantity, 0) +

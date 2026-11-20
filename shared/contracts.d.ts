@@ -557,6 +557,7 @@ export type BookingInput = {
   fromAddress: string;
   toAddress: string;
   date: string | null;
+  noDate?: boolean;
   month?: string;
   timeSlot: string;
   options: Options;

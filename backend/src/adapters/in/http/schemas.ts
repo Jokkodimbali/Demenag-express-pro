@@ -213,6 +213,7 @@ export const bookingSchema = estimateSchema
     date: z
       .union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal(''), z.null()])
       .transform((v) => v || null),
+    noDate: z.boolean().optional(),
     month: z
       .string()
       .regex(/^\d{4}-(0[1-9]|1[0-2])$/)

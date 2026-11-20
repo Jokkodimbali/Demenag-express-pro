@@ -24,6 +24,7 @@ export function buildBookingSubmission(input: {
     fromAddress: draft.fromAddress,
     toAddress: draft.toAddress,
     date: draft.date,
+    noDate: draft.noDate,
     month: draft.date ? draft.date.slice(0, 7) : draft.month,
     timeSlot: draft.date ? draft.timeSlot : '',
     options: input.options ?? draft.options,

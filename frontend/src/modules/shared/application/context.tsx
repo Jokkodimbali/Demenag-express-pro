@@ -16,6 +16,13 @@ import type {
   QuoteExporter,
   TariffDocumentExporter,
 } from './ports';
+type AppToast = {
+  message: string;
+  undo?: () => void;
+  type: 'success' | 'error';
+  persistent?: boolean;
+  toastKey?: string;
+};
 type AppContextValue = {
   api: ApplicationApi;
   exportQuote: QuoteExporter;
@@ -36,8 +43,9 @@ type AppContextValue = {
   requestConfirmation: (request: ConfirmationRequest) => Promise<boolean>;
   resolveConfirmation: (confirmed: boolean) => void;
   showSuccessToast: (message: string, undo?: () => void) => void;
-  showErrorToast: (message: string) => void;
-  successToast: { message: string; undo?: () => void; type: 'success' | 'error' } | null;
+  showErrorToast: (message: string, options?: { persistent?: boolean; toastKey?: string }) => void;
+  clearErrorToast: (toastKey: string) => void;
+  successToast: AppToast | null;
   closeSuccessToast: () => void;
 };
 export type ConfirmationRequest = {
@@ -111,11 +119,8 @@ export function AppProvider({
     [retry, setRetry] = useState(0);
   const [tollPoints, setTollPoints] = useState<TollPoint[]>([]);
   const [confirmation, setConfirmation] = useState<ConfirmationRequest | null>(null);
-  const [successToast, setSuccessToast] = useState<{
-    message: string;
-    undo?: () => void;
-    type: 'success' | 'error';
-  } | null>(null);
+  const [successToast, setSuccessToast] = useState<AppToast | null>(null);
+  const successToastRef = useRef<AppToast | null>(null);
   const successToastTimer = useRef<number | null>(null);
   const confirmationResolver = useRef<((confirmed: boolean) => void) | null>(null);
   const requestConfirmation = useCallback((request: ConfirmationRequest) => {
@@ -132,20 +137,42 @@ export function AppProvider({
   }, []);
   const showSuccessToast = useCallback((message: string, undo?: () => void) => {
     if (successToastTimer.current !== null) window.clearTimeout(successToastTimer.current);
-    setSuccessToast({ message, undo, type: 'success' });
+    const toast = { message, undo, type: 'success' as const };
+    successToastRef.current = toast;
+    setSuccessToast(toast);
     successToastTimer.current = window.setTimeout(() => {
-      setSuccessToast(null);
+      if (successToastRef.current === toast) {
+        successToastRef.current = null;
+        setSuccessToast(null);
+      }
       successToastTimer.current = null;
     }, 7000);
   }, []);
-  const showErrorToast = useCallback((message: string) => {
-    if (successToastTimer.current !== null) window.clearTimeout(successToastTimer.current);
-    setSuccessToast({ message, type: 'error' });
-    successToastTimer.current = window.setTimeout(() => {
-      setSuccessToast(null);
-      successToastTimer.current = null;
-    }, 7000);
-  }, []);
+  const showErrorToast = useCallback(
+    (message: string, options: { persistent?: boolean; toastKey?: string } = {}) => {
+      if (successToastTimer.current !== null) window.clearTimeout(successToastTimer.current);
+      const toast = {
+        message,
+        type: 'error' as const,
+        persistent: options.persistent === true,
+        toastKey: options.toastKey,
+      };
+      successToastRef.current = toast;
+      setSuccessToast(toast);
+      if (toast.persistent) {
+        successToastTimer.current = null;
+        return;
+      }
+      successToastTimer.current = window.setTimeout(() => {
+        if (successToastRef.current === toast) {
+          successToastRef.current = null;
+          setSuccessToast(null);
+        }
+        successToastTimer.current = null;
+      }, 7000);
+    },
+    [],
+  );
   useEffect(() => {
     const receiveSuccess = (event: Event) => {
       if (event instanceof CustomEvent && typeof event.detail === 'string')
@@ -157,6 +184,15 @@ export function AppProvider({
   const closeSuccessToast = useCallback(() => {
     if (successToastTimer.current !== null) window.clearTimeout(successToastTimer.current);
     successToastTimer.current = null;
+    successToastRef.current = null;
+    setSuccessToast(null);
+  }, []);
+  const clearErrorToast = useCallback((toastKey: string) => {
+    const current = successToastRef.current;
+    if (current?.type !== 'error' || current.toastKey !== toastKey) return;
+    if (successToastTimer.current !== null) window.clearTimeout(successToastTimer.current);
+    successToastTimer.current = null;
+    successToastRef.current = null;
     setSuccessToast(null);
   }, []);
   useEffect(
@@ -243,6 +279,7 @@ export function AppProvider({
         resolveConfirmation,
         showSuccessToast,
         showErrorToast,
+        clearErrorToast,
         successToast,
         closeSuccessToast,
       }}

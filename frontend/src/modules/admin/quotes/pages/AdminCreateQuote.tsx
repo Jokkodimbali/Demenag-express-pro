@@ -33,12 +33,13 @@ import { quoteConditionsText } from '../../../shared/messaging/application/servi
 import { normalizePhoneNumber } from '../../../shared/domain/phone-number';
 import { useApp } from '../../../shared/application/context';
 import type { RouteMapDraftUpdater } from '../../../moving/maps/route-map-state';
+import { adminQuoteValidationToastKeys } from '../application/services/admin-quote-form-policy';
 
 const RouteMap = lazy(() => import('../../../moving/maps/RouteMap'));
 
 export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: boolean }) {
   const model = useAdminCreateQuoteModel(publicRequest);
-  const { showErrorToast, showSuccessToast } = useApp();
+  const { clearErrorToast, showErrorToast, showSuccessToast } = useApp();
   const [activeStep, setActiveStep] = useState(1);
   const {
     editingReservation,
@@ -128,6 +129,14 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
     (update) => setDraft((current) => ({ ...current, ...update(current) })),
     [setDraft],
   );
+  const clearQuoteValidationToast = useCallback(
+    (toastKey: string) => clearErrorToast(toastKey),
+    [clearErrorToast],
+  );
+  useEffect(() => {
+    if (!draft.fromAddress.trim() || !draft.toAddress.trim() || !draft.route) return;
+    clearQuoteValidationToast(adminQuoteValidationToastKeys.route);
+  }, [clearQuoteValidationToast, draft.fromAddress, draft.route, draft.toAddress]);
   useEffect(() => setActiveStep(1), [resetVersion]);
   const openStep = (step: number) => {
     if (step === 1) setOpenQuoteSections((current) => ({ ...current, client: true }));
@@ -302,13 +311,89 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             );
             return;
           }
-          if (!normalizePhoneNumber(draft.customerPhone)) {
+          if (draft.customerName.trim().length < 2) {
             event.preventDefault();
             cancelPendingWhatsApp();
             setOpenQuoteSections((current) => ({ ...current, client: true }));
-            const message = 'Saisissez un numéro valide avec son indicatif international.';
-            setStageError(message);
-            showErrorToast(message);
+            setActiveStep(1);
+            const message = 'Saisissez le nom du client (au moins 2 caractères).';
+            showErrorToast(message, {
+              persistent: true,
+              toastKey: adminQuoteValidationToastKeys.clientName,
+            });
+            window.requestAnimationFrame(() =>
+              document
+                .querySelector<HTMLInputElement>('#admin-quote-client-fields input[aria-label]')
+                ?.focus(),
+            );
+            return;
+          }
+          const phoneMessage = !draft.customerPhone.trim()
+            ? 'Saisissez le numéro de téléphone du client.'
+            : !normalizePhoneNumber(draft.customerPhone)
+              ? 'Saisissez un numéro valide avec son indicatif international.'
+              : '';
+          if (phoneMessage) {
+            event.preventDefault();
+            cancelPendingWhatsApp();
+            setOpenQuoteSections((current) => ({ ...current, client: true }));
+            setActiveStep(1);
+            showErrorToast(phoneMessage, {
+              persistent: true,
+              toastKey: adminQuoteValidationToastKeys.clientPhone,
+            });
+            window.requestAnimationFrame(() =>
+              document
+                .querySelector<HTMLInputElement>('#admin-quote-client-fields input[type="tel"]')
+                ?.focus(),
+            );
+            return;
+          }
+          if (draft.noDate && !draft.month) {
+            event.preventDefault();
+            cancelPendingWhatsApp();
+            setOpenQuoteSections((current) => ({ ...current, client: true }));
+            setActiveStep(1);
+            const message = 'Choisissez le mois souhaité pour ce devis sans date précise.';
+            showErrorToast(message, {
+              persistent: true,
+              toastKey: adminQuoteValidationToastKeys.dateMonth,
+            });
+            return;
+          }
+          if (draft.date && !draft.timeSlot) {
+            event.preventDefault();
+            cancelPendingWhatsApp();
+            setOpenQuoteSections((current) => ({ ...current, client: true }));
+            setActiveStep(1);
+            const message = 'Saisissez l’heure de début du déménagement.';
+            showErrorToast(message, {
+              persistent: true,
+              toastKey: adminQuoteValidationToastKeys.startTime,
+            });
+            window.requestAnimationFrame(() =>
+              document
+                .querySelector<HTMLInputElement>('#admin-quote-client-fields input[type="time"]')
+                ?.focus(),
+            );
+            return;
+          }
+          if (!draft.fromAddress.trim() || !draft.toAddress.trim() || !draft.route) {
+            event.preventDefault();
+            cancelPendingWhatsApp();
+            setActiveStep(2);
+            setOpenQuoteSections((current) => ({ ...current, route: true }));
+            const message =
+              !draft.fromAddress.trim() || !draft.toAddress.trim()
+                ? 'Complétez les adresses de départ et d’arrivée, puis calculez le trajet.'
+                : 'Calculez le trajet avant d’enregistrer le devis.';
+            showErrorToast(message, {
+              persistent: true,
+              toastKey: adminQuoteValidationToastKeys.route,
+            });
+            window.requestAnimationFrame(() =>
+              document.querySelector<HTMLInputElement>('#address-from')?.focus(),
+            );
             return;
           }
           if (publicRequest && !draft.date) {
@@ -362,14 +447,6 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             return;
           }
           setStageError('');
-          if (!draft.route) {
-            setActiveStep(2);
-            setOpenQuoteSections((current) => ({ ...current, route: true }));
-            setStageError('Calculez le trajet avant d’enregistrer le devis.');
-            showErrorToast('Calculez le trajet avant d’enregistrer le devis.');
-            cancelPendingWhatsApp();
-            return;
-          }
           if (
             quoteConfig.taxiFeeApplied &&
             quoteConfig.billingMode !== 'driver-rental' &&
@@ -547,6 +624,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
               recognizingClient={recognizingClient}
               clientProfiles={model.clientProfiles}
               contactCard={contactCard}
+              onValidationCorrected={clearQuoteValidationToast}
             />
           </AdminQuoteStep>
           <AdminQuoteStep
