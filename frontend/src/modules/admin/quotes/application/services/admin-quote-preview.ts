@@ -136,7 +136,7 @@ export function createAdminQuotePreview(input: {
     config.billingMode !== 'driver-rental' &&
     settings.businessLatitude != null &&
     settings.businessLongitude != null &&
-    input.taxiPickupDistanceKm != null;
+    (input.taxiPickupDistanceKm != null || config.taxiCompanyApproachAmountOverride != null);
   const manoeuvreOvertime = manoeuvreOvertimeLine(
     estimate,
     settings?.movingLaborPlanning,

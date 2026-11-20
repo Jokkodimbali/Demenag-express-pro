@@ -16,6 +16,7 @@ export type BookingQuoteConfig = {
   rentalKit?: RentalKitItem[] | null;
   customLines?: { id: string; label: string; quantity: number; unitPrice: number }[];
   taxiFeeAmountOverride?: number | null;
+  taxiFeeApplied?: boolean;
   taxiCompanyApproachAmountOverride?: number | null;
   manoeuvreOvertimePersonIds?: string[] | null;
   manoeuvreOvertimeAdditionalPeople?: number | null;

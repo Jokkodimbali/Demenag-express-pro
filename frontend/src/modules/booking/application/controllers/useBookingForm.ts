@@ -350,8 +350,16 @@ export function useBookingForm({
     quoteKindOverride?: Quote['kind'],
     quoteStageCommitId?: string,
     quoteStageCommit = false,
+    estimatedQuoteTrips?: number,
   ) {
     e.preventDefault();
+    const submissionQuoteConfig =
+      administrativeQuote &&
+      quoteConfig?.calcMode === 'auto' &&
+      estimatedQuoteTrips != null &&
+      estimatedQuoteTrips > 0
+        ? { ...quoteConfig, trips: estimatedQuoteTrips }
+        : quoteConfig;
     if (submitLock.current) return;
     const isQuoteStageCommit = administrativeQuote && quoteStageCommit && Boolean(editingBooking);
     const latestSavedQuote = editingBooking?.quotes.at(-1);
@@ -415,7 +423,7 @@ export function useBookingForm({
         draft,
         routeId: submissionRoute.id,
         administrativeQuote,
-        quoteTrips: quoteConfig?.trips ?? 1,
+        quoteTrips: submissionQuoteConfig?.trips ?? 1,
         options: administrativeQuote ? quoteOptions : undefined,
         notes: bookingNotes,
         questionnaireAnswers: administrativeQuote
@@ -430,7 +438,7 @@ export function useBookingForm({
         const quoteInput = buildAdministrativeQuoteSubmission({
           draft,
           kind: quoteKindOverride ?? quoteKind ?? 'provisional',
-          config: quoteConfig,
+          config: submissionQuoteConfig,
           catalogue: catalogue ?? null,
           fallbackVehicle: editingBooking.vehicle,
           tier: quoteTier,
@@ -474,7 +482,7 @@ export function useBookingForm({
           const quoteInput = buildAdministrativeQuoteSubmission({
             draft,
             kind: quoteKindOverride ?? quoteKind ?? 'provisional',
-            config: quoteConfig,
+            config: submissionQuoteConfig,
             catalogue: catalogue ?? null,
             fallbackVehicle: booking.vehicle,
             tier: quoteTier,

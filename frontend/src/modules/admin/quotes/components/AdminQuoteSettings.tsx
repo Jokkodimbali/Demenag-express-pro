@@ -19,6 +19,7 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
   >(null);
   const {
     quoteConfig,
+    resetVersion,
     setQuoteConfig,
     effectiveDistance,
     draft,
@@ -62,7 +63,8 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
     quoteConfig.billingMode !== 'driver-rental' &&
     taxiCrew > 0 &&
     companyLocationConfigured &&
-    taxiCompanyApproachDistanceKm != null;
+    (taxiCompanyApproachDistanceKm != null ||
+      quoteConfig.taxiCompanyApproachAmountOverride != null);
   const taxiAmount = quoteConfig.taxiFeeAmountOverride ?? taxiCalculatedAmount;
   const taxiCompanyApproachAmount =
     quoteConfig.taxiCompanyApproachAmountOverride ?? taxiCompanyApproachCalculatedAmount;
@@ -99,7 +101,7 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
   useEffect(() => {
     setTaxiAmountDraft(null);
     setTaxiCompanyApproachAmountDraft(null);
-  }, [taxiDistanceKm, taxiRate, taxiRotations, taxiCompanyApproachDistanceKm]);
+  }, [taxiDistanceKm, taxiRate, taxiRotations, taxiCompanyApproachDistanceKm, resetVersion]);
 
   function handleQuoteKindSelection(kind: 'provisional' | 'final') {
     if (kind === quoteKind) return;
@@ -450,7 +452,8 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
                     : 'Rotations de chargement et déchargement estimées'}
                 </span>
                 <strong>
-                  {taxiRotations} rotations · {taxiPaidLegs} trajets taxi facturés
+                  {taxiRotations} rotation{taxiRotations === 1 ? '' : 's'} · {taxiPaidLegs} trajet
+                  taxi facturé{taxiPaidLegs === 1 ? '' : 's'}
                 </strong>
               </div>
               {companyLocationConfigured && (
@@ -530,7 +533,7 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
             <div className="admin-quote-taxi-summary">
               <span>
                 {quoteConfig.taxiFeeApplied && taxiAvailable
-                  ? `(${money(taxiAmount)} × (2 × ${taxiRotations} rotations − 1 retour final non facturé) + ${money(taxiCompanyApproachAmount)} trajet locaux, une fois) = ${money(taxiTotalAmount)} à répartir sur ${taxiCrew} manœuvre${taxiCrew > 1 ? 's' : ''}`
+                  ? `(${money(taxiAmount)} × (2 × ${taxiRotations} rotation${taxiRotations === 1 ? '' : 's'} − 1 retour final non facturé) + ${money(taxiCompanyApproachAmount)} trajet local, une fois) = ${money(taxiTotalAmount)} à répartir sur ${taxiCrew} manœuvre${taxiCrew > 1 ? 's' : ''}`
                   : 'Montant non appliqué au devis'}
               </span>
               {quoteConfig.taxiFeeApplied && taxiAvailable && (

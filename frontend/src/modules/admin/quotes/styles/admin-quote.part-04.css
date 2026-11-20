@@ -287,6 +287,13 @@
   cursor: not-allowed;
 }
 @media (max-width: 520px) {
+  .admin-quote-service-row {
+    min-width: 0;
+  }
+  .admin-quote-service-row > strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
   .admin-quote-service-row.admin-quote-custom-quantity-row {
     grid-template-columns: minmax(0, 1fr) 48px minmax(70px, 88px) minmax(64px, auto) 26px;
     gap: 5px;

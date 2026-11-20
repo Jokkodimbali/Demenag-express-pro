@@ -112,6 +112,10 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
     changeQuoteOption,
     toggleQuoteSection,
   } = model;
+  const displayedTrips =
+    quoteConfig.calcMode === 'auto' && model.movingEstimateTrips > 0
+      ? model.movingEstimateTrips
+      : quoteConfig.trips;
   const manualTravelTime = quoteConfig.calcMode === 'manual' && quoteConfig.legMinutes > 0;
   const estimatedTrafficColor =
     manualTravelTime || quoteConfig.trafficOff
@@ -170,7 +174,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
         : 'Adresses de départ et d’arrivée',
     inventory:
       model.inventoryCount > 0
-        ? `${model.inventoryCount} objets · ${String(Math.round((movingEstimate?.volume ?? 0) * 10) / 10).replace('.', ',')} m³ · ${quoteConfig.trips} ${quoteConfig.trips > 1 ? 'chargements et déchargements' : 'chargement et déchargement'}`
+        ? `${model.inventoryCount} objets · ${String(Math.round((movingEstimate?.volume ?? 0) * 10) / 10).replace('.', ',')} m³ · ${displayedTrips} ${displayedTrips > 1 ? 'chargements et déchargements' : 'chargement et déchargement'}`
         : 'Fiche d’appel à remplir',
     formula: `Formule ${quoteConfig.billingMode === 'complete' ? 'Complète' : quoteConfig.billingMode === 'standard' ? 'Standard' : 'Économique'} · ${selected && ['sprinter', 'master', 'trafic'].includes(selected.id) ? selected.id[0].toUpperCase() + selected.id.slice(1) : selected?.shortName || selected?.name || ''}${model.previewTotal == null ? '' : ` · ${money(model.previewTotal)}`}`,
     planning:
@@ -354,6 +358,30 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             cancelPendingWhatsApp();
             return;
           }
+          if (
+            quoteConfig.taxiFeeApplied &&
+            quoteConfig.billingMode !== 'driver-rental' &&
+            model.taxiCrew <= 0
+          ) {
+            const message = 'Les frais taxi nécessitent au moins une manœuvre facturée.';
+            setStageError(message);
+            showErrorToast(message);
+            cancelPendingWhatsApp();
+            return;
+          }
+          if (
+            quoteConfig.taxiFeeApplied &&
+            quoteConfig.billingMode !== 'driver-rental' &&
+            model.taxiCompanyApproachDistanceKm == null &&
+            quoteConfig.taxiCompanyApproachAmountOverride == null
+          ) {
+            const message =
+              'Attendez le calcul du trajet depuis les locaux ou saisissez son montant avant d’enregistrer.';
+            setStageError(message);
+            showErrorToast(message);
+            cancelPendingWhatsApp();
+            return;
+          }
           await submit(
             event,
             [
@@ -389,6 +417,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             submittedKind,
             quoteStageCommitId,
             quoteStageCommit,
+            movingEstimate?.trips,
           );
           cancelPendingWhatsApp();
         }}
@@ -691,7 +720,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
               maxOptions={(quoteSettings ?? catalogue.settings).maxOptions}
               vehicles={catalogue.vehicles}
               selectedVehicleId={draft.vehicleId}
-              quoteTrips={quoteConfig.trips}
+              quoteTrips={displayedTrips}
               maxTrips={(quoteSettings ?? catalogue.settings).maxTrips}
               laborPlanning={(quoteSettings ?? catalogue.settings).movingLaborPlanning}
               ignoreTraffic={quoteConfig.trafficOff}
@@ -774,7 +803,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                       lines={tollLines}
                       vehicleId={draft.vehicleId}
                       onToggle={onTollToggle}
-                      roundTrips={quoteConfig.trips}
+                      roundTrips={displayedTrips}
                       points={quoteTollPoints}
                     />
                   </div>
@@ -1196,12 +1225,13 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             total={model.previewTotal}
             grossMargin={model.grossMargin}
             distanceKm={model.effectiveDistance}
-            trips={quoteConfig.trips}
+            trips={displayedTrips}
             movingEstimate={model.inventoryCount > 0 ? movingEstimate : null}
             driverRental={quoteConfig.billingMode === 'driver-rental'}
             submitting={model.submitting}
             disabled={
               model.submitting ||
+              model.resetAdminQuote ||
               state.archivedBooking ||
               model.editLoading ||
               Boolean(model.editError) ||

@@ -188,10 +188,11 @@ export function saveAdminQuoteDraft(
   });
 }
 
-export function clearAdminQuoteDraft(api: AdminQuoteDraftApi): Promise<void> {
-  return enqueuePersistence(api, () => api.clearAdminQuoteDraft()).catch(() => {
-    // La création du devis enregistré reste prioritaire sur le nettoyage du brouillon.
-  });
+export function clearAdminQuoteDraft(api: AdminQuoteDraftApi): Promise<boolean> {
+  return enqueuePersistence(api, () => api.clearAdminQuoteDraft()).then(
+    () => true,
+    () => false,
+  );
 }
 
 function isAdminQuoteDraft(value: unknown): value is AdminQuoteDraft {

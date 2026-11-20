@@ -194,8 +194,9 @@ export function quoteConfigurationFromBooking(booking: Booking) {
       : 0,
     manoeuvreOvertimeHourlyRateOverride: savedManoeuvreOvertimeLine?.unitPrice ?? null,
     taxiFeeApplied:
-      Boolean(savedTaxiFeeAmount) ||
-      (quote?.price.lines.some((line) => line.label.startsWith('Frais taxi')) ?? false),
+      pricingInput?.taxiFeeApplied ??
+      (Boolean(savedTaxiFeeAmount) ||
+        (quote?.price.lines.some((line) => line.label.startsWith('Frais taxi')) ?? false)),
     taxiFeeAmountOverride: savedTaxiPerLegOverride ?? null,
     taxiCompanyApproachAmountOverride: savedTaxiCompanyApproachOverride ?? null,
     taxiCompanyApproachAmountBasis: 'once',

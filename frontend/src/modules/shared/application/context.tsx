@@ -53,16 +53,19 @@ function AppSuccessToast({
   message,
   undo,
   type,
+  bottomOffset,
   onClose,
 }: {
   message: string;
   undo?: () => void;
   type: 'success' | 'error';
+  bottomOffset: number;
   onClose: () => void;
 }) {
   return (
     <div
       className={`reference-success-toast${type === 'error' ? ' is-error' : ''}`}
+      style={{ bottom: `calc(${bottomOffset}px + env(safe-area-inset-bottom))` }}
       role={type === 'error' ? 'alert' : 'status'}
       aria-live={type === 'error' ? 'assertive' : 'polite'}
       aria-atomic="true"
@@ -256,12 +259,35 @@ export function useApp() {
 
 export function AppSuccessToastHost() {
   const { successToast, closeSuccessToast } = useApp();
+  const [bottomOffset, setBottomOffset] = useState(92);
+
+  useEffect(() => {
+    if (!successToast) {
+      setBottomOffset(92);
+      return;
+    }
+
+    const saveBar = document.querySelector('.admin-quote-save-bar');
+    if (!saveBar) {
+      setBottomOffset(92);
+      return;
+    }
+
+    const updateOffset = () =>
+      setBottomOffset(Math.ceil(saveBar.getBoundingClientRect().height) + 16);
+    updateOffset();
+    const observer = new ResizeObserver(updateOffset);
+    observer.observe(saveBar);
+    return () => observer.disconnect();
+  }, [successToast]);
+
   if (!successToast) return null;
   return (
     <AppSuccessToast
       message={successToast.message}
       undo={successToast.undo}
       type={successToast.type}
+      bottomOffset={bottomOffset}
       onClose={closeSuccessToast}
     />
   );

@@ -10,6 +10,49 @@ import {
 import { defaultAdminQuoteConfig } from '../src/modules/admin/quotes/application/services/admin-quote-config';
 import { buildAdminQuoteSubmission } from '../src/modules/admin/quotes/application/services/admin-quote-submission';
 
+test('les frais taxi activés et les tarifs saisis survivent à la réouverture du devis', () => {
+  const config = {
+    ...defaultAdminQuoteConfig(),
+    trips: 3,
+    taxiFeeApplied: true,
+    taxiFeeAmountOverride: 2_000,
+    taxiCompanyApproachAmountOverride: 1_350,
+  };
+  const submission = buildAdminQuoteSubmission({
+    draft: blankDraft(),
+    config,
+    catalogue: null,
+    fallbackVehicle: {} as Vehicle,
+    kind: 'provisional',
+    tier: 0,
+    version: 1,
+    notes: '',
+    extraLines: [],
+    tollLines: [],
+  });
+  const restored = quoteConfigurationFromBooking({
+    options: { labour: 0, desk: 0, wardrobe: 0, bed: 0 },
+    estimate: { lines: [], total: 0, discount: 0, tier: 0, trips: 3, currency: 'XOF' },
+    quotes: [
+      {
+        id: 'quote-taxi',
+        reference: 'DV-TAXI',
+        kind: 'provisional',
+        createdAt: '2026-11-20T00:00:00.000Z',
+        notes: '',
+        price: { lines: [], total: 0, discount: 0, tier: 0, trips: 3, currency: 'XOF' },
+        pricingInput: { ...submission, settings: {}, taxiFeeAmount: 0 },
+      },
+    ],
+  } as Booking).config;
+
+  assert.equal(submission.taxiFeeApplied, true);
+  assert.equal(restored.trips, 3);
+  assert.equal(restored.taxiFeeApplied, true);
+  assert.equal(restored.taxiFeeAmountOverride, 2_000);
+  assert.equal(restored.taxiCompanyApproachAmountOverride, 1_350);
+});
+
 test('la soumission conserve le tarif simple pour les champs actuels et historiques', () => {
   const draft = blankDraft();
   const submission = buildAdminQuoteSubmission({

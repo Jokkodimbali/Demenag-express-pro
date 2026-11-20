@@ -473,6 +473,7 @@ export type QuotePricingInput = {
   extraLines: Array<{ label: string; quantity: number; unitPrice: number }>;
   customLines?: Array<{ label: string; quantity: number; unitPrice: number }>;
   taxiFeeAmount?: number;
+  taxiFeeApplied?: boolean;
   taxiRoundTripAmountOverride?: number | null;
   taxiPerLegAmountOverride?: number | null;
   taxiCompanyApproachAmountOverride?: number | null;
@@ -579,6 +580,7 @@ export type QuoteInput = {
   notes: string;
   extraLines: Array<{ label: string; quantity: number; unitPrice: number }>;
   customLines?: Array<{ label: string; quantity: number; unitPrice: number }>;
+  taxiFeeApplied?: boolean;
   taxiRoundTripAmountOverride?: number | null;
   taxiPerLegAmountOverride?: number | null;
   taxiCompanyApproachAmountOverride?: number | null;

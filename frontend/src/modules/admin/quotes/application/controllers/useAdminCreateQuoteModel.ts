@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useBookingForm } from '../../../../booking/application/controllers/useBookingForm';
 import { useApp } from '../../../../shared/application/context';
@@ -228,7 +228,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     onAdministrativeBookingCreated: () => {
       void clearAdminQuoteDraft(api);
     },
-    onQuoteStageUpdated: (booking, previousBooking) => {
+    onQuoteStageUpdated: async (booking, previousBooking) => {
       const savedQuote = latestBookingQuote(booking);
       if (!savedQuote) return;
       setQuoteKind(savedQuote.kind);
@@ -237,7 +237,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
           ? visibleUiText.quoteStageFinalNotice
           : visibleUiText.quoteStageProvisionalNotice,
       );
-      return reassignTeamsAfterScheduleChange(api, booking, previousBooking, () =>
+      const updated = await reassignTeamsAfterScheduleChange(api, booking, previousBooking, () =>
         (() => {
           const message =
             'Le devis a changé d’étape, mais la réaffectation automatique de l’équipe n’a pas abouti. Vérifiez le planning.';
@@ -245,6 +245,39 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
           showErrorToast(message);
         })(),
       );
+      if (sendWhatsAppAfterSave.current) {
+        sendWhatsAppAfterSave.current = false;
+        const sharedBooking = updated ?? booking;
+        const sharedQuote = latestBookingQuote(sharedBooking) ?? savedQuote;
+        const href = quoteNotificationUrl(
+          sharedBooking,
+          sharedQuote,
+          sharedBooking.pricingSettings ?? appCatalogue?.settings,
+        );
+        try {
+          const settings = sharedBooking.pricingSettings ?? appCatalogue?.settings;
+          if (!settings) throw new Error('Paramètres PDF indisponibles.');
+          const blob = await exportQuote(sharedBooking, sharedQuote, settings);
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = quotePdfFilename(sharedQuote, sharedBooking.reference);
+          document.body.append(link);
+          link.click();
+          link.remove();
+          window.setTimeout(() => URL.revokeObjectURL(url), 30000);
+        } catch {
+          showErrorToast('Le devis est enregistré, mais le PDF n’a pas pu être téléchargé.');
+        } finally {
+          if (whatsappWindow.current) whatsappWindow.current.location.replace(href);
+          else window.location.assign(href);
+          whatsappWindow.current = null;
+          showSuccessToast(
+            'Devis enregistré et ouvert dans WhatsApp. Vérifiez le destinataire avant l’envoi.',
+          );
+        }
+      }
+      return updated;
     },
     getRentalKit: () => rentalKit,
     getProvidedCrew: () =>
@@ -305,8 +338,9 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       }
     },
   });
-  const editingLocked = state.archivedBooking || adminQuoteIsLocked(state.editingBooking);
-  const editingBooking = state.editingBooking;
+  const editingBooking = editingReservation && !resetAdminQuote ? state.editingBooking : null;
+  const editingLocked =
+    (editingReservation && state.archivedBooking) || adminQuoteIsLocked(editingBooking);
   const latestSavedQuote = editingBooking ? latestBookingQuote(editingBooking) : undefined;
   const quoteStageChanged = isQuoteStageChanged(editingBooking, quoteKind);
   const canCommitQuoteStage = canSaveQuoteStageChange(editingBooking, quoteKind);
@@ -356,9 +390,10 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     date: draft.date,
     timeSlot: draft.timeSlot,
   });
-  useEffect(() => {
-    if (!resetAdminQuote) return;
-    void clearAdminQuoteDraft(api);
+  useLayoutEffect(() => {
+    if (!resetAdminQuote || !resetQuoteToken) return;
+    let active = true;
+    appliedVehicleEstimate.current = null;
     setDraft(blankDraft(appCatalogue ?? undefined));
     setQuoteConfig(defaultAdminQuoteConfig());
     setTollLines([]);
@@ -370,8 +405,30 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     setOpenQuoteSections({ client: true, route: false, tolls: false, options: false });
     setResetVersion((current) => current + 1);
     window.scrollTo({ top: 0 });
-    navigate(location.pathname, { replace: true, state: null });
-  }, [api, appCatalogue, location.pathname, navigate, resetAdminQuote, setDraft, setTollLines]);
+    void clearAdminQuoteDraft(api).then((cleared) => {
+      if (!active) return;
+      if (!cleared) {
+        showErrorToast(
+          'Le nouveau devis est vide, mais l’ancien brouillon n’a pas pu être effacé.',
+        );
+        return;
+      }
+      navigate(location.pathname, { replace: true, state: null });
+    });
+    return () => {
+      active = false;
+    };
+  }, [
+    api,
+    appCatalogue,
+    location.pathname,
+    navigate,
+    resetAdminQuote,
+    resetQuoteToken,
+    setDraft,
+    setTollLines,
+    showErrorToast,
+  ]);
   useEffect(() => {
     if (!startNewRequest || requestInitialized.current) return;
     requestInitialized.current = true;
@@ -399,12 +456,12 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     setQuoteKind(kind);
   }
   useEffect(() => {
-    if (!state.editingBooking) return;
+    if (!editingReservation || resetAdminQuote || !state.editingBooking) return;
     const lastQuote = latestBookingQuote(state.editingBooking);
     setQuoteKind(
       state.editingBooking.status === 'completed' ? 'final' : (lastQuote?.kind ?? 'provisional'),
     );
-  }, [state.editingBooking]);
+  }, [editingReservation, resetAdminQuote, state.editingBooking]);
   const estimateInventory = useMemo(
     () => quoteEstimateInventory(draft.inventory, draft.questionnaireAnswers),
     [draft.inventory, draft.questionnaireAnswers],
@@ -492,12 +549,12 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     }));
   }, [publicRequest, setDraft, user]);
   useEffect(() => {
-    const booking = state.editingBooking;
+    const booking = editingReservation && !resetAdminQuote ? state.editingBooking : null;
     if (!booking) return;
     const restored = quoteConfigurationFromBooking(booking);
     setQuoteConfig(restored.config);
     setTollLines(restored.tollLines);
-  }, [state.editingBooking, setTollLines]);
+  }, [editingReservation, resetAdminQuote, state.editingBooking, setTollLines]);
   useEffect(() => {
     if (
       !state.editingBooking ||
@@ -535,6 +592,12 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const movingEstimateVolume = movingEstimate?.volume ?? 0;
   const movingEstimateCrew = movingEstimate?.crew ?? 0;
   const movingEstimateTrips = movingEstimate?.trips ?? 0;
+  const pricingQuoteConfig =
+    quoteConfig.calcMode === 'auto' &&
+    movingEstimateTrips > 0 &&
+    quoteConfig.trips !== movingEstimateTrips
+      ? { ...quoteConfig, trips: movingEstimateTrips }
+      : quoteConfig;
   const automaticEstimateUpdates = automaticQuoteEstimateUpdates({
     config: quoteConfig,
     draft,
@@ -676,7 +739,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const preview = createAdminQuotePreview({
     draft,
     estimateInventory,
-    config: quoteConfig,
+    config: pricingQuoteConfig,
     vehicle: quoteVehicle,
     estimate: movingEstimate,
     settings: quoteSettings,
@@ -696,7 +759,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       draft,
       estimateInventory,
       config: {
-        ...quoteConfig,
+        ...pricingQuoteConfig,
         billingMode: 'driver-rental',
         menuIncluded: false,
         overtimeMinutes: 0,
@@ -718,7 +781,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     standard: createAdminQuotePreview({
       draft,
       estimateInventory,
-      config: { ...quoteConfig, billingMode: 'standard', overtimeMinutes: 0 },
+      config: { ...pricingQuoteConfig, billingMode: 'standard', overtimeMinutes: 0 },
       vehicle: quoteVehicle,
       estimate: movingEstimate,
       settings: quoteSettings,
@@ -736,7 +799,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     complete: createAdminQuotePreview({
       draft,
       estimateInventory,
-      config: { ...quoteConfig, billingMode: 'complete', overtimeMinutes: 0 },
+      config: { ...pricingQuoteConfig, billingMode: 'complete', overtimeMinutes: 0 },
       vehicle: quoteVehicle,
       estimate: movingEstimate,
       settings: quoteSettings,
@@ -773,18 +836,20 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     [selected, estimateInventory, pricingRoute, draft, quoteConfig, quoteSettings, tollLines],
   );
   const economicCrew = economicMovingEstimate?.crew ?? movingEstimateCrew;
-  const hasBillableQuoteContent = Boolean(
-    editingBooking ||
-    draft.route ||
-    inventoryCount > 0 ||
-    Object.values(draft.options).some((quantity) => quantity > 0) ||
-    tollLines.some((line) => line.quantity > 0) ||
-    (quoteConfig.customLines ?? []).some(
-      (line) => line.label.trim() && line.quantity > 0 && line.unitPrice > 0,
-    ) ||
-    (estimateInventory.stairs === 'balcon' && Number(estimateInventory.balcPx) > 0) ||
-    (quoteConfig.billingMode === 'driver-rental' && (quoteConfig.overtimeMinutes ?? 0) > 0),
-  );
+  const hasBillableQuoteContent =
+    !resetAdminQuote &&
+    Boolean(
+      (editingReservation && editingBooking) ||
+      draft.route ||
+      inventoryCount > 0 ||
+      Object.values(draft.options).some((quantity) => quantity > 0) ||
+      tollLines.some((line) => line.quantity > 0) ||
+      (quoteConfig.customLines ?? []).some(
+        (line) => line.label.trim() && line.quantity > 0 && line.unitPrice > 0,
+      ) ||
+      (estimateInventory.stairs === 'balcon' && Number(estimateInventory.balcPx) > 0) ||
+      (quoteConfig.billingMode === 'driver-rental' && (quoteConfig.overtimeMinutes ?? 0) > 0),
+    );
   const grossMargin = quoteGrossMargin({
     quoteTotal: hasBillableQuoteContent ? preview.total : null,
     hasBillableContent: hasBillableQuoteContent,
@@ -809,12 +874,20 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     taxiFeeLines,
     taxiCrew,
     manoeuvreOvertime,
-    previewLines,
-    subtotal: previewSubtotal,
-    discount: previewDiscount,
-    discountLabel: previewDiscountLabel,
-    total: previewTotal,
+    previewLines: calculatedPreviewLines,
+    subtotal: calculatedPreviewSubtotal,
+    discount: calculatedPreviewDiscount,
+    discountLabel: calculatedPreviewDiscountLabel,
+    total: calculatedPreviewTotal,
   } = preview;
+  const previewLines = hasBillableQuoteContent && !resetAdminQuote ? calculatedPreviewLines : [];
+  const previewSubtotal =
+    hasBillableQuoteContent && !resetAdminQuote ? calculatedPreviewSubtotal : 0;
+  const previewDiscount =
+    hasBillableQuoteContent && !resetAdminQuote ? calculatedPreviewDiscount : 0;
+  const previewDiscountLabel =
+    hasBillableQuoteContent && !resetAdminQuote ? calculatedPreviewDiscountLabel : '';
+  const previewTotal = hasBillableQuoteContent && !resetAdminQuote ? calculatedPreviewTotal : null;
   const bounds = quoteSettings?.distanceBounds ?? [15, 25, 35];
   const tiers = referenceTierLabels(bounds);
   const effectiveDistance = draft.distanceKmOverride ?? draft.route?.distanceKm;
@@ -969,7 +1042,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         settings: pdfSettings,
         quoteKind,
         savedQuote,
-        config: quoteConfig,
+        config: pricingQuoteConfig,
         lines: previewLines,
         total: previewTotal,
         subtotal: previewSubtotal,
@@ -1077,6 +1150,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   );
 
   return {
+    resetAdminQuote,
     location,
     navigate,
     quoteHandoffError,
