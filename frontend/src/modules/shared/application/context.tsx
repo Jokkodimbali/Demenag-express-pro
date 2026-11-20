@@ -42,7 +42,11 @@ type AppContextValue = {
   confirmation: ConfirmationRequest | null;
   requestConfirmation: (request: ConfirmationRequest) => Promise<boolean>;
   resolveConfirmation: (confirmed: boolean) => void;
-  showSuccessToast: (message: string, undo?: () => void) => void;
+  showSuccessToast: (
+    message: string,
+    undo?: () => void,
+    options?: { persistent?: boolean; toastKey?: string },
+  ) => void;
   showErrorToast: (message: string, options?: { persistent?: boolean; toastKey?: string }) => void;
   clearErrorToast: (toastKey: string) => void;
   successToast: AppToast | null;
@@ -122,6 +126,7 @@ export function AppProvider({
   const [successToast, setSuccessToast] = useState<AppToast | null>(null);
   const successToastRef = useRef<AppToast | null>(null);
   const successToastTimer = useRef<number | null>(null);
+  const pendingToastRef = useRef<AppToast[]>([]);
   const confirmationResolver = useRef<((confirmed: boolean) => void) | null>(null);
   const requestConfirmation = useCallback((request: ConfirmationRequest) => {
     return new Promise<boolean>((resolve) => {
@@ -135,11 +140,14 @@ export function AppProvider({
     confirmationResolver.current?.(confirmed);
     confirmationResolver.current = null;
   }, []);
-  const showSuccessToast = useCallback((message: string, undo?: () => void) => {
+  const displayToast = useCallback((toast: AppToast) => {
     if (successToastTimer.current !== null) window.clearTimeout(successToastTimer.current);
-    const toast = { message, undo, type: 'success' as const };
     successToastRef.current = toast;
     setSuccessToast(toast);
+    if (toast.persistent) {
+      successToastTimer.current = null;
+      return;
+    }
     successToastTimer.current = window.setTimeout(() => {
       if (successToastRef.current === toast) {
         successToastRef.current = null;
@@ -148,30 +156,58 @@ export function AppProvider({
       successToastTimer.current = null;
     }, 7000);
   }, []);
-  const showErrorToast = useCallback(
-    (message: string, options: { persistent?: boolean; toastKey?: string } = {}) => {
-      if (successToastTimer.current !== null) window.clearTimeout(successToastTimer.current);
-      const toast = {
-        message,
-        type: 'error' as const,
-        persistent: options.persistent === true,
-        toastKey: options.toastKey,
-      };
-      successToastRef.current = toast;
-      setSuccessToast(toast);
-      if (toast.persistent) {
-        successToastTimer.current = null;
+  const displayOrQueueToast = useCallback(
+    (toast: AppToast) => {
+      if (successToastRef.current?.persistent) {
+        if (toast.toastKey) {
+          pendingToastRef.current = pendingToastRef.current.filter(
+            (pending) => pending.toastKey !== toast.toastKey,
+          );
+        }
+        pendingToastRef.current.push(toast);
         return;
       }
-      successToastTimer.current = window.setTimeout(() => {
-        if (successToastRef.current === toast) {
-          successToastRef.current = null;
-          setSuccessToast(null);
-        }
-        successToastTimer.current = null;
-      }, 7000);
+      displayToast(toast);
     },
-    [],
+    [displayToast],
+  );
+  const dismissCurrentToast = useCallback(() => {
+    if (successToastTimer.current !== null) window.clearTimeout(successToastTimer.current);
+    successToastTimer.current = null;
+    const pending = pendingToastRef.current.shift();
+    if (pending) {
+      displayToast(pending);
+      return;
+    }
+    successToastRef.current = null;
+    setSuccessToast(null);
+  }, [displayToast]);
+  const showSuccessToast = useCallback(
+    (
+      message: string,
+      undo?: () => void,
+      options: { persistent?: boolean; toastKey?: string } = {},
+    ) => {
+      displayOrQueueToast({
+        message,
+        undo,
+        type: 'success',
+        persistent: options.persistent === true,
+        toastKey: options.toastKey,
+      });
+    },
+    [displayOrQueueToast],
+  );
+  const showErrorToast = useCallback(
+    (message: string, options: { persistent?: boolean; toastKey?: string } = {}) => {
+      displayOrQueueToast({
+        message,
+        type: 'error',
+        persistent: options.persistent === true,
+        toastKey: options.toastKey,
+      });
+    },
+    [displayOrQueueToast],
   );
   useEffect(() => {
     const receiveSuccess = (event: Event) => {
@@ -181,20 +217,18 @@ export function AppProvider({
     window.addEventListener('demenag:header-success', receiveSuccess);
     return () => window.removeEventListener('demenag:header-success', receiveSuccess);
   }, [showSuccessToast]);
-  const closeSuccessToast = useCallback(() => {
-    if (successToastTimer.current !== null) window.clearTimeout(successToastTimer.current);
-    successToastTimer.current = null;
-    successToastRef.current = null;
-    setSuccessToast(null);
-  }, []);
-  const clearErrorToast = useCallback((toastKey: string) => {
-    const current = successToastRef.current;
-    if (current?.type !== 'error' || current.toastKey !== toastKey) return;
-    if (successToastTimer.current !== null) window.clearTimeout(successToastTimer.current);
-    successToastTimer.current = null;
-    successToastRef.current = null;
-    setSuccessToast(null);
-  }, []);
+  const closeSuccessToast = dismissCurrentToast;
+  const clearErrorToast = useCallback(
+    (toastKey: string) => {
+      pendingToastRef.current = pendingToastRef.current.filter(
+        (toast) => toast.type !== 'error' || toast.toastKey !== toastKey,
+      );
+      const current = successToastRef.current;
+      if (current?.type !== 'error' || current.toastKey !== toastKey) return;
+      dismissCurrentToast();
+    },
+    [dismissCurrentToast],
+  );
   useEffect(
     () => () => {
       if (successToastTimer.current !== null) window.clearTimeout(successToastTimer.current);

@@ -93,11 +93,8 @@ export function AdminLayout() {
                 key={to}
                 to={to}
                 end
-                onClick={(event) => {
+                onClick={() => {
                   if (mobile) setMobileMenuOpen(false);
-                  if (to !== routes.administrationCreateQuote) return;
-                  event.preventDefault();
-                  navigate(to, { state: { resetQuote: crypto.randomUUID() } });
                 }}
                 className={({ isActive }) => (isActive ? 'active' : '')}
               >

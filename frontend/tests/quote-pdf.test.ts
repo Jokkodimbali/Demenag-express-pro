@@ -122,6 +122,73 @@ for (const kind of ['provisional', 'final'] as const) {
   });
 }
 
+for (const calcMode of ['auto', 'manual'] as const) {
+  for (const kind of ['provisional', 'final'] as const) {
+    test(`le PDF ${kind} reprend sans recalcul les montants sauvegardés en mode ${calcMode}`, async () => {
+      const quote: Quote = {
+        id: `quote-snapshot-${calcMode}`,
+        reference: `DV-SNAPSHOT-${calcMode}`,
+        kind,
+        createdAt: '2026-11-03T00:00:00.000Z',
+        notes: '',
+        price: {
+          lines: [
+            { label: 'Transport Sprinter', quantity: 2, unitPrice: 50_000, total: 100_000 },
+            { label: 'Manœuvres', quantity: 6, unitPrice: 13_480, total: 80_880 },
+            {
+              label: 'Majoration de travail de nuit (2 personnes)',
+              quantity: 4,
+              unitPrice: 6_500,
+              total: 26_000,
+            },
+          ],
+          total: 206_880,
+          discount: 0,
+          tier: 1,
+          trips: 2,
+          currency: 'XOF',
+        },
+        pricingInput: {
+          settings: {} as QuotePricingInput['settings'],
+          trips: 2,
+          calcMode,
+          customPrice: null,
+          discount: 0,
+          discountType: 'fcfa',
+          discountReason: '',
+          options: booking.options,
+          labourUnitPriceOverride: 8_500,
+          extraLines: [
+            {
+              label: 'Majoration de travail de nuit (2 personnes)',
+              quantity: 4,
+              unitPrice: 6_500,
+            },
+          ],
+          billingMode: 'complete',
+          rentalOvertimeHourlyRate: 10_000,
+          overtimeMinutes: 0,
+          taxiFeeApplied: true,
+          taxiPerLegAmountOverride: 13_650,
+          taxiCompanyApproachAmountOverride: 930,
+        } as QuotePricingInput,
+      };
+
+      const quoteBooking = { ...booking, estimate: { ...booking.estimate, trips: 2 } };
+      const text = await extractPdfText(await downloadQuote(quoteBooking, quote, settings));
+
+      assert.match(text, new RegExp(kind === 'final' ? 'DEVIS FINAL' : 'DEVIS PROVISOIRE'));
+      assert.match(text, /Transport Sprinter/);
+      assert.match(text, /Manoeuvre|Manœuvre/);
+      assert.match(text, /Majoration de travail de nuit/);
+      assert.match(text, /80 880|80,880/);
+      assert.match(text, /26 000|26,000/);
+      assert.match(text, /206 880|206,880/);
+      assert.doesNotMatch(text, /13 480|13,480/);
+    });
+  }
+}
+
 test('le PDF reprend les coordonnées et applique l’activation des conditions générales', async () => {
   const quote: Quote = {
     id: 'quote-settings-test',

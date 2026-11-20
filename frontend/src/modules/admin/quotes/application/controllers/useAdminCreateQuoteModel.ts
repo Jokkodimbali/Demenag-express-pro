@@ -8,6 +8,7 @@ import {
   readAdminQuoteDraft,
   saveAdminQuoteDraft,
   clearAdminQuoteDraft,
+  type AdminQuoteDraft,
   type AdminQuoteConfig,
 } from '../services/admin-quote-draft-storage';
 import {
@@ -72,6 +73,7 @@ import {
   quoteInventoryEstimateKey,
   quoteQuestionnaireSummary,
   quoteSettingsForEditing,
+  shouldAutomaticallyEnableTaxiFees,
   toggleQuoteToll,
   totalTollCost,
 } from '../services/admin-quote-form-policy';
@@ -99,6 +101,8 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   } | null;
   const quoteHandoffError = quoteHandoff?.quoteError ?? '';
   const quoteHandoffApplied = useRef('');
+  const draftLocationKey = `${location.pathname}${location.search}`;
+  const previousDraftLocationKey = useRef(draftLocationKey);
   const initialClient = (
     location.state as {
       initialClient?: { name: string; phone: string; address: string };
@@ -122,7 +126,10 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const restoredDraft = useRef(false);
   const skipInitialSave = useRef(false);
   const draftSaveQueue = useRef(Promise.resolve());
+  const latestAdminQuoteDraft = useRef<AdminQuoteDraft | null>(null);
+  const persistAdminQuoteDraftOnExit = useRef(false);
   const appliedVehicleEstimate = useRef<AppliedVehicleEstimate | null>(null);
+  const automaticTaxiAlertShown = useRef(false);
   const [quoteConfig, setQuoteConfig] = useState<AdminQuoteConfig>(defaultAdminQuoteConfig);
   const [quoteEditedSinceSaved, setQuoteEditedSinceSaved] = useState(false);
   const [restoredQuoteConfigurationKey, setRestoredQuoteConfigurationKey] = useState('');
@@ -230,6 +237,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     quoteKind,
     buildAdministrativeQuoteSubmission: buildAdminQuoteSubmission,
     onAdministrativeBookingCreated: () => {
+      persistAdminQuoteDraftOnExit.current = false;
       void clearAdminQuoteDraft(api);
     },
     onQuoteStageUpdated: async (booking, previousBooking) => {
@@ -388,9 +396,21 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     editLoading,
     editError,
   } = state;
+  useLayoutEffect(() => {
+    latestAdminQuoteDraft.current = { draft, quoteConfig, tollLines, quoteKind };
+  }, [draft, quoteConfig, quoteKind, tollLines]);
+  useEffect(
+    () => () => {
+      const value = latestAdminQuoteDraft.current;
+      if (!persistAdminQuoteDraftOnExit.current || !value) return;
+      draftSaveQueue.current = draftSaveQueue.current.then(() => saveAdminQuoteDraft(api, value));
+    },
+    [api],
+  );
   const setQuoteDraftFromUser = useCallback(
     (update: Parameters<typeof setDraft>[0]) => {
       setQuoteEditedSinceSaved(true);
+      persistAdminQuoteDraftOnExit.current = true;
       setDraft(update);
     },
     [setDraft],
@@ -398,6 +418,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const setQuoteConfigFromUser = useCallback(
     (update: Parameters<typeof setQuoteConfig>[0]) => {
       setQuoteEditedSinceSaved(true);
+      persistAdminQuoteDraftOnExit.current = true;
       setQuoteConfig(update);
     },
     [setQuoteConfig],
@@ -405,6 +426,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const setQuoteTollLinesFromUser = useCallback(
     (update: Parameters<typeof setTollLines>[0]) => {
       setQuoteEditedSinceSaved(true);
+      persistAdminQuoteDraftOnExit.current = true;
       setTollLines(update);
     },
     [setTollLines],
@@ -429,6 +451,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   useLayoutEffect(() => {
     if (!resetAdminQuote || !resetQuoteToken) return;
     let active = true;
+    persistAdminQuoteDraftOnExit.current = false;
     appliedVehicleEstimate.current = null;
     setDraft(blankDraft(appCatalogue ?? undefined));
     setQuoteConfig(defaultAdminQuoteConfig());
@@ -491,6 +514,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       showErrorToast(message);
       return;
     }
+    persistAdminQuoteDraftOnExit.current = true;
     setQuoteKind(kind);
   }
   useEffect(() => {
@@ -528,6 +552,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         setDraft(saved.draft);
         setQuoteConfig(saved.quoteConfig);
         setTollLines(saved.tollLines);
+        setQuoteKind(saved.quoteKind ?? 'provisional');
       }
       restoredDraft.current = true;
       skipInitialSave.current = true;
@@ -548,6 +573,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
 
   useEffect(() => {
     if (!initialClient) return;
+    persistAdminQuoteDraftOnExit.current = true;
     setDraft((current) => ({
       ...current,
       customerName: initialClient.name,
@@ -559,6 +585,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   }, [initialClient, location.pathname, location.search, navigate, setDraft]);
   useEffect(() => {
     if (!calendarAppointment) return;
+    persistAdminQuoteDraftOnExit.current = true;
     setDraft((current) => ({
       ...current,
       date: calendarAppointment.date,
@@ -576,12 +603,31 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       skipInitialSave.current = false;
       return;
     }
+    persistAdminQuoteDraftOnExit.current = true;
     const timeout = window.setTimeout(() => {
-      const value = { draft, quoteConfig, tollLines };
+      const value = { draft, quoteConfig, tollLines, quoteKind };
       draftSaveQueue.current = draftSaveQueue.current.then(() => saveAdminQuoteDraft(api, value));
     }, 350);
     return () => window.clearTimeout(timeout);
-  }, [api, draft, editingReservation, publicRequest, quoteConfig, tollLines, user?.role]);
+  }, [
+    api,
+    draft,
+    editingReservation,
+    publicRequest,
+    quoteConfig,
+    quoteKind,
+    tollLines,
+    user?.role,
+  ]);
+
+  useEffect(() => {
+    if (previousDraftLocationKey.current !== draftLocationKey) {
+      const value = latestAdminQuoteDraft.current;
+      if (persistAdminQuoteDraftOnExit.current && value)
+        draftSaveQueue.current = draftSaveQueue.current.then(() => saveAdminQuoteDraft(api, value));
+      previousDraftLocationKey.current = draftLocationKey;
+    }
+  }, [api, draftLocationKey]);
 
   useEffect(() => {
     if (!publicRequest || !user) return;
@@ -735,6 +781,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       return;
     }
     setQuoteEditedSinceSaved(true);
+    persistAdminQuoteDraftOnExit.current = true;
     appliedVehicleEstimate.current =
       quoteConfig.calcMode === 'manual'
         ? null
@@ -955,6 +1002,56 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     discountLabel: calculatedPreviewDiscountLabel,
     total: calculatedPreviewTotal,
   } = preview;
+  const taxiCompanyLocationConfigured =
+    quoteSettings?.businessLatitude != null && quoteSettings.businessLongitude != null;
+  const taxiAvailable =
+    quoteConfig.billingMode !== 'driver-rental' &&
+    taxiCrew > 0 &&
+    taxiCompanyLocationConfigured &&
+    (taxiCompanyApproach.distanceKm != null ||
+      quoteConfig.taxiCompanyApproachAmountOverride != null);
+  useEffect(() => {
+    automaticTaxiAlertShown.current = false;
+  }, [resetVersion]);
+  useEffect(() => {
+    if (
+      !shouldAutomaticallyEnableTaxiFees({
+        estimatedManoeuvres: taxiCrew,
+        isAdminQuote: !publicRequest && user?.role === 'admin',
+        taxiFeesEnabled: quoteSettings?.taxiFeeEnabled === true,
+        taxiAvailable,
+        billingMode: quoteConfig.billingMode,
+        editingReservation,
+        alreadyEnabled: quoteConfig.taxiFeeApplied,
+        alreadyPrompted: automaticTaxiAlertShown.current,
+      })
+    )
+      return;
+
+    automaticTaxiAlertShown.current = true;
+    setQuoteConfigFromUser((current) => ({ ...current, taxiFeeApplied: true }));
+    showSuccessToast(
+      `Frais taxi activés automatiquement : ${taxiCrew} manœuvres estimées. Le montant est ajouté au devis.`,
+      undefined,
+      { persistent: true, toastKey: 'admin-quote-taxi-auto-enabled' },
+    );
+  }, [
+    editingReservation,
+    publicRequest,
+    quoteConfig.billingMode,
+    quoteConfig.taxiCompanyApproachAmountOverride,
+    quoteConfig.taxiFeeApplied,
+    quoteSettings?.businessLatitude,
+    quoteSettings?.businessLongitude,
+    quoteSettings?.taxiFeeEnabled,
+    resetVersion,
+    setQuoteConfigFromUser,
+    showSuccessToast,
+    taxiAvailable,
+    taxiCompanyApproach.distanceKm,
+    taxiCrew,
+    user?.role,
+  ]);
   const previewLines = savedQuoteSnapshot
     ? savedQuoteSnapshot.price.lines
     : hasBillableQuoteContent && !resetAdminQuote
@@ -1112,6 +1209,9 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       setStageError,
       showErrorToast,
       openClientSection: () => setOpenQuoteSections((current) => ({ ...current, client: true })),
+      openRouteSection: () => {
+        setOpenQuoteSections((current) => ({ ...current, route: true }));
+      },
       whatsappWindow,
       sendWhatsAppAfterSave,
     });
@@ -1181,10 +1281,12 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   }
   const onTollToggle = (line: (typeof tollLines)[number], checked: boolean) => {
     setQuoteEditedSinceSaved(true);
+    persistAdminQuoteDraftOnExit.current = true;
     setTollLines((current) => toggleQuoteToll(current, line, checked));
   };
   const changeQuoteOption = (key: keyof Options, delta: number) => {
     setQuoteEditedSinceSaved(true);
+    persistAdminQuoteDraftOnExit.current = true;
     if (key !== 'labour') {
       option(key, delta);
       return;

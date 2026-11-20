@@ -1,5 +1,7 @@
 import type { Draft } from '../../../../booking/application/booking-draft';
 import type { Quote } from '../../../../shared/domain/model';
+import { normalizePhoneNumber } from '../../../../shared/domain/phone-number';
+import { adminQuoteValidationToastKeys } from './admin-quote-form-policy';
 
 type MutableReference<Value> = { current: Value };
 
@@ -15,6 +17,7 @@ export function startQuoteWhatsAppSubmission({
   setStageError,
   showErrorToast,
   openClientSection,
+  openRouteSection,
   whatsappWindow,
   sendWhatsAppAfterSave,
 }: {
@@ -25,18 +28,48 @@ export function startQuoteWhatsAppSubmission({
   previewTier: number;
   customPrice: number | null;
   maximumDistance: number;
-  draft: Pick<Draft, 'date' | 'noDate' | 'route'>;
+  draft: Pick<
+    Draft,
+    'customerName' | 'customerPhone' | 'date' | 'noDate' | 'route' | 'fromAddress' | 'toAddress'
+  >;
   setStageError: (message: string) => void;
-  showErrorToast: (message: string) => void;
+  showErrorToast: (message: string, options?: { persistent?: boolean; toastKey?: string }) => void;
   openClientSection: () => void;
+  openRouteSection: () => void;
   whatsappWindow: MutableReference<Window | null>;
   sendWhatsAppAfterSave: MutableReference<boolean>;
 }) {
-  if (!canSendQuoteWhatsApp) {
-    const message = 'Numéro WhatsApp du client invalide.';
-    setStageError(message);
-    showErrorToast(message);
+  if (draft.customerName.trim().length < 2) {
+    showErrorToast('Saisissez le nom du client (au moins 2 caractères).', {
+      persistent: true,
+      toastKey: adminQuoteValidationToastKeys.clientName,
+    });
     openClientSection();
+    return;
+  }
+  const phoneMessage = !draft.customerPhone.trim()
+    ? 'Saisissez le numéro de téléphone du client.'
+    : !normalizePhoneNumber(draft.customerPhone)
+      ? 'Saisissez un numéro valide avec son indicatif international.'
+      : '';
+  if (phoneMessage || !canSendQuoteWhatsApp) {
+    showErrorToast(phoneMessage || 'Saisissez un numéro valide avec son indicatif international.', {
+      persistent: true,
+      toastKey: adminQuoteValidationToastKeys.clientPhone,
+    });
+    openClientSection();
+    return;
+  }
+  if (!draft.fromAddress.trim() || !draft.toAddress.trim() || !draft.route) {
+    const message =
+      !draft.fromAddress.trim() || !draft.toAddress.trim()
+        ? 'Complétez les adresses de départ et d’arrivée, puis calculez le trajet.'
+        : 'Calculez le trajet avant d’enregistrer le devis.';
+    showErrorToast(message, {
+      persistent: true,
+      toastKey: adminQuoteValidationToastKeys.route,
+    });
+    openRouteSection();
     return;
   }
   if (quoteKind === 'final' && stairs === 'balcon' && balconyPrice <= 0) {
@@ -54,12 +87,6 @@ export function startQuoteWhatsAppSubmission({
   if (quoteKind === 'final' && (!draft.date || draft.noDate)) {
     const message =
       'Un devis sans date reste provisoire. Choisissez une date pour passer en final.';
-    setStageError(message);
-    showErrorToast(message);
-    return;
-  }
-  if (!draft.route) {
-    const message = 'Calculez le trajet avant d’enregistrer et d’envoyer le devis.';
     setStageError(message);
     showErrorToast(message);
     return;

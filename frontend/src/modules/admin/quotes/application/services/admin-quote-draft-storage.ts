@@ -1,5 +1,5 @@
 import type { Draft } from '../../../../booking/application/booking-draft';
-import type { RentalKitItem } from '../../../../shared/domain/model';
+import type { Quote, RentalKitItem } from '../../../../shared/domain/model';
 
 export type AdminQuoteConfig = {
   trips: number;
@@ -34,6 +34,7 @@ export type AdminQuoteDraft = {
   draft: Draft;
   quoteConfig: AdminQuoteConfig;
   tollLines: { id: string; label: string; quantity: number; unitPrice: number }[];
+  quoteKind?: Quote['kind'];
 };
 
 type AdminQuoteDraftApi = {
@@ -60,6 +61,7 @@ export async function readAdminQuoteDraft(
     if (!parsed || !isAdminQuoteDraft(parsed)) return null;
     return {
       ...parsed,
+      quoteKind: parsed.quoteKind === 'final' ? 'final' : 'provisional',
       quoteConfig: {
         ...parsed.quoteConfig,
         calcMode: parsed.quoteConfig.calcMode === 'manual' ? 'manual' : 'auto',
@@ -203,6 +205,7 @@ function isAdminQuoteDraft(value: unknown): value is AdminQuoteDraft {
   return (
     typeof draft === 'object' &&
     draft !== null &&
+    (saved.quoteKind === undefined || ['provisional', 'final'].includes(saved.quoteKind)) &&
     typeof draft.vehicleId === 'string' &&
     typeof draft.customerName === 'string' &&
     typeof draft.customerPhone === 'string' &&

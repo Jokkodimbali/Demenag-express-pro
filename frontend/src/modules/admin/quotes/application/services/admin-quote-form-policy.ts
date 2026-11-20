@@ -106,6 +106,29 @@ export function quoteConfigWithManualTaxiFee(config: AdminQuoteConfig, value: st
   };
 }
 
+export function shouldAutomaticallyEnableTaxiFees(input: {
+  estimatedManoeuvres: number;
+  isAdminQuote: boolean;
+  taxiFeesEnabled: boolean;
+  taxiAvailable: boolean;
+  billingMode: AdminQuoteConfig['billingMode'];
+  editingReservation: boolean;
+  alreadyEnabled: boolean;
+  alreadyPrompted: boolean;
+}) {
+  return (
+    Number.isFinite(input.estimatedManoeuvres) &&
+    input.estimatedManoeuvres > 3 &&
+    input.isAdminQuote &&
+    input.taxiFeesEnabled &&
+    input.taxiAvailable &&
+    input.billingMode !== 'driver-rental' &&
+    !input.editingReservation &&
+    !input.alreadyEnabled &&
+    !input.alreadyPrompted
+  );
+}
+
 export function quoteConfigurationFromBooking(booking: Booking) {
   const quote = booking.quotes.at(-1);
   const pricingInput = quote?.pricingInput;

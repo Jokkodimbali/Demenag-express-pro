@@ -6,6 +6,7 @@ import {
   quoteConfigWithManualTaxiFee,
   quoteConfigurationFromBooking,
   quoteSettingsForEditing,
+  shouldAutomaticallyEnableTaxiFees,
 } from '../src/modules/admin/quotes/application/services/admin-quote-form-policy';
 import { defaultAdminQuoteConfig } from '../src/modules/admin/quotes/application/services/admin-quote-config';
 import { buildAdminQuoteSubmission } from '../src/modules/admin/quotes/application/services/admin-quote-submission';
@@ -368,4 +369,100 @@ test('un devis avec montants taxi calculés reprend les réglages actuels à la 
   assert.equal(restored.taxiFeeApplied, true);
   assert.equal(restored.taxiFeeAmountOverride, null);
   assert.equal(restored.taxiCompanyApproachAmountOverride, null);
+});
+
+test('la réouverture restaure la majoration de nuit, son tarif et son équipe', () => {
+  const price: Price = {
+    lines: [
+      { label: 'Manœuvres', quantity: 5, unitPrice: 8_000, total: 40_000 },
+      {
+        label: 'Majoration de travail de nuit (2 personnes)',
+        quantity: 3,
+        unitPrice: 6_500,
+        total: 19_500,
+      },
+    ],
+    total: 59_500,
+    discount: 0,
+    tier: 0,
+    trips: 2,
+    currency: 'XOF',
+  };
+  const booking = {
+    options: { labour: 5, desk: 0, wardrobe: 0, bed: 0 },
+    estimate: price,
+    pricingSettings: { labourPrice: 8_000 } as Settings,
+    quotes: [
+      {
+        id: 'quote-night-overtime',
+        reference: 'DV-NIGHT',
+        kind: 'final',
+        createdAt: '2026-11-20T00:00:00.000Z',
+        price,
+        providedCrew: 5,
+        notes: '',
+        pricingInput: {
+          settings: {},
+          calcMode: 'manual',
+          trips: 2,
+          extraLines: [
+            {
+              label: 'Majoration de travail de nuit (2 personnes)',
+              quantity: 3,
+              unitPrice: 6_500,
+            },
+          ],
+          manoeuvreOvertimePersonIds: ['person-1', 'person-2'],
+          manoeuvreOvertimeAdditionalPeople: 0,
+        },
+      },
+    ],
+  } as unknown as Booking;
+
+  const restored = quoteConfigurationFromBooking(booking).config;
+
+  assert.equal(restored.billingMode, 'complete');
+  assert.equal(restored.calcMode, 'manual');
+  assert.equal(restored.trips, 2);
+  assert.equal(restored.manoeuvreOvertimeEnabled, true);
+  assert.equal(restored.manoeuvreOvertimeHours, 1.5);
+  assert.equal(restored.manoeuvreOvertimeCrewCount, 2);
+  assert.deepEqual(restored.manoeuvreOvertimePersonIds, ['person-1', 'person-2']);
+  assert.equal(restored.manoeuvreOvertimeAdditionalPeople, 0);
+  assert.equal(restored.manoeuvreOvertimeHourlyRateOverride, 6_500);
+});
+
+test('les frais taxi s’activent automatiquement à partir de quatre manœuvres admissibles', () => {
+  const eligibility = {
+    estimatedManoeuvres: 4,
+    isAdminQuote: true,
+    taxiFeesEnabled: true,
+    taxiAvailable: true,
+    billingMode: 'complete' as const,
+    editingReservation: false,
+    alreadyEnabled: false,
+    alreadyPrompted: false,
+  };
+
+  assert.equal(
+    shouldAutomaticallyEnableTaxiFees({ ...eligibility, estimatedManoeuvres: 3 }),
+    false,
+  );
+  assert.equal(shouldAutomaticallyEnableTaxiFees(eligibility), true);
+  assert.equal(shouldAutomaticallyEnableTaxiFees({ ...eligibility, isAdminQuote: false }), false);
+  assert.equal(shouldAutomaticallyEnableTaxiFees({ ...eligibility, taxiAvailable: false }), false);
+  assert.equal(
+    shouldAutomaticallyEnableTaxiFees({ ...eligibility, taxiFeesEnabled: false }),
+    false,
+  );
+  assert.equal(
+    shouldAutomaticallyEnableTaxiFees({ ...eligibility, billingMode: 'driver-rental' }),
+    false,
+  );
+  assert.equal(
+    shouldAutomaticallyEnableTaxiFees({ ...eligibility, editingReservation: true }),
+    false,
+  );
+  assert.equal(shouldAutomaticallyEnableTaxiFees({ ...eligibility, alreadyEnabled: true }), false);
+  assert.equal(shouldAutomaticallyEnableTaxiFees({ ...eligibility, alreadyPrompted: true }), false);
 });
