@@ -312,8 +312,8 @@ export function useRouteMap(
     };
   }, [chooseRouteAlternative, referenceQuoteMap, routeAlternatives, selectedAlternative]);
   useEffect(() => {
-    if (from && to) void calculateRoute(from, to);
-  }, [calculateRoute, from, to]);
+    if (from && to && !draft.route) void calculateRoute(from, to);
+  }, [calculateRoute, draft.route, from, to]);
   useEffect(() => {
     const resize = window.setTimeout(() => {
       const currentMap = map.current;

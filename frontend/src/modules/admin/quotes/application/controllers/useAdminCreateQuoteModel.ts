@@ -390,7 +390,6 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   } = state;
   const setQuoteDraftFromUser = useCallback(
     (update: Parameters<typeof setDraft>[0]) => {
-      console.warn('QUOTE_DIRTY_DRAFT', new Error().stack);
       setQuoteEditedSinceSaved(true);
       setDraft(update);
     },
@@ -398,7 +397,6 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   );
   const setQuoteConfigFromUser = useCallback(
     (update: Parameters<typeof setQuoteConfig>[0]) => {
-      console.warn('QUOTE_DIRTY_CONFIG', new Error().stack);
       setQuoteEditedSinceSaved(true);
       setQuoteConfig(update);
     },
@@ -406,7 +404,6 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   );
   const setQuoteTollLinesFromUser = useCallback(
     (update: Parameters<typeof setTollLines>[0]) => {
-      console.warn('QUOTE_DIRTY_TOLLS', new Error().stack);
       setQuoteEditedSinceSaved(true);
       setTollLines(update);
     },
@@ -573,18 +570,18 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
   }, [calendarAppointment, location.pathname, location.search, navigate, setDraft]);
   useEffect(() => {
+    if (publicRequest || editingReservation || user?.role !== 'admin') return;
     if (!restoredDraft.current) return;
     if (skipInitialSave.current) {
       skipInitialSave.current = false;
       return;
     }
-    if (publicRequest || user?.role !== 'admin') return;
     const timeout = window.setTimeout(() => {
       const value = { draft, quoteConfig, tollLines };
       draftSaveQueue.current = draftSaveQueue.current.then(() => saveAdminQuoteDraft(api, value));
     }, 350);
     return () => window.clearTimeout(timeout);
-  }, [api, draft, publicRequest, quoteConfig, tollLines, user?.role]);
+  }, [api, draft, editingReservation, publicRequest, quoteConfig, tollLines, user?.role]);
 
   useEffect(() => {
     if (!publicRequest || !user) return;
