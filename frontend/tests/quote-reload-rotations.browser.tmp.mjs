@@ -282,7 +282,6 @@ await page.route('**/api/**', async (route) => {
   else if (path === '/admin/clients' || path === '/admin/clients/hidden') body = [];
   else if (path.startsWith('/bookings/') && request.method() === 'GET') body = booking;
   else if (path === '/bookings') body = [];
-  else if (path.startsWith('/bookings/') && request.method() === 'GET') body = booking;
   else if (path === '/admin/accounting/configuration') body = accounting;
   else if (path === '/admin/drivers') body = employees;
   else if (path === '/admin/accounting') body = [];
