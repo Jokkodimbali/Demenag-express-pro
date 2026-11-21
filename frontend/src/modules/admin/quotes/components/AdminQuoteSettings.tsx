@@ -19,6 +19,7 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
   >(null);
   const {
     quoteConfig,
+    setTaxiConfig,
     resetVersion,
     setQuoteConfig,
     effectiveDistance,
@@ -65,6 +66,8 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
     companyLocationConfigured &&
     (taxiCompanyApproachDistanceKm != null ||
       quoteConfig.taxiCompanyApproachAmountOverride != null);
+  const taxiManualApproachAvailable =
+    quoteConfig.billingMode !== 'driver-rental' && taxiCrew > 0 && companyLocationConfigured;
   const taxiAmount = quoteConfig.taxiFeeAmountOverride ?? taxiCalculatedAmount;
   const taxiCompanyApproachAmount =
     quoteConfig.taxiCompanyApproachAmountOverride ?? taxiCompanyApproachCalculatedAmount;
@@ -413,7 +416,7 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
                         : taxiCrew <= 0
                           ? 'Indisponibles sans manœuvre estimée.'
                           : taxiCompanyApproachBusy || taxiCompanyApproachDistanceKm == null
-                            ? 'Calcul de la distance depuis les locaux en cours ou indisponible.'
+                            ? 'Distance indisponible : saisissez le montant du trajet depuis les locaux pour activer les frais.'
                             : 'Indisponibles pour ce devis.'
                     : 'Calculés selon la distance et les chargements et déchargements estimés.'}
                 </span>
@@ -425,7 +428,7 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
                 className={`admin-quote-taxi-toggle${quoteConfig.taxiFeeApplied ? ' active' : ''}`}
                 onClick={() => {
                   const enabled = !quoteConfig.taxiFeeApplied;
-                  setQuoteConfig((current) => ({ ...current, taxiFeeApplied: enabled }));
+                  setTaxiConfig((current) => ({ ...current, taxiFeeApplied: enabled }));
                   showSuccessToast(
                     enabled
                       ? 'Frais taxi activés. Le devis a été recalculé.'
@@ -478,11 +481,11 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
                   onChange={(event) => {
                     const value = event.currentTarget.value;
                     setTaxiAmountDraft(value);
-                    setQuoteConfig((current) => quoteConfigWithManualTaxiFee(current, value));
+                    setTaxiConfig((current) => quoteConfigWithManualTaxiFee(current, value));
                   }}
                   onBlur={(event) => {
                     if (event.currentTarget.value === '') {
-                      setQuoteConfig((current) => ({ ...current, taxiFeeAmountOverride: null }));
+                      setTaxiConfig((current) => ({ ...current, taxiFeeAmountOverride: null }));
                       setTaxiAmountDraft(null);
                     }
                   }}
@@ -498,7 +501,7 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
                     step="1"
                     inputMode="numeric"
                     aria-label="Frais du trajet depuis les locaux en FCFA"
-                    disabled={!taxiAvailable}
+                    disabled={!taxiManualApproachAvailable}
                     value={
                       taxiCompanyApproachAmountDraft ??
                       quoteConfig.taxiCompanyApproachAmountOverride ??
@@ -508,7 +511,7 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
                       const value = event.currentTarget.value;
                       setTaxiCompanyApproachAmountDraft(value);
                       if (value === '') return;
-                      setQuoteConfig((current) => ({
+                      setTaxiConfig((current) => ({
                         ...current,
                         taxiFeeApplied: true,
                         taxiCompanyApproachAmountOverride: Math.min(
@@ -519,7 +522,7 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
                     }}
                     onBlur={(event) => {
                       if (event.currentTarget.value === '') {
-                        setQuoteConfig((current) => ({
+                        setTaxiConfig((current) => ({
                           ...current,
                           taxiCompanyApproachAmountOverride: null,
                         }));

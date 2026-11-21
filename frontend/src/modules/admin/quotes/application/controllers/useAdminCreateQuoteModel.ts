@@ -423,6 +423,13 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     },
     [setQuoteConfig],
   );
+  const setTaxiConfigFromUser = useCallback(
+    (update: Parameters<typeof setQuoteConfig>[0]) => {
+      automaticTaxiAlertShown.current = true;
+      setQuoteConfigFromUser(update);
+    },
+    [setQuoteConfigFromUser],
+  );
   const setQuoteTollLinesFromUser = useCallback(
     (update: Parameters<typeof setTollLines>[0]) => {
       setQuoteEditedSinceSaved(true);
@@ -1263,7 +1270,19 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
               tolls: tollLines,
               effectiveDistance,
             });
-      const blob = await exportQuote(pdfDocument.booking, pdfDocument.quote, pdfSettings);
+      const quoteForPdf: Quote = {
+        ...pdfDocument.quote,
+        price: {
+          ...pdfDocument.quote.price,
+          lines: previewLines.map((line) => ({ ...line })),
+          total: previewTotal,
+          discount: previewDiscount,
+          discountLabel: previewDiscountLabel,
+          tier: previewTier,
+          trips: effectiveQuoteTrips,
+        },
+      };
+      const blob = await exportQuote(pdfDocument.booking, quoteForPdf, pdfSettings);
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -1372,6 +1391,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     skipInitialSave,
     quoteConfig,
     setQuoteConfig: setQuoteConfigFromUser,
+    setTaxiConfig: setTaxiConfigFromUser,
     quoteEditedSinceSaved,
     questionnaireOpen,
     setQuestionnaireOpen,

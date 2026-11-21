@@ -3,6 +3,7 @@ import test from 'node:test';
 import type { AdminQuoteConfig } from '../src/modules/admin/quotes/application/admin-quote-draft-storage.ts';
 import { blankDraft } from '../src/modules/booking/application/booking-draft.ts';
 import { createAdminQuotePreview } from '../src/modules/admin/quotes/application/services/admin-quote-preview.ts';
+import { quoteInventoryLines } from '../src/modules/admin/quotes/application/services/quote-inventory-lines.ts';
 import { defaultAdminQuoteConfig } from '../src/modules/admin/quotes/application/services/admin-quote-config.ts';
 import { calculatePrice } from '../../backend/src/domain/pricing/pricing.ts';
 import { estimateMovingWork } from '../src/modules/moving/domain/estimate/moving-estimate.ts';
@@ -142,6 +143,75 @@ test('la formule standard exclut les lignes de montage historiques et personnali
       'Cartons supplémentaires',
     ],
   );
+});
+
+test('le montage de l’inventaire remplace la ligne d’option déjà présente dans le prix', () => {
+  const lines = quoteInventoryLines({
+    rawLines: [
+      { label: 'Manœuvres', quantity: 3, unitPrice: 6_500, total: 19_500 },
+      { label: 'Montage bureau', quantity: 1, unitPrice: 5_000, total: 5_000 },
+    ],
+    inventoryLines: [
+      { label: 'Menuisier · démontage / montage bureau (local)', quantity: 1, unitPrice: 5_000 },
+    ],
+    extras,
+    options: { labour: 3, desk: 1, wardrobe: 0, bed: 0 },
+    inventoryOptions: { labour: 0, desk: 1, wardrobe: 0, bed: 0 },
+    settings,
+    includeMenu: true,
+  });
+
+  assert.equal(lines.filter((line) => /montage/iu.test(line.label)).length, 1);
+  assert.equal(
+    lines.reduce((sum, line) => sum + line.total, 0),
+    24_500,
+  );
+});
+
+test('les trois boutons de montage remplacent chacun leur ligne historique sans doubler le montant', () => {
+  const cases = [
+    { key: 'desk', name: 'bureau', amount: 5_000 },
+    { key: 'wardrobe', name: 'armoire', amount: 9_000 },
+    { key: 'bed', name: 'lit', amount: 7_000 },
+  ] as const;
+
+  for (const { key, name, amount } of cases) {
+    const draft = blankDraft({ vehicles: [vehicle], settings } as Catalogue);
+    draft.vehicleId = vehicle.id;
+    draft.options = { labour: 1, desk: 0, wardrobe: 0, bed: 0, [key]: 1 };
+    draft.inventory.entries = {
+      [name]: { quantity: 1, size: 1, dismantle: true, origin: 'local' },
+    };
+    const preview = createAdminQuotePreview({
+      draft,
+      estimateInventory: draft.inventory,
+      config: defaultAdminQuoteConfig(),
+      vehicle,
+      estimate: null,
+      settings,
+      price: {
+        lines: [
+          { label: 'Manœuvres', quantity: 1, unitPrice: 6_500, total: 6_500 },
+          { label: `Menuisier · ${name}`, quantity: 1, unitPrice: amount, total: amount },
+        ],
+        total: 6_500 + amount,
+        discount: 0,
+        tier: 0,
+        trips: 1,
+        currency: 'XOF',
+      },
+      extras,
+      labourPrice: 6_500,
+      simulationNeeds: null,
+    });
+    const assemblyLines = preview.previewLines.filter((line) =>
+      /menuisier|montage|démontage/iu.test(line.label),
+    );
+
+    assert.equal(assemblyLines.length, 1, name);
+    assert.equal(assemblyLines[0]?.quantity, 1, name);
+    assert.equal(assemblyLines[0]?.total, amount, name);
+  }
 });
 
 test('l’aperçu du devis reprend une seule fois transport, trajets suivants et jour creux', () => {

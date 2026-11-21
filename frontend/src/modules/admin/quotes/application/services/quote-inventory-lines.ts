@@ -3,6 +3,16 @@ import { assemblyUnitPrice } from '../../../../moving/domain/pricing/labour-pric
 
 type QuoteLine = { label: string; quantity: number; unitPrice: number; total: number };
 
+function normalizedLabel(label: string) {
+  return label
+    .trim()
+    .replace(/\s+/gu, ' ')
+    .normalize('NFKD')
+    .replace(/\p{Diacritic}/gu, '')
+    .replace(/œ/giu, 'oe')
+    .toLocaleLowerCase('fr-FR');
+}
+
 export function quoteInventoryLines(input: {
   rawLines: QuoteLine[];
   inventoryLines: Array<{ label: string; quantity: number; unitPrice: number }>;
@@ -13,8 +23,15 @@ export function quoteInventoryLines(input: {
   includeMenu: boolean;
 }) {
   if (!input.inventoryLines.length) return input.rawLines;
+  const assemblyOptionLabels = new Set(
+    input.extras.filter(([key]) => key !== 'labour').map(([, label]) => normalizedLabel(label)),
+  );
   return [
-    ...input.rawLines.filter((line) => !line.label.startsWith('Menuisier ·')),
+    ...input.rawLines.filter(
+      (line) =>
+        !line.label.startsWith('Menuisier ·') &&
+        !assemblyOptionLabels.has(normalizedLabel(line.label)),
+    ),
     ...input.extras
       .filter(([key]) => input.includeMenu && key !== 'labour')
       .map(([key, label]) => {
