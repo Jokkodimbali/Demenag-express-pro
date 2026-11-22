@@ -17,7 +17,10 @@ import {
   applyTaxiToManoeuvrePrice,
   manoeuvreCount,
 } from '../../../../../../../shared/quote-taxi-allocation.js';
-import { consolidateDuplicateQuoteLines } from '../../../../../../../shared/quote-lines.js';
+import {
+  consolidateDuplicateQuoteLines,
+  isAssemblyServiceLine,
+} from '../../../../../../../shared/quote-lines.js';
 
 type ExtraOption = [keyof Options, string, string];
 type QuoteLine = { label: string; quantity: number; unitPrice: number; total: number };
@@ -25,16 +28,6 @@ type QuoteLine = { label: string; quantity: number; unitPrice: number; total: nu
 function isManoeuvreOvertimeLine(label: string) {
   return /^(?:Majoration de travail de nuit|Man[œo]uvres · heures (?:au-delà|après 20 h))/iu.test(
     label,
-  );
-}
-
-function isAssemblyServiceLine(label: string) {
-  const normalized = label
-    .normalize('NFKD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLocaleLowerCase('fr-FR');
-  return (
-    /^menuisier\s/u.test(normalized) || /\b(?:montage|demontage|assemblage)\b/u.test(normalized)
   );
 }
 

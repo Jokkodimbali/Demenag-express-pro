@@ -5,6 +5,8 @@ export type ConsolidatedQuoteLine = {
   total: number;
 };
 
+export function isAssemblyServiceLine(label: string): boolean;
+
 export function consolidateDuplicateQuoteLines<T extends ConsolidatedQuoteLine>(
   lines: readonly T[],
 ): T[];

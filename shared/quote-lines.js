@@ -8,6 +8,13 @@ function normalizedLabel(label) {
     .toLocaleLowerCase('fr-FR');
 }
 
+export function isAssemblyServiceLine(label) {
+  const normalized = normalizedLabel(label);
+  return (
+    /^menuisier\s/u.test(normalized) || /\b(?:montage|demontage|assemblage)\b/u.test(normalized)
+  );
+}
+
 export function consolidateDuplicateQuoteLines(lines) {
   const consolidated = [];
   const indicesByLabel = new Map();

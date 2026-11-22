@@ -265,6 +265,169 @@ test('le devis utilise les tarifs figés puis les remplace uniquement sur action
   assert.equal(updated.version, quote.version + 1);
 });
 
+test('les trois services de montage sont enregistrés une fois chacun avec leur montant', async () => {
+  const { service, getBooking, setDistance } = harness();
+  setDistance(10);
+  const booking = getBooking();
+  const saved = await service.quote(admin, booking.id, {
+    kind: 'provisional',
+    trips: 1,
+    customPrice: null,
+    discount: 0,
+    notes: '',
+    extraLines: [],
+    tolls: [],
+    billingMode: 'complete',
+    options: { labour: 0, desk: 1, wardrobe: 1, bed: 1 },
+    version: booking.version,
+  });
+  const lines = saved.quotes[0]?.price.lines.filter((line) => line.label.startsWith('Menuisier'));
+  assert.equal(lines?.length, 3);
+  assert.deepEqual(
+    lines?.map((line) => line.total),
+    [6500, 5200, 3900],
+  );
+  assert.equal(new Set(lines?.map((line) => line.label)).size, 3);
+  assert.equal(saved.quotes[0]?.price.total, 25600);
+});
+
+test('le montage choisi dans l’inventaire ne double pas les trois options du devis', async () => {
+  const { service, getBooking, setDistance, setInventorySnapshot } = harness();
+  setDistance(10);
+  setInventorySnapshot({
+    sourceInventory: {
+      dwellingType: '',
+      fromFloor: 0,
+      toFloor: 0,
+      fromLift: false,
+      toLift: false,
+      entries: {
+        bureau: { quantity: 1, size: 1, dismantle: true, origin: 'local' },
+        armoire: { quantity: 1, size: 3, dismantle: true, origin: 'local' },
+        lit: { quantity: 1, size: 2, dismantle: true, origin: 'local' },
+      },
+      variants: [],
+      flags: {},
+      custom: [],
+    },
+  } as unknown as BookingInventorySnapshot);
+  const booking = getBooking();
+  const saved = await service.quote(admin, booking.id, {
+    kind: 'provisional',
+    trips: 1,
+    customPrice: null,
+    discount: 0,
+    notes: '',
+    extraLines: [],
+    tolls: [],
+    billingMode: 'complete',
+    options: { labour: 0, desk: 1, wardrobe: 1, bed: 1 },
+    version: booking.version,
+  });
+  const lines = saved.quotes[0]?.price.lines.filter((line) => line.label.startsWith('Menuisier'));
+  assert.equal(lines?.length, 3);
+  assert.ok(lines?.every((line) => line.label.includes('démontage / montage')));
+  assert.equal(new Set(lines?.map((line) => line.label)).size, 3);
+  assert.equal(
+    saved.quotes[0]?.price.total,
+    10_000 + (lines?.reduce((sum, line) => sum + line.total, 0) ?? 0),
+  );
+});
+
+test('la formule standard ne facture pas le montage personnalisé enregistré', async () => {
+  const { service, getBooking, setDistance } = harness();
+  setDistance(10);
+  const booking = getBooking();
+  const saved = await service.quote(admin, booking.id, {
+    kind: 'provisional',
+    trips: 1,
+    customPrice: null,
+    discount: 0,
+    notes: '',
+    extraLines: [],
+    customLines: [
+      { label: 'Montage/démontage bureau', quantity: 1, unitPrice: 5000 },
+      { label: 'Protection spéciale', quantity: 2, unitPrice: 1500 },
+    ],
+    tolls: [],
+    billingMode: 'standard',
+    options: { labour: 0, desk: 1, wardrobe: 0, bed: 0 },
+    version: booking.version,
+  });
+  const quote = saved.quotes[0];
+  assert.equal(
+    quote?.price.lines.some((line) => /montage|menuisier/iu.test(line.label)),
+    false,
+  );
+  assert.equal(
+    quote?.price.lines.find((line) => line.label === 'Protection spéciale')?.total,
+    3000,
+  );
+  assert.equal(quote?.price.total, 13000);
+});
+
+test('ajouter un service à un ancien devis conserve ses montants déjà enregistrés', async () => {
+  const { service, getBooking, setDistance, setQuotes } = harness();
+  setDistance(10);
+  setQuotes([
+    {
+      id: 'legacy-quote',
+      reference: 'DV-LEGACY',
+      kind: 'provisional',
+      createdAt: now.toISOString(),
+      price: {
+        lines: [
+          { label: 'Transport Camion test', quantity: 5, unitPrice: 28_000, total: 140_000 },
+          { label: 'Manœuvre', quantity: 3, unitPrice: 6_500, total: 19_500 },
+        ],
+        total: 159_500,
+        discount: 0,
+        tier: 0,
+        trips: 5,
+        currency: 'XOF',
+      },
+      notes: '',
+      options: { labour: 3, desk: 0, wardrobe: 0, bed: 0 },
+    },
+  ]);
+  const booking = getBooking();
+  const saved = await service.quote(admin, booking.id, {
+    kind: 'provisional',
+    trips: 5,
+    customPrice: null,
+    discount: 0,
+    notes: '',
+    extraLines: [],
+    customLines: [{ label: 'Frais d’emballage', quantity: 2, unitPrice: 1500 }],
+    preserveSavedCustomLines: true,
+    tolls: [],
+    options: booking.options,
+    version: booking.version,
+  });
+  const quote = saved.quotes.at(-1);
+  assert.equal(quote?.price.total, 162_500);
+  assert.deepEqual(quote?.price.lines.slice(0, 2), booking.quotes[0]?.price.lines);
+  assert.equal(quote?.price.lines.at(-1)?.total, 3000);
+  assert.equal(saved.quotes.length, 1);
+  assert.equal(quote?.id, 'legacy-quote');
+
+  const removed = await service.quote(admin, saved.id, {
+    kind: 'provisional',
+    trips: 5,
+    customPrice: null,
+    discount: 0,
+    notes: '',
+    extraLines: [],
+    customLines: [],
+    preserveSavedCustomLines: true,
+    tolls: [],
+    options: saved.options,
+    version: saved.version,
+  });
+  assert.equal(removed.quotes[0]?.price.total, 159_500);
+  assert.deepEqual(removed.quotes[0]?.price.lines, booking.quotes[0]?.price.lines);
+});
+
 test('les péages existants gardent leur tarif figé et les nouveaux utilisent le tarif courant', async () => {
   const { service, getBooking, setPricingSnapshot, setCurrentTollPoints } = harness();
   const oldPoint: TollPoint = {

@@ -581,6 +581,7 @@ export type QuoteInput = {
   notes: string;
   extraLines: Array<{ label: string; quantity: number; unitPrice: number }>;
   customLines?: Array<{ label: string; quantity: number; unitPrice: number }>;
+  preserveSavedCustomLines?: boolean;
   taxiFeeApplied?: boolean;
   taxiRoundTripAmountOverride?: number | null;
   taxiPerLegAmountOverride?: number | null;

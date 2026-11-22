@@ -9,6 +9,7 @@ type Props = {
   grossMargin: number | null;
   distanceKm: number | null | undefined;
   trips: number;
+  crewCount: number | null;
   movingEstimate: Pick<MovingEstimate, 'crew' | 'endTime'> | null;
   driverRental: boolean;
   submitting: boolean;
@@ -22,6 +23,7 @@ export function AdminQuoteSaveBar({
   grossMargin,
   distanceKm,
   trips,
+  crewCount,
   movingEstimate,
   driverRental,
   submitting,
@@ -50,12 +52,14 @@ export function AdminQuoteSaveBar({
         <small>{visibleUiText.text205}</small>
         <strong>{trips}</strong>
       </div>
+      {crewCount !== null && crewCount > 0 && (
+        <div>
+          <small>{driverRental ? visibleUiText.text210 : visibleUiText.text211}</small>
+          <strong>{crewCount}</strong>
+        </div>
+      )}
       {movingEstimate && (
         <>
-          <div>
-            <small>{driverRental ? visibleUiText.text210 : visibleUiText.text211}</small>
-            <strong>{movingEstimate.crew}</strong>
-          </div>
           <div>
             <small>{visibleUiText.text206}</small>
             <strong>{movingEstimate.endTime}</strong>

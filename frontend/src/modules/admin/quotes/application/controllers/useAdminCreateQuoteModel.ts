@@ -29,6 +29,8 @@ import type {
 import { defaultClientQuestions } from '../../../../booking/domain/questionnaire';
 import { quoteNotificationUrl } from '../services/quote-notification';
 import { createAdminQuotePreview } from '../services/admin-quote-preview';
+import { replaceSavedCustomLines } from '../../../../../../../shared/quote-custom-lines.js';
+import { isAssemblyServiceLine } from '../../../../../../../shared/quote-lines.js';
 import { quoteGrossMargin } from '../services/quote-gross-margin';
 import { normalizeAccountingConfiguration } from '../../../accounting/application/services/accounting-dashboard';
 import {
@@ -132,6 +134,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const automaticTaxiAlertShown = useRef(false);
   const [quoteConfig, setQuoteConfig] = useState<AdminQuoteConfig>(defaultAdminQuoteConfig);
   const [quoteEditedSinceSaved, setQuoteEditedSinceSaved] = useState(false);
+  const [quoteEditScope, setQuoteEditScope] = useState<'none' | 'custom' | 'other'>('none');
   const [restoredQuoteConfigurationKey, setRestoredQuoteConfigurationKey] = useState('');
   const [accountingConfiguration, setAccountingConfiguration] =
     useState<AccountingFinanceConfiguration | null>(null);
@@ -244,6 +247,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       const savedQuote = latestBookingQuote(booking);
       if (!savedQuote) return;
       setQuoteEditedSinceSaved(false);
+      setQuoteEditScope('none');
       setQuoteKind(savedQuote.kind);
       showSuccessToast(
         savedQuote.kind === 'final'
@@ -362,11 +366,25 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     !currentSavedQuoteKey || restoredQuoteConfigurationKey === currentSavedQuoteKey;
   useEffect(() => {
     setQuoteEditedSinceSaved(false);
+    setQuoteEditScope('none');
   }, [currentSavedQuoteKey]);
   const quoteStageChanged = isQuoteStageChanged(editingBooking, quoteKind);
   const canCommitQuoteStage = canSaveQuoteStageChange(editingBooking, quoteKind);
   const savedQuoteSnapshot =
     latestSavedQuote && !quoteEditedSinceSaved ? latestSavedQuote : undefined;
+  const customOnlyPrice =
+    latestSavedQuote && quoteEditedSinceSaved && quoteEditScope === 'custom' && !quoteStageChanged
+      ? replaceSavedCustomLines(
+          latestSavedQuote.price,
+          latestSavedQuote.pricingInput?.customLines ?? [],
+          quoteConfig.customLines.filter(
+            (line) =>
+              quoteConfig.billingMode === 'complete' ||
+              (quoteConfig.billingMode === 'driver-rental' && quoteConfig.menuIncluded) ||
+              !isAssemblyServiceLine(line.label),
+          ),
+        )
+      : null;
   const quoteSettings = quoteSettingsForEditing(
     editingBooking?.pricingSettings,
     state.catalogue?.settings,
@@ -410,6 +428,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const setQuoteDraftFromUser = useCallback(
     (update: Parameters<typeof setDraft>[0]) => {
       setQuoteEditedSinceSaved(true);
+      setQuoteEditScope('other');
       persistAdminQuoteDraftOnExit.current = true;
       setDraft(update);
     },
@@ -418,6 +437,16 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const setQuoteConfigFromUser = useCallback(
     (update: Parameters<typeof setQuoteConfig>[0]) => {
       setQuoteEditedSinceSaved(true);
+      setQuoteEditScope('other');
+      persistAdminQuoteDraftOnExit.current = true;
+      setQuoteConfig(update);
+    },
+    [setQuoteConfig],
+  );
+  const setCustomLinesFromUser = useCallback(
+    (update: Parameters<typeof setQuoteConfig>[0]) => {
+      setQuoteEditedSinceSaved(true);
+      setQuoteEditScope((scope) => (scope === 'other' ? 'other' : 'custom'));
       persistAdminQuoteDraftOnExit.current = true;
       setQuoteConfig(update);
     },
@@ -433,6 +462,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const setQuoteTollLinesFromUser = useCallback(
     (update: Parameters<typeof setTollLines>[0]) => {
       setQuoteEditedSinceSaved(true);
+      setQuoteEditScope('other');
       persistAdminQuoteDraftOnExit.current = true;
       setTollLines(update);
     },
@@ -463,6 +493,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     setDraft(blankDraft(appCatalogue ?? undefined));
     setQuoteConfig(defaultAdminQuoteConfig());
     setQuoteEditedSinceSaved(false);
+    setQuoteEditScope('none');
     setRestoredQuoteConfigurationKey('');
     setTollLines([]);
     setQuoteKind('provisional');
@@ -780,7 +811,8 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     !preserveAppliedVehicleEstimate
       ? { ...quoteConfig, trips: movingEstimateTrips }
       : quoteConfig;
-  const effectiveQuoteTrips = savedQuoteSnapshot?.price.trips ?? pricingQuoteConfig.trips;
+  const effectiveQuoteTrips =
+    savedQuoteSnapshot?.price.trips ?? customOnlyPrice?.trips ?? pricingQuoteConfig.trips;
   function applyVehicleEstimate(vehicleId: string, trips: number) {
     const vehicle = catalogue?.vehicles.find((candidate) => candidate.id === vehicleId);
     if (!vehicle || !Number.isInteger(trips) || trips < 1) {
@@ -788,6 +820,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       return;
     }
     setQuoteEditedSinceSaved(true);
+    setQuoteEditScope('other');
     persistAdminQuoteDraftOnExit.current = true;
     appliedVehicleEstimate.current =
       quoteConfig.calcMode === 'manual'
@@ -980,7 +1013,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       (quoteConfig.billingMode === 'driver-rental' && (quoteConfig.overtimeMinutes ?? 0) > 0),
     );
   const grossMargin = quoteGrossMargin({
-    quoteTotal: hasBillableQuoteContent ? preview.total : null,
+    quoteTotal: hasBillableQuoteContent ? (customOnlyPrice?.total ?? preview.total) : null,
     hasBillableContent: hasBillableQuoteContent,
     inventory: draft.inventory,
     accounting: accountingConfiguration,
@@ -988,7 +1021,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     providedCrew:
       editingBooking?.crew?.manoeuvre.length ||
       (quoteConfig.billingMode === 'driver-rental' ? economicCrew : movingEstimateCrew),
-    manoeuvreCount: preview.previewLines
+    manoeuvreCount: (customOnlyPrice?.lines ?? preview.previewLines)
       .filter((line) => /man[œo]uvre/iu.test(line.label) && !/heures au-delà/iu.test(line.label))
       .reduce((sum, line) => sum + line.quantity, 0),
     taxiCharges: preview.taxiFeeLines.reduce((sum, line) => sum + line.total, 0),
@@ -1061,30 +1094,40 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   ]);
   const previewLines = savedQuoteSnapshot
     ? savedQuoteSnapshot.price.lines
+    : customOnlyPrice
+      ? customOnlyPrice.lines
     : hasBillableQuoteContent && !resetAdminQuote
       ? calculatedPreviewLines
       : [];
   const previewSubtotal = savedQuoteSnapshot
     ? (savedQuoteSnapshot.price.total ?? 0) + savedQuoteSnapshot.price.discount
+    : customOnlyPrice
+      ? (customOnlyPrice.total ?? 0) + customOnlyPrice.discount
     : hasBillableQuoteContent && !resetAdminQuote
       ? calculatedPreviewSubtotal
       : 0;
   const previewDiscount = savedQuoteSnapshot
     ? savedQuoteSnapshot.price.discount
+    : customOnlyPrice
+      ? customOnlyPrice.discount
     : hasBillableQuoteContent && !resetAdminQuote
       ? calculatedPreviewDiscount
       : 0;
   const previewDiscountLabel = savedQuoteSnapshot
     ? (savedQuoteSnapshot.price.discountLabel ?? '')
+    : customOnlyPrice
+      ? (customOnlyPrice.discountLabel ?? '')
     : hasBillableQuoteContent && !resetAdminQuote
       ? calculatedPreviewDiscountLabel
       : '';
   const previewTotal = savedQuoteSnapshot
     ? savedQuoteSnapshot.price.total
+    : customOnlyPrice
+      ? customOnlyPrice.total
     : hasBillableQuoteContent && !resetAdminQuote
       ? calculatedPreviewTotal
       : null;
-  const previewTier = savedQuoteSnapshot?.price.tier ?? calculatedPreviewTier;
+  const previewTier = savedQuoteSnapshot?.price.tier ?? customOnlyPrice?.tier ?? calculatedPreviewTier;
   const bounds = quoteSettings?.distanceBounds ?? [15, 25, 35];
   const tiers = referenceTierLabels(bounds);
   const effectiveDistance = draft.distanceKmOverride ?? draft.route?.distanceKm;
@@ -1300,11 +1343,13 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   }
   const onTollToggle = (line: (typeof tollLines)[number], checked: boolean) => {
     setQuoteEditedSinceSaved(true);
+    setQuoteEditScope('other');
     persistAdminQuoteDraftOnExit.current = true;
     setTollLines((current) => toggleQuoteToll(current, line, checked));
   };
   const changeQuoteOption = (key: keyof Options, delta: number) => {
     setQuoteEditedSinceSaved(true);
+    setQuoteEditScope('other');
     persistAdminQuoteDraftOnExit.current = true;
     if (key !== 'labour') {
       option(key, delta);
@@ -1352,6 +1397,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   async function applyCurrentPricingSnapshot() {
     if (!editingBooking || user?.role !== 'admin' || pricingSnapshotBusy) return;
     setQuoteEditedSinceSaved(true);
+    setQuoteEditScope('other');
     setPricingSnapshotBusy(true);
     setPricingSnapshotError('');
     try {
@@ -1391,6 +1437,8 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     skipInitialSave,
     quoteConfig,
     setQuoteConfig: setQuoteConfigFromUser,
+    setCustomLines: setCustomLinesFromUser,
+    customLinesOnlyEdit: Boolean(customOnlyPrice),
     setTaxiConfig: setTaxiConfigFromUser,
     quoteEditedSinceSaved,
     questionnaireOpen,

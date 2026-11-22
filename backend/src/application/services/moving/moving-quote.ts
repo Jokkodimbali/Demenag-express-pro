@@ -1,12 +1,14 @@
 import { AppError, requireValue } from '../../../domain/shared/errors.js';
 import { messages } from '../../../domain/shared/messages/fr.js';
-import type { Booking, QuoteInput, User } from '../../../domain/shared/model.js';
+import type { Booking, Quote, QuoteInput, User } from '../../../domain/shared/model.js';
 import { requireAdministrator } from '../../../domain/security/access-policy.js';
 import { calculatePrice } from '../../../domain/pricing/pricing.js';
 import {
   applyTaxiToManoeuvrePrice,
   manoeuvreCount,
 } from '../../../../../shared/quote-taxi-allocation.js';
+import { isAssemblyServiceLine } from '../../../../../shared/quote-lines.js';
+import { replaceSavedCustomLines } from '../../../../../shared/quote-custom-lines.js';
 import {
   accountingConfigurationForFinalQuote,
   captureAccountingCosts,
@@ -51,15 +53,26 @@ export async function createQuote(
   if (savedBooking.version !== input.version)
     throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
   const booking = bookingOverride ?? savedBooking;
-  const existingQuoteIndex = replaceQuoteId
-    ? savedBooking.quotes.findIndex((quote) => quote.id === replaceQuoteId)
+  const targetQuoteId =
+    replaceQuoteId ??
+    (input.preserveSavedCustomLines ? savedBooking.quotes.at(-1)?.id : undefined);
+  const existingQuoteIndex = targetQuoteId
+    ? savedBooking.quotes.findIndex((quote) => quote.id === targetQuoteId)
     : -1;
-  requireValue(!replaceQuoteId || existingQuoteIndex >= 0, 'Le devis à modifier est introuvable.');
+  requireValue(!targetQuoteId || existingQuoteIndex >= 0, 'Le devis à modifier est introuvable.');
   requireValue(
-    !replaceQuoteId || existingQuoteIndex === booking.quotes.length - 1,
+    !targetQuoteId || existingQuoteIndex === booking.quotes.length - 1,
     'Seul le dernier devis de cette réservation peut être modifié.',
   );
   const existingQuote = existingQuoteIndex >= 0 ? booking.quotes[existingQuoteIndex] : undefined;
+  const savedCustomBaseline = input.preserveSavedCustomLines
+    ? (existingQuote ?? savedBooking.quotes.at(-1))
+    : undefined;
+  requireValue(
+    !input.preserveSavedCustomLines ||
+      (savedCustomBaseline && savedCustomBaseline.kind === input.kind),
+    'Le devis enregistré est nécessaire pour modifier seulement ses services supplémentaires.',
+  );
   requireValue(
     !savedBooking.quotes.some((quote) => quote.kind === 'final' && quote.id !== existingQuote?.id),
     'Un devis final existe déjà pour cette réservation.',
@@ -88,10 +101,11 @@ export async function createQuote(
   const billingMode = input.billingMode ?? 'complete';
   const options = subtractInventoryAssemblyOptions(requestedOptions, sourceInventory);
   const menuIncluded = input.menuIncluded ?? false;
-  const inventoryLines =
-    billingMode === 'complete' || (billingMode === 'driver-rental' && menuIncluded)
-      ? inventoryAssemblyLines(sourceInventory, pricingSettings)
-      : [];
+  const includeAssembly =
+    billingMode === 'complete' || (billingMode === 'driver-rental' && menuIncluded);
+  const inventoryLines = includeAssembly
+    ? inventoryAssemblyLines(sourceInventory, pricingSettings)
+    : [];
   const pricingOptions =
     billingMode === 'driver-rental'
       ? { ...options, labour: 0, ...(menuIncluded ? {} : { desk: 0, wardrobe: 0, bed: 0 }) }
@@ -158,8 +172,14 @@ export async function createQuote(
   );
   const additionalLines = [
     ...inventoryLines,
-    ...input.extraLines.filter((line) => !line.label.startsWith('Frais taxi')),
-    ...(input.customLines ?? []),
+    ...input.extraLines.filter(
+      (line) =>
+        !line.label.startsWith('Frais taxi') &&
+        (includeAssembly || !isAssemblyServiceLine(line.label)),
+    ),
+    ...(input.customLines ?? []).filter(
+      (line) => includeAssembly || !isAssemblyServiceLine(line.label),
+    ),
     ...(sourceInventory?.stairs === 'balcon'
       ? [
           {
@@ -198,7 +218,15 @@ export async function createQuote(
     taxiFeeAmount === 0 || manoeuvreCount(basePrice.lines) > 0,
     'Les frais taxi nécessitent des manœuvres facturés.',
   );
-  const price = applyTaxiToManoeuvrePrice(basePrice, taxiFeeAmount);
+  const price = savedCustomBaseline
+    ? replaceSavedCustomLines(
+        savedCustomBaseline.price,
+        savedCustomBaseline.pricingInput?.customLines ?? [],
+        (input.customLines ?? []).filter(
+          (line) => includeAssembly || !isAssemblyServiceLine(line.label),
+        ),
+      )
+    : applyTaxiToManoeuvrePrice(basePrice, taxiFeeAmount);
   requireValue(
     input.kind !== 'final' || price.total !== null,
     messages.renseignezLeTarifDuTransportAvantDeFinaliser,
@@ -225,7 +253,7 @@ export async function createQuote(
           providedCrew,
         )
       : undefined;
-  const quote = {
+  const quote: Quote = {
     id: quoteId,
     reference:
       existingQuote?.reference ??
@@ -237,7 +265,7 @@ export async function createQuote(
         : (existingQuote?.createdAt ?? clock.now().toISOString()),
     price,
     notes: input.notes,
-    options: pricingOptions,
+    options: savedCustomBaseline?.options ?? pricingOptions,
     tolls,
     billingMode,
     menuIncluded,
@@ -281,6 +309,12 @@ export async function createQuote(
     },
     ...(accountingCosts ? { accountingCosts } : {}),
   };
+  if (savedCustomBaseline?.pricingInput)
+    quote.pricingInput = {
+      ...quote.pricingInput,
+      ...savedCustomBaseline.pricingInput,
+      customLines: input.customLines ?? [],
+    };
   return bookings.update(
     {
       ...booking,

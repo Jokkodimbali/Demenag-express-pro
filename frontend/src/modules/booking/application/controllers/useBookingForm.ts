@@ -366,6 +366,7 @@ export function useBookingForm({
     quoteStageCommit = false,
     estimatedQuoteTrips?: number,
     quoteFormChanged = false,
+    preserveSavedCustomLines = false,
   ) {
     e.preventDefault();
     const submissionQuoteConfig =
@@ -477,9 +478,10 @@ export function useBookingForm({
                   notes: bookingNotes,
                   extraLines: quoteExtraLines,
                   tollLines,
-                  options: quoteOptions,
+                  options: preserveSavedCustomLines ? editingBooking.options : quoteOptions,
                   getRentalKit,
                   providedCrew: getProvidedCrew?.(),
+                  preserveSavedCustomLines,
                 }),
               );
         onAdministrativeBookingCreated?.();
@@ -491,7 +493,9 @@ export function useBookingForm({
       }
       const booking = editingBooking
         ? administrativeQuote
-          ? await api.updateAdminBooking(editingBooking.id, input, editingBooking.version)
+          ? preserveSavedCustomLines
+            ? editingBooking
+            : await api.updateAdminBooking(editingBooking.id, input, editingBooking.version)
           : await api.updateClientBooking(editingBooking.id, input, editingBooking.version)
         : await api.createBooking(input);
       if (administrativeQuote) onAdministrativeBookingCreated?.();
@@ -516,9 +520,10 @@ export function useBookingForm({
             notes: bookingNotes,
             extraLines: quoteExtraLines,
             tollLines,
-            options: quoteOptions,
+            options: preserveSavedCustomLines ? editingBooking?.options : quoteOptions,
             getRentalKit,
             providedCrew: getProvidedCrew?.(),
+            preserveSavedCustomLines,
           });
           const savedQuoteBooking = await api.quote(booking.id, quoteInput);
           let successMessage: string | void;

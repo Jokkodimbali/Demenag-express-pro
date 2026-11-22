@@ -366,6 +366,7 @@ export const quoteSchema = z.object({
     )
     .max(20)
     .default([]),
+  preserveSavedCustomLines: z.boolean().optional(),
   taxiRoundTripAmountOverride: z.number().int().nonnegative().max(10000000).nullable().optional(),
   taxiFeeApplied: z.boolean().optional(),
   taxiPerLegAmountOverride: z.number().int().nonnegative().max(10000000).nullable().optional(),

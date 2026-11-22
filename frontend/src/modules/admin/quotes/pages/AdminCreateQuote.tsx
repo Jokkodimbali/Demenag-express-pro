@@ -48,6 +48,8 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
     resetVersion,
     quoteConfig,
     setQuoteConfig,
+    setCustomLines,
+    customLinesOnlyEdit,
     quoteEditedSinceSaved,
     questionnaireOpen,
     setQuestionnaireOpen,
@@ -508,6 +510,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             quoteStageCommit,
             effectiveQuoteTrips,
             quoteEditedSinceSaved,
+            customLinesOnlyEdit,
           );
           cancelPendingWhatsApp();
         }}
@@ -1029,7 +1032,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                             aria-label="Libellé de l’option facturée"
                             onChange={(event) => {
                               const label = event.currentTarget.value;
-                              setQuoteConfig((current) => ({
+                              setCustomLines((current) => ({
                                 ...current,
                                 customLines: current.customLines.map((item) =>
                                   item.id === line.id ? { ...item, label } : item,
@@ -1051,7 +1054,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                                 1,
                                 Math.min(10000, Math.round(Number(event.currentTarget.value) || 1)),
                               );
-                              setQuoteConfig((current) => ({
+                              setCustomLines((current) => ({
                                 ...current,
                                 customLines: current.customLines.map((item) =>
                                   item.id === line.id ? { ...item, quantity } : item,
@@ -1076,7 +1079,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                                   Math.round(Number(event.currentTarget.value) || 0),
                                 ),
                               );
-                              setQuoteConfig((current) => ({
+                              setCustomLines((current) => ({
                                 ...current,
                                 customLines: current.customLines.map((item) =>
                                   item.id === line.id ? { ...item, unitPrice } : item,
@@ -1092,7 +1095,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                             className="admin-quote-custom-quantity-remove"
                             aria-label={`Supprimer ${line.label || 'cette ligne'}`}
                             onClick={() => {
-                              setQuoteConfig((current) => ({
+                              setCustomLines((current) => ({
                                 ...current,
                                 customLines: current.customLines.filter(
                                   (item) => item.id !== line.id,
@@ -1110,7 +1113,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
                         type="button"
                         disabled={quoteConfig.customLines.length >= 20}
                         onClick={() => {
-                          setQuoteConfig((current) => ({
+                          setCustomLines((current) => ({
                             ...current,
                             customLines: [
                               ...current.customLines,
@@ -1317,6 +1320,12 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             grossMargin={model.grossMargin}
             distanceKm={model.effectiveDistance}
             trips={displayedTrips}
+            crewCount={
+              quoteConfig.billingMode === 'driver-rental'
+                ? (movingEstimate?.crew ?? null)
+                : (model.previewLines.find((line) => /^Man[œo]uvre(?:s|\b)/iu.test(line.label))
+                    ?.quantity ?? null)
+            }
             movingEstimate={model.inventoryCount > 0 ? movingEstimate : null}
             driverRental={quoteConfig.billingMode === 'driver-rental'}
             submitting={model.submitting}

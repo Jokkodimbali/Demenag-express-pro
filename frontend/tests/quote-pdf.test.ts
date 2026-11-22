@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { getDocument, OPS } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { downloadQuote } from '../src/modules/admin/quotes/adapters/quote-pdf';
+import { quoteNotificationUrl } from '../src/modules/admin/quotes/application/services/quote-notification';
 import { defaultRentalKit } from '../src/modules/moving/domain/rental-kit';
 import type {
   Booking,
@@ -121,6 +122,36 @@ for (const kind of ['provisional', 'final'] as const) {
     assert.match(text, /NON INCLUS DANS LE TOTAL/);
   });
 }
+
+test('le PDF et WhatsApp reprennent les trois montages et le total enregistrés', async () => {
+  const quote: Quote = {
+    id: 'quote-assembly-test',
+    reference: 'DV-ASSEMBLY-TEST',
+    kind: 'provisional',
+    createdAt: '2026-11-03T00:00:00.000Z',
+    price: {
+      lines: [
+        { label: 'Transport Sprinter', quantity: 1, unitPrice: 10_000, total: 10_000 },
+        { label: 'Menuisier · bureau', quantity: 1, unitPrice: 6_500, total: 6_500 },
+        { label: 'Menuisier · armoire', quantity: 1, unitPrice: 5_200, total: 5_200 },
+        { label: 'Menuisier · lit', quantity: 1, unitPrice: 3_900, total: 3_900 },
+      ],
+      total: 25_600,
+      discount: 0,
+      tier: 0,
+      trips: 1,
+      currency: 'XOF',
+    },
+    tolls: [],
+  };
+  const pdfText = await extractPdfText(await downloadQuote(booking, quote, settings));
+  for (const service of ['bureau', 'armoire', 'lit']) {
+    assert.equal((pdfText.match(new RegExp(`Menuisier.{0,12}${service}`, 'gu')) ?? []).length, 1);
+  }
+  assert.match(pdfText, /25 600|25,600/u);
+  const message = new URL(quoteNotificationUrl(booking, quote, settings)).searchParams.get('text');
+  assert.match(message ?? '', /25\s*600\s*FCFA/u);
+});
 
 for (const calcMode of ['auto', 'manual'] as const) {
   for (const kind of ['provisional', 'final'] as const) {
