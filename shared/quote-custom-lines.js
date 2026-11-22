@@ -1,7 +1,13 @@
 import { consolidateDuplicateQuoteLines } from './quote-lines.js';
 
 function key(label) {
-  return label.trim().replace(/\s+/gu, ' ').normalize('NFKD').replace(/\p{Diacritic}/gu, '').replace(/œ/giu, 'oe').toLocaleLowerCase('fr-FR');
+  return label
+    .trim()
+    .replace(/\s+/gu, ' ')
+    .normalize('NFKD')
+    .replace(/\p{Diacritic}/gu, '')
+    .replace(/œ/giu, 'oe')
+    .toLocaleLowerCase('fr-FR');
 }
 
 export function replaceSavedCustomLines(price, previousCustomLines, nextCustomLines) {
@@ -17,12 +23,23 @@ export function replaceSavedCustomLines(price, previousCustomLines, nextCustomLi
   }
   for (const custom of nextCustomLines) {
     if (!custom.label.trim() || custom.quantity <= 0 || custom.unitPrice <= 0) continue;
-    lines.push({ label: custom.label.trim(), quantity: custom.quantity, unitPrice: custom.unitPrice, total: custom.quantity * custom.unitPrice });
+    lines.push({
+      label: custom.label.trim(),
+      quantity: custom.quantity,
+      unitPrice: custom.unitPrice,
+      total: custom.quantity * custom.unitPrice,
+    });
   }
   const combined = consolidateDuplicateQuoteLines(lines);
   const subtotal = combined.reduce((sum, line) => sum + line.total, 0);
-  const discount = price.discountType === 'pct'
-    ? Math.round(subtotal * Math.min(100, price.discountValue ?? 0) / 100)
-    : Math.min(subtotal, price.discountValue ?? price.discount);
-  return { ...price, lines: combined, discount, total: price.total === null ? null : subtotal - discount };
+  const discount =
+    price.discountType === 'pct'
+      ? Math.round((subtotal * Math.min(100, price.discountValue ?? 0)) / 100)
+      : Math.min(subtotal, price.discountValue ?? price.discount);
+  return {
+    ...price,
+    lines: combined,
+    discount,
+    total: price.total === null ? null : subtotal - discount,
+  };
 }

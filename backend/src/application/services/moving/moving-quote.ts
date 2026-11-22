@@ -54,8 +54,7 @@ export async function createQuote(
     throw new AppError(409, messages.cetteReservationAChangeActualisezLaPage);
   const booking = bookingOverride ?? savedBooking;
   const targetQuoteId =
-    replaceQuoteId ??
-    (input.preserveSavedCustomLines ? savedBooking.quotes.at(-1)?.id : undefined);
+    replaceQuoteId ?? (input.preserveSavedCustomLines ? savedBooking.quotes.at(-1)?.id : undefined);
   const existingQuoteIndex = targetQuoteId
     ? savedBooking.quotes.findIndex((quote) => quote.id === targetQuoteId)
     : -1;
