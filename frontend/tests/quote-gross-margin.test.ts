@@ -4,10 +4,14 @@ import type {
   Booking,
   AccountingFinanceConfiguration,
   Price,
+  Quote,
 } from '../src/modules/shared/domain/model.ts';
 import { defaultAccountingFinanceConfiguration } from '../src/modules/admin/accounting/domain/accounting-forecast.ts';
 import { blankInventory } from '../src/modules/moving/domain/inventory/inventory.ts';
-import { quoteGrossMargin } from '../src/modules/admin/quotes/application/services/quote-gross-margin.ts';
+import {
+  quoteGrossMargin,
+  quoteGrossMarginForDisplayedPrice,
+} from '../src/modules/admin/quotes/application/services/quote-gross-margin.ts';
 import { captureAccountingCosts } from '../../backend/src/domain/accounting/accounting-costs.ts';
 
 const defaultAccounting = defaultAccountingFinanceConfiguration(new Date('2026-11-18T12:00:00Z'));
@@ -150,6 +154,90 @@ test('la marge reste vide tant que le devis ne contient aucun élément facturab
       providedCrew: 0,
       manoeuvreCount: 0,
       taxiCharges: 0,
+    }),
+    null,
+  );
+});
+
+test('la marge de la barre utilise le prix sauvegardé, ses frais et sa formule active', () => {
+  const savedQuote = {
+    price: {
+      lines: [
+        { label: 'Manœuvres', quantity: 2, unitPrice: 6_500, total: 13_000 },
+        {
+          label: 'Majoration de travail de nuit (2 personnes)',
+          quantity: 2,
+          unitPrice: 1_000,
+          total: 2_000,
+        },
+      ],
+      total: 100_000,
+      discount: 0,
+      tier: 0,
+      trips: 2,
+      currency: 'XOF',
+    },
+    billingMode: 'standard',
+    providedCrew: 2,
+    pricingInput: { taxiFeeAmount: 1_000, taxiFeeApplied: true },
+  } as unknown as Pick<Quote, 'price' | 'pricingInput' | 'billingMode' | 'providedCrew'>;
+  const displayedPrice = {
+    ...savedQuote.price,
+    total: 102_000,
+    lines: [
+      ...savedQuote.price.lines,
+      { label: 'Cartons supplémentaires', quantity: 1, unitPrice: 2_000, total: 2_000 },
+    ],
+  };
+
+  assert.equal(
+    quoteGrossMarginForDisplayedPrice({
+      displayedPrice,
+      savedQuote,
+      fallbackBillingMode: 'complete',
+      hasBillableContent: true,
+      inventory: blankInventory(),
+      accounting,
+      fallbackProvidedCrew: 6,
+      fallbackTaxiCharges: 8_000,
+    }),
+    89_000,
+  );
+});
+
+test('la marge économique ne retire pas les frais taxi ni les heures des manœuvres', () => {
+  const savedQuote = {
+    price: {
+      lines: [
+        { label: 'Manœuvres', quantity: 2, unitPrice: 6_500, total: 13_000 },
+        {
+          label: 'Majoration de travail de nuit (2 personnes)',
+          quantity: 2,
+          unitPrice: 1_000,
+          total: 2_000,
+        },
+      ],
+      total: 50_000,
+      discount: 0,
+      tier: 0,
+      trips: 2,
+      currency: 'XOF',
+    },
+    billingMode: 'driver-rental',
+    providedCrew: 2,
+    pricingInput: { taxiFeeAmount: 9_000, taxiFeeApplied: true },
+  } as unknown as Pick<Quote, 'price' | 'pricingInput' | 'billingMode' | 'providedCrew'>;
+
+  assert.equal(
+    quoteGrossMarginForDisplayedPrice({
+      displayedPrice: savedQuote.price,
+      savedQuote,
+      fallbackBillingMode: 'complete',
+      hasBillableContent: true,
+      inventory: blankInventory(),
+      accounting,
+      fallbackProvidedCrew: 6,
+      fallbackTaxiCharges: 8_000,
     }),
     null,
   );

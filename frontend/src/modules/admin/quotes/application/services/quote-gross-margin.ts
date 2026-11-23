@@ -1,4 +1,4 @@
-import type { AccountingFinanceConfiguration, Quote } from '../../../../shared/domain/model';
+import type { AccountingFinanceConfiguration, Price, Quote } from '../../../../shared/domain/model';
 import type { Inventory } from '../../../../moving/domain/inventory/inventory';
 import { accountingMenuPrice } from '../../../accounting/domain/accounting-forecast';
 
@@ -107,4 +107,58 @@ export function quoteGrossMargin(input: {
   const totalCharges = costs.moverAmount + costs.carpenterAmount + taxiCharges + nightWorkCharge;
   if (totalCharges <= 0) return null;
   return quoteTotal - totalCharges;
+}
+
+export function quoteGrossMarginForDisplayedPrice(input: {
+  displayedPrice: Price | null;
+  savedQuote?: Pick<Quote, 'price' | 'pricingInput' | 'billingMode' | 'providedCrew'>;
+  fallbackBillingMode: Quote['billingMode'];
+  hasBillableContent: boolean;
+  inventory: Inventory;
+  accounting: AccountingFinanceConfiguration | null;
+  fallbackProvidedCrew: number;
+  fallbackTaxiCharges: number;
+}): number | null {
+  const { displayedPrice, savedQuote } = input;
+  const lines = displayedPrice?.lines ?? [];
+  const savedTaxiExtraLines = savedQuote?.pricingInput?.extraLines?.filter((line) =>
+    line.label.startsWith('Frais taxi'),
+  );
+  const savedTaxiPriceLines = savedQuote?.price.lines.filter((line) =>
+    line.label.startsWith('Frais taxi'),
+  );
+  const savedTaxiCharges = savedQuote
+    ? (savedQuote.pricingInput?.taxiFeeAmount ??
+      (savedTaxiExtraLines?.length
+        ? savedTaxiExtraLines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0)
+        : null) ??
+      (savedTaxiPriceLines?.length
+        ? savedTaxiPriceLines.reduce((sum, line) => sum + line.total, 0)
+        : null) ??
+      (savedQuote.pricingInput?.taxiFeeApplied === false ? 0 : null))
+    : null;
+  const billingMode = savedQuote?.billingMode ?? input.fallbackBillingMode;
+  const manoeuvreCount = lines
+    .filter((line) => /man[œo]uvre/iu.test(line.label) && !/heures au-delà/iu.test(line.label))
+    .reduce((sum, line) => sum + line.quantity, 0);
+  const nightWorkCharge = lines
+    .filter((line) =>
+      /^(?:Majoration de travail de nuit|Man[œo]uvres · heures (?:au-delà|après 20 h))/iu.test(
+        line.label,
+      ),
+    )
+    .reduce((sum, line) => sum + line.total, 0);
+
+  return quoteGrossMargin({
+    quoteTotal: input.hasBillableContent ? (displayedPrice?.total ?? null) : null,
+    hasBillableContent: input.hasBillableContent,
+    inventory: input.inventory,
+    accounting: input.accounting,
+    billingMode,
+    providedCrew: savedQuote?.providedCrew || input.fallbackProvidedCrew,
+    manoeuvreCount,
+    taxiCharges:
+      billingMode === 'driver-rental' ? 0 : (savedTaxiCharges ?? input.fallbackTaxiCharges),
+    nightWorkCharge: billingMode === 'driver-rental' ? 0 : nightWorkCharge,
+  });
 }

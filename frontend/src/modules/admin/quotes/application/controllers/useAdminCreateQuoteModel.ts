@@ -31,7 +31,7 @@ import { quoteNotificationUrl } from '../services/quote-notification';
 import { createAdminQuotePreview } from '../services/admin-quote-preview';
 import { replaceSavedCustomLines } from '../../../../../../../shared/quote-custom-lines.js';
 import { isAssemblyServiceLine } from '../../../../../../../shared/quote-lines.js';
-import { quoteGrossMargin } from '../services/quote-gross-margin';
+import { quoteGrossMarginForDisplayedPrice } from '../services/quote-gross-margin';
 import { normalizeAccountingConfiguration } from '../../../accounting/application/services/accounting-dashboard';
 import {
   adminQuoteVehicleFitWarnings,
@@ -373,7 +373,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
   const savedQuoteSnapshot =
     latestSavedQuote && !quoteEditedSinceSaved ? latestSavedQuote : undefined;
   const customOnlyPrice =
-    latestSavedQuote && quoteEditedSinceSaved && quoteEditScope === 'custom' && !quoteStageChanged
+    latestSavedQuote && quoteEditedSinceSaved && quoteEditScope === 'custom'
       ? replaceSavedCustomLines(
           latestSavedQuote.price,
           latestSavedQuote.pricingInput?.customLines ?? [],
@@ -1012,22 +1012,22 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       (estimateInventory.stairs === 'balcon' && Number(estimateInventory.balcPx) > 0) ||
       (quoteConfig.billingMode === 'driver-rental' && (quoteConfig.overtimeMinutes ?? 0) > 0),
     );
-  const grossMargin = quoteGrossMargin({
-    quoteTotal: hasBillableQuoteContent ? (customOnlyPrice?.total ?? preview.total) : null,
+  const marginQuoteSnapshot =
+    savedQuoteSnapshot ?? (customOnlyPrice ? latestSavedQuote : undefined);
+  const marginBillingMode = marginQuoteSnapshot?.billingMode ?? quoteConfig.billingMode;
+  const grossMargin = quoteGrossMarginForDisplayedPrice({
+    displayedPrice: hasBillableQuoteContent
+      ? (savedQuoteSnapshot?.price ?? customOnlyPrice ?? preview.priceSnapshot)
+      : null,
+    savedQuote: marginQuoteSnapshot,
+    fallbackBillingMode: quoteConfig.billingMode,
     hasBillableContent: hasBillableQuoteContent,
     inventory: draft.inventory,
     accounting: accountingConfiguration,
-    billingMode: quoteConfig.billingMode,
-    providedCrew:
+    fallbackProvidedCrew:
       editingBooking?.crew?.manoeuvre.length ||
-      (quoteConfig.billingMode === 'driver-rental' ? economicCrew : movingEstimateCrew),
-    manoeuvreCount: (customOnlyPrice?.lines ?? preview.previewLines)
-      .filter((line) => /man[œo]uvre/iu.test(line.label) && !/heures au-delà/iu.test(line.label))
-      .reduce((sum, line) => sum + line.quantity, 0),
-    taxiCharges: preview.taxiFeeLines.reduce((sum, line) => sum + line.total, 0),
-    nightWorkCharge: preview.manoeuvreOvertime
-      ? Math.round(preview.manoeuvreOvertime.quantity * preview.manoeuvreOvertime.unitPrice)
-      : 0,
+      (marginBillingMode === 'driver-rental' ? economicCrew : movingEstimateCrew),
+    fallbackTaxiCharges: preview.taxiFeeLines.reduce((sum, line) => sum + line.total, 0),
   });
   const {
     tier: calculatedPreviewTier,
@@ -1096,38 +1096,39 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     ? savedQuoteSnapshot.price.lines
     : customOnlyPrice
       ? customOnlyPrice.lines
-    : hasBillableQuoteContent && !resetAdminQuote
-      ? calculatedPreviewLines
-      : [];
+      : hasBillableQuoteContent && !resetAdminQuote
+        ? calculatedPreviewLines
+        : [];
   const previewSubtotal = savedQuoteSnapshot
     ? (savedQuoteSnapshot.price.total ?? 0) + savedQuoteSnapshot.price.discount
     : customOnlyPrice
       ? (customOnlyPrice.total ?? 0) + customOnlyPrice.discount
-    : hasBillableQuoteContent && !resetAdminQuote
-      ? calculatedPreviewSubtotal
-      : 0;
+      : hasBillableQuoteContent && !resetAdminQuote
+        ? calculatedPreviewSubtotal
+        : 0;
   const previewDiscount = savedQuoteSnapshot
     ? savedQuoteSnapshot.price.discount
     : customOnlyPrice
       ? customOnlyPrice.discount
-    : hasBillableQuoteContent && !resetAdminQuote
-      ? calculatedPreviewDiscount
-      : 0;
+      : hasBillableQuoteContent && !resetAdminQuote
+        ? calculatedPreviewDiscount
+        : 0;
   const previewDiscountLabel = savedQuoteSnapshot
     ? (savedQuoteSnapshot.price.discountLabel ?? '')
     : customOnlyPrice
       ? (customOnlyPrice.discountLabel ?? '')
-    : hasBillableQuoteContent && !resetAdminQuote
-      ? calculatedPreviewDiscountLabel
-      : '';
+      : hasBillableQuoteContent && !resetAdminQuote
+        ? calculatedPreviewDiscountLabel
+        : '';
   const previewTotal = savedQuoteSnapshot
     ? savedQuoteSnapshot.price.total
     : customOnlyPrice
       ? customOnlyPrice.total
-    : hasBillableQuoteContent && !resetAdminQuote
-      ? calculatedPreviewTotal
-      : null;
-  const previewTier = savedQuoteSnapshot?.price.tier ?? customOnlyPrice?.tier ?? calculatedPreviewTier;
+      : hasBillableQuoteContent && !resetAdminQuote
+        ? calculatedPreviewTotal
+        : null;
+  const previewTier =
+    savedQuoteSnapshot?.price.tier ?? customOnlyPrice?.tier ?? calculatedPreviewTier;
   const bounds = quoteSettings?.distanceBounds ?? [15, 25, 35];
   const tiers = referenceTierLabels(bounds);
   const effectiveDistance = draft.distanceKmOverride ?? draft.route?.distanceKm;

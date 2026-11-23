@@ -425,9 +425,10 @@ export function useBookingForm({
     submitLock.current = true;
     setSubmitting(true);
     try {
-      const submissionRoute =
-        Date.parse(draft.route.expiresAt) <= Date.now() + 30_000 ||
-        !Number.isFinite(Date.parse(draft.route.expiresAt))
+      const submissionRoute = preserveSavedCustomLines
+        ? draft.route
+        : Date.parse(draft.route.expiresAt) <= Date.now() + 30_000 ||
+            !Number.isFinite(Date.parse(draft.route.expiresAt))
           ? await api.route(draft.route.from, draft.route.to)
           : draft.route;
       if (submissionRoute.id !== draft.route.id) {
@@ -455,35 +456,38 @@ export function useBookingForm({
         if (!buildAdministrativeQuoteSubmission)
           throw new Error('Le service de mise à jour du devis administratif est indisponible.');
         const nextKind = quoteKindOverride ?? quoteKind ?? 'provisional';
+        const stageQuoteInput = buildAdministrativeQuoteSubmission({
+          draft: submissionDraft,
+          kind: nextKind,
+          config: submissionQuoteConfig,
+          catalogue: catalogue ?? null,
+          fallbackVehicle: editingBooking.vehicle,
+          tier: quoteTier,
+          version: editingBooking.version,
+          notes: bookingNotes,
+          extraLines: quoteExtraLines,
+          tollLines,
+          options: preserveSavedCustomLines ? editingBooking.options : quoteOptions,
+          getRentalKit,
+          providedCrew: getProvidedCrew?.(),
+          preserveSavedCustomLines,
+        });
         const updated =
-          !quoteFormChanged && quoteStageCommitId
-            ? await api.updateQuoteKind(
-                editingBooking.id,
-                quoteStageCommitId,
-                nextKind,
-                editingBooking.version,
-              )
-            : await api.updateQuoteStage(
-                editingBooking.id,
-                quoteStageCommitId ?? null,
-                input,
-                buildAdministrativeQuoteSubmission({
-                  draft: submissionDraft,
-                  kind: nextKind,
-                  config: submissionQuoteConfig,
-                  catalogue: catalogue ?? null,
-                  fallbackVehicle: editingBooking.vehicle,
-                  tier: quoteTier,
-                  version: editingBooking.version,
-                  notes: bookingNotes,
-                  extraLines: quoteExtraLines,
-                  tollLines,
-                  options: preserveSavedCustomLines ? editingBooking.options : quoteOptions,
-                  getRentalKit,
-                  providedCrew: getProvidedCrew?.(),
-                  preserveSavedCustomLines,
-                }),
-              );
+          preserveSavedCustomLines && quoteStageCommitId
+            ? await api.updateQuote(editingBooking.id, quoteStageCommitId, stageQuoteInput)
+            : !quoteFormChanged && quoteStageCommitId
+              ? await api.updateQuoteKind(
+                  editingBooking.id,
+                  quoteStageCommitId,
+                  nextKind,
+                  editingBooking.version,
+                )
+              : await api.updateQuoteStage(
+                  editingBooking.id,
+                  quoteStageCommitId ?? null,
+                  input,
+                  stageQuoteInput,
+                );
         onAdministrativeBookingCreated?.();
         bookingLookup.current = null;
         setEditingBooking(updated);
@@ -525,7 +529,14 @@ export function useBookingForm({
             providedCrew: getProvidedCrew?.(),
             preserveSavedCustomLines,
           });
-          const savedQuoteBooking = await api.quote(booking.id, quoteInput);
+          const savedQuoteBooking =
+            preserveSavedCustomLines && editingBooking?.quotes.at(-1)
+              ? await api.updateQuote(
+                  editingBooking.id,
+                  editingBooking.quotes.at(-1)!.id,
+                  quoteInput,
+                )
+              : await api.quote(booking.id, quoteInput);
           let successMessage: string | void;
           try {
             successMessage = await onQuoteSaved?.(savedQuoteBooking);

@@ -263,14 +263,14 @@ export async function createQuote(
         ? clock.now().toISOString()
         : (existingQuote?.createdAt ?? clock.now().toISOString()),
     price,
-    notes: input.notes,
+    notes: savedCustomBaseline?.notes ?? input.notes,
     options: savedCustomBaseline?.options ?? pricingOptions,
-    tolls,
-    billingMode,
-    menuIncluded,
-    rentalKit: input.rentalKit ?? [],
-    overtimeMinutes,
-    providedCrew,
+    tolls: savedCustomBaseline?.tolls ?? tolls,
+    billingMode: savedCustomBaseline?.billingMode ?? billingMode,
+    menuIncluded: savedCustomBaseline?.menuIncluded ?? menuIncluded,
+    rentalKit: savedCustomBaseline?.rentalKit ?? input.rentalKit ?? [],
+    overtimeMinutes: savedCustomBaseline?.overtimeMinutes ?? overtimeMinutes,
+    providedCrew: savedCustomBaseline?.providedCrew ?? providedCrew,
     pricingInput: {
       settings: {
         distanceBounds: quoteSettings.distanceBounds,
@@ -306,7 +306,11 @@ export async function createQuote(
       manoeuvreOvertimePersonIds: input.manoeuvreOvertimePersonIds ?? [],
       manoeuvreOvertimeAdditionalPeople: input.manoeuvreOvertimeAdditionalPeople ?? 0,
     },
-    ...(accountingCosts ? { accountingCosts } : {}),
+    ...(savedCustomBaseline?.accountingCosts
+      ? { accountingCosts: savedCustomBaseline.accountingCosts }
+      : accountingCosts
+        ? { accountingCosts }
+        : {}),
   };
   if (savedCustomBaseline?.pricingInput)
     quote.pricingInput = {

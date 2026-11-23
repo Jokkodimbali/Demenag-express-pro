@@ -411,7 +411,24 @@ test('ajouter un service à un ancien devis conserve ses montants déjà enregis
   assert.equal(saved.quotes.length, 1);
   assert.equal(quote?.id, 'legacy-quote');
 
-  const removed = await service.quote(admin, saved.id, {
+  const changedQuantity = await service.quote(admin, saved.id, {
+    kind: 'provisional',
+    trips: 5,
+    customPrice: null,
+    discount: 0,
+    notes: '',
+    extraLines: [],
+    customLines: [{ label: 'Frais d’emballage', quantity: 1, unitPrice: 1500 }],
+    preserveSavedCustomLines: true,
+    tolls: [],
+    options: saved.options,
+    version: saved.version,
+  });
+  assert.equal(changedQuantity.quotes[0]?.price.total, 161_000);
+  assert.equal(changedQuantity.quotes[0]?.price.lines.at(-1)?.quantity, 1);
+  assert.equal(changedQuantity.quotes.length, 1);
+
+  const removed = await service.quote(admin, changedQuantity.id, {
     kind: 'provisional',
     trips: 5,
     customPrice: null,
@@ -421,8 +438,8 @@ test('ajouter un service à un ancien devis conserve ses montants déjà enregis
     customLines: [],
     preserveSavedCustomLines: true,
     tolls: [],
-    options: saved.options,
-    version: saved.version,
+    options: changedQuantity.options,
+    version: changedQuantity.version,
   });
   assert.equal(removed.quotes[0]?.price.total, 159_500);
   assert.deepEqual(removed.quotes[0]?.price.lines, booking.quotes[0]?.price.lines);
