@@ -1,14 +1,21 @@
 import { messages } from '../../../domain/shared/messages/fr.js';
+import { requireValue } from '../../../domain/shared/errors.js';
 import type { Booking, Quote, QuotePricingInput, Settings } from '../../../domain/shared/model.js';
 import { calculatePrice, labourUnitPrice } from '../../../domain/pricing/pricing.js';
 import { applyTaxiToManoeuvrePrice } from '../../../../../shared/quote-taxi-allocation.js';
 import { normalizePendingQuotePrice } from '../../../../../shared/quote-price-status.js';
+import {
+  taxiFareForDistance,
+  taxiPaidLegCount,
+} from '../../../../../shared/taxi-distance-tariffs.js';
 
 export function repriceProvisionalQuote(
   booking: Booking,
   quote: Quote,
   settings: Settings,
   distanceKm: number,
+  taxiSettings: Settings = settings,
+  taxiCompanyApproachDistanceKm?: number | null,
 ) {
   const pricingSettings = {
     distanceBounds: settings.distanceBounds,
@@ -55,11 +62,43 @@ export function repriceProvisionalQuote(
   const pricingInput: QuotePricingInput = quote.pricingInput ?? legacyPricingInput();
   const rentalOvertimeHourlyRate =
     pricingInput.rentalOvertimeHourlyRate ?? settings.rentalOvertimeHourlyRate ?? 10000;
-  const taxiFeeAmount =
+  const storedTaxiFeeAmount =
     pricingInput.taxiFeeAmount ??
     pricingInput.extraLines
       .filter((line) => line.label.startsWith('Frais taxi'))
       .reduce((sum, line) => sum + Math.round(line.quantity * line.unitPrice), 0);
+  const taxiApplied = pricingInput.taxiFeeApplied ?? storedTaxiFeeAmount > 0;
+  const companyApproachDistanceKm =
+    taxiCompanyApproachDistanceKm ?? pricingInput.taxiCompanyApproachDistanceKm ?? null;
+  let taxiFeeAmount = storedTaxiFeeAmount;
+  if (pricingInput.taxiFeeApplied != null) {
+    if (!taxiApplied || pricingInput.billingMode === 'driver-rental') {
+      taxiFeeAmount = 0;
+    } else {
+      const tariffs = taxiSettings.taxiDistanceTariffs ?? [];
+      const fareForDistance = (distance: number) => {
+        if (tariffs.length) {
+          const fare = taxiFareForDistance(distance, tariffs);
+          requireValue(fare != null, 'Aucun tarif taxi ne couvre la distance du devis.');
+          return fare;
+        }
+        return Math.round(distance * Math.max(0, taxiSettings.taxiFeePerKm ?? 0));
+      };
+      const perLegOverride =
+        pricingInput.taxiPerLegAmountOverride ?? pricingInput.taxiRoundTripAmountOverride ?? null;
+      const approachOverride = pricingInput.taxiCompanyApproachAmountOverride ?? null;
+      const perLegAmount =
+        perLegOverride ?? fareForDistance(pricingInput.distanceKmOverride ?? distanceKm);
+      const approachAmount =
+        approachOverride ??
+        (companyApproachDistanceKm == null ? 0 : fareForDistance(companyApproachDistanceKm));
+      requireValue(
+        approachOverride != null || companyApproachDistanceKm != null,
+        'La distance entreprise → client est nécessaire pour recalculer les frais taxi.',
+      );
+      taxiFeeAmount = perLegAmount * taxiPaidLegCount(pricingInput.trips) + approachAmount;
+    }
+  }
   const extraLines = pricingInput.extraLines.filter(
     (line) =>
       !line.label.startsWith('Frais taxi') &&
@@ -93,7 +132,7 @@ export function repriceProvisionalQuote(
   const basePrice = calculatePrice(
     booking.vehicle,
     effectiveSettings,
-    distanceKm,
+    pricingInput.distanceKmOverride ?? distanceKm,
     pricingOptions,
     pricingInput.trips,
     pricingInput.customPrice,
@@ -108,6 +147,12 @@ export function repriceProvisionalQuote(
   const price = normalizePendingQuotePrice(applyTaxiToManoeuvrePrice(basePrice, taxiFeeAmount));
   return {
     price,
-    pricingInput: { ...pricingInput, extraLines, taxiFeeAmount, rentalOvertimeHourlyRate },
+    pricingInput: {
+      ...pricingInput,
+      extraLines,
+      taxiFeeAmount,
+      taxiCompanyApproachDistanceKm: companyApproachDistanceKm,
+      rentalOvertimeHourlyRate,
+    },
   };
 }

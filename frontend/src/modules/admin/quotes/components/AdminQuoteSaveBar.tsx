@@ -2,12 +2,18 @@ import { visibleUiText } from '../../../shared/content/visible-ui-text';
 import { money } from '../../../shared/application/presentation/format';
 import type { MovingEstimate } from '../../../moving/domain/estimate/moving-estimate';
 import type { Quote } from '../../../shared/domain/model';
+import { grossMarginIndicatorColor } from '../application/services/gross-margin-indicator-color';
 
 type Props = {
   quoteKind: Quote['kind'];
   total: number | null;
   grossMargin: number | null;
   distanceKm: number | null | undefined;
+  companyToDepartureDistanceKm: number | null | undefined;
+  companyToDepartureDistanceBusy: boolean;
+  companyToDepartureDistanceError: string;
+  grossMarginAboveThresholdColor: string;
+  grossMarginBelowThresholdColor: string;
   trips: number;
   crewCount: number | null;
   movingEstimate: Pick<MovingEstimate, 'crew' | 'endTime'> | null;
@@ -22,6 +28,11 @@ export function AdminQuoteSaveBar({
   total,
   grossMargin,
   distanceKm,
+  companyToDepartureDistanceKm,
+  companyToDepartureDistanceBusy,
+  companyToDepartureDistanceError,
+  grossMarginAboveThresholdColor,
+  grossMarginBelowThresholdColor,
   trips,
   crewCount,
   movingEstimate,
@@ -34,14 +45,35 @@ export function AdminQuoteSaveBar({
     <div className="admin-quote-save-bar" aria-live="polite">
       <section className="admin-quote-save-bar-charges" aria-label="Marge brute estimée">
         <small>Marge brute estimée</small>
-        <strong>{grossMargin == null ? '—' : money(grossMargin)}</strong>
+        <strong
+          className="admin-quote-save-bar-margin"
+          style={{
+            color: grossMarginIndicatorColor(
+              grossMargin,
+              grossMarginAboveThresholdColor,
+              grossMarginBelowThresholdColor,
+            ),
+          }}
+        >
+          {grossMargin == null ? '—' : money(grossMargin)}
+        </strong>
       </section>
-      <div>
+      <div className="admin-quote-save-bar-distances">
         <small>Distance A → B</small>
         <strong>
           {distanceKm == null
             ? '—'
             : `${distanceKm.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km`}
+        </strong>
+        <small>Locaux → départ client (A)</small>
+        <strong title={companyToDepartureDistanceError || undefined}>
+          {companyToDepartureDistanceBusy
+            ? 'Calcul…'
+            : companyToDepartureDistanceError
+              ? 'Indisponible'
+              : companyToDepartureDistanceKm == null
+                ? '—'
+                : `${companyToDepartureDistanceKm.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km`}
         </strong>
       </div>
       <div>

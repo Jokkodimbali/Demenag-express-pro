@@ -15,7 +15,10 @@ export class PrismaCatalogue implements CatalogueRepository {
   async get(): Promise<Catalogue> {
     const [rows, settings] = await Promise.all([
       this.db.vehicule.findMany({ orderBy: { nom: 'asc' } }),
-      this.db.parametreApplication.findUnique({ where: { id: 'main' } }),
+      this.db.parametreApplication.findUnique({
+        where: { id: 'main' },
+        include: { taxiDistanceTariffs: { orderBy: { sortOrder: 'asc' } } },
+      }),
     ]);
     if (!settings) throw new AppError(503, messages.leCatalogueDoitEtreInitialise);
     return {
@@ -25,16 +28,27 @@ export class PrismaCatalogue implements CatalogueRepository {
   }
   async update(vehicles: Vehicle[], settings: Settings) {
     await this.db.$transaction(
-      [
-        ...vehicles.map((v) =>
-          this.db.vehicule.upsert({
-            where: { id: v.id },
-            update: toVehicle(v),
-            create: toVehicle(v),
-          }),
-        ),
-        this.db.parametreApplication.update({ where: { id: 'main' }, data: toSettings(settings) }),
-      ],
+      async (tx) => {
+        await Promise.all(
+          vehicles.map((vehicle) =>
+            tx.vehicule.upsert({
+              where: { id: vehicle.id },
+              update: toVehicle(vehicle),
+              create: toVehicle(vehicle),
+            }),
+          ),
+        );
+        await tx.parametreApplication.update({ where: { id: 'main' }, data: toSettings(settings) });
+        if (settings.taxiDistanceTariffs !== undefined) {
+          await tx.taxiDistanceTariff.deleteMany({ where: { settingsId: 'main' } });
+          await tx.taxiDistanceTariff.createMany({
+            data: settings.taxiDistanceTariffs.map((tariff) => ({
+              ...tariff,
+              settingsId: 'main',
+            })),
+          });
+        }
+      },
       { timeout: 30000 },
     );
   }

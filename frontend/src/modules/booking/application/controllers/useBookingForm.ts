@@ -367,6 +367,7 @@ export function useBookingForm({
     estimatedQuoteTrips?: number,
     quoteFormChanged = false,
     preserveSavedCustomLines = false,
+    taxiCompanyApproachDistanceKm?: number | null,
   ) {
     e.preventDefault();
     const submissionQuoteConfig =
@@ -470,6 +471,7 @@ export function useBookingForm({
           options: preserveSavedCustomLines ? editingBooking.options : quoteOptions,
           getRentalKit,
           providedCrew: getProvidedCrew?.(),
+          taxiCompanyApproachDistanceKm,
           preserveSavedCustomLines,
         });
         const updated =
@@ -527,6 +529,7 @@ export function useBookingForm({
             options: preserveSavedCustomLines ? editingBooking?.options : quoteOptions,
             getRentalKit,
             providedCrew: getProvidedCrew?.(),
+            taxiCompanyApproachDistanceKm,
             preserveSavedCustomLines,
           });
           const savedQuoteBooking =

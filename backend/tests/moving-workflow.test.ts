@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { MovingService } from '../src/application/services/moving/moving.js';
+import { defaultTaxiDistanceTariffs } from '../../shared/taxi-distance-tariffs.js';
 import type {
   BookingRepository,
   CatalogueRepository,
@@ -129,7 +130,7 @@ function harness() {
       };
     },
   } as unknown as BookingRepository;
-  const settings = {
+  let settings: Settings = {
     bookingsEnabled: true,
     maxAdvanceDays: 366,
     distanceBounds: [15, 25, 35],
@@ -212,6 +213,12 @@ function harness() {
     setDistance: (distanceKm: number) => {
       booking = { ...booking, distanceKm };
     },
+    setOptions: (options: Booking['options']) => {
+      booking = { ...booking, options };
+    },
+    setSettings: (next: Partial<Settings>) => {
+      settings = { ...settings, ...next };
+    },
     addFinalQuote: () => {
       booking = {
         ...booking,
@@ -229,6 +236,157 @@ function harness() {
     },
   };
 }
+
+test('le backend applique les tarifs taxi avec la distance du devis et les rotations calculées', async () => {
+  const { service, getBooking, setDistance, setOptions, setSettings } = harness();
+  setDistance(70);
+  setOptions({ labour: 5, desk: 0, wardrobe: 0, bed: 0 });
+  setSettings({
+    taxiFeeEnabled: true,
+    taxiFeePerKm: 300,
+    taxiDistanceTariffs: defaultTaxiDistanceTariffs,
+    businessLatitude: 14.69,
+    businessLongitude: -17.44,
+  });
+  const booking = getBooking();
+  const saved = await service.quote(admin, booking.id, {
+    kind: 'provisional',
+    trips: 3,
+    distanceKmOverride: 10,
+    customPrice: null,
+    discount: 0,
+    notes: '',
+    extraLines: [
+      { label: 'Frais taxi · trajet simple', quantity: 5, unitPrice: 3_500 },
+      { label: 'Frais taxi · approche entreprise', quantity: 1, unitPrice: 2_500 },
+    ],
+    taxiFeeApplied: true,
+    taxiCompanyApproachDistanceKm: 5,
+    options: booking.options,
+    version: booking.version,
+  });
+  const quote = saved.quotes.at(-1);
+
+  assert.equal(quote?.pricingInput?.taxiFeeAmount, 20_000);
+  assert.equal(quote?.pricingInput?.distanceKmOverride, 10);
+  assert.equal(quote?.pricingInput?.taxiCompanyApproachDistanceKm, 5);
+  assert.equal(quote?.price.lines.filter((line) => line.label.startsWith('Manœuvre')).length, 1);
+  assert.equal(quote?.price.lines.find((line) => line.label.startsWith('Manœuvre'))?.total, 45_000);
+});
+
+test('le backend refuse une ligne taxi dont les trajets ne correspondent pas aux rotations du devis', async () => {
+  const { service, getBooking, setDistance, setOptions, setSettings } = harness();
+  setDistance(10);
+  setOptions({ labour: 2, desk: 0, wardrobe: 0, bed: 0 });
+  setSettings({
+    taxiFeeEnabled: true,
+    taxiFeePerKm: 300,
+    taxiDistanceTariffs: defaultTaxiDistanceTariffs,
+    businessLatitude: 14.69,
+    businessLongitude: -17.44,
+  });
+  const booking = getBooking();
+
+  await assert.rejects(
+    service.quote(admin, booking.id, {
+      kind: 'provisional',
+      trips: 3,
+      customPrice: null,
+      discount: 0,
+      notes: '',
+      extraLines: [
+        { label: 'Frais taxi · trajet simple', quantity: 3, unitPrice: 3_500 },
+        { label: 'Frais taxi · approche entreprise', quantity: 1, unitPrice: 2_500 },
+      ],
+      taxiFeeApplied: true,
+      taxiCompanyApproachDistanceKm: 5,
+      options: booking.options,
+      version: booking.version,
+    }),
+    /détail des trajets taxi/u,
+  );
+});
+
+test('le backend conserve les montants taxi modifiés et répartit le total sur les manœuvres', async () => {
+  const { service, getBooking, setDistance, setOptions, setSettings } = harness();
+  setDistance(10);
+  setOptions({ labour: 6, desk: 0, wardrobe: 0, bed: 0 });
+  setSettings({
+    labourPrice: 6_500,
+    taxiFeeEnabled: true,
+    taxiDistanceTariffs: defaultTaxiDistanceTariffs,
+    businessLatitude: 14.69,
+    businessLongitude: -17.44,
+  });
+  const booking = getBooking();
+  const saved = await service.quote(admin, booking.id, {
+    kind: 'provisional',
+    trips: 2,
+    calcMode: 'manual',
+    customPrice: null,
+    discount: 0,
+    notes: '',
+    extraLines: [
+      { label: 'Frais taxi · montant par trajet modifié', quantity: 3, unitPrice: 13_650 },
+      { label: 'Frais taxi · approche entreprise', quantity: 1, unitPrice: 930 },
+    ],
+    taxiFeeApplied: true,
+    taxiPerLegAmountOverride: 13_650,
+    taxiRoundTripAmountOverride: 13_650,
+    taxiCompanyApproachAmountOverride: 930,
+    options: booking.options,
+    version: booking.version,
+  });
+  const quote = saved.quotes.at(-1);
+  const manoeuvreLines = quote?.price.lines.filter((line) => line.label.startsWith('Manœuvre'));
+
+  assert.equal(quote?.pricingInput?.taxiFeeAmount, 41_880);
+  assert.equal(manoeuvreLines?.length, 1);
+  assert.equal(manoeuvreLines?.[0]?.quantity, 6);
+  assert.equal(manoeuvreLines?.[0]?.unitPrice, 13_480);
+  assert.equal(manoeuvreLines?.[0]?.total, 80_880);
+});
+
+test('un changement de trajet recalcule les frais taxi du devis provisoire avec la nouvelle distance', async () => {
+  const { service, getBooking, setOptions, setSettings } = harness();
+  setOptions({ labour: 3, desk: 0, wardrobe: 0, bed: 0 });
+  setSettings({
+    taxiFeeEnabled: true,
+    taxiDistanceTariffs: defaultTaxiDistanceTariffs,
+    businessLatitude: 14.69,
+    businessLongitude: -17.44,
+  });
+  const booking = getBooking();
+  const created = await service.quote(admin, booking.id, {
+    kind: 'provisional',
+    trips: 2,
+    customPrice: null,
+    discount: 0,
+    notes: '',
+    extraLines: [
+      { label: 'Frais taxi · trajet simple', quantity: 3, unitPrice: 30_000 },
+      { label: 'Frais taxi · approche entreprise', quantity: 1, unitPrice: 30_000 },
+    ],
+    taxiFeeApplied: true,
+    taxiCompanyApproachDistanceKm: 45,
+    options: booking.options,
+    version: booking.version,
+  });
+  assert.equal(created.quotes[0]?.pricingInput?.taxiFeeAmount, 120_000);
+
+  const updated = await service.updateRoute(
+    admin,
+    booking.id,
+    [14.6, -17.5],
+    [14.8, -16.9],
+    created.version,
+  );
+  const quote = updated.quotes[0];
+
+  assert.equal(quote?.pricingInput?.taxiFeeAmount, 14_000);
+  assert.equal(quote?.pricingInput?.taxiCompanyApproachDistanceKm, 10);
+  assert.equal(quote?.price.lines.find((line) => line.label.startsWith('Manœuvre'))?.total, 29_000);
+});
 
 test('le devis utilise les tarifs figés puis les remplace uniquement sur action explicite', async () => {
   const { service, getBooking, setPricingSnapshot, setCurrentVehiclePrices, setDistance } =

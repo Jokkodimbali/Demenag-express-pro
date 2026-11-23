@@ -77,6 +77,7 @@ import {
   quoteQuestionnaireSummary,
   quoteSettingsForEditing,
   shouldAutomaticallyEnableTaxiFees,
+  taxiFeeAmountFromSavedQuote,
   toggleQuoteToll,
   totalTollCost,
 } from '../services/admin-quote-form-policy';
@@ -386,6 +387,8 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
           ),
         )
       : null;
+  const preservedTaxiFeeAmount =
+    savedQuoteSnapshot || customOnlyPrice ? taxiFeeAmountFromSavedQuote(latestSavedQuote) : null;
   const quoteSettings = quoteSettingsForEditing(
     editingBooking?.pricingSettings,
     state.catalogue?.settings,
@@ -899,6 +902,10 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     quoteSettings?.businessLongitude,
     draft.route?.from,
   );
+  const effectiveTaxiCompanyApproachDistanceKm =
+    !quoteEditedSinceSaved && latestSavedQuote?.pricingInput?.taxiCompanyApproachDistanceKm != null
+      ? latestSavedQuote.pricingInput.taxiCompanyApproachDistanceKm
+      : taxiCompanyApproach.distanceKm;
   const preview = createAdminQuotePreview({
     draft,
     estimateInventory,
@@ -913,7 +920,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
       editingBooking?.pricingSnapshot || latestSavedQuote?.pricingInput?.taxiFeeAmount,
     ),
     simulationNeeds: rentalKitNeeds,
-    taxiPickupDistanceKm: taxiCompanyApproach.distanceKm,
+    taxiPickupDistanceKm: effectiveTaxiCompanyApproachDistanceKm,
     savedCustomLines: latestSavedQuote?.pricingInput?.customLines,
     accountingOvertimeHourlyRate: accountingConfiguration?.overtimeHourlyRate,
   });
@@ -937,7 +944,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         editingBooking?.pricingSnapshot || latestSavedQuote?.pricingInput?.taxiFeeAmount,
       ),
       simulationNeeds: rentalKitNeeds,
-      taxiPickupDistanceKm: taxiCompanyApproach.distanceKm,
+      taxiPickupDistanceKm: effectiveTaxiCompanyApproachDistanceKm,
       savedCustomLines: latestSavedQuote?.pricingInput?.customLines,
       accountingOvertimeHourlyRate: accountingConfiguration?.overtimeHourlyRate,
     }).total,
@@ -955,7 +962,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         editingBooking?.pricingSnapshot || latestSavedQuote?.pricingInput?.taxiFeeAmount,
       ),
       simulationNeeds: rentalKitNeeds,
-      taxiPickupDistanceKm: taxiCompanyApproach.distanceKm,
+      taxiPickupDistanceKm: effectiveTaxiCompanyApproachDistanceKm,
       savedCustomLines: latestSavedQuote?.pricingInput?.customLines,
       accountingOvertimeHourlyRate: accountingConfiguration?.overtimeHourlyRate,
     }).total,
@@ -973,7 +980,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         editingBooking?.pricingSnapshot || latestSavedQuote?.pricingInput?.taxiFeeAmount,
       ),
       simulationNeeds: rentalKitNeeds,
-      taxiPickupDistanceKm: taxiCompanyApproach.distanceKm,
+      taxiPickupDistanceKm: effectiveTaxiCompanyApproachDistanceKm,
       savedCustomLines: latestSavedQuote?.pricingInput?.customLines,
       accountingOvertimeHourlyRate: accountingConfiguration?.overtimeHourlyRate,
     }).total,
@@ -1049,7 +1056,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     quoteConfig.billingMode !== 'driver-rental' &&
     taxiCrew > 0 &&
     taxiCompanyLocationConfigured &&
-    (taxiCompanyApproach.distanceKm != null ||
+    (effectiveTaxiCompanyApproachDistanceKm != null ||
       quoteConfig.taxiCompanyApproachAmountOverride != null);
   useEffect(() => {
     automaticTaxiAlertShown.current = false;
@@ -1089,7 +1096,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     setQuoteConfigFromUser,
     showSuccessToast,
     taxiAvailable,
-    taxiCompanyApproach.distanceKm,
+    effectiveTaxiCompanyApproachDistanceKm,
     taxiCrew,
     user?.role,
   ]);
@@ -1480,6 +1487,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     quoteStageChanged,
     canCommitQuoteStage,
     latestSavedQuote,
+    preservedTaxiFeeAmount,
     grossMargin,
     editingBooking,
     quoteSettings,
@@ -1545,7 +1553,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     bounds,
     tiers,
     effectiveDistance,
-    taxiCompanyApproachDistanceKm: taxiCompanyApproach.distanceKm,
+    taxiCompanyApproachDistanceKm: effectiveTaxiCompanyApproachDistanceKm,
     taxiCompanyApproachBusy: taxiCompanyApproach.busy,
     taxiCompanyApproachError: taxiCompanyApproach.error,
     estimatedTravelMinutes,

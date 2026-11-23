@@ -8,6 +8,10 @@ import type { Catalogue } from '../../../shared/domain/model';
 import { quoteConfigWithManualTaxiFee } from '../application/services/admin-quote-form-policy';
 import { taxiPaidLegCount, taxiRotationCount } from '../application/services/admin-quote-taxi';
 import { estimatedManoeuvreOvertimeHours } from '../application/services/manoeuvre-overtime';
+import {
+  taxiDistanceTariffFor,
+  taxiFareForDistance,
+} from '../../../../../../shared/taxi-distance-tariffs.js';
 
 type Model = ReturnType<typeof useAdminCreateQuoteModel>;
 
@@ -48,18 +52,25 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
   const quoteSettings = model.quoteSettings ?? catalogue.settings;
   const taxiDistanceKm = Math.max(0, effectiveDistance ?? 0);
   const taxiRate = Math.max(0, quoteSettings.taxiFeePerKm ?? 0);
+  const configuredTaxiTariffs = quoteSettings.taxiDistanceTariffs ?? [];
+  const taxiRouteTariff =
+    effectiveDistance == null
+      ? null
+      : taxiDistanceTariffFor(effectiveDistance, configuredTaxiTariffs);
   const taxiRotations = taxiRotationCount(
     movingEstimate?.trips,
     quoteConfig.trips,
     quoteConfig.calcMode,
   );
   const taxiPaidLegs = taxiPaidLegCount(taxiRotations);
-  const taxiCalculatedAmount = Math.round(taxiDistanceKm * taxiRate);
+  const taxiCalculatedAmount = configuredTaxiTariffs.length
+    ? (taxiFareForDistance(effectiveDistance, configuredTaxiTariffs) ?? 0)
+    : Math.round(taxiDistanceKm * taxiRate);
   const companyLocationConfigured =
     quoteSettings.businessLatitude != null && quoteSettings.businessLongitude != null;
-  const taxiCompanyApproachCalculatedAmount = Math.round(
-    Math.max(0, taxiCompanyApproachDistanceKm ?? 0) * taxiRate,
-  );
+  const taxiCompanyApproachCalculatedAmount = configuredTaxiTariffs.length
+    ? (taxiFareForDistance(taxiCompanyApproachDistanceKm, configuredTaxiTariffs) ?? 0)
+    : Math.round(Math.max(0, taxiCompanyApproachDistanceKm ?? 0) * taxiRate);
   const taxiAvailable =
     quoteConfig.billingMode !== 'driver-rental' &&
     taxiCrew > 0 &&
@@ -72,6 +83,7 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
   const taxiCompanyApproachAmount =
     quoteConfig.taxiCompanyApproachAmountOverride ?? taxiCompanyApproachCalculatedAmount;
   const taxiTotalAmount = taxiAmount * taxiPaidLegs + taxiCompanyApproachAmount;
+  const displayedTaxiTotalAmount = model.preservedTaxiFeeAmount ?? taxiTotalAmount;
   const manoeuvreOvertimeRate =
     quoteConfig.manoeuvreOvertimeHourlyRateOverride ??
     model.accountingConfiguration?.overtimeHourlyRate ??
@@ -104,7 +116,15 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
   useEffect(() => {
     setTaxiAmountDraft(null);
     setTaxiCompanyApproachAmountDraft(null);
-  }, [taxiDistanceKm, taxiRate, taxiRotations, taxiCompanyApproachDistanceKm, resetVersion]);
+  }, [
+    taxiCalculatedAmount,
+    taxiCompanyApproachCalculatedAmount,
+    taxiDistanceKm,
+    taxiRate,
+    taxiRotations,
+    taxiCompanyApproachDistanceKm,
+    resetVersion,
+  ]);
 
   function handleQuoteKindSelection(kind: 'provisional' | 'final') {
     if (kind === quoteKind) return;
@@ -445,8 +465,11 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
                 <strong>{taxiDistanceLabel} km</strong>
               </div>
               <div className="admin-quote-taxi-field">
-                <span>Tarif kilométrique</span>
-                <strong>{money(taxiRate)} / km</strong>
+                <span>Tarif d’une course selon la distance</span>
+                <strong>
+                  {money(taxiCalculatedAmount)}
+                  {taxiRouteTariff ? ` · ${taxiRouteTariff.label}` : ''}
+                </strong>
               </div>
               <div className="admin-quote-taxi-field">
                 <span>
@@ -535,13 +558,20 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
             </div>
             <div className="admin-quote-taxi-summary">
               <span>
-                {quoteConfig.taxiFeeApplied && taxiAvailable
-                  ? `(${money(taxiAmount)} × (2 × ${taxiRotations} rotation${taxiRotations === 1 ? '' : 's'} − 1 retour final non facturé) + ${money(taxiCompanyApproachAmount)} trajet local, une fois) = ${money(taxiTotalAmount)} à répartir sur ${taxiCrew} manœuvre${taxiCrew > 1 ? 's' : ''}`
-                  : 'Montant non appliqué au devis'}
+                {model.preservedTaxiFeeAmount != null && quoteConfig.taxiFeeApplied
+                  ? `Montant taxi conservé dans le devis enregistré : ${money(model.preservedTaxiFeeAmount)}. Les champs tarifaires affichent la grille actuelle.`
+                  : quoteConfig.taxiFeeApplied && taxiAvailable
+                    ? `(${money(taxiAmount)} × (2 × ${taxiRotations} rotation${taxiRotations === 1 ? '' : 's'} − 1 retour final non facturé) + ${money(taxiCompanyApproachAmount)} trajet local, une fois) = ${money(taxiTotalAmount)} à répartir sur ${taxiCrew} manœuvre${taxiCrew > 1 ? 's' : ''}`
+                    : 'Montant non appliqué au devis'}
               </span>
-              {quoteConfig.taxiFeeApplied && taxiAvailable && (
-                <strong>≈ {money(taxiTotalAmount / taxiCrew)} en moyenne par manœuvre</strong>
-              )}
+              {quoteConfig.taxiFeeApplied &&
+                (model.preservedTaxiFeeAmount != null || taxiAvailable) && (
+                  <strong>
+                    {model.preservedTaxiFeeAmount != null
+                      ? `Total enregistré : ${money(displayedTaxiTotalAmount)}`
+                      : `≈ ${money(displayedTaxiTotalAmount / taxiCrew)} en moyenne par manœuvre`}
+                  </strong>
+                )}
             </div>
             {taxiCompanyApproachError && <small role="alert">{taxiCompanyApproachError}</small>}
           </section>

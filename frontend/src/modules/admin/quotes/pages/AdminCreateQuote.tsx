@@ -511,6 +511,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             effectiveQuoteTrips,
             quoteEditedSinceSaved,
             customLinesOnlyEdit,
+            model.taxiCompanyApproachDistanceKm,
           );
           cancelPendingWhatsApp();
         }}
@@ -1319,6 +1320,15 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             total={model.previewTotal}
             grossMargin={model.grossMargin}
             distanceKm={model.effectiveDistance}
+            companyToDepartureDistanceKm={model.taxiCompanyApproachDistanceKm}
+            companyToDepartureDistanceBusy={model.taxiCompanyApproachBusy}
+            companyToDepartureDistanceError={model.taxiCompanyApproachError}
+            grossMarginAboveThresholdColor={
+              catalogue?.settings.grossMarginAboveThresholdColor ?? '#31c878'
+            }
+            grossMarginBelowThresholdColor={
+              catalogue?.settings.grossMarginBelowThresholdColor ?? '#ff5a5f'
+            }
             trips={displayedTrips}
             crewCount={
               quoteConfig.billingMode === 'driver-rental'

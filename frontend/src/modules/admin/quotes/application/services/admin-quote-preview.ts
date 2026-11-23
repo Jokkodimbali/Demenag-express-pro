@@ -22,6 +22,7 @@ import {
   isAssemblyServiceLine,
 } from '../../../../../../../shared/quote-lines.js';
 import { normalizePendingQuotePrice } from '../../../../../../../shared/quote-price-status.js';
+import { taxiFareForDistance } from '../../../../../../../shared/taxi-distance-tariffs.js';
 
 type ExtraOption = [keyof Options, string, string];
 type QuoteLine = { label: string; quantity: number; unitPrice: number; total: number };
@@ -115,15 +116,22 @@ export function createAdminQuotePreview(input: {
           ((config.overtimeMinutes ?? 0) * (settings?.rentalOvertimeHourlyRate ?? 10000)) / 60,
         )
       : 0;
-  const taxiDistance = Math.max(0, draft.distanceKmOverride ?? draft.route?.distanceKm ?? 0);
+  const taxiDistanceValue = draft.distanceKmOverride ?? draft.route?.distanceKm;
+  const taxiDistance = Math.max(0, taxiDistanceValue ?? 0);
   // Each rotation has two paid taxi legs, except the final return after unloading.
   const taxiRotations = taxiRotationCount(estimate?.trips, config.trips, config.calcMode);
   const taxiPaidLegs = taxiPaidLegCount(taxiRotations);
   const taxiRate = Math.max(0, settings?.taxiFeePerKm ?? 0);
-  const taxiPerLegAmount = config.taxiFeeAmountOverride ?? Math.round(taxiDistance * taxiRate);
+  const configuredTaxiTariffs = settings?.taxiDistanceTariffs ?? [];
+  const calculatedTaxiPerLegAmount = configuredTaxiTariffs.length
+    ? (taxiFareForDistance(taxiDistanceValue, configuredTaxiTariffs) ?? 0)
+    : Math.round(taxiDistance * taxiRate);
+  const taxiPerLegAmount = config.taxiFeeAmountOverride ?? calculatedTaxiPerLegAmount;
   const taxiCompanyApproachAmount =
     config.taxiCompanyApproachAmountOverride ??
-    Math.round(Math.max(0, input.taxiPickupDistanceKm ?? 0) * taxiRate);
+    (configuredTaxiTariffs.length
+      ? (taxiFareForDistance(input.taxiPickupDistanceKm, configuredTaxiTariffs) ?? 0)
+      : Math.round(Math.max(0, input.taxiPickupDistanceKm ?? 0) * taxiRate));
   const taxiAvailable =
     settings?.taxiFeeEnabled &&
     config.taxiFeeApplied &&

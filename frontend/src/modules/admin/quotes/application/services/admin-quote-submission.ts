@@ -41,6 +41,8 @@ export const buildAdminQuoteSubmission: AdministrativeQuoteSubmissionBuilder = (
     taxiFeeApplied: config.taxiFeeApplied,
     taxiRoundTripAmountOverride: config.taxiFeeAmountOverride,
     taxiCompanyApproachAmountOverride: config.taxiCompanyApproachAmountOverride,
+    taxiCompanyApproachDistanceKm: input.taxiCompanyApproachDistanceKm,
+    distanceKmOverride: draft.distanceKmOverride ?? null,
     tolls: quoteTollsFromLines(input.tollLines),
     options: input.options ?? draft.options,
     version: input.version,

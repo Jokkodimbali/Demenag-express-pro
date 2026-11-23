@@ -58,6 +58,11 @@
 .reference-company-fields input {
   font-weight: 400;
 }
+.reference-company-fields input[type='color'] {
+  height: 44px;
+  padding: 5px;
+  cursor: pointer;
+}
 .company-location-picker {
   display: grid;
   gap: 12px;
@@ -78,6 +83,61 @@
   color: #aeb4bb;
   font-size: 12px;
   line-height: 1.45;
+}
+.reference-taxi-tariffs {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding-top: 14px;
+  border-top: 1px solid #3b4046;
+}
+.reference-taxi-tariffs-heading {
+  display: grid;
+  gap: 5px;
+}
+.reference-taxi-tariffs-heading strong {
+  color: #f4f5f6;
+  font-size: 13px;
+}
+.reference-taxi-tariffs-heading small {
+  color: #aeb4bb;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.reference-taxi-tariff-row {
+  display: grid;
+  grid-template-columns: minmax(190px, 1.6fr) repeat(3, minmax(90px, 1fr));
+  gap: 10px;
+  align-items: end;
+  padding: 10px;
+  border: 1px solid #3b4046;
+  border-radius: 12px;
+  background: #202225;
+}
+.reference-taxi-tariff-row label {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+  color: #aeb4bb;
+  font-size: 11px;
+  font-weight: 700;
+}
+.reference-taxi-tariff-row input {
+  min-height: 42px;
+  font-size: 14px !important;
+}
+.reference-taxi-tariff-minimum {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  padding: 0 11px;
+  border: 1px solid #3b4046;
+  border-radius: 10px;
+  background: #1e2023;
+  color: #f4f5f6;
+  font-size: 14px;
+  font-weight: 700;
 }
 .company-location-search {
   display: grid;
@@ -470,6 +530,15 @@
   }
   .reference-rental-kit-title-row > input {
     flex-basis: calc(100% - 80px);
+  }
+}
+
+@media (max-width: 720px) {
+  .reference-taxi-tariff-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .reference-taxi-tariff-row label:first-of-type {
+    grid-column: 1 / -1;
   }
 }
 .reference-settings-vehicles .reference-settings-section-heading > span:last-child {

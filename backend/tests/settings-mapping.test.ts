@@ -93,6 +93,37 @@ test('la suppression du QR de paiement reste persistée au lieu de restaurer le 
   assert.equal(toSettings(settings).qrPaiement, null);
 });
 
+test('les couleurs de marge sont conservées dans le JSON des paramètres', () => {
+  const row = {
+    ...settingsRow({}),
+    planificationManoeuvre: {
+      grossMarginAboveThresholdColor: '#17aa66',
+      grossMarginBelowThresholdColor: '#cc3344',
+    },
+  } as ParametreApplication;
+  const mapped = fromSettings(row);
+
+  assert.equal(mapped.grossMarginAboveThresholdColor, '#17aa66');
+  assert.equal(mapped.grossMarginBelowThresholdColor, '#cc3344');
+  const saved = toSettings(mapped).planificationManoeuvre as Record<string, unknown>;
+  assert.equal(saved.grossMarginAboveThresholdColor, '#17aa66');
+  assert.equal(saved.grossMarginBelowThresholdColor, '#cc3344');
+});
+
+test('les anciennes couleurs manquantes ou invalides utilisent les valeurs par défaut', () => {
+  const row = {
+    ...settingsRow({}),
+    planificationManoeuvre: {
+      grossMarginAboveThresholdColor: 'green',
+      grossMarginBelowThresholdColor: '#123',
+    },
+  } as ParametreApplication;
+  const mapped = fromSettings(row);
+
+  assert.equal(mapped.grossMarginAboveThresholdColor, '#31c878');
+  assert.equal(mapped.grossMarginBelowThresholdColor, '#ff5a5f');
+});
+
 test('les types personnalisés de l’inventaire et les types masqués sont conservés en JSON', () => {
   const inventoryTypes = [
     {
@@ -128,4 +159,48 @@ test('les types personnalisés de l’inventaire et les types masqués sont cons
   assert.deepEqual(saved.customInventoryTypes, inventoryTypes);
   assert.deepEqual(saved.hiddenInventoryKeys, ['vitrine']);
   assert.equal(saved.blanketLengthCm, 204);
+});
+
+test('les tarifs taxi relationnels sont lus dans les paramètres et leur défaut couvre le catalogue vide', () => {
+  const customTaxiTariffs = [
+    {
+      id: 'taxi-short',
+      settingsId: 'main',
+      label: 'Course courte',
+      minDistanceKm: 0,
+      maxDistanceKm: 4,
+      amountFcfa: 1800,
+      sortOrder: 0,
+    },
+    {
+      id: 'taxi-long',
+      settingsId: 'main',
+      label: 'Course longue',
+      minDistanceKm: 4,
+      maxDistanceKm: null,
+      amountFcfa: 30000,
+      sortOrder: 1,
+    },
+  ];
+  const mapped = fromSettings({
+    ...settingsRow({}),
+    taxiDistanceTariffs: customTaxiTariffs,
+  } as ParametreApplication);
+  assert.deepEqual(
+    mapped.taxiDistanceTariffs?.map(({ minDistanceKm, maxDistanceKm, amountFcfa }) => ({
+      minDistanceKm,
+      maxDistanceKm,
+      amountFcfa,
+    })),
+    [
+      { minDistanceKm: 0, maxDistanceKm: 4, amountFcfa: 1800 },
+      { minDistanceKm: 4, maxDistanceKm: null, amountFcfa: 30000 },
+    ],
+  );
+
+  const defaults = fromSettings(settingsRow({}));
+  assert.deepEqual(
+    defaults.taxiDistanceTariffs?.map((tariff) => tariff.amountFcfa),
+    [1500, 2500, 3500, 5000, 7000, 30000],
+  );
 });

@@ -19,6 +19,7 @@ import { TariffDocumentsSettings } from './TariffDocumentsSettings';
 import { AssemblyResetButton } from './AssemblyResetButton';
 import { useIntegrationSummary } from '../application/controllers/useIntegrationSummary';
 import type { CustomInventoryType } from '../../../shared/domain/model';
+import { defaultTaxiDistanceTariffs } from '../../../../../../shared/taxi-distance-tariffs.js';
 import {
   assemblyPriceAtSize,
   labourFloors,
@@ -205,6 +206,9 @@ export function TransportSettings({
     paymentMethods,
   } = transportSettingsModel(catalogue);
   const labourMatrix = labourSettingsMatrix(catalogue.settings, scenario);
+  const taxiDistanceTariffs = catalogue.settings.taxiDistanceTariffs?.length
+    ? catalogue.settings.taxiDistanceTariffs
+    : defaultTaxiDistanceTariffs;
   const [blanketLengthCm, setBlanketLengthCm] = useState(planning.blanketLengthCm);
   const [blanketWidthCm, setBlanketWidthCm] = useState(planning.blanketWidthCm);
   const [blanketStock, setBlanketStock] = useState(planning.blanketStock);
@@ -406,16 +410,6 @@ export function TransportSettings({
                   />
                 </label>
                 <label>
-                  <span>Frais taxi par kilomètre (FCFA)</span>
-                  <input
-                    style={inputStyle}
-                    type="number"
-                    min="0"
-                    name="taxiFeePerKm"
-                    defaultValue={catalogue.settings.taxiFeePerKm ?? 0}
-                  />
-                </label>
-                <label>
                   <span>{visibleUiText.text202}</span>
                   <input
                     style={inputStyle}
@@ -484,6 +478,76 @@ export function TransportSettings({
                     defaultValue={planning.lowDemandDiscountPercent}
                   />
                 </label>
+              </div>
+              <div className="reference-taxi-tariffs" aria-label="Grille tarifaire taxi">
+                <div className="reference-taxi-tariffs-heading">
+                  <strong>Grille tarifaire taxi · tarifs hauts du relevé</strong>
+                  <small>
+                    À 3, 7, 12, 20 et 30 km, le tarif de la tranche qui se termine à cette distance
+                    s’applique. Au-delà de 30 km, le forfait AIBD de 30 000 FCFA (environ 45 km) est
+                    utilisé.
+                  </small>
+                </div>
+                <input
+                  type="hidden"
+                  name="taxiDistanceTariffs.count"
+                  value={taxiDistanceTariffs.length}
+                />
+                {taxiDistanceTariffs.map((tariff, index) => (
+                  <div className="reference-taxi-tariff-row" key={tariff.id}>
+                    <input
+                      type="hidden"
+                      name={`taxiDistanceTariffs.${index}.id`}
+                      value={tariff.id}
+                    />
+                    <input
+                      type="hidden"
+                      name={`taxiDistanceTariffs.${index}.sortOrder`}
+                      value={index}
+                    />
+                    <label>
+                      <span>Type de course</span>
+                      <input
+                        style={inputStyle}
+                        name={`taxiDistanceTariffs.${index}.label`}
+                        defaultValue={tariff.label}
+                        required
+                      />
+                    </label>
+                    <label>
+                      <span>À partir de (km)</span>
+                      <output className="reference-taxi-tariff-minimum">
+                        {index === 0 ? '0 km' : `>${tariff.minDistanceKm} km`}
+                      </output>
+                    </label>
+                    <label>
+                      <span>À (km)</span>
+                      <input
+                        style={inputStyle}
+                        type="number"
+                        min={tariff.minDistanceKm}
+                        max="1000"
+                        step="0.1"
+                        name={`taxiDistanceTariffs.${index}.maxDistanceKm`}
+                        defaultValue={tariff.maxDistanceKm ?? ''}
+                        placeholder="Sans limite"
+                      />
+                    </label>
+                    <label>
+                      <span>Tarif haut (FCFA)</span>
+                      <input
+                        style={inputStyle}
+                        type="number"
+                        min="0"
+                        max="10000000"
+                        step="1"
+                        name={`taxiDistanceTariffs.${index}.amountFcfa`}
+                        defaultValue={tariff.amountFcfa}
+                        required
+                      />
+                    </label>
+                  </div>
+                ))}
               </div>
               <input type="hidden" name="assembly" value={catalogue.settings.assemblyPrice} />
 

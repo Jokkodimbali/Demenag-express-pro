@@ -3,6 +3,7 @@ import { messages } from '../../../domain/shared/messages/fr.js';
 import type { Booking, Quote, QuoteInput, User } from '../../../domain/shared/model.js';
 import { requireAdministrator } from '../../../domain/security/access-policy.js';
 import { calculatePrice } from '../../../domain/pricing/pricing.js';
+import { validatedTaxiFeeAmount } from '../../../domain/pricing/taxi-quote-validation.js';
 import {
   applyTaxiToManoeuvrePrice,
   manoeuvreCount,
@@ -149,24 +150,27 @@ export async function createQuote(
     (overtimeMinutes * (pricingSettings.rentalOvertimeHourlyRate ?? 10000)) / 60,
   );
   const rentalOvertimeHourlyRate = pricingSettings.rentalOvertimeHourlyRate ?? 10000;
-  const taxiLines = input.extraLines.filter((line) => line.label.startsWith('Frais taxi'));
-  const taxiRoundTripTotal = taxiLines
-    .filter((line) => !line.label.startsWith('Frais taxi · approche entreprise'))
-    .reduce((sum, line) => sum + Math.round(line.quantity * line.unitPrice), 0);
-  const taxiCompanyApproachTotal = taxiLines
-    .filter((line) => line.label.startsWith('Frais taxi · approche entreprise'))
-    .reduce((sum, line) => sum + Math.round(line.quantity * line.unitPrice), 0);
-  const taxiFeeAmount = taxiRoundTripTotal + taxiCompanyApproachTotal;
+  const quoteDistanceKm = input.distanceKmOverride ?? booking.distanceKm;
+  const savedTaxiFeeAmount =
+    savedCustomBaseline?.pricingInput?.taxiFeeAmount ??
+    savedCustomBaseline?.pricingInput?.extraLines
+      .filter((line) => line.label.startsWith('Frais taxi'))
+      .reduce((sum, line) => sum + Math.round(line.quantity * line.unitPrice), 0);
+  const taxiFeeAmount =
+    savedCustomBaseline && savedTaxiFeeAmount != null
+      ? savedTaxiFeeAmount
+      : validatedTaxiFeeAmount(input, catalogue.settings, quoteDistanceKm);
   requireValue(
-    taxiFeeAmount === 0 || billingMode !== 'driver-rental',
+    Boolean(savedCustomBaseline) || taxiFeeAmount === 0 || billingMode !== 'driver-rental',
     'Les frais taxi ne sont pas disponibles en formule Économique.',
   );
   requireValue(
-    taxiFeeAmount === 0 || catalogue.settings.taxiFeeEnabled,
+    Boolean(savedCustomBaseline) || taxiFeeAmount === 0 || catalogue.settings.taxiFeeEnabled,
     'Activez les frais taxi dans les paramètres avant de les appliquer au devis.',
   );
   requireValue(
-    taxiFeeAmount === 0 ||
+    Boolean(savedCustomBaseline) ||
+      taxiFeeAmount === 0 ||
       (catalogue.settings.businessLatitude != null && catalogue.settings.businessLongitude != null),
     'Renseignez la position des locaux dans les paramètres pour calculer les frais taxi.',
   );
@@ -202,7 +206,7 @@ export async function createQuote(
   const basePrice = calculatePrice(
     vehicle,
     quoteSettings,
-    booking.distanceKm,
+    quoteDistanceKm,
     pricingOptions,
     input.trips,
     input.customPrice,
@@ -215,7 +219,7 @@ export async function createQuote(
     booking.date,
   );
   requireValue(
-    taxiFeeAmount === 0 || manoeuvreCount(basePrice.lines) > 0,
+    Boolean(savedCustomBaseline) || taxiFeeAmount === 0 || manoeuvreCount(basePrice.lines) > 0,
     'Les frais taxi nécessitent des manœuvres facturés.',
   );
   const price = normalizePendingQuotePrice(
@@ -302,6 +306,8 @@ export async function createQuote(
       taxiPerLegAmountOverride: input.taxiPerLegAmountOverride ?? null,
       taxiRoundTripAmountOverride: input.taxiRoundTripAmountOverride ?? null,
       taxiCompanyApproachAmountOverride: input.taxiCompanyApproachAmountOverride ?? null,
+      distanceKmOverride: input.distanceKmOverride ?? null,
+      taxiCompanyApproachDistanceKm: input.taxiCompanyApproachDistanceKm ?? null,
       billingMode,
       menuIncluded,
       overtimeMinutes,

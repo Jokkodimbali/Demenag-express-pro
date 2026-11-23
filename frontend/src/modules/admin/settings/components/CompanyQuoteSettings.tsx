@@ -83,6 +83,22 @@ export function CompanyQuoteSettings({
             defaultValue={catalogue.settings.bookingDepositPercent ?? 0}
           />
         </label>
+        <label>
+          <span>Couleur de la marge supérieure à 50 000 FCFA</span>
+          <input
+            name="grossMarginAboveThresholdColor"
+            type="color"
+            defaultValue={catalogue.settings.grossMarginAboveThresholdColor ?? '#31c878'}
+          />
+        </label>
+        <label>
+          <span>Couleur de la marge inférieure à 50 000 FCFA</span>
+          <input
+            name="grossMarginBelowThresholdColor"
+            type="color"
+            defaultValue={catalogue.settings.grossMarginBelowThresholdColor ?? '#ff5a5f'}
+          />
+        </label>
       </div>
       <CompanyLocationPicker
         latitude={catalogue.settings.businessLatitude}

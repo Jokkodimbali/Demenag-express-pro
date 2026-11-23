@@ -7,9 +7,14 @@ import {
 import { referenceAssemblyPriceDefaults } from '../../../../../../../shared/reference-tariff-defaults.js';
 import { normalizePaymentQr } from '../../../../shared/application/validation/payment-qr';
 import { dataUrl } from '../../../../shared/application/validation/image-data-url';
+import { defaultTaxiDistanceTariffs } from '../../../../../../../shared/taxi-distance-tariffs.js';
 
 const integer = (value: FormDataEntryValue | null) => Number(value);
 const tuple = (values: number[]): [number, number, number] => [values[0], values[1], values[2]];
+const colorField = (data: FormData, name: string, fallback: string) => {
+  const value = data.get(name);
+  return typeof value === 'string' && /^#[0-9a-f]{6}$/iu.test(value) ? value : fallback;
+};
 const normalizeBusinessPhone = (value: string) => {
   let digits = value.replace(/\D/gu, '');
   if (digits.startsWith('00')) digits = digits.slice(2);
@@ -42,6 +47,40 @@ export function questionnaireFromForm(data: FormData, existing: ClientQuestion[]
 export async function catalogueFromForm(data: FormData, catalogue: Catalogue): Promise<Catalogue> {
   const numberField = (name: string, fallback: number) =>
     data.has(name) ? Number(data.get(name)) : fallback;
+  const savedTaxiTariffs = catalogue.settings.taxiDistanceTariffs?.length
+    ? catalogue.settings.taxiDistanceTariffs
+    : defaultTaxiDistanceTariffs;
+  const taxiTariffCount = Number(data.get('taxiDistanceTariffs.count'));
+  let nextTaxiDistanceMinimum = 0;
+  const taxiDistanceTariffs =
+    Number.isInteger(taxiTariffCount) && taxiTariffCount > 0 && taxiTariffCount <= 30
+      ? Array.from({ length: taxiTariffCount }, (_, index) => {
+          const current = savedTaxiTariffs[index] ?? savedTaxiTariffs.at(-1)!;
+          const field = (name: string) =>
+            String(data.get(`taxiDistanceTariffs.${index}.${name}`) ?? '');
+          const rawMaxDistanceKm = field('maxDistanceKm');
+          const maxDistanceKm =
+            rawMaxDistanceKm === ''
+              ? null
+              : Number.isFinite(Number(rawMaxDistanceKm))
+                ? Number(rawMaxDistanceKm)
+                : current.maxDistanceKm;
+          const rawAmount = field('amountFcfa');
+          const amountFcfa = Number.isFinite(Number(rawAmount))
+            ? Math.max(0, Math.round(Number(rawAmount)))
+            : current.amountFcfa;
+          const minDistanceKm = nextTaxiDistanceMinimum;
+          nextTaxiDistanceMinimum = maxDistanceKm ?? minDistanceKm;
+          return {
+            id: field('id') || current.id,
+            label: field('label').trim() || current.label,
+            minDistanceKm,
+            maxDistanceKm,
+            amountFcfa,
+            sortOrder: Number(field('sortOrder')) || index,
+          };
+        })
+      : savedTaxiTariffs;
   const montageP = { ...(catalogue.settings.montageP ?? {}) };
   for (const [legacyKey, canonicalKey] of Object.entries(referenceInventoryAliases)) {
     if (montageP[legacyKey] && !montageP[canonicalKey])
@@ -322,6 +361,16 @@ export async function catalogueFromForm(data: FormData, catalogue: Catalogue): P
         data.getAll('quoteTermsEnabled').length === 0
           ? (catalogue.settings.quoteTermsEnabled ?? true)
           : data.getAll('quoteTermsEnabled').includes('on'),
+      grossMarginAboveThresholdColor: colorField(
+        data,
+        'grossMarginAboveThresholdColor',
+        catalogue.settings.grossMarginAboveThresholdColor ?? '#31c878',
+      ),
+      grossMarginBelowThresholdColor: colorField(
+        data,
+        'grossMarginBelowThresholdColor',
+        catalogue.settings.grossMarginBelowThresholdColor ?? '#ff5a5f',
+      ),
       rentalOvertimeHourlyRate: Math.max(
         0,
         integer(
@@ -337,6 +386,7 @@ export async function catalogueFromForm(data: FormData, catalogue: Catalogue): P
         0,
         integer(data.get('taxiFeePerKm') ?? String(catalogue.settings.taxiFeePerKm ?? 0)),
       ),
+      taxiDistanceTariffs: taxiDistanceTariffs.map((tariff) => ({ ...tariff })),
       rentalKitConfiguration,
       paymentWave: data.has('paymentWaveConfigured')
         ? data.get('paymentWave') === 'on'

@@ -6,6 +6,7 @@ import type {
 } from '../../../shared/domain/model';
 import { createLabourPriceMatrix } from '../../../moving/domain/pricing/labour-price';
 import { defaultMovingLaborPlanning } from '../../../moving/domain/estimate/moving-estimate';
+import { defaultTaxiDistanceTariffs } from '../../../../../../shared/taxi-distance-tariffs.js';
 
 import {
   referenceAccountingChargeDefaults,
@@ -57,6 +58,7 @@ export function resetCatalogueTariffsToReference(catalogue: Catalogue): Catalogu
     rentalOvertimeHourlyRate: 10000,
     taxiFeeEnabled: false,
     taxiFeePerKm: 0,
+    taxiDistanceTariffs: defaultTaxiDistanceTariffs.map((tariff) => ({ ...tariff })),
     movingLaborPlanning: {
       ...defaultMovingLaborPlanning,
       ...catalogue.settings.movingLaborPlanning,

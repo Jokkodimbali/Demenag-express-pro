@@ -196,18 +196,35 @@ model ParametreApplication {
   paiementEspeces               Boolean @default(true) @map("payment_cash")
   qrPaiement                    String? @default("/assets/wave-qr.png") @map("payment_qr")
 
-  reservationsOuvertes      Boolean @default(true) @map("bookings_enabled")
-  delaiMaximumJours         Int     @default(366) @map("max_advance_days")
-  preavisReservationHeures  Int     @default(0) @map("min_notice_hours")
-  quantiteMaximaleOptions   Int     @default(20) @map("max_options")
-  nombreMaximalTrajets      Int     @default(20) @map("max_trips")
-  annulationClientAutorisee Boolean @default(true) @map("client_cancellation")
-  preavisAnnulationHeures   Int     @default(0) @map("cancellation_notice_hours")
-  bornesDistance            Int[]   @default([15, 25, 35]) @map("distance_bounds")
-  creneauxOuverts           Json    @map("enabled_slots")
-  questionnaire             Json    @default("[]") @map("client_questionnaire")
+  reservationsOuvertes      Boolean              @default(true) @map("bookings_enabled")
+  delaiMaximumJours         Int                  @default(366) @map("max_advance_days")
+  preavisReservationHeures  Int                  @default(0) @map("min_notice_hours")
+  quantiteMaximaleOptions   Int                  @default(20) @map("max_options")
+  nombreMaximalTrajets      Int                  @default(20) @map("max_trips")
+  annulationClientAutorisee Boolean              @default(true) @map("client_cancellation")
+  preavisAnnulationHeures   Int                  @default(0) @map("cancellation_notice_hours")
+  bornesDistance            Int[]                @default([15, 25, 35]) @map("distance_bounds")
+  creneauxOuverts           Json                 @map("enabled_slots")
+  questionnaire             Json                 @default("[]") @map("client_questionnaire")
+  taxiDistanceTariffs       TaxiDistanceTariff[]
 
   @@map("settings")
+  @@schema("demenag")
+}
+
+model TaxiDistanceTariff {
+  id            String               @id @db.VarChar(80)
+  settingsId    String               @default("main") @map("settings_id")
+  label         String               @db.VarChar(180)
+  minDistanceKm Float                @map("min_distance_km")
+  maxDistanceKm Float?               @map("max_distance_km")
+  amountFcfa    Int                  @map("amount_fcfa")
+  sortOrder     Int                  @map("sort_order")
+  settings      ParametreApplication @relation(fields: [settingsId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([settingsId, sortOrder])
+  @@index([settingsId, minDistanceKm])
+  @@map("taxi_distance_tariffs")
   @@schema("demenag")
 }
 

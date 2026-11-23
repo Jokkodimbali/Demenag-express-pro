@@ -1,4 +1,4 @@
-import type { Booking, ClientQuestion, Settings } from '../../../../shared/domain/model';
+import type { Booking, ClientQuestion, Quote, Settings } from '../../../../shared/domain/model';
 import type { Draft } from '../../../../booking/application/booking-draft';
 import type { TollExtraLine } from '../../../../moving/domain/tolls/toll-selection';
 import type { Inventory } from '../../../../moving/domain/inventory/inventory';
@@ -91,6 +91,7 @@ export function quoteSettingsForEditing(
     ...bookingSettings,
     taxiFeeEnabled: currentSettings.taxiFeeEnabled ?? bookingSettings.taxiFeeEnabled ?? false,
     taxiFeePerKm: currentSettings.taxiFeePerKm ?? bookingSettings.taxiFeePerKm ?? 0,
+    taxiDistanceTariffs: currentSettings.taxiDistanceTariffs ?? bookingSettings.taxiDistanceTariffs,
     businessLatitude: currentSettings.businessLatitude ?? bookingSettings.businessLatitude ?? null,
     businessLongitude:
       currentSettings.businessLongitude ?? bookingSettings.businessLongitude ?? null,
@@ -129,6 +130,28 @@ export function shouldAutomaticallyEnableTaxiFees(input: {
   );
 }
 
+export function taxiFeeAmountFromSavedQuote(quote: Quote | undefined): number | null {
+  const savedAmount = quote?.pricingInput?.taxiFeeAmount;
+  if (Number.isSafeInteger(savedAmount) && savedAmount! >= 0) return savedAmount!;
+
+  const savedExtraTaxiLines = quote?.pricingInput?.extraLines.filter((line) =>
+    line.label.startsWith('Frais taxi'),
+  );
+  if (savedExtraTaxiLines?.length)
+    return savedExtraTaxiLines.reduce(
+      (sum, line) => sum + Math.round(line.quantity * line.unitPrice),
+      0,
+    );
+
+  const savedPriceTaxiLines = quote?.price.lines.filter((line) =>
+    line.label.startsWith('Frais taxi'),
+  );
+  if (savedPriceTaxiLines?.length)
+    return savedPriceTaxiLines.reduce((sum, line) => sum + line.total, 0);
+
+  return null;
+}
+
 export function quoteConfigurationFromBooking(booking: Booking) {
   const quote = booking.quotes.at(-1);
   const pricingInput = quote?.pricingInput;
@@ -147,10 +170,7 @@ export function quoteConfigurationFromBooking(booking: Booking) {
   const taxiTrips = Math.max(1, quote?.price.trips ?? booking.estimate.trips);
   // Historic totals used one taxi fare for each base rotation plus a final return.
   const legacyTaxiRotationCount = taxiTrips + 1;
-  const savedTaxiFeeAmount =
-    quote?.pricingInput?.taxiFeeAmount ??
-    quote?.price.lines.find((line) => line.label === 'Frais taxi · montant modifié')?.total ??
-    null;
+  const savedTaxiFeeAmount = taxiFeeAmountFromSavedQuote(quote);
   const savedPerManoeuvreApproachLine = quote?.pricingInput?.extraLines?.find(
     (line) => line.label === 'Frais taxi · approche entreprise par manœuvre',
   );

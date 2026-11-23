@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { Booking, Price, Settings, Vehicle } from '../src/modules/shared/domain/model';
+import type { Booking, Price, Quote, Settings, Vehicle } from '../src/modules/shared/domain/model';
 import { blankDraft } from '../src/modules/booking/application/booking-draft';
 import {
   quoteConfigWithManualTaxiFee,
   quoteConfigurationFromBooking,
   quoteSettingsForEditing,
   shouldAutomaticallyEnableTaxiFees,
+  taxiFeeAmountFromSavedQuote,
 } from '../src/modules/admin/quotes/application/services/admin-quote-form-policy';
 import { defaultAdminQuoteConfig } from '../src/modules/admin/quotes/application/services/admin-quote-config';
 import { buildAdminQuoteSubmission } from '../src/modules/admin/quotes/application/services/admin-quote-submission';
@@ -19,8 +20,10 @@ test('les frais taxi activés et les tarifs saisis survivent à la réouverture 
     taxiFeeAmountOverride: 2_000,
     taxiCompanyApproachAmountOverride: 1_350,
   };
+  const draft = blankDraft();
+  draft.distanceKmOverride = 12.5;
   const submission = buildAdminQuoteSubmission({
-    draft: blankDraft(),
+    draft,
     config,
     catalogue: null,
     fallbackVehicle: {} as Vehicle,
@@ -30,6 +33,7 @@ test('les frais taxi activés et les tarifs saisis survivent à la réouverture 
     notes: '',
     extraLines: [],
     tollLines: [],
+    taxiCompanyApproachDistanceKm: 4.2,
   });
   const restored = quoteConfigurationFromBooking({
     options: { labour: 0, desk: 0, wardrobe: 0, bed: 0 },
@@ -48,10 +52,41 @@ test('les frais taxi activés et les tarifs saisis survivent à la réouverture 
   } as Booking).config;
 
   assert.equal(submission.taxiFeeApplied, true);
+  assert.equal(submission.taxiCompanyApproachDistanceKm, 4.2);
+  assert.equal(submission.distanceKmOverride, 12.5);
   assert.equal(restored.trips, 3);
   assert.equal(restored.taxiFeeApplied, true);
   assert.equal(restored.taxiFeeAmountOverride, 2_000);
   assert.equal(restored.taxiCompanyApproachAmountOverride, 1_350);
+});
+
+test('le montant taxi sauvegardé prévaut sur les nouveaux tarifs lors de l’affichage du devis', () => {
+  const quote = {
+    price: { lines: [], total: 50_000, discount: 0, tier: 0, trips: 3, currency: 'XOF' },
+    pricingInput: {
+      taxiFeeAmount: 18_730,
+      extraLines: [
+        { label: 'Frais taxi · trajet simple', quantity: 9, unitPrice: 3_500 },
+        { label: 'Frais taxi · approche entreprise', quantity: 1, unitPrice: 2_500 },
+      ],
+    },
+  } as unknown as Quote;
+
+  assert.equal(taxiFeeAmountFromSavedQuote(quote), 18_730);
+});
+
+test('les devis historiques récupèrent leur total taxi depuis les anciennes lignes sauvegardées', () => {
+  const quote = {
+    price: { lines: [], total: 50_000, discount: 0, tier: 0, trips: 3, currency: 'XOF' },
+    pricingInput: {
+      extraLines: [
+        { label: 'Frais taxi · trajet simple', quantity: 3, unitPrice: 3_500 },
+        { label: 'Frais taxi · approche entreprise', quantity: 1, unitPrice: 2_500 },
+      ],
+    },
+  } as unknown as Quote;
+
+  assert.equal(taxiFeeAmountFromSavedQuote(quote), 13_000);
 });
 
 test('la soumission conserve le tarif simple pour les champs actuels et historiques', () => {
@@ -179,17 +214,30 @@ test('un devis existant reprend les réglages taxi actuels en gardant son ancien
     labourPrice: 6_500,
     taxiFeeEnabled: false,
     taxiFeePerKm: 0,
+    taxiDistanceTariffs: undefined,
   } as Settings;
+  const currentTaxiTariffs = [
+    {
+      id: 'taxi-3-7',
+      label: 'Course moyenne',
+      minDistanceKm: 3,
+      maxDistanceKm: 7,
+      amountFcfa: 2_500,
+      sortOrder: 1,
+    },
+  ];
   const currentSettings = {
     labourPrice: 8_000,
     taxiFeeEnabled: true,
     taxiFeePerKm: 300,
+    taxiDistanceTariffs: currentTaxiTariffs,
   } as Settings;
 
   const effectiveSettings = quoteSettingsForEditing(bookingSettings, currentSettings);
 
   assert.equal(effectiveSettings?.taxiFeeEnabled, true);
   assert.equal(effectiveSettings?.taxiFeePerKm, 300);
+  assert.deepEqual(effectiveSettings?.taxiDistanceTariffs, currentTaxiTariffs);
   assert.equal(effectiveSettings?.labourPrice, 6_500);
 });
 

@@ -16,6 +16,7 @@ import {
   applyTaxiToManoeuvrePrice,
   removeTaxiFromManoeuvrePrice,
 } from '../../shared/quote-taxi-allocation.js';
+import { defaultTaxiDistanceTariffs } from '../../shared/taxi-distance-tariffs.js';
 
 const settings: Settings = {
   distanceBounds: [15, 25, 35],
@@ -576,6 +577,101 @@ test('les frais taxi facturent chargement et déchargement à chaque rotation pu
     taxiPickupDistanceKm: null,
   });
   assert.equal(missingCompanyLocation.taxiFeeLine, null);
+});
+
+test('les deux trajets taxi prennent le tarif haut de leur tranche de distance', () => {
+  const taxiSettings = {
+    ...settings,
+    taxiFeeEnabled: true,
+    taxiDistanceTariffs: defaultTaxiDistanceTariffs,
+    businessLatitude: 14.69,
+    businessLongitude: -17.44,
+  };
+  const draft = blankDraft({ vehicles: [vehicle], settings: taxiSettings } as Catalogue);
+  draft.vehicleId = vehicle.id;
+  draft.route = {
+    id: 'route-taxi-distance-tariff',
+    from: [14.69, -17.44],
+    to: [14.73, -17.48],
+    distanceKm: 10,
+    durationMinutes: 35,
+    geometry: [],
+    expiresAt: '2026-12-01T00:00:00.000Z',
+  };
+  draft.options = { labour: 5, desk: 0, wardrobe: 0, bed: 0 };
+  const preview = createAdminQuotePreview({
+    draft,
+    estimateInventory: draft.inventory,
+    config: { ...defaultAdminQuoteConfig(), trips: 3, taxiFeeApplied: true },
+    vehicle,
+    estimate: null,
+    settings: taxiSettings,
+    price: null,
+    extras,
+    labourPrice: 6_500,
+    simulationNeeds: null,
+    taxiPickupDistanceKm: 5,
+  });
+
+  assert.deepEqual(
+    preview.taxiFeeLines.map(({ label, quantity, unitPrice, total }) => ({
+      label,
+      quantity,
+      unitPrice,
+      total,
+    })),
+    [
+      {
+        label: 'Frais taxi · trajet simple',
+        quantity: 5,
+        unitPrice: 3500,
+        total: 17_500,
+      },
+      {
+        label: 'Frais taxi · approche entreprise',
+        quantity: 1,
+        unitPrice: 2500,
+        total: 2500,
+      },
+    ],
+  );
+  assert.equal(
+    preview.taxiFeeLines.reduce((sum, line) => sum + line.total, 0),
+    20_000,
+  );
+  assert.equal(
+    preview.previewLines.find((line) => line.label.startsWith('Manœuvres'))?.total,
+    52_500,
+  );
+
+  const fiveRotationEstimate = estimateMovingWork(draft.inventory, vehicle, draft.route, {
+    trips: 5,
+    recommendedTrips: 5,
+  });
+  const fiveRotationPreview = createAdminQuotePreview({
+    draft,
+    estimateInventory: draft.inventory,
+    config: { ...defaultAdminQuoteConfig(), trips: 3, taxiFeeApplied: true },
+    vehicle,
+    estimate: fiveRotationEstimate,
+    settings: taxiSettings,
+    price: null,
+    extras,
+    labourPrice: 6_500,
+    simulationNeeds: null,
+    taxiPickupDistanceKm: 5,
+  });
+  assert.deepEqual(
+    fiveRotationPreview.taxiFeeLines.map(({ quantity, total }) => ({ quantity, total })),
+    [
+      { quantity: 9, total: 31_500 },
+      { quantity: 1, total: 2_500 },
+    ],
+  );
+  assert.equal(
+    fiveRotationPreview.taxiFeeLines.reduce((sum, line) => sum + line.total, 0),
+    34_000,
+  );
 });
 
 test('les frais locaux et les taxis par rotation sont ajoutés aux manœuvres sans écart d’arrondi', () => {

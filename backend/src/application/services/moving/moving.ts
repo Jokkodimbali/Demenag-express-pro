@@ -772,11 +772,34 @@ export class MovingService implements MovingUseCases {
     let quotes = booking.quotes;
     const latestQuote = quotes.at(-1);
     if (latestQuote?.kind === 'provisional') {
+      let taxiCompanyApproachDistanceKm =
+        latestQuote.pricingInput?.taxiCompanyApproachDistanceKm ?? null;
+      const taxiApplied =
+        latestQuote.pricingInput?.taxiFeeApplied ??
+        (latestQuote.pricingInput?.taxiFeeAmount ?? 0) > 0;
+      if (taxiApplied && latestQuote.billingMode !== 'driver-rental') {
+        const businessLatitude = catalogue.settings.businessLatitude;
+        const businessLongitude = catalogue.settings.businessLongitude;
+        if (businessLatitude != null && businessLongitude != null) {
+          const approachRoute = await this.routing.route(
+            [businessLatitude, businessLongitude],
+            from,
+          );
+          taxiCompanyApproachDistanceKm = approachRoute.distanceKm;
+        } else {
+          requireValue(
+            latestQuote.pricingInput?.taxiCompanyApproachAmountOverride != null,
+            'Renseignez la position des locaux pour recalculer le trajet taxi du devis.',
+          );
+        }
+      }
       const repriced = repriceProvisionalQuote(
         booking,
         latestQuote,
         pricingSettings,
         route.distanceKm,
+        catalogue.settings,
+        taxiCompanyApproachDistanceKm,
       );
       quotes = quotes.map((quote) =>
         quote.id === latestQuote.id

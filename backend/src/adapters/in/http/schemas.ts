@@ -25,6 +25,67 @@ const workAccessSchema = z.object({
   fromLift: z.boolean(),
   toLift: z.boolean(),
 });
+const taxiDistanceTariffsSchema = z
+  .array(
+    z.object({
+      id: z.string().trim().min(1).max(80),
+      label: z.string().trim().min(1).max(180),
+      minDistanceKm: z.number().finite().min(0).max(1000),
+      maxDistanceKm: z.number().finite().min(0).max(1000).nullable(),
+      amountFcfa: z.number().int().min(0).max(10000000),
+      sortOrder: z.number().int().min(0).max(99),
+    }),
+  )
+  .min(1)
+  .max(30)
+  .superRefine((tariffs, context) => {
+    const ordered = [...tariffs].sort((left, right) => left.sortOrder - right.sortOrder);
+    if (new Set(ordered.map((tariff) => tariff.id)).size !== ordered.length) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Chaque tarif taxi doit avoir un identifiant unique.',
+      });
+    }
+    if (new Set(ordered.map((tariff) => tariff.sortOrder)).size !== ordered.length) {
+      context.addIssue({ code: 'custom', message: 'L’ordre des tarifs taxi doit être unique.' });
+    }
+    ordered.forEach((tariff, index) => {
+      const previous = ordered[index - 1];
+      if (tariff.maxDistanceKm != null && tariff.maxDistanceKm <= tariff.minDistanceKm) {
+        context.addIssue({
+          code: 'custom',
+          message: `La distance maximale de « ${tariff.label} » doit être supérieure à la distance minimale.`,
+        });
+      }
+      if (index === 0 && tariff.minDistanceKm !== 0) {
+        context.addIssue({
+          code: 'custom',
+          message: 'La première tranche taxi doit commencer à 0 km.',
+        });
+      }
+      if (
+        previous &&
+        (previous.maxDistanceKm == null || previous.maxDistanceKm !== tariff.minDistanceKm)
+      ) {
+        context.addIssue({
+          code: 'custom',
+          message: 'Les tranches taxi doivent être continues et sans chevauchement.',
+        });
+      }
+      if (index < ordered.length - 1 && tariff.maxDistanceKm == null) {
+        context.addIssue({
+          code: 'custom',
+          message: 'Seule la dernière tranche taxi peut être sans limite supérieure.',
+        });
+      }
+    });
+    if (ordered.at(-1)?.maxDistanceKm != null) {
+      context.addIssue({
+        code: 'custom',
+        message: 'La dernière tranche taxi doit couvrir toutes les distances supérieures.',
+      });
+    }
+  });
 const inventorySnapshotSchema = z.object({
   sourceInventory: z
     .object({
@@ -377,6 +438,8 @@ export const quoteSchema = z.object({
     .max(10000000)
     .nullable()
     .optional(),
+  taxiCompanyApproachDistanceKm: z.number().finite().min(0).max(100000).nullable().optional(),
+  distanceKmOverride: z.number().finite().min(0).max(100000).nullable().optional(),
   tolls: z
     .array(
       z.object({
@@ -696,9 +759,18 @@ export const catalogueSchema = z.object({
       bookingDepositPercent: z.number().int().min(0).max(100).default(0),
       quoteTerms: z.string().max(10000).default(''),
       quoteTermsEnabled: z.boolean().default(true),
+      grossMarginAboveThresholdColor: z
+        .string()
+        .regex(/^#[0-9a-fA-F]{6}$/)
+        .default('#31c878'),
+      grossMarginBelowThresholdColor: z
+        .string()
+        .regex(/^#[0-9a-fA-F]{6}$/)
+        .default('#ff5a5f'),
       rentalOvertimeHourlyRate: z.number().int().min(0).max(10000000).default(10000),
       taxiFeeEnabled: z.boolean().default(false),
       taxiFeePerKm: z.number().int().min(0).max(10000000).default(0),
+      taxiDistanceTariffs: taxiDistanceTariffsSchema.optional(),
       rentalKitConfiguration: z
         .array(
           z.object({

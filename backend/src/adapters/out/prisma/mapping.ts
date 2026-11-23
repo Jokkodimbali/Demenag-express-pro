@@ -14,8 +14,10 @@ import {
   isLegacyDefaultQuestions,
 } from '../../../domain/moving/questionnaire.js';
 import { vehicleCapacity } from '../../../domain/fleet/vehicle-capacity.js';
+import { defaultTaxiDistanceTariffs } from '../../../../../shared/taxi-distance-tariffs.js';
 import type {
   ParametreApplication,
+  TaxiDistanceTariff,
   Utilisateur,
   Vehicule,
   Chauffeur,
@@ -168,7 +170,28 @@ export const toDriver = (value: Driver) => ({
   refusMissions: (value.refusals ?? []) as Prisma.InputJsonValue,
   refusEffaces: value.clearedRefusals ?? 0,
 });
-export const fromSettings = (row: ParametreApplication): Settings => ({
+const planificationSettings = (row: ParametreApplication): Record<string, unknown> => {
+  const value = row.planificationManoeuvre;
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+};
+
+const movingLaborSettings = (row: ParametreApplication) => {
+  const settings = { ...planificationSettings(row) };
+  delete settings.grossMarginAboveThresholdColor;
+  delete settings.grossMarginBelowThresholdColor;
+  return settings;
+};
+
+const marginColorSetting = (row: ParametreApplication, key: string, fallback: string) => {
+  const value = planificationSettings(row)[key];
+  return typeof value === 'string' && /^#[0-9a-f]{6}$/iu.test(value) ? value : fallback;
+};
+
+type SettingsRecord = ParametreApplication & { taxiDistanceTariffs?: TaxiDistanceTariff[] };
+
+export const fromSettings = (row: SettingsRecord): Settings => ({
   distanceBounds: row.bornesDistance as [number, number, number],
   labourPrice: row.tarifManoeuvre,
   labourFloorPrice: row.tarifEtageManoeuvre,
@@ -201,7 +224,7 @@ export const fromSettings = (row: ParametreApplication): Settings => ({
     blanketLengthCm: 204,
     blanketWidthCm: 184,
     blanketStock: 20,
-    ...(row.planificationManoeuvre as Partial<MovingLaborPlanningSettings>),
+    ...(movingLaborSettings(row) as Partial<MovingLaborPlanningSettings>),
   },
   customInventoryTypes: Array.isArray(
     (row.planificationManoeuvre as { customInventoryTypes?: unknown })?.customInventoryTypes,
@@ -238,9 +261,30 @@ export const fromSettings = (row: ParametreApplication): Settings => ({
   bookingDepositPercent: row.acompteReservationPct,
   quoteTerms: row.conditionsDevis,
   quoteTermsEnabled: row.conditionsDevisActives,
+  grossMarginAboveThresholdColor: marginColorSetting(
+    row,
+    'grossMarginAboveThresholdColor',
+    '#31c878',
+  ),
+  grossMarginBelowThresholdColor: marginColorSetting(
+    row,
+    'grossMarginBelowThresholdColor',
+    '#ff5a5f',
+  ),
   rentalOvertimeHourlyRate: row.tarifHeureLocation,
   taxiFeeEnabled: row.fraisTaxiActifs,
   taxiFeePerKm: row.tarifTaxiKm,
+  taxiDistanceTariffs: (row.taxiDistanceTariffs?.length
+    ? row.taxiDistanceTariffs
+    : defaultTaxiDistanceTariffs
+  ).map((tariff) => ({
+    id: tariff.id,
+    label: tariff.label,
+    minDistanceKm: tariff.minDistanceKm,
+    maxDistanceKm: tariff.maxDistanceKm,
+    amountFcfa: tariff.amountFcfa,
+    sortOrder: tariff.sortOrder,
+  })),
   rentalKitConfiguration: Array.isArray(row.materielLocation)
     ? (row.materielLocation as Settings['rentalKitConfiguration'])
     : [],
@@ -293,6 +337,8 @@ export const toSettings = (value: Settings) => ({
     }),
     customInventoryTypes: value.customInventoryTypes ?? [],
     hiddenInventoryKeys: value.hiddenInventoryKeys ?? [],
+    grossMarginAboveThresholdColor: value.grossMarginAboveThresholdColor ?? '#31c878',
+    grossMarginBelowThresholdColor: value.grossMarginBelowThresholdColor ?? '#ff5a5f',
   } as Prisma.InputJsonValue,
   tarifMontage: value.assemblyPrice,
   grillePrixMontage: (value.montageP ?? {}) as Prisma.InputJsonValue,

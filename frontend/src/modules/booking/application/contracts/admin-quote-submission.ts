@@ -23,5 +23,6 @@ export type AdministrativeQuoteSubmissionBuilder = (input: {
   tollLines: TollExtraLine[];
   getRentalKit?: () => RentalKitItem[];
   providedCrew?: number;
+  taxiCompanyApproachDistanceKm?: number | null;
   preserveSavedCustomLines?: boolean;
 }) => QuoteInput;

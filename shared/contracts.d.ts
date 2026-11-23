@@ -150,6 +150,14 @@ export type CustomInventoryType = {
   frag?: boolean;
   notop?: boolean;
 };
+export type TaxiDistanceTariff = {
+  id: string;
+  label: string;
+  minDistanceKm: number;
+  maxDistanceKm: number | null;
+  amountFcfa: number;
+  sortOrder: number;
+};
 export type Settings = BookingRules & {
   distanceBounds: [number, number, number];
   labourPrice: number;
@@ -187,9 +195,12 @@ export type Settings = BookingRules & {
   bookingDepositPercent?: number;
   quoteTerms?: string;
   quoteTermsEnabled?: boolean;
+  grossMarginAboveThresholdColor?: string;
+  grossMarginBelowThresholdColor?: string;
   rentalOvertimeHourlyRate?: number;
   taxiFeeEnabled?: boolean;
   taxiFeePerKm?: number;
+  taxiDistanceTariffs?: TaxiDistanceTariff[];
   rentalKitConfiguration?: RentalKitConfigurationItem[];
   invoiceFooter: string;
   tiktokUrl: string | null;
@@ -477,6 +488,8 @@ export type QuotePricingInput = {
   taxiRoundTripAmountOverride?: number | null;
   taxiPerLegAmountOverride?: number | null;
   taxiCompanyApproachAmountOverride?: number | null;
+  taxiCompanyApproachDistanceKm?: number | null;
+  distanceKmOverride?: number | null;
   billingMode?: 'complete' | 'standard' | 'driver-rental';
   menuIncluded?: boolean;
   overtimeMinutes?: number;
@@ -586,6 +599,8 @@ export type QuoteInput = {
   taxiRoundTripAmountOverride?: number | null;
   taxiPerLegAmountOverride?: number | null;
   taxiCompanyApproachAmountOverride?: number | null;
+  taxiCompanyApproachDistanceKm?: number | null;
+  distanceKmOverride?: number | null;
   tolls?: Array<{
     tollPointId: string;
     direction: 'one-way' | 'round-trip';
