@@ -153,6 +153,45 @@ test('le PDF et WhatsApp reprennent les trois montages et le total enregistrés'
   assert.match(message ?? '', /25\s*600\s*FCFA/u);
 });
 
+test('le PDF regroupe les manœuvres historiques répétées sans changer le total', async () => {
+  const quote: Quote = {
+    id: 'quote-duplicate-manoeuvres-test',
+    reference: 'DV-DUPLICATE-MANOEUVRES',
+    kind: 'provisional',
+    createdAt: '2026-11-03T00:00:00.000Z',
+    price: {
+      lines: [
+        { label: 'Transport Sprinter', quantity: 1, unitPrice: 50_000, total: 50_000 },
+        {
+          label: 'Manœuvre (3e sans asc. → 2e sans asc.)',
+          quantity: 4,
+          unitPrice: 13_583,
+          total: 54_332,
+        },
+        {
+          label: 'Manœuvre (3e sans asc. → 2e sans asc.)',
+          quantity: 2,
+          unitPrice: 13_584,
+          total: 27_168,
+        },
+      ],
+      total: 131_500,
+      discount: 0,
+      tier: 1,
+      trips: 2,
+      currency: 'XOF',
+    },
+    tolls: [],
+  };
+
+  const text = await extractPdfText(await downloadQuote(booking, quote, settings));
+  const normalizedText = text.replace(/\s+/gu, ' ');
+  assert.equal((normalizedText.match(/Man(?:œ|oe)uvre \(3e sans asc\./gu) ?? []).length, 1);
+  assert.match(normalizedText, /\) 6 81 500 FCFA/u);
+  assert.match(normalizedText, /81[\s\u00a0\u202f,]?500/u);
+  assert.match(normalizedText, /131[\s\u00a0\u202f,]?500/u);
+});
+
 for (const calcMode of ['auto', 'manual'] as const) {
   for (const kind of ['provisional', 'final'] as const) {
     test(`le PDF ${kind} reprend sans recalcul les montants sauvegardés en mode ${calcMode}`, async () => {

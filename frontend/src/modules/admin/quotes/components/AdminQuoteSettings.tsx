@@ -58,8 +58,8 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
       ? null
       : taxiDistanceTariffFor(effectiveDistance, configuredTaxiTariffs);
   const taxiRotations = taxiRotationCount(
-    movingEstimate?.trips,
-    quoteConfig.trips,
+    undefined,
+    model.effectiveQuoteTrips,
     quoteConfig.calcMode,
   );
   const taxiPaidLegs = taxiPaidLegCount(taxiRotations);
@@ -473,9 +473,11 @@ export function AdminQuoteSettings({ model, catalogue }: { model: Model; catalog
               </div>
               <div className="admin-quote-taxi-field">
                 <span>
-                  {quoteConfig.calcMode === 'manual'
-                    ? 'Rotations de chargement et déchargement saisies'
-                    : 'Rotations de chargement et déchargement estimées'}
+                  {model.savedQuote && !model.quoteEditedSinceSaved
+                    ? 'Rotations enregistrées'
+                    : quoteConfig.calcMode === 'manual'
+                      ? 'Rotations de chargement et déchargement saisies'
+                      : 'Rotations de chargement et déchargement estimées'}
                 </span>
                 <strong>
                   {taxiRotations} rotation{taxiRotations === 1 ? '' : 's'} · {taxiPaidLegs} trajet

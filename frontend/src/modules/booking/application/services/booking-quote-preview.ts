@@ -1,5 +1,6 @@
 import type { Price, Vehicle } from '../../../shared/domain/model';
 import type { RentalKitItem } from '../../../shared/domain/model';
+import { consolidateDuplicateQuoteLines } from '../../../../../../shared/quote-lines.js';
 
 export type BookingQuoteConfig = {
   trips: number;
@@ -59,14 +60,16 @@ export function createBookingQuotePreview(input: {
           ...price.lines.filter((line) => !line.label.startsWith('Transport ')),
         ]
       : price.lines;
-  const lines = rawLines.map((line) =>
-    config?.labourUnitPriceOverride && /^Manœuvre/u.test(line.label)
-      ? {
-          ...line,
-          unitPrice: config.labourUnitPriceOverride,
-          total: line.quantity * config.labourUnitPriceOverride,
-        }
-      : line,
+  const lines = consolidateDuplicateQuoteLines(
+    rawLines.map((line) =>
+      config?.labourUnitPriceOverride && /^Manœuvre/u.test(line.label)
+        ? {
+            ...line,
+            unitPrice: config.labourUnitPriceOverride,
+            total: line.quantity * config.labourUnitPriceOverride,
+          }
+        : line,
+    ),
   );
   const subtotal = lines.reduce((sum, line) => sum + line.total, 0);
   const totalIsPending = tier === 3 && transportUnit <= 0;

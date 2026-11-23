@@ -7,6 +7,7 @@ import { routes } from '../../shared/navigation/config/routes';
 import { BookingRouteMap } from '../../booking/components/BookingRouteMap';
 import { Link } from 'react-router-dom';
 import { clientBookingCardModel } from '../application/services/client-booking-card';
+import { consolidateDuplicateQuoteLines } from '../../../../../shared/quote-lines.js';
 
 export function ClientBookingCard({ booking }: { booking: Booking }) {
   const { catalogue } = useApp();
@@ -24,6 +25,7 @@ export function ClientBookingCard({ booking }: { booking: Booking }) {
     tollTotal,
     mapsUrl,
   } = clientBookingCardModel(booking, catalogue);
+  const finalQuoteLines = finalQuote ? consolidateDuplicateQuoteLines(finalQuote.price.lines) : [];
 
   return (
     <article className="reference-client-card">
@@ -117,7 +119,7 @@ export function ClientBookingCard({ booking }: { booking: Booking }) {
               )}
             </div>
           )}
-          {finalQuote.price.lines.map((line, index) => (
+          {finalQuoteLines.map((line, index) => (
             <div className="reference-client-line" key={`${line.label}-${index}`}>
               <span>
                 {line.label} × {line.quantity}

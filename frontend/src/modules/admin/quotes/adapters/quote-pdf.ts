@@ -15,6 +15,7 @@ import {
 } from '../../../moving/application/services/loading-simulation-model';
 import type { Inventory } from '../../../moving/domain/inventory/inventory';
 import { isQuotePricePending } from '../../../../../../shared/quote-price-status.js';
+import { consolidateDuplicateQuoteLines } from '../../../../../../shared/quote-lines.js';
 
 const simulationScripts = new Map<string, Promise<void>>();
 
@@ -46,7 +47,11 @@ export async function downloadQuote(
   const { jsPDF } = await import('jspdf');
   const documentQuote = quote;
   const doc = new jsPDF({ format: 'a4', unit: 'mm' });
-  const price = documentQuote?.price || booking.estimate;
+  const sourcePrice = documentQuote?.price || booking.estimate;
+  const price = {
+    ...sourcePrice,
+    lines: consolidateDuplicateQuoteLines(sourcePrice.lines),
+  };
   const { addressNotes, loadingConditions } = quotePdfNotes(booking, documentQuote);
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 16;

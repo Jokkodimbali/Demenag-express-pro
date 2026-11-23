@@ -2,9 +2,14 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { AdminQuoteConfig } from '../src/modules/admin/quotes/application/admin-quote-draft-storage.ts';
 import { blankDraft } from '../src/modules/booking/application/booking-draft.ts';
+import { createBookingQuotePreview } from '../src/modules/booking/application/services/booking-quote-preview.ts';
 import { createAdminQuotePreview } from '../src/modules/admin/quotes/application/services/admin-quote-preview.ts';
 import { quoteInventoryLines } from '../src/modules/admin/quotes/application/services/quote-inventory-lines.ts';
 import { defaultAdminQuoteConfig } from '../src/modules/admin/quotes/application/services/admin-quote-config.ts';
+import {
+  taxiPaidLegCount,
+  taxiRotationCount,
+} from '../src/modules/admin/quotes/application/services/admin-quote-taxi.ts';
 import { calculatePrice } from '../../backend/src/domain/pricing/pricing.ts';
 import { estimateMovingWork } from '../src/modules/moving/domain/estimate/moving-estimate.ts';
 import {
@@ -81,6 +86,52 @@ function assertNoRepeatedLineLabels(lines: readonly { label: string }[], scenari
   );
   assert.equal(new Set(labels).size, labels.length, `${scenario}: libellés répétés`);
 }
+
+test('un devis enregistré conserve ses rotations taxi plutôt que la nouvelle estimation', () => {
+  const savedTrips = 2;
+  const newlyEstimatedTrips = 3;
+  const displayedRotations = taxiRotationCount(undefined, savedTrips, 'auto');
+
+  assert.equal(displayedRotations, savedTrips);
+  assert.equal(taxiPaidLegCount(displayedRotations), 3);
+  assert.equal(taxiRotationCount(newlyEstimatedTrips, 2, 'auto'), newlyEstimatedTrips);
+});
+
+test('l’aperçu client regroupe les anciennes lignes de manœuvre sans écart de total', () => {
+  const preview = createBookingQuotePreview({
+    price: {
+      lines: [
+        { label: 'Transport Sprinter', quantity: 1, unitPrice: 50_000, total: 50_000 },
+        {
+          label: 'Manœuvre (3e sans asc. → 2e sans asc.)',
+          quantity: 4,
+          unitPrice: 13_583,
+          total: 54_332,
+        },
+        {
+          label: 'Manœuvre (3e sans asc. → 2e sans asc.)',
+          quantity: 2,
+          unitPrice: 13_584,
+          total: 27_168,
+        },
+      ],
+      total: 131_500,
+      discount: 0,
+      tier: 1,
+      trips: 2,
+      currency: 'XOF',
+    },
+    tier: 1,
+    tierLabel: '15–25 km',
+    trips: 2,
+    hasRoute: false,
+  });
+
+  assert.equal(preview?.lines.filter((line) => line.label.startsWith('Manœuvre')).length, 1);
+  assert.equal(preview?.lines.find((line) => line.label.startsWith('Manœuvre'))?.quantity, 6);
+  assert.equal(preview?.lines.find((line) => line.label.startsWith('Manœuvre'))?.total, 81_500);
+  assert.equal(preview?.total, 131_500);
+});
 
 test('une allocation taxi non divisible reste sur une seule ligne de manœuvres', () => {
   const original = {

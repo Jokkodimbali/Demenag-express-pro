@@ -30,7 +30,10 @@ import { defaultClientQuestions } from '../../../../booking/domain/questionnaire
 import { quoteNotificationUrl } from '../services/quote-notification';
 import { createAdminQuotePreview } from '../services/admin-quote-preview';
 import { replaceSavedCustomLines } from '../../../../../../../shared/quote-custom-lines.js';
-import { isAssemblyServiceLine } from '../../../../../../../shared/quote-lines.js';
+import {
+  consolidateDuplicateQuoteLines,
+  isAssemblyServiceLine,
+} from '../../../../../../../shared/quote-lines.js';
 import { quoteGrossMarginForDisplayedPrice } from '../services/quote-gross-margin';
 import { isQuotePricePending } from '../../../../../../../shared/quote-price-status.js';
 import { normalizeAccountingConfiguration } from '../../../accounting/application/services/accounting-dashboard';
@@ -1101,7 +1104,7 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
     user?.role,
   ]);
   const previewLines = savedQuoteSnapshot
-    ? savedQuoteSnapshot.price.lines
+    ? consolidateDuplicateQuoteLines(savedQuoteSnapshot.price.lines)
     : customOnlyPrice
       ? customOnlyPrice.lines
       : hasBillableQuoteContent && !resetAdminQuote
