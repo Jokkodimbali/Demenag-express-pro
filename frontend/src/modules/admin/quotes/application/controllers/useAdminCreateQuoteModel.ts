@@ -32,6 +32,7 @@ import { createAdminQuotePreview } from '../services/admin-quote-preview';
 import { replaceSavedCustomLines } from '../../../../../../../shared/quote-custom-lines.js';
 import { isAssemblyServiceLine } from '../../../../../../../shared/quote-lines.js';
 import { quoteGrossMarginForDisplayedPrice } from '../services/quote-gross-margin';
+import { isQuotePricePending } from '../../../../../../../shared/quote-price-status.js';
 import { normalizeAccountingConfiguration } from '../../../accounting/application/services/accounting-dashboard';
 import {
   adminQuoteVehicleFitWarnings,
@@ -1121,9 +1122,13 @@ export function useAdminCreateQuoteModel(publicRequest: boolean) {
         ? calculatedPreviewDiscountLabel
         : '';
   const previewTotal = savedQuoteSnapshot
-    ? savedQuoteSnapshot.price.total
+    ? isQuotePricePending(savedQuoteSnapshot.price)
+      ? null
+      : savedQuoteSnapshot.price.total
     : customOnlyPrice
-      ? customOnlyPrice.total
+      ? isQuotePricePending(customOnlyPrice)
+        ? null
+        : customOnlyPrice.total
       : hasBillableQuoteContent && !resetAdminQuote
         ? calculatedPreviewTotal
         : null;

@@ -60,6 +60,7 @@ export function cheaperCompatibleVehicle(input: {
   )
     return null;
   const settings = input.settings;
+  if (input.route.distanceKm > settings.distanceBounds[2]) return null;
   const estimateFor = (vehicle: Vehicle) => {
     const recommendedTrips = referencePlannedTrips(
       input.inventory,
@@ -134,7 +135,7 @@ export function cheaperCompatibleVehicle(input: {
       rentalKit: null,
       customLines: [],
     };
-    return createAdminQuotePreview({
+    const total = createAdminQuotePreview({
       draft,
       estimateInventory: input.inventory,
       config,
@@ -152,6 +153,9 @@ export function cheaperCompatibleVehicle(input: {
       simulationNeeds: null,
       accountingOvertimeHourlyRate: input.accountingOvertimeHourlyRate,
     }).total;
+    if (total === null)
+      throw new Error('Le tarif transport doit être fixé pour comparer les véhicules.');
+    return total;
   };
   const currentTotal = priceFor(input.current, currentEstimate);
   const options = input.vehicles

@@ -21,6 +21,7 @@ import {
   consolidateDuplicateQuoteLines,
   isAssemblyServiceLine,
 } from '../../../../../../../shared/quote-lines.js';
+import { normalizePendingQuotePrice } from '../../../../../../../shared/quote-price-status.js';
 
 type ExtraOption = [keyof Options, string, string];
 type QuoteLine = { label: string; quantity: number; unitPrice: number; total: number };
@@ -289,24 +290,26 @@ export function createAdminQuotePreview(input: {
       ? Math.round((baseSubtotal * Math.min(100, config.discount)) / 100)
       : Math.min(baseSubtotal, config.discount);
   const discountLabel = `Remise${config.discountType === 'pct' && config.discount ? ` (${Math.min(100, config.discount)} %)` : ''}${config.discountReason.trim() ? ` · ${config.discountReason.trim()}` : ''}`;
-  const priceSnapshot: Price = applyTaxiToManoeuvrePrice(
-    {
-      lines: basePreviewLines,
-      total: baseSubtotal - discount,
-      discount,
-      discountLabel,
-      discountType: config.discountType,
-      discountValue: config.discount,
-      discountReason: config.discountReason,
-      tier,
-      trips: config.trips,
-      currency: 'XOF',
-    },
-    taxiFeeAmount,
+  const priceSnapshot: Price = normalizePendingQuotePrice(
+    applyTaxiToManoeuvrePrice(
+      {
+        lines: basePreviewLines,
+        total: baseSubtotal - discount,
+        discount,
+        discountLabel,
+        discountType: config.discountType,
+        discountValue: config.discount,
+        discountReason: config.discountReason,
+        tier,
+        trips: config.trips,
+        currency: 'XOF',
+      },
+      taxiFeeAmount,
+    ),
   );
   const previewLines = priceSnapshot.lines;
   const subtotal = previewLines.reduce((sum, line) => sum + line.total, 0);
-  const total = baseSubtotal - discount + taxiFeeAmount;
+  const total = priceSnapshot.total;
   return {
     tier,
     transportUnit,

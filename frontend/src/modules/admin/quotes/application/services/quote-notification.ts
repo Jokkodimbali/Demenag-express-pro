@@ -2,6 +2,7 @@ import { money } from '../../../../shared/application/presentation/format';
 import type { Booking, Quote } from '../../../../shared/domain/model';
 import type { Settings } from '../../../../shared/domain/model';
 import { whatsappUrl } from '../../../../shared/messaging/application/services/whatsapp';
+import { isQuotePricePending } from '../../../../../../../shared/quote-price-status.js';
 import {
   defaultFinalQuoteTemplate,
   defaultLegacyFinalQuoteTemplate,
@@ -49,7 +50,7 @@ export function quoteNotificationUrl(booking: Booking, quote: Quote, settings?: 
       nom: booking.customerName,
       ref: booking.reference,
       num: quote.reference || booking.reference,
-      total: `${money(quote.price.total)}${tolls.length ? ` (+ péages à votre charge : ${money(tollTotal)})` : ''}`,
+      total: `${isQuotePricePending(quote.price) ? 'Sur devis' : money(quote.price.total)}${tolls.length ? ` (+ péages à votre charge : ${money(tollTotal)})` : ''}`,
       peages: tollText,
       paiement: paymentLine,
       conditions,

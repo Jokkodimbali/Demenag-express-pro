@@ -205,7 +205,7 @@ export function calculatePrice(
   const reason = discountReason.trim();
   return {
     lines: consolidatedLines,
-    total: subtotal - effectiveDiscount,
+    total: tier === 3 && transport <= 0 ? null : subtotal - effectiveDiscount,
     discount: effectiveDiscount,
     discountLabel: `Remise${discountType === 'pct' && discount ? ` (${Math.min(100, discount)} %)` : ''}${reason ? ` · ${reason}` : ''}`,
     discountType,

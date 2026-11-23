@@ -214,6 +214,43 @@ test('les trois boutons de montage remplacent chacun leur ligne historique sans 
   }
 });
 
+test('un transport au-delà de 35 km sans tarif garde les services mais affiche un total sur devis', () => {
+  const draft = blankDraft({ vehicles: [vehicle], settings } as Catalogue);
+  draft.vehicleId = vehicle.id;
+  draft.route = {
+    from: [14.7, -17.4],
+    to: [14.8, -16.9],
+    distanceKm: 40,
+    durationMinutes: 60,
+    geometry: [
+      [14.7, -17.4],
+      [14.8, -16.9],
+    ],
+  };
+  draft.options = { labour: 2, desk: 0, wardrobe: 0, bed: 0 };
+  const preview = createAdminQuotePreview({
+    draft,
+    estimateInventory: draft.inventory,
+    config: defaultAdminQuoteConfig(),
+    vehicle,
+    estimate: null,
+    settings,
+    price: null,
+    extras,
+    labourPrice: 6_500,
+    simulationNeeds: null,
+  });
+
+  assert.equal(preview.total, null);
+  assert.equal(preview.priceSnapshot.total, null);
+  assert.equal(preview.previewLines[0]?.unitPrice, 0);
+  assert.equal(
+    preview.previewLines.find((line) => line.label.startsWith('Manœuvre'))?.total,
+    13_000,
+  );
+  assert.equal(preview.subtotal, 13_000);
+});
+
 test('l’aperçu du devis reprend une seule fois transport, trajets suivants et jour creux', () => {
   const catalogue = { vehicles: [vehicle], settings } as Catalogue;
   const access = { fromFloor: 2, toFloor: 1, fromLift: false, toLift: true };

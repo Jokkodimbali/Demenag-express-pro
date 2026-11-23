@@ -145,18 +145,42 @@ const savedDraft = { draft, quoteConfig: defaultAdminQuoteConfig(), tollLines: [
 const accounting = defaultAccountingFinanceConfiguration(new Date('2026-11-19T12:00:00Z'));
 const user = { id: 'visual-admin', name: 'Admin visuel', phone: '770000001', role: 'admin' };
 const employees = [
-  { id: 'mover-1', userId: null, name: 'Aminata Diop', phone: '770000002', photo: null, active: true, vehicleId: null, role: 'manoeuvre' },
-  { id: 'mover-2', userId: null, name: 'Moussa Fall', phone: '770000003', photo: null, active: true, vehicleId: null, role: 'manoeuvre' },
+  {
+    id: 'mover-1',
+    userId: null,
+    name: 'Aminata Diop',
+    phone: '770000002',
+    photo: null,
+    active: true,
+    vehicleId: null,
+    role: 'manoeuvre',
+  },
+  {
+    id: 'mover-2',
+    userId: null,
+    name: 'Moussa Fall',
+    phone: '770000003',
+    photo: null,
+    active: true,
+    vehicleId: null,
+    role: 'manoeuvre',
+  },
 ];
 
-const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--no-sandbox'] });
+const browser = await chromium.launch({
+  channel: 'chrome',
+  headless: true,
+  args: ['--no-sandbox'],
+});
 const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
 const page = await context.newPage();
 const pageErrors = [];
 const writes = [];
 const apiCalls = [];
 page.on('pageerror', (error) => pageErrors.push(error.stack ?? error.message));
-page.on('requestfailed', (request) => pageErrors.push(`request failed: ${request.url()} ${request.failure()?.errorText}`));
+page.on('requestfailed', (request) =>
+  pageErrors.push(`request failed: ${request.url()} ${request.failure()?.errorText}`),
+);
 page.on('console', (message) => {
   if (message.type() === 'error') pageErrors.push(`console: ${message.text()}`);
 });
@@ -211,7 +235,11 @@ await page.route('**/api/**', async (route) => {
       );
     } catch (error) {
       console.error('MOCK ESTIMATE ERROR', JSON.stringify({ input, error: String(error) }));
-      await route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ error: String(error) }) });
+      await route.fulfill({
+        status: 400,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: String(error) }),
+      });
       return;
     }
   }
@@ -220,7 +248,11 @@ await page.route('**/api/**', async (route) => {
     return;
   }
   if (path === '/admin/quotes') {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) });
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true }),
+    });
     return;
   }
   await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
@@ -228,10 +260,25 @@ await page.route('**/api/**', async (route) => {
 
 const baseUrl = 'http://127.0.0.1:5174';
 try {
-  const initialResponse = await page.goto(`${baseUrl}/admin/creer-un-devis`, { waitUntil: 'domcontentloaded' });
+  const initialResponse = await page.goto(`${baseUrl}/admin/creer-un-devis`, {
+    waitUntil: 'domcontentloaded',
+  });
   await page.waitForTimeout(1500);
   if (!(await page.locator('#admin-quote-form').count())) {
-    console.log('INITIAL DIAGNOSTIC', JSON.stringify({ status: initialResponse?.status(), url: page.url(), body: (await page.locator('body').innerText()).slice(0, 1800), apiCalls, pageErrors }, null, 2));
+    console.log(
+      'INITIAL DIAGNOSTIC',
+      JSON.stringify(
+        {
+          status: initialResponse?.status(),
+          url: page.url(),
+          body: (await page.locator('body').innerText()).slice(0, 1800),
+          apiCalls,
+          pageErrors,
+        },
+        null,
+        2,
+      ),
+    );
   }
   await expect(page.locator('#admin-quote-form')).toBeVisible({ timeout: 3000 });
   const expandButton = page.getByRole('button', { name: /tout afficher|replier les étapes/i });
@@ -242,17 +289,34 @@ try {
   if ((await page.locator('.inventory-collapse').innerText()) !== 'Réduire')
     await page.locator('.inventory-collapse').click();
   await page.locator('.call-inventory').scrollIntoViewIfNeeded();
-  const salonSection = page.locator('.inventory-section').filter({ hasText: 'Salon & séjour' }).first();
-  if (!(await salonSection.evaluate((element) => element.open))) await salonSection.locator('summary').click();
+  const salonSection = page
+    .locator('.inventory-section')
+    .filter({ hasText: 'Salon & séjour' })
+    .first();
+  if (!(await salonSection.evaluate((element) => element.open)))
+    await salonSection.locator('summary').click();
 
-  const inventoryRow = salonSection.locator('.inventory-row').filter({ has: page.getByRole('button', { name: 'Ajouter Salon', exact: true }).first() }).first();
-  const inventorySalonStepper = salonSection.locator('.inventory-quantity button[aria-label="Ajouter Salon"]');
+  const inventoryRow = salonSection
+    .locator('.inventory-row')
+    .filter({ has: page.getByRole('button', { name: 'Ajouter Salon', exact: true }).first() })
+    .first();
+  const inventorySalonStepper = salonSection.locator(
+    '.inventory-quantity button[aria-label="Ajouter Salon"]',
+  );
   if (await inventorySalonStepper.count()) {
-    const initialCount = Number(await inventorySalonStepper.locator('xpath=..').locator('output').innerText());
+    const initialCount = Number(
+      await inventorySalonStepper.locator('xpath=..').locator('output').innerText(),
+    );
     await inventorySalonStepper.click();
-    await expect(inventorySalonStepper.locator('xpath=..').locator('output')).toHaveText(String(initialCount + 1));
+    await expect(inventorySalonStepper.locator('xpath=..').locator('output')).toHaveText(
+      String(initialCount + 1),
+    );
   } else {
-    assert.equal(await inventoryRow.count(), 1, 'La ligne Salon doit être présente dans l’inventaire.');
+    assert.equal(
+      await inventoryRow.count(),
+      1,
+      'La ligne Salon doit être présente dans l’inventaire.',
+    );
   }
   const inventoryCheckbox = inventoryRow.locator('.inventory-dismantle input[type="checkbox"]');
   if (await inventoryCheckbox.count()) await inventoryCheckbox.uncheck();
@@ -262,17 +326,25 @@ try {
   const formulaButtons = page.locator('.admin-quote-formula-options button');
   const quoteKindButtons = page.locator('.admin-quote-stage-selector button');
   await quoteKindButtons.first().scrollIntoViewIfNeeded();
-  const initialKindPositions = await quoteKindButtons.evaluateAll((buttons) => buttons.map((button) => {
-    const box = button.getBoundingClientRect();
-    return [Math.round(box.x), Math.round(box.y), Math.round(box.width), Math.round(box.height)];
-  }));
+  const initialKindPositions = await quoteKindButtons.evaluateAll((buttons) =>
+    buttons.map((button) => {
+      const box = button.getBoundingClientRect();
+      return [Math.round(box.x), Math.round(box.y), Math.round(box.width), Math.round(box.height)];
+    }),
+  );
   await quoteKindButtons.nth(1).click();
   await expect(quoteKindButtons.nth(1)).toHaveAttribute('aria-pressed', 'true');
-  const finalKindPositions = await quoteKindButtons.evaluateAll((buttons) => buttons.map((button) => {
-    const box = button.getBoundingClientRect();
-    return [Math.round(box.x), Math.round(box.y), Math.round(box.width), Math.round(box.height)];
-  }));
-  assert.deepEqual(finalKindPositions, initialKindPositions, 'Les boutons provisoire/final doivent garder la même position.');
+  const finalKindPositions = await quoteKindButtons.evaluateAll((buttons) =>
+    buttons.map((button) => {
+      const box = button.getBoundingClientRect();
+      return [Math.round(box.x), Math.round(box.y), Math.round(box.width), Math.round(box.height)];
+    }),
+  );
+  assert.deepEqual(
+    finalKindPositions,
+    initialKindPositions,
+    'Les boutons provisoire/final doivent garder la même position.',
+  );
 
   await formulaButtons.nth(0).click();
   await expect(formulaButtons.nth(0)).toHaveAttribute('aria-pressed', 'true');
@@ -288,9 +360,16 @@ try {
   await expect(page.locator('.admin-quote-overtime-card')).toBeVisible();
 
   const vehicleGroup = page.locator('.admin-quote-vehicle-choices');
-  for (const [index, name] of [[1, 'Trafic'], [2, 'Master'], [0, 'Sprinter']]) {
+  for (const [index, name] of [
+    [1, 'Trafic'],
+    [2, 'Master'],
+    [0, 'Sprinter'],
+  ]) {
     await vehicleGroup.getByRole('button').nth(index).click();
-    await expect(vehicleGroup.getByRole('button').nth(index)).toHaveAttribute('aria-pressed', 'true');
+    await expect(vehicleGroup.getByRole('button').nth(index)).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
     await expect(page.locator('.admin-quote-paper-meta')).toContainText(name);
   }
 
@@ -317,17 +396,27 @@ try {
   await overtimeToggle.click();
   await expect(overtimeToggle).toHaveAttribute('aria-pressed', 'true');
   await overtimeCard.getByRole('button', { name: 'Ajouter une heure supplémentaire' }).click();
-  await overtimeCard.getByRole('combobox', { name: /choisir un profil manœuvre/i }).selectOption('mover-1');
+  await overtimeCard
+    .getByRole('combobox', { name: /choisir un profil manœuvre/i })
+    .selectOption('mover-1');
   await overtimeCard.getByLabel('Personnes non enregistrées').fill('1');
   await expect(overtimeCard.locator('.admin-quote-overtime-total')).not.toHaveText(/0 FCFA/u);
-  await expect(overtimeCard.locator('.admin-quote-overtime-selected-profiles')).toContainText('Aminata Diop');
-  await expect(page.locator('.admin-quote-paper-line').filter({ hasText: /Majoration de travail de nuit/i })).toHaveCount(1);
-  await expect(page.locator('.admin-quote-paper-line').filter({ hasText: /^Manœuvre/u })).toHaveCount(1);
+  await expect(overtimeCard.locator('.admin-quote-overtime-selected-profiles')).toContainText(
+    'Aminata Diop',
+  );
+  await expect(
+    page.locator('.admin-quote-paper-line').filter({ hasText: /Majoration de travail de nuit/i }),
+  ).toHaveCount(1);
+  await expect(
+    page.locator('.admin-quote-paper-line').filter({ hasText: /^Manœuvre/u }),
+  ).toHaveCount(1);
 
   await page.locator('.admin-quote-services .admin-quote-section-toggle').click();
   const addCustom = page.getByRole('button', { name: /ajouter une option facturée/i });
   await addCustom.click();
-  await page.getByRole('textbox', { name: 'Libellé de l’option facturée' }).fill('Emballage renforcé');
+  await page
+    .getByRole('textbox', { name: 'Libellé de l’option facturée' })
+    .fill('Emballage renforcé');
   await page.getByRole('spinbutton', { name: 'Quantité de l’option' }).fill('3');
   await page.getByRole('spinbutton', { name: 'Prix unitaire en FCFA' }).fill('700');
   await expect(page.locator('.admin-quote-paper-lines')).toContainText('Emballage renforcé');
@@ -341,8 +430,16 @@ try {
 
   const previewLines = page.locator('.admin-quote-paper-line');
   const previewText = await previewLines.allInnerTexts();
-  assert.equal(previewText.filter((line) => /^Manœuvre\b/u.test(line.trim())).length, 1, 'L’aperçu doit contenir une seule ligne de manœuvre.');
-  assert.equal(previewText.filter((line) => /Majoration de travail de nuit/u.test(line)).length, 1, 'La majoration doit être une ligne distincte et unique.');
+  assert.equal(
+    previewText.filter((line) => /^Manœuvre\b/u.test(line.trim())).length,
+    1,
+    'L’aperçu doit contenir une seule ligne de manœuvre.',
+  );
+  assert.equal(
+    previewText.filter((line) => /Majoration de travail de nuit/u.test(line)).length,
+    1,
+    'La majoration doit être une ligne distincte et unique.',
+  );
   await page.locator('.admin-quote-reference-settings').scrollIntoViewIfNeeded();
   await page.screenshot({ path: `${output}/quote-pricing-complete-desktop.png` });
 
@@ -352,23 +449,57 @@ try {
     await page.locator('.admin-quote-reference-settings').scrollIntoViewIfNeeded();
     await page.waitForTimeout(500);
     await page.screenshot({ path: `${output}/quote-pricing-complete-mobile-${width}.png` });
-    viewportChecks.push(await page.evaluate(() => {
-      const save = document.querySelector('.admin-quote-save-bar-submit')?.getBoundingClientRect();
-      const bounds = document.documentElement;
-      return {
-        viewport: innerWidth,
-        document: bounds.scrollWidth,
-        saveButtonVisible: Boolean(save && save.width > 0 && save.left >= 0 && save.right <= innerWidth),
-        saveButtonTop: save ? Math.round(save.top) : null,
-        bodyHeight: bounds.scrollHeight,
-      };
-    }));
+    viewportChecks.push(
+      await page.evaluate(() => {
+        const save = document
+          .querySelector('.admin-quote-save-bar-submit')
+          ?.getBoundingClientRect();
+        const bounds = document.documentElement;
+        return {
+          viewport: innerWidth,
+          document: bounds.scrollWidth,
+          saveButtonVisible: Boolean(
+            save && save.width > 0 && save.left >= 0 && save.right <= innerWidth,
+          ),
+          saveButtonTop: save ? Math.round(save.top) : null,
+          bodyHeight: bounds.scrollHeight,
+        };
+      }),
+    );
   }
-  assert.deepEqual(viewportChecks.map(({ viewport, document: width }) => [viewport, width]), [[390, 390], [320, 320]], 'Aucun débordement horizontal de page sur mobile.');
-  assert.ok(viewportChecks.every((item) => item.saveButtonVisible), 'Le bouton Enregistrer reste entièrement visible sur mobile.');
-  assert.deepEqual(writes.filter((entry) => !entry.includes('/admin/quote-draft') && !entry.includes('/maps/route')), [], 'Aucune réservation ni devis réel ne doit être écrit.');
+  assert.deepEqual(
+    viewportChecks.map(({ viewport, document: width }) => [viewport, width]),
+    [
+      [390, 390],
+      [320, 320],
+    ],
+    'Aucun débordement horizontal de page sur mobile.',
+  );
+  assert.ok(
+    viewportChecks.every((item) => item.saveButtonVisible),
+    'Le bouton Enregistrer reste entièrement visible sur mobile.',
+  );
+  assert.deepEqual(
+    writes.filter(
+      (entry) => !entry.includes('/admin/quote-draft') && !entry.includes('/maps/route'),
+    ),
+    [],
+    'Aucune réservation ni devis réel ne doit être écrit.',
+  );
   assert.deepEqual(pageErrors, [], `Erreurs navigateur: ${pageErrors.join('\n')}`);
-  console.log(JSON.stringify({ viewportChecks, apiCalls, nonDraftWrites: writes.filter((entry) => !entry.includes('/admin/quote-draft')), previewLines: previewText, pageErrors }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        viewportChecks,
+        apiCalls,
+        nonDraftWrites: writes.filter((entry) => !entry.includes('/admin/quote-draft')),
+        previewLines: previewText,
+        pageErrors,
+      },
+      null,
+      2,
+    ),
+  );
 } finally {
   await browser.close();
 }

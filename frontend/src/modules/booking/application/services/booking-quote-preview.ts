@@ -69,7 +69,7 @@ export function createBookingQuotePreview(input: {
       : line,
   );
   const subtotal = lines.reduce((sum, line) => sum + line.total, 0);
-  const totalIsPending = tier === 3 && config?.customPrice == null;
+  const totalIsPending = tier === 3 && transportUnit <= 0;
   const discount = totalIsPending
     ? 0
     : config?.discountType === 'pct'

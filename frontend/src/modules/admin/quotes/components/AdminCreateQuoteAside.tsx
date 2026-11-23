@@ -34,6 +34,7 @@ export function AdminCreateQuoteAside({
     previewDiscountLabel,
     previewDiscount,
     previewTotal,
+    previewTier,
     tollLines,
     totalTolls,
     visibleInventoryText,
@@ -155,7 +156,13 @@ export function AdminCreateQuoteAside({
           )}
           <div className="admin-quote-paper-total">
             <strong>{quoteKind === 'final' ? 'TOTAL' : 'TOTAL ESTIMÉ'}</strong>
-            <strong>{previewTotal === null ? 'À calculer' : money(previewTotal)}</strong>
+            <strong>
+              {previewTotal === null
+                ? previewTier === 3
+                  ? 'Sur devis'
+                  : 'À calculer'
+                : money(previewTotal)}
+            </strong>
           </div>
         </div>
         {tollLines.length > 0 && (

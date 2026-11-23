@@ -115,6 +115,32 @@ test('le modèle personnalisé remplace les variables et conserve péages et pai
   assert.match(message, /Mode de paiement :/u);
 });
 
+test('WhatsApp affiche « Sur devis » pour un ancien devis au tarif transport non fixé', () => {
+  const pendingQuote = {
+    ...quote('provisional'),
+    price: {
+      lines: [
+        {
+          label: 'Transport Master · plus de 35 km, prix à fixer',
+          quantity: 2,
+          unitPrice: 0,
+          total: 0,
+        },
+        { label: 'Manœuvre', quantity: 2, unitPrice: 6_500, total: 13_000 },
+      ],
+      total: 13_000,
+      discount: 0,
+      tier: 3,
+      trips: 2,
+      currency: 'XOF',
+    },
+  } as Quote;
+  const message = decodeMessage(quoteNotificationUrl(booking, pendingQuote, settings));
+
+  assert.match(message, /Sur devis/u);
+  assert.doesNotMatch(message, /13\s*000 FCFA/u);
+});
+
 test('le rappel automatique reprend les moyens de paiement, le QR et le numéro WhatsApp de référence', () => {
   const reminder = bookingReminder({ ...booking, date: '2099-11-10' }, settings, false);
   const message = decodeMessage(reminder.reminderHref);

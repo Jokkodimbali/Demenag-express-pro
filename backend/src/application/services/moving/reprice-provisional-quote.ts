@@ -2,6 +2,7 @@ import { messages } from '../../../domain/shared/messages/fr.js';
 import type { Booking, Quote, QuotePricingInput, Settings } from '../../../domain/shared/model.js';
 import { calculatePrice, labourUnitPrice } from '../../../domain/pricing/pricing.js';
 import { applyTaxiToManoeuvrePrice } from '../../../../../shared/quote-taxi-allocation.js';
+import { normalizePendingQuotePrice } from '../../../../../shared/quote-price-status.js';
 
 export function repriceProvisionalQuote(
   booking: Booking,
@@ -104,7 +105,7 @@ export function repriceProvisionalQuote(
     pricingInput.discountReason,
     booking.date,
   );
-  const price = applyTaxiToManoeuvrePrice(basePrice, taxiFeeAmount);
+  const price = normalizePendingQuotePrice(applyTaxiToManoeuvrePrice(basePrice, taxiFeeAmount));
   return {
     price,
     pricingInput: { ...pricingInput, extraLines, taxiFeeAmount, rentalOvertimeHourlyRate },

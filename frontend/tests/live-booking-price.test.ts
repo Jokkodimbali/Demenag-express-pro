@@ -92,7 +92,8 @@ test('une nouvelle tranche sans tarif conserve les prestations et son transport 
   const result = liveBookingPrice({ ...booking, distanceKm: 50 }, catalogue);
   assert.equal(result.tier, 3);
   assert.equal(result.lines[0]?.unitPrice, 0);
-  assert.equal(result.total, 42000);
+  assert.equal(result.total, null);
+  assert.equal(result.lines[1]?.total, 12_000);
 });
 test('un prix de manœuvre personnalisé est conservé, un prix automatique suit les paramètres', () => {
   const updated = { ...catalogue, settings: { ...settings, labourPrice: 8000 } };

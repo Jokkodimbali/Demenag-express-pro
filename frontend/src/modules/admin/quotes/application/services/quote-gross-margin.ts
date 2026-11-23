@@ -1,6 +1,7 @@
 import type { AccountingFinanceConfiguration, Price, Quote } from '../../../../shared/domain/model';
 import type { Inventory } from '../../../../moving/domain/inventory/inventory';
 import { accountingMenuPrice } from '../../../accounting/domain/accounting-forecast';
+import { isQuotePricePending } from '../../../../../../../shared/quote-price-status.js';
 
 type QuoteAccountingCosts = NonNullable<Quote['accountingCosts']>;
 
@@ -120,6 +121,7 @@ export function quoteGrossMarginForDisplayedPrice(input: {
   fallbackTaxiCharges: number;
 }): number | null {
   const { displayedPrice, savedQuote } = input;
+  if (displayedPrice && isQuotePricePending(displayedPrice)) return null;
   const lines = displayedPrice?.lines ?? [];
   const savedTaxiExtraLines = savedQuote?.pricingInput?.extraLines?.filter((line) =>
     line.label.startsWith('Frais taxi'),

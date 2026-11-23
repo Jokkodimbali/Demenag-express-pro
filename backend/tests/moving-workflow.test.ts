@@ -291,6 +291,30 @@ test('les trois services de montage sont enregistrés une fois chacun avec leur 
   assert.equal(saved.quotes[0]?.price.total, 25600);
 });
 
+test('un devis provisoire sans tarif transport conserve ses services et enregistre le total comme sur devis', async () => {
+  const { service, getBooking } = harness();
+  const booking = getBooking();
+  const saved = await service.quote(admin, booking.id, {
+    kind: 'provisional',
+    trips: 2,
+    customPrice: null,
+    discount: 0,
+    notes: '',
+    extraLines: [{ label: 'Protection spéciale', quantity: 1, unitPrice: 3_000 }],
+    tolls: [],
+    options: { labour: 2, desk: 0, wardrobe: 0, bed: 0 },
+    version: booking.version,
+  });
+  const price = saved.quotes[0]?.price;
+
+  assert.equal(price?.tier, 3);
+  assert.equal(price?.total, null);
+  assert.equal(price?.lines.find((line) => line.label.startsWith('Transport'))?.total, 0);
+  assert.equal(price?.lines.find((line) => line.label.startsWith('Manœuvre'))?.total, 10_000);
+  assert.equal(price?.lines.find((line) => line.label === 'Protection spéciale')?.total, 3_000);
+  assert.equal(saved.estimate.total, null);
+});
+
 test('le montage choisi dans l’inventaire ne double pas les trois options du devis', async () => {
   const { service, getBooking, setDistance, setInventorySnapshot } = harness();
   setDistance(10);

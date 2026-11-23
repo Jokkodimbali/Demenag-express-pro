@@ -6,7 +6,7 @@ export function clientBookingPdfDocument(
   catalogue: Catalogue | null,
   quote: Quote | undefined,
 ) {
-  const price = quote?.kind === 'final' ? quote.price : liveBookingPrice(booking, catalogue, quote);
+  const price = quote ? quote.price : liveBookingPrice(booking, catalogue);
   return {
     booking: { ...booking, estimate: price },
     quote: quote ? { ...quote, price } : undefined,

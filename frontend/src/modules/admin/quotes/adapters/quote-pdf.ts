@@ -14,6 +14,7 @@ import {
   displayLoadingTip,
 } from '../../../moving/application/services/loading-simulation-model';
 import type { Inventory } from '../../../moving/domain/inventory/inventory';
+import { isQuotePricePending } from '../../../../../../shared/quote-price-status.js';
 
 const simulationScripts = new Map<string, Promise<void>>();
 
@@ -363,11 +364,8 @@ export async function downloadQuote(
   );
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
-  const totalLabel =
-    price.tier === 3 &&
-    !price.lines.some((line) => line.label.startsWith('Transport') && line.unitPrice > 0)
-      ? 'Sur devis'
-      : pdfMoney(price.total);
+  const pricePending = isQuotePricePending(price);
+  const totalLabel = pricePending ? 'Sur devis' : pdfMoney(price.total);
   if (isFinal) doc.setTextColor(246, 215, 60);
   else doc.setTextColor(30, 32, 35);
   doc.text(totalLabel, right - 6, y + 13.2, { align: 'right' });
@@ -392,12 +390,12 @@ export async function downloadQuote(
   const validityDays = settings.quoteValidityDays ?? 15;
   const depositPercent = settings.bookingDepositPercent ?? 0;
   const notices: { bold: boolean; text: string }[] = [];
-  if (tolls.length)
+  if (tolls.length && !pricePending)
     notices.push({
       bold: false,
       text: `Péages estimés à votre charge : ${pdfMoney(tollTotal)}  ·  Budget total à prévoir : ${pdfMoney((price.total ?? 0) + tollTotal)}`,
     });
-  if ((price.total ?? 0) > 0 && depositPercent > 0) {
+  if (!pricePending && (price.total ?? 0) > 0 && depositPercent > 0) {
     const deposit = Math.round(((price.total ?? 0) * depositPercent) / 100 / 500) * 500;
     notices.push({
       bold: false,

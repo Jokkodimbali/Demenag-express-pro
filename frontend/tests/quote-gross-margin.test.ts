@@ -242,3 +242,35 @@ test('la marge économique ne retire pas les frais taxi ni les heures des manœu
     null,
   );
 });
+
+test('la marge reste vide tant que le tarif transport du dernier palier est à fixer', () => {
+  const pendingPrice: Price = {
+    lines: [
+      {
+        label: 'Transport Master · plus de 35 km, prix à fixer',
+        quantity: 2,
+        unitPrice: 0,
+        total: 0,
+      },
+      { label: 'Manœuvre', quantity: 2, unitPrice: 6_500, total: 13_000 },
+    ],
+    total: 13_000,
+    discount: 0,
+    tier: 3,
+    trips: 2,
+    currency: 'XOF',
+  };
+
+  assert.equal(
+    quoteGrossMarginForDisplayedPrice({
+      displayedPrice: pendingPrice,
+      fallbackBillingMode: 'complete',
+      hasBillableContent: true,
+      inventory: blankInventory(),
+      accounting,
+      fallbackProvidedCrew: 2,
+      fallbackTaxiCharges: 0,
+    }),
+    null,
+  );
+});

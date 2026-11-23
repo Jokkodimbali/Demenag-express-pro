@@ -9,6 +9,7 @@ import {
 } from '../../../../../shared/quote-taxi-allocation.js';
 import { isAssemblyServiceLine } from '../../../../../shared/quote-lines.js';
 import { replaceSavedCustomLines } from '../../../../../shared/quote-custom-lines.js';
+import { normalizePendingQuotePrice } from '../../../../../shared/quote-price-status.js';
 import {
   accountingConfigurationForFinalQuote,
   captureAccountingCosts,
@@ -217,22 +218,24 @@ export async function createQuote(
     taxiFeeAmount === 0 || manoeuvreCount(basePrice.lines) > 0,
     'Les frais taxi nécessitent des manœuvres facturés.',
   );
-  const price = savedCustomBaseline
-    ? replaceSavedCustomLines(
-        savedCustomBaseline.price,
-        savedCustomBaseline.pricingInput?.customLines ?? [],
-        (input.customLines ?? []).filter(
-          (line) => includeAssembly || !isAssemblyServiceLine(line.label),
-        ),
-      )
-    : applyTaxiToManoeuvrePrice(basePrice, taxiFeeAmount);
-  requireValue(
-    input.kind !== 'final' || price.total !== null,
-    messages.renseignezLeTarifDuTransportAvantDeFinaliser,
+  const price = normalizePendingQuotePrice(
+    savedCustomBaseline
+      ? replaceSavedCustomLines(
+          savedCustomBaseline.price,
+          savedCustomBaseline.pricingInput?.customLines ?? [],
+          (input.customLines ?? []).filter(
+            (line) => includeAssembly || !isAssemblyServiceLine(line.label),
+          ),
+        )
+      : applyTaxiToManoeuvrePrice(basePrice, taxiFeeAmount),
   );
   requireValue(
     input.kind !== 'final' || price.tier !== 3 || Number(input.customPrice) > 0,
     `Distance au-delà de ${pricingSettings.distanceBounds[2]} km : fixez le prix par chargement et déchargement avant le devis final.`,
+  );
+  requireValue(
+    input.kind !== 'final' || price.total !== null,
+    messages.renseignezLeTarifDuTransportAvantDeFinaliser,
   );
   const quoteId = existingQuote?.id ?? ids.next();
   const accountingConfiguration =

@@ -90,5 +90,5 @@ export function quoteTotal(
     draft.discountType === 'pct'
       ? Math.round((subtotal * Math.min(100, draft.discount)) / 100)
       : Math.min(subtotal, draft.discount);
-  return subtotal - discount;
+  return tier === 3 && transportUnit <= 0 ? null : subtotal - discount;
 }

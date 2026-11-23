@@ -6,6 +6,7 @@ import {
   labourUnitPriceOverrideFromQuote,
 } from '../../domain/pricing/labour-price';
 import { applyTaxiToManoeuvrePrice } from '../../../../../../shared/quote-taxi-allocation.js';
+import { normalizePendingQuotePrice } from '../../../../../../shared/quote-price-status.js';
 import { referenceTierLabels } from '../../../shared/application/presentation/format';
 import {
   referenceLowDemandDiscount,
@@ -25,7 +26,7 @@ export function liveBookingPrice(
       : undefined) ??
     booking.quotes.at(-1);
   const price = saved?.price ?? booking.estimate;
-  if (!catalogue || booking.status === 'completed') return price;
+  if (!catalogue || booking.status === 'completed') return normalizePendingQuotePrice(price);
   const { settings } = catalogue;
   const vehicle =
     catalogue.vehicles.find((item) => item.id === booking.vehicle.id) ?? booking.vehicle;
@@ -97,8 +98,10 @@ export function liveBookingPrice(
     price.discountType === 'pct'
       ? Math.round((subtotal * Math.min(100, value)) / 100)
       : Math.min(subtotal, value);
-  return applyTaxiToManoeuvrePrice(
-    { ...price, tier, lines, discount, total: subtotal - discount },
-    saved?.pricingInput?.taxiFeeAmount ?? 0,
+  return normalizePendingQuotePrice(
+    applyTaxiToManoeuvrePrice(
+      { ...price, tier, lines, discount, total: subtotal - discount },
+      saved?.pricingInput?.taxiFeeAmount ?? 0,
+    ),
   );
 }

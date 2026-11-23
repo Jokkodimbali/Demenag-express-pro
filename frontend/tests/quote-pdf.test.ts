@@ -265,6 +265,40 @@ test('le PDF reprend les coordonnées et applique l’activation des conditions 
   assert.doesNotMatch(disabledText, new RegExp(clause));
 });
 
+test('le PDF provisoire en attente de tarif affiche Sur devis sans acompte ni total partiel', async () => {
+  const quote: Quote = {
+    id: 'quote-pending-price',
+    reference: 'DV-PENDING-PRICE',
+    kind: 'provisional',
+    createdAt: '2026-11-03T00:00:00.000Z',
+    notes: '',
+    tolls: [{ tollPointId: 'toll-1', label: 'Péage Dakar', quantity: 2, unitPrice: 1_000 }],
+    price: {
+      lines: [
+        {
+          label: 'Transport Sprinter · plus de 35 km, prix à fixer',
+          quantity: 2,
+          unitPrice: 0,
+          total: 0,
+        },
+        { label: 'Manœuvre', quantity: 2, unitPrice: 6_500, total: 13_000 },
+      ],
+      total: 13_000,
+      discount: 0,
+      tier: 3,
+      trips: 2,
+      currency: 'XOF',
+    },
+  };
+  const text = await extractPdfText(
+    await downloadQuote(booking, quote, { ...settings, bookingDepositPercent: 30 } as Settings),
+  );
+
+  assert.match(text, /Sur devis/u);
+  assert.doesNotMatch(text, /Acompte à la réservation/u);
+  assert.doesNotMatch(text, /Budget total à prévoir/u);
+});
+
 test('le PDF reprend les conditions de chargement exactes, y compris le supplément balcon', async () => {
   const quote: Quote = {
     id: 'quote-loading-conditions-test',

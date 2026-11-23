@@ -145,8 +145,26 @@ const savedDraft = { draft, quoteConfig: defaultAdminQuoteConfig(), tollLines: [
 const accounting = defaultAccountingFinanceConfiguration(new Date('2026-11-19T12:00:00Z'));
 const user = { id: 'visual-admin', name: 'Admin visuel', phone: '770000001', role: 'admin' };
 const employees = [
-  { id: 'mover-1', userId: null, name: 'Aminata Diop', phone: '770000002', photo: null, active: true, vehicleId: null, role: 'manoeuvre' },
-  { id: 'mover-2', userId: null, name: 'Moussa Fall', phone: '770000003', photo: null, active: true, vehicleId: null, role: 'manoeuvre' },
+  {
+    id: 'mover-1',
+    userId: null,
+    name: 'Aminata Diop',
+    phone: '770000002',
+    photo: null,
+    active: true,
+    vehicleId: null,
+    role: 'manoeuvre',
+  },
+  {
+    id: 'mover-2',
+    userId: null,
+    name: 'Moussa Fall',
+    phone: '770000003',
+    photo: null,
+    active: true,
+    vehicleId: null,
+    role: 'manoeuvre',
+  },
 ];
 
 const storedPrice = {
@@ -257,16 +275,26 @@ let booking = {
 const apiCalls = [];
 const mutations = [];
 const pageErrors = [];
-const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--no-sandbox'] });
-const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, acceptDownloads: true });
-await context.route('https://wa.me/**', (route) => route.fulfill({ status: 200, body: '<html>mock whatsapp</html>' }));
+const browser = await chromium.launch({
+  channel: 'chrome',
+  headless: true,
+  args: ['--no-sandbox'],
+});
+const context = await browser.newContext({
+  viewport: { width: 1440, height: 1000 },
+  acceptDownloads: true,
+});
+await context.route('https://wa.me/**', (route) =>
+  route.fulfill({ status: 200, body: '<html>mock whatsapp</html>' }),
+);
 const page = await context.newPage();
 page.on('pageerror', (error) => pageErrors.push(error.message));
 page.on('console', (message) => {
   if (message.text().includes('QUOTE_DIRTY')) console.log(message.text());
 });
 page.on('requestfailed', (request) => {
-  if (!request.url().includes('google.com/vt')) pageErrors.push(`${request.url()} ${request.failure()?.errorText}`);
+  if (!request.url().includes('google.com/vt'))
+    pageErrors.push(`${request.url()} ${request.failure()?.errorText}`);
 });
 await page.route('**/api/**', async (route) => {
   const request = route.request();
@@ -301,11 +329,33 @@ await page.route('**/api/**', async (route) => {
   } else if (path === '/admin/estimates') {
     const input = request.postDataJSON();
     const vehicle = vehicles.find((candidate) => candidate.id === input.vehicleId) ?? vehicles[0];
-    body = calculatePrice(vehicle, settings, input.distanceKmOverride ?? 12, input.options, input.trips ?? 1, null, 0, [], input.workAccess, null, 'fcfa', '', input.workDate);
-  } else if (path === `/bookings/${booking.id}/quotes/${savedQuote.id}/kind` && request.method() === 'PATCH') {
+    body = calculatePrice(
+      vehicle,
+      settings,
+      input.distanceKmOverride ?? 12,
+      input.options,
+      input.trips ?? 1,
+      null,
+      0,
+      [],
+      input.workAccess,
+      null,
+      'fcfa',
+      '',
+      input.workDate,
+    );
+  } else if (
+    path === `/bookings/${booking.id}/quotes/${savedQuote.id}/kind` &&
+    request.method() === 'PATCH'
+  ) {
     const { kind } = request.postDataJSON();
     const quote = { ...booking.quotes[0], kind };
-    booking = { ...booking, status: kind === 'final' ? 'completed' : 'pending', version: booking.version + 1, quotes: [quote] };
+    booking = {
+      ...booking,
+      status: kind === 'final' ? 'completed' : 'pending',
+      version: booking.version + 1,
+      quotes: [quote],
+    };
     body = booking;
   }
   if (path === '/admin/quote-draft' && request.method() !== 'GET') {
@@ -317,9 +367,14 @@ await page.route('**/api/**', async (route) => {
 
 try {
   const baseUrl = 'http://127.0.0.1:5174';
-  await page.goto(`${baseUrl}/admin/creer-un-devis?modifier=${booking.id}`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`${baseUrl}/admin/creer-un-devis?modifier=${booking.id}`, {
+    waitUntil: 'domcontentloaded',
+  });
   await expect(page.locator('#admin-quote-form')).toBeVisible({ timeout: 10_000 });
-  const transportLine = page.locator('.admin-quote-paper-line').filter({ hasText: /Transport Sprinter/i }).first();
+  const transportLine = page
+    .locator('.admin-quote-paper-line')
+    .filter({ hasText: /Transport Sprinter/i })
+    .first();
   await expect(transportLine).toContainText(/5\s*[×x]/u);
   await expect(transportLine).toContainText('140');
   const tripsSummary = page.locator('button[data-step="3"] small');
@@ -335,34 +390,82 @@ try {
 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.locator('#admin-quote-form')).toBeVisible({ timeout: 10_000 });
-  await expect(page.locator('.admin-quote-paper-line').filter({ hasText: /Transport Sprinter/i }).first()).toContainText(/5\s*[×x]/u);
-  await expect(page.locator('button[data-step="3"] small')).toContainText(/5 chargements et déchargements/u);
+  await expect(
+    page
+      .locator('.admin-quote-paper-line')
+      .filter({ hasText: /Transport Sprinter/i })
+      .first(),
+  ).toContainText(/5\s*[×x]/u);
+  await expect(page.locator('button[data-step="3"] small')).toContainText(
+    /5 chargements et déchargements/u,
+  );
 
   await page.locator('.admin-quote-save-bar-submit').click();
-  await expect(page.getByText(/aucun montant ni nombre de rotations n’a été recalculé/i)).toBeVisible();
-  assert.equal(mutations.some((entry) => entry.startsWith('POST /bookings') || entry.includes('/quotes')), false, 'Enregistrer sans changement ne doit pas écrire un nouveau devis.');
+  await expect(
+    page.getByText(/aucun montant ni nombre de rotations n’a été recalculé/i),
+  ).toBeVisible();
+  assert.equal(
+    mutations.some((entry) => entry.startsWith('POST /bookings') || entry.includes('/quotes')),
+    false,
+    'Enregistrer sans changement ne doit pas écrire un nouveau devis.',
+  );
 
   const popupPromise = page.waitForEvent('popup');
   await page.locator('.admin-quote-action-whatsapp').click();
   const popup = await popupPromise;
   await popup.waitForURL(/wa\.me/u, { timeout: 10_000 });
-  assert.equal(mutations.some((entry) => entry.startsWith('POST /bookings') || entry.includes('/quotes')), false, 'WhatsApp sans changement doit partager le devis enregistré sans recalcul.');
+  assert.equal(
+    mutations.some((entry) => entry.startsWith('POST /bookings') || entry.includes('/quotes')),
+    false,
+    'WhatsApp sans changement doit partager le devis enregistré sans recalcul.',
+  );
 
-  if ((await page.locator('button[data-step="4"]').getAttribute('aria-expanded')) !== 'true') await page.locator('button[data-step="4"]').click();
+  if ((await page.locator('button[data-step="4"]').getAttribute('aria-expanded')) !== 'true')
+    await page.locator('button[data-step="4"]').click();
   const stages = page.locator('.admin-quote-stage-selector button');
   await stages.nth(1).click();
   await page.locator('.admin-quote-save-bar-submit').click();
   await expect.poll(() => mutations.filter((entry) => entry.includes('/kind')).length).toBe(1);
-  assert.equal(mutations.some((entry) => entry.includes('/quote-stage')), false, 'Un changement de statut seul ne doit pas recalculer le prix.');
-  await expect(page.locator('button[data-step="3"] small')).toContainText(/5 chargements et déchargements/u);
+  assert.equal(
+    mutations.some((entry) => entry.includes('/quote-stage')),
+    false,
+    'Un changement de statut seul ne doit pas recalculer le prix.',
+  );
+  await expect(page.locator('button[data-step="3"] small')).toContainText(
+    /5 chargements et déchargements/u,
+  );
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.locator('#admin-quote-form')).toBeVisible({ timeout: 10_000 });
-  await expect(page.locator('.admin-quote-paper-line').filter({ hasText: /Transport Sprinter/i }).first()).toContainText(/5\s*[×x]/u);
-  await expect(page.locator('.admin-quote-paper-line').filter({ hasText: /Transport Sprinter/i }).first()).toContainText('140');
-  await expect(page.locator('button[data-step="3"] small')).toContainText(/5 chargements et déchargements/u);
+  await expect(
+    page
+      .locator('.admin-quote-paper-line')
+      .filter({ hasText: /Transport Sprinter/i })
+      .first(),
+  ).toContainText(/5\s*[×x]/u);
+  await expect(
+    page
+      .locator('.admin-quote-paper-line')
+      .filter({ hasText: /Transport Sprinter/i })
+      .first(),
+  ).toContainText('140');
+  await expect(page.locator('button[data-step="3"] small')).toContainText(
+    /5 chargements et déchargements/u,
+  );
   await expect(page.getByText(/réservation est clôturée/i)).toHaveCount(0);
   assert.deepEqual(pageErrors, []);
-  console.log(JSON.stringify({ storedRotations: storedPrice.trips, displayedRotations: await tripsSummary.innerText(), mutations, apiCalls, browserErrors: pageErrors }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        storedRotations: storedPrice.trips,
+        displayedRotations: await tripsSummary.innerText(),
+        mutations,
+        apiCalls,
+        browserErrors: pageErrors,
+      },
+      null,
+      2,
+    ),
+  );
 } finally {
   await browser.close();
 }

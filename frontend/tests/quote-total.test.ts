@@ -32,7 +32,8 @@ test('le prix personnalisé ne remplace pas le tarif normal des tranches', () =>
 });
 
 test('le prix personnalisé ne s’applique qu’à la tranche sur devis', () => {
-  assert.equal(quoteTotal(booking(3), settings, draft(null), []), 0);
+  assert.equal(quoteTotal(booking(3), settings, draft(null), []), null);
+  assert.equal(quoteTotal(booking(3), settings, draft(0), []), null);
   assert.equal(quoteTotal(booking(3), settings, draft(50000), []), 100000);
 });
 

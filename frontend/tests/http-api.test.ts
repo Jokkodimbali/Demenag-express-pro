@@ -76,8 +76,9 @@ test('Une estimation annulée pendant la lecture JSON conserve son erreur d’an
     );
     await new Promise((resolve) => setTimeout(resolve, 0));
     controller.abort();
-    await assert.rejects(estimate, (error: unknown) =>
-      error instanceof Error && error.name === 'AbortError',
+    await assert.rejects(
+      estimate,
+      (error: unknown) => error instanceof Error && error.name === 'AbortError',
     );
   } finally {
     globalThis.fetch = originalFetch;

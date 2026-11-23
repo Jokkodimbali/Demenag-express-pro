@@ -25,6 +25,7 @@ COPY --from=build /app/backend/dist /app/backend/dist
 COPY --from=build /app/shared/package.json /app/shared/package.json
 COPY --from=build /app/shared/quote-lines.js /app/shared/quote-lines.js
 COPY --from=build /app/shared/quote-custom-lines.js /app/shared/quote-custom-lines.js
+COPY --from=build /app/shared/quote-price-status.js /app/shared/quote-price-status.js
 COPY --from=build /app/shared/quote-taxi-allocation.js /app/shared/quote-taxi-allocation.js
 COPY --from=build /app/shared/reference-assembly-payroll-prices.js /app/shared/reference-assembly-payroll-prices.js
 COPY --from=build /app/shared/reference-assembly-price-defaults.js /app/shared/reference-assembly-price-defaults.js
