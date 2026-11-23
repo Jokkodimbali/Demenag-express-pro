@@ -81,6 +81,20 @@ export async function createFinalQuoteAndClose(
       discount: 1_000,
       customPrice: null,
       notes: 'Terminé',
+      options: { labour: 2, desk: 0, wardrobe: 0, bed: 0 },
+      extraLines: [
+        {
+          label: 'Frais taxi · montant par trajet modifié',
+          quantity: 3,
+          unitPrice: 10_001,
+        },
+        { label: 'Majoration de travail de nuit (30 min)', quantity: 0.5, unitPrice: 10_000 },
+      ],
+      taxiFeeApplied: true,
+      taxiPerLegAmountOverride: 10_001,
+      taxiRoundTripAmountOverride: 10_001,
+      taxiCompanyApproachAmountOverride: 0,
+      taxiCompanyApproachDistanceKm: 0,
       tolls: [{ tollPointId: tollPoint.id, direction: 'one-way', quantity: 2 }],
       version,
     });
@@ -93,7 +107,7 @@ export async function createFinalQuoteAndClose(
       price: {
         total: number;
         discount: number;
-        lines: { total: number }[];
+        lines: { label: string; quantity: number; total: number }[];
       };
       tolls?: { tollPointId: string; quantity: number; unitPrice: number }[];
     }[]
@@ -104,6 +118,12 @@ export async function createFinalQuoteAndClose(
     createdQuote.price.lines.reduce((sum, line) => sum + line.total, 0) -
       createdQuote.price.discount,
     'Le total final doit reprendre ses lignes et sa remise après les remises de référence.',
+  );
+  assert.equal(
+    createdQuote.price.lines.find((line) => line.label.startsWith('Majoration de travail de nuit'))
+      ?.quantity,
+    0.5,
+    'Une majoration horaire doit accepter une demi-heure.',
   );
   assert.equal(createdQuote.tolls?.length, 1);
   assert.equal(createdQuote.tolls?.[0]?.tollPointId, tollPoint.id);
@@ -159,7 +179,12 @@ export async function verifyQuoteSnapshots(
   });
   assert.ok(savedQuote.montantTotal !== null);
   assert.deepEqual(
-    savedQuote.lignes.map((line) => [line.libelle, line.quantite, line.prixUnitaire, line.montant]),
+    savedQuote.lignes.map((line) => [
+      line.libelle,
+      Number(line.quantite),
+      line.prixUnitaire,
+      line.montant,
+    ]),
     finalQuote.price.lines.map((line) => [line.label, line.quantity, line.unitPrice, line.total]),
     'Les lignes comptabilisées en base doivent être identiques au devis final.',
   );

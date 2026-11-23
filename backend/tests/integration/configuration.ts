@@ -12,6 +12,9 @@ export async function configureDeterministicPricing(context: IntegrationContext)
     data: {
       tarifManoeuvre: 6_000,
       tarifMontage: 15_000,
+      fraisTaxiActifs: true,
+      latitudeEntreprise: 14.69,
+      longitudeEntreprise: -17.44,
       bornesDistance: [15, 25, 35],
       reservationsOuvertes: true,
       quantiteMaximaleOptions: 20,

@@ -341,7 +341,7 @@ model LigneDevis {
   devisId      String @map("devis_id") @db.Uuid
   devis        Devis  @relation(fields: [devisId], references: [id], onDelete: Cascade)
   libelle      String
-  quantite     Int
+  quantite     Decimal @db.Decimal(10, 2)
   prixUnitaire Int    @map("prix_unitaire")
   montant      Int
   position     Int
