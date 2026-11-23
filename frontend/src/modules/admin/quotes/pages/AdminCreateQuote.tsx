@@ -313,7 +313,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             );
             return;
           }
-          if (draft.customerName.trim().length < 2) {
+          if (!editingReservation && draft.customerName.trim().length < 2) {
             event.preventDefault();
             cancelPendingWhatsApp();
             setOpenQuoteSections((current) => ({ ...current, client: true }));
@@ -335,7 +335,7 @@ export function AdminCreateQuote({ publicRequest = false }: { publicRequest?: bo
             : !normalizePhoneNumber(draft.customerPhone)
               ? 'Saisissez un numéro valide avec son indicatif international.'
               : '';
-          if (phoneMessage) {
+          if (!editingReservation && phoneMessage) {
             event.preventDefault();
             cancelPendingWhatsApp();
             setOpenQuoteSections((current) => ({ ...current, client: true }));

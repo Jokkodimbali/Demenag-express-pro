@@ -1,8 +1,10 @@
-import type { BookingInput, Options } from '../../../shared/domain/model';
+import type { Booking, BookingInput, Options } from '../../../shared/domain/model';
+import { normalizePhoneNumber } from '../../../shared/domain/phone-number';
 import type { Draft } from '../booking-draft';
 
 export function buildBookingSubmission(input: {
   draft: Draft;
+  existingBooking?: Pick<Booking, 'customerName' | 'phone'>;
   routeId: string;
   administrativeQuote: boolean;
   quoteTrips: number;
@@ -18,8 +20,16 @@ export function buildBookingSubmission(input: {
     routeId: input.routeId,
     distanceKmOverride: draft.distanceKmOverride,
     trips: input.administrativeQuote ? input.quoteTrips : draft.estimatedTrips,
-    customerName: draft.customerName,
-    customerPhone: draft.customerPhone,
+    customerName:
+      input.administrativeQuote && input.existingBooking && draft.customerName.trim().length < 2
+        ? input.existingBooking.customerName
+        : draft.customerName,
+    customerPhone:
+      input.administrativeQuote &&
+      input.existingBooking &&
+      !normalizePhoneNumber(draft.customerPhone)
+        ? input.existingBooking.phone
+        : draft.customerPhone,
     source: input.administrativeQuote ? draft.source : undefined,
     fromAddress: draft.fromAddress,
     toAddress: draft.toAddress,

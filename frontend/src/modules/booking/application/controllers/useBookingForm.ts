@@ -442,6 +442,7 @@ export function useBookingForm({
         : draft;
       const input = buildBookingSubmission({
         draft: submissionDraft,
+        existingBooking: administrativeQuote ? (editingBooking ?? undefined) : undefined,
         routeId: submissionRoute.id,
         administrativeQuote,
         quoteTrips: submissionQuoteConfig?.trips ?? 1,
